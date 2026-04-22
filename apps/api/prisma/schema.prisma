@@ -221,6 +221,60 @@ enum EligibilityRuleScope {
   COURSE_OFFERING
 }
 
+enum AssignmentStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+  ARCHIVED
+}
+
+enum SubmissionStatus {
+  SUBMITTED
+  LATE
+  GRADED
+  RESUBMITTED
+}
+
+enum QuizStatus {
+  DRAFT
+  PUBLISHED
+  ACTIVE
+  CLOSED
+  ARCHIVED
+}
+
+enum QuizAttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  AUTO_SUBMITTED
+  GRADED
+}
+
+enum QuizQuestionType {
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  SHORT_TEXT
+}
+
+enum GradingRecordTargetType {
+  ASSIGNMENT_SUBMISSION
+  QUIZ_ATTEMPT
+}
+
+enum GradingMode {
+  AUTO
+  MANUAL
+  MIXED
+}
+
+enum EvaluationHookStatus {
+  NOT_REQUESTED
+  PENDING
+  COMPLETED
+  FAILED
+}
+
 model Department {
   id                String              @id @default(cuid())
   code              String              @unique
@@ -254,6 +308,15 @@ model Department {
   attendanceImportBatches AttendanceImportBatch[]
   eligibilityRuleDefinitions EligibilityRuleDefinition[]
   eligibilityRuleBindings EligibilityRuleBinding[]
+  assignments       Assignment[]
+  assignmentSubmissions AssignmentSubmission[]
+  submissionFiles   SubmissionFile[]
+  quizzes           Quiz[]
+  quizQuestions     QuizQuestion[]
+  quizOptions       QuizOption[]
+  quizAttempts      QuizAttempt[]
+  quizResponses     QuizResponse[]
+  gradingRecords    GradingRecord[]
   settings          DepartmentSetting[]
   auditLogs         AuditLog[]
   overrideActions   OverrideAction[]
@@ -288,6 +351,7 @@ model User {
   studentEnrollments Enrollment[] @relation("StudentEnrollments")
   enrollmentApprovals Enrollment[] @relation("EnrollmentApprovedBy")
   attendanceAsStudent AttendanceRecord[] @relation("AttendanceStudent")
+  gradedRecords     GradingRecord[] @relation("GradingRecords")
   attendanceMarked AttendanceRecord[] @relation("AttendanceMarkedBy")
   attendanceOverrides AttendanceRecord[] @relation("AttendanceOverrideBy")
   attendanceImportBatchesUploaded AttendanceImportBatch[] @relation("AttendanceImportUploadedBy")
@@ -434,6 +498,10 @@ model CourseOffering {
   classSessions    ClassSession[]
   attendanceImportBatches AttendanceImportBatch[]
   eligibilityRuleBindings EligibilityRuleBinding[]
+  assignments        Assignment[]
+  quizzes            Quiz[]
+  quizAttempts       QuizAttempt[]
+  gradingRecords     GradingRecord[]
 
   @@unique([departmentId, academicTermId, courseId, sectionCode])
   @@index([departmentId])
@@ -487,6 +555,8 @@ model Enrollment {
   studentUser      User               @relation("StudentEnrollments", fields: [studentUserId], references: [id])
   approvedByUser   User?              @relation("EnrollmentApprovedBy", fields: [approvedByUserId], references: [id])
   attendanceRecords AttendanceRecord[]
+  assignmentSubmissions AssignmentSubmission[]
+  quizAttempts      QuizAttempt[]
 
   @@unique([courseOfferingId, studentUserId])
   @@index([departmentId])
@@ -630,6 +700,240 @@ model EligibilityRuleBinding {
   @@index([departmentId])
   @@index([eligibilityRuleDefinitionId])
   @@map("eligibility_rule_bindings")
+}
+
+model Assignment {
+  id                    String            @id @default(cuid())
+  departmentId          String            @map("department_id")
+  courseOfferingId      String            @map("course_offering_id")
+  title                 String
+  instructions          String?
+  status                AssignmentStatus  @default(DRAFT)
+  maxPoints             Decimal           @db.Decimal(6, 2) @map("max_points")
+  availableFrom         DateTime?         @map("available_from")
+  dueAt                 DateTime?         @map("due_at")
+  closeAt               DateTime?         @map("close_at")
+  allowLateSubmission   Boolean           @default(false) @map("allow_late_submission")
+  maxLateMinutes        Int?              @map("max_late_minutes")
+  maxSubmissionCount    Int               @default(1) @map("max_submission_count")
+  maxFileCount          Int               @default(5) @map("max_file_count")
+  maxFileSizeBytes      Int?              @map("max_file_size_bytes")
+  allowedMimeTypes      String[]          @default([]) @map("allowed_mime_types")
+  plagiarismCheckEnabled Boolean          @default(false) @map("plagiarism_check_enabled")
+  evaluationConfigJson  Json?             @map("evaluation_config_json")
+  publishedAt           DateTime?         @map("published_at")
+  archivedAt            DateTime?         @map("archived_at")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  department            Department        @relation(fields: [departmentId], references: [id])
+  courseOffering        CourseOffering    @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
+  submissions           AssignmentSubmission[]
+
+  @@index([departmentId])
+  @@index([courseOfferingId])
+  @@map("assignments")
+}
+
+model AssignmentSubmission {
+  id                    String            @id @default(cuid())
+  departmentId          String            @map("department_id")
+  assignmentId          String            @map("assignment_id")
+  enrollmentId          String            @map("enrollment_id")
+  attemptNumber         Int               @default(1) @map("attempt_number")
+  status                SubmissionStatus  @default(SUBMITTED)
+  submittedAt           DateTime          @default(now()) @map("submitted_at")
+  isLate                Boolean           @default(false) @map("is_late")
+  lateByMinutes         Int?              @map("late_by_minutes")
+  notes                 String?
+  evaluationHookStatus  EvaluationHookStatus @default(NOT_REQUESTED) @map("evaluation_hook_status")
+  evaluationHookRef     String?           @map("evaluation_hook_ref")
+  archivedAt            DateTime?         @map("archived_at")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  department            Department        @relation(fields: [departmentId], references: [id])
+  assignment            Assignment        @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  enrollment            Enrollment        @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  submissionFiles       SubmissionFile[]
+  gradingRecords        GradingRecord[]   @relation("SubmissionGradingRecords")
+
+  @@unique([assignmentId, enrollmentId, attemptNumber])
+  @@index([departmentId])
+  @@index([enrollmentId])
+  @@map("assignment_submissions")
+}
+
+model SubmissionFile {
+  id                    String            @id @default(cuid())
+  departmentId          String            @map("department_id")
+  assignmentSubmissionId String           @map("assignment_submission_id")
+  fileObjectId          String            @map("file_object_id")
+  displayName           String?           @map("display_name")
+  sortOrder             Int               @default(0) @map("sort_order")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  department            Department        @relation(fields: [departmentId], references: [id])
+  assignmentSubmission  AssignmentSubmission @relation(fields: [assignmentSubmissionId], references: [id], onDelete: Cascade)
+  fileObject            FileObject        @relation(fields: [fileObjectId], references: [id], onDelete: Cascade)
+
+  @@index([departmentId])
+  @@index([assignmentSubmissionId])
+  @@index([fileObjectId])
+  @@map("submission_files")
+}
+
+model Quiz {
+  id                    String            @id @default(cuid())
+  departmentId          String            @map("department_id")
+  courseOfferingId      String            @map("course_offering_id")
+  title                 String
+  instructions          String?
+  status                QuizStatus        @default(DRAFT)
+  maxPoints             Decimal           @db.Decimal(6, 2) @map("max_points")
+  availableFrom         DateTime?         @map("available_from")
+  startsAt              DateTime?         @map("starts_at")
+  dueAt                 DateTime?         @map("due_at")
+  closeAt               DateTime?         @map("close_at")
+  timeLimitMinutes      Int?              @map("time_limit_minutes")
+  maxAttempts           Int               @default(1) @map("max_attempts")
+  shuffleQuestions      Boolean           @default(false) @map("shuffle_questions")
+  shuffleOptions        Boolean           @default(false) @map("shuffle_options")
+  autoGradingEnabled    Boolean           @default(true) @map("auto_grading_enabled")
+  evaluationConfigJson  Json?             @map("evaluation_config_json")
+  publishedAt           DateTime?         @map("published_at")
+  archivedAt            DateTime?         @map("archived_at")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  department            Department        @relation(fields: [departmentId], references: [id])
+  courseOffering        CourseOffering    @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
+  questions             QuizQuestion[]
+  attempts              QuizAttempt[]
+
+  @@index([departmentId])
+  @@index([courseOfferingId])
+  @@map("quizzes")
+}
+
+model QuizQuestion {
+  id                    String            @id @default(cuid())
+  departmentId          String            @map("department_id")
+  quizId                String            @map("quiz_id")
+  prompt                String
+  questionType          QuizQuestionType  @map("question_type")
+  sortOrder             Int               @default(0) @map("sort_order")
+  maxPoints             Decimal           @db.Decimal(6, 2) @map("max_points")
+  isRequired            Boolean           @default(true) @map("is_required")
+  configJson            Json?             @map("config_json")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  department            Department        @relation(fields: [departmentId], references: [id])
+  quiz                  Quiz              @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  options               QuizOption[]
+  responses             QuizResponse[]
+
+  @@index([departmentId])
+  @@index([quizId])
+  @@map("quiz_questions")
+}
+
+model QuizOption {
+  id                    String            @id @default(cuid())
+  departmentId          String            @map("department_id")
+  quizQuestionId        String            @map("quiz_question_id")
+  label                 String
+  sortOrder             Int               @default(0) @map("sort_order")
+  isCorrect             Boolean           @default(false) @map("is_correct")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  department            Department        @relation(fields: [departmentId], references: [id])
+  quizQuestion          QuizQuestion      @relation(fields: [quizQuestionId], references: [id], onDelete: Cascade)
+  responses             QuizResponse[]
+
+  @@index([departmentId])
+  @@index([quizQuestionId])
+  @@map("quiz_options")
+}
+
+model QuizAttempt {
+  id                    String            @id @default(cuid())
+  departmentId          String            @map("department_id")
+  courseOfferingId      String            @map("course_offering_id")
+  quizId                String            @map("quiz_id")
+  enrollmentId          String            @map("enrollment_id")
+  attemptNumber         Int               @default(1) @map("attempt_number")
+  status                QuizAttemptStatus @default(IN_PROGRESS)
+  startedAt             DateTime          @default(now()) @map("started_at")
+  submittedAt           DateTime?         @map("submitted_at")
+  autoSubmittedAt       DateTime?         @map("auto_submitted_at")
+  timeLimitMinutesSnapshot Int?           @map("time_limit_minutes_snapshot")
+  evaluationHookStatus  EvaluationHookStatus @default(NOT_REQUESTED) @map("evaluation_hook_status")
+  evaluationHookRef     String?           @map("evaluation_hook_ref")
+  archivedAt            DateTime?         @map("archived_at")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  department            Department        @relation(fields: [departmentId], references: [id])
+  courseOffering        CourseOffering    @relation(fields: [courseOfferingId], references: [id])
+  quiz                  Quiz              @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  enrollment            Enrollment        @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  responses             QuizResponse[]
+  gradingRecords        GradingRecord[]   @relation("QuizAttemptGradingRecords")
+
+  @@unique([quizId, enrollmentId, attemptNumber])
+  @@index([departmentId])
+  @@index([courseOfferingId])
+  @@index([enrollmentId])
+  @@map("quiz_attempts")
+}
+
+model QuizResponse {
+  id                    String            @id @default(cuid())
+  departmentId          String            @map("department_id")
+  quizAttemptId         String            @map("quiz_attempt_id")
+  quizQuestionId        String            @map("quiz_question_id")
+  selectedQuizOptionId  String?           @map("selected_quiz_option_id")
+  textResponse          String?           @map("text_response")
+  pointsAwarded         Decimal?          @db.Decimal(6, 2) @map("points_awarded")
+  isCorrect             Boolean?          @map("is_correct")
+  answeredAt            DateTime?         @map("answered_at")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  department            Department        @relation(fields: [departmentId], references: [id])
+  quizAttempt           QuizAttempt       @relation(fields: [quizAttemptId], references: [id], onDelete: Cascade)
+  quizQuestion          QuizQuestion      @relation(fields: [quizQuestionId], references: [id])
+  selectedQuizOption    QuizOption?       @relation(fields: [selectedQuizOptionId], references: [id])
+
+  @@unique([quizAttemptId, quizQuestionId])
+  @@index([departmentId])
+  @@index([quizQuestionId])
+  @@map("quiz_responses")
+}
+
+model GradingRecord {
+  id                    String            @id @default(cuid())
+  departmentId          String            @map("department_id")
+  courseOfferingId      String            @map("course_offering_id")
+  targetType            GradingRecordTargetType @map("target_type")
+  assignmentSubmissionId String?          @map("assignment_submission_id")
+  quizAttemptId         String?           @map("quiz_attempt_id")
+  gradedByUserId        String            @map("graded_by_user_id")
+  gradingMode           GradingMode       @map("grading_mode")
+  pointsAwarded         Decimal           @db.Decimal(6, 2) @map("points_awarded")
+  feedback              String?
+  isRegrade             Boolean           @default(false) @map("is_regrade")
+  regradeReason         String?           @map("regrade_reason")
+  gradedAt              DateTime          @default(now()) @map("graded_at")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  department            Department        @relation(fields: [departmentId], references: [id])
+  courseOffering        CourseOffering    @relation(fields: [courseOfferingId], references: [id])
+  assignmentSubmission  AssignmentSubmission? @relation("SubmissionGradingRecords", fields: [assignmentSubmissionId], references: [id])
+  quizAttempt           QuizAttempt?      @relation("QuizAttemptGradingRecords", fields: [quizAttemptId], references: [id])
+  gradedByUser          User              @relation("GradingRecords", fields: [gradedByUserId], references: [id])
+
+  @@index([departmentId])
+  @@index([courseOfferingId])
+  @@index([assignmentSubmissionId])
+  @@index([quizAttemptId])
+  @@map("grading_records")
 }
 
 model Role {
@@ -921,6 +1225,7 @@ model FileObject {
   updatedAt         DateTime          @updatedAt @map("updated_at")
   department        Department        @relation(fields: [departmentId], references: [id])
   uploadedByUser    User?             @relation("FileUploadedBy", fields: [uploadedByUserId], references: [id])
+  submissionFiles   SubmissionFile[]
   malwareScanResults MalwareScanResult[]
 
   @@index([departmentId])
