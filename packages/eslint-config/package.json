@@ -1,0 +1,15 @@
+{
+  "name": "@lexora/eslint-config",
+  "version": "0.1.0",
+  "private": true,
+  "main": "base.cjs",
+  "dependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.31.1",
+    "@typescript-eslint/parser": "^8.31.1",
+    "eslint": "^9.25.1",
+    "eslint-config-next": "^15.3.2",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-simple-import-sort": "^12.1.1"
+  }
+}
+

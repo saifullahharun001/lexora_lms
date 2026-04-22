@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_DIRECT_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+}
+
+enum AuditOutcome {
+  SUCCESS
+  FAILURE
+}
+
+model Department {
+  id          String     @id @default(cuid())
+  code        String     @unique
+  name        String
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  users       User[]
+  auditLogs   AuditLog[]
+  storedFiles StoredFile[]
+}
+
+model User {
+  id            String         @id @default(cuid())
+  departmentId  String?
+  email         String         @unique
+  passwordHash  String
+  displayName   String
+  status        UserStatus     @default(INVITED)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  department    Department?    @relation(fields: [departmentId], references: [id])
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]     @relation("AuditActor")
+}
+
+model RefreshToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  revokedAt  DateTime?
+  ipAddress  String?
+  userAgent  String?
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model StoredFile {
+  id           String      @id @default(cuid())
+  departmentId String?
+  bucket       String
+  objectKey    String      @unique
+  checksumSha256 String
+  mimeType     String
+  sizeBytes    Int
+  malwareState String
+  createdAt    DateTime    @default(now())
+  department   Department? @relation(fields: [departmentId], references: [id])
+}
+
+model AuditLog {
+  id           String       @id @default(cuid())
+  actorUserId   String?
+  departmentId String?
+  action       String
+  targetType   String
+  targetId     String
+  outcome      AuditOutcome
+  ipAddress    String?
+  userAgent    String?
+  metadataJson Json?
+  createdAt    DateTime     @default(now())
+  actorUser    User?        @relation("AuditActor", fields: [actorUserId], references: [id])
+  department   Department?  @relation(fields: [departmentId], references: [id])
+}
+
