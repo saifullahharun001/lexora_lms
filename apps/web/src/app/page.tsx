@@ -4,9 +4,14 @@ import { SectionCard } from "@lexora/ui";
 
 const routeAreas = [
   {
-    href: "/auth/sign-in",
+    href: "/sign-in",
     title: "Auth Surface",
     description: "Identity entry points, session bootstrap, and account recovery shells."
+  },
+  {
+    href: "/forgot-password",
+    title: "Recovery Surface",
+    description: "Password recovery shell for audited identity-access flows."
   },
   {
     href: "/admin",
@@ -68,4 +73,3 @@ export default function HomePage() {
     </main>
   );
 }
-

@@ -12,11 +12,11 @@ import { REDIS_CLIENT } from "./redis.constants";
       inject: [ConfigService],
       useFactory: (configService: ConfigService) =>
         new Redis(configService.getOrThrow<string>("redis.url"), {
-          lazyConnect: true
+          lazyConnect: true,
+          maxRetriesPerRequest: 1
         })
     }
   ],
   exports: [REDIS_CLIENT]
 })
 export class RedisModule {}
-

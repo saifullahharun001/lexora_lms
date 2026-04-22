@@ -4,6 +4,8 @@ import { NestFactory } from "@nestjs/core";
 import helmet from "helmet";
 
 import { AppModule } from "./app.module";
+import { ApiExceptionFilter } from "./common/http/api-exception.filter";
+import { RequestContextInterceptor } from "./common/request-context/request-context.interceptor";
 import { validateEnv } from "./common/config/env.schema";
 
 async function bootstrap() {
@@ -22,6 +24,8 @@ async function bootstrap() {
   });
   app.use(helmet());
   app.use(cookieParser());
+  app.useGlobalInterceptors(app.get(RequestContextInterceptor));
+  app.useGlobalFilters(app.get(ApiExceptionFilter));
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

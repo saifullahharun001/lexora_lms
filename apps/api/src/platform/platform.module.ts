@@ -1,11 +1,24 @@
 import { Module } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config";
+import { ConfigModule, type ConfigType } from "@nestjs/config";
 import { ThrottlerModule } from "@nestjs/throttler";
 
-import { configuration } from "../common/config/configuration";
+import {
+  appConfig,
+  authConfig,
+  databaseConfig,
+  emailConfig,
+  rateLimitConfig,
+  redisConfig,
+  storageConfig
+} from "../common/config/loaders";
 import { validateEnv } from "../common/config/env.schema";
-import { DatabaseModule } from "../common/database/database.module";
+import { ApiExceptionFilter } from "../common/http/api-exception.filter";
+import { PrismaModule } from "../common/prisma/prisma.module";
 import { RedisModule } from "../common/redis/redis.module";
+import { RequestContextModule } from "../common/request-context/request-context.module";
+import { DepartmentContextResolver } from "../common/department-context/department-context.resolver";
+import { AuthorizationGuard } from "../common/authorization/authorization.guard";
+import { AuthorizationPolicyService } from "../common/authorization/authorization-policy.service";
 
 @Module({
   imports: [
@@ -15,25 +28,36 @@ import { RedisModule } from "../common/redis/redis.module";
       envFilePath: [".env"],
       validate: validateEnv,
       load: [
-        () => {
-          const env = validateEnv(process.env);
-          return configuration(env);
-        }
+        appConfig,
+        authConfig,
+        databaseConfig,
+        emailConfig,
+        redisConfig,
+        storageConfig,
+        rateLimitConfig
       ]
     }),
     ThrottlerModule.forRootAsync({
-      useFactory: () => {
-        const env = validateEnv(process.env);
+      inject: [rateLimitConfig.KEY],
+      useFactory: (rateLimit: ConfigType<typeof rateLimitConfig>) => {
         return [
           {
-            ttl: env.RATE_LIMIT_TTL_SECONDS * 1000,
-            limit: env.RATE_LIMIT_MAX_REQUESTS
+            ttl: rateLimit.ttlSeconds * 1000,
+            limit: rateLimit.maxRequests
           }
         ];
       }
     }),
-    DatabaseModule,
-    RedisModule
-  ]
+    PrismaModule,
+    RedisModule,
+    RequestContextModule
+  ],
+  providers: [
+    ApiExceptionFilter,
+    DepartmentContextResolver,
+    AuthorizationPolicyService,
+    AuthorizationGuard
+  ],
+  exports: [ApiExceptionFilter, DepartmentContextResolver, AuthorizationGuard]
 })
 export class PlatformModule {}

@@ -1,7 +1,6 @@
 export type ActorType = "user" | "service";
 
 export type PlatformRole =
-  | "system_admin"
   | "department_admin"
   | "teacher"
   | "student"
@@ -11,14 +10,13 @@ export type PlatformRole =
 export interface PermissionGrant {
   action: string;
   resource: string;
-  scope: "global" | "department" | "self";
+  scope: "department" | "self" | "public_verification";
 }
 
 export interface AuthContext {
   actorId: string;
   actorType: ActorType;
-  departmentId?: string;
+  departmentId?: string | null;
   roles: PlatformRole[];
   permissions: PermissionGrant[];
 }
-
