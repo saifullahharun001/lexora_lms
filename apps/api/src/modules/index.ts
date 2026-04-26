@@ -1,4 +1,5 @@
 export { IdentityAccessModule } from "./identity-access/identity-access.module";
+export { AuthorizationModule } from "./authorization/authorization.module";
 export { DepartmentConfigModule } from "./department-config/department-config.module";
 export { UserManagementModule } from "./user-management/user-management.module";
 export { CourseManagementModule } from "./course-management/course-management.module";
