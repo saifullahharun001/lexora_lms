@@ -61,7 +61,11 @@ export const envSchema = z.object({
   RATE_LIMIT_TTL_SECONDS: z.coerce.number().int().positive(),
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().positive(),
   AUTH_RATE_LIMIT_TTL_SECONDS: z.coerce.number().int().positive(),
-  AUTH_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().positive()
+  AUTH_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().positive(),
+  UNIVERSITY_EMAIL_DOMAINS: z.string().optional().default(""),
+  AUTH_LOCKOUT_FAILURE_THRESHOLD: z.coerce.number().int().positive().default(5),
+  AUTH_LOCKOUT_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
+  AUTH_LOCKOUT_DURATION_MINUTES: z.coerce.number().int().positive().default(15)
 }).superRefine((env, ctx) => {
   if (env.JWT_ACCESS_SECRET === env.JWT_REFRESH_SECRET) {
     ctx.addIssue({
@@ -95,4 +99,3 @@ export function getValidatedEnv(): Env {
 
   return cachedEnv;
 }
-

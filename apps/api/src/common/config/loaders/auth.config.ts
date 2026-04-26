@@ -18,7 +18,12 @@ export const authConfig = registerAs("auth", () => {
     otpIssuer: env.OTP_ISSUER,
     otpDigits: env.OTP_DIGITS,
     otpTtlSeconds: env.OTP_TTL_SECONDS,
-    otpRateLimitPerWindow: env.OTP_RATE_LIMIT_PER_WINDOW
+    otpRateLimitPerWindow: env.OTP_RATE_LIMIT_PER_WINDOW,
+    universityEmailDomains: env.UNIVERSITY_EMAIL_DOMAINS.split(",")
+      .map((value) => value.trim().toLowerCase())
+      .filter((value) => value.length > 0),
+    lockoutFailureThreshold: env.AUTH_LOCKOUT_FAILURE_THRESHOLD,
+    lockoutWindowMinutes: env.AUTH_LOCKOUT_WINDOW_MINUTES,
+    lockoutDurationMinutes: env.AUTH_LOCKOUT_DURATION_MINUTES
   };
 });
-

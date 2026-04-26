@@ -40,12 +40,20 @@ import { AuthorizationPolicyService } from "../common/authorization/authorizatio
     ThrottlerModule.forRootAsync({
       inject: [rateLimitConfig.KEY],
       useFactory: (rateLimit: ConfigType<typeof rateLimitConfig>) => {
-        return [
-          {
-            ttl: rateLimit.ttlSeconds * 1000,
-            limit: rateLimit.maxRequests
-          }
-        ];
+        return {
+          throttlers: [
+            {
+              name: "default",
+              ttl: rateLimit.ttlSeconds * 1000,
+              limit: rateLimit.maxRequests
+            },
+            {
+              name: "auth",
+              ttl: rateLimit.authTtlSeconds * 1000,
+              limit: rateLimit.authMaxRequests
+            }
+          ]
+        };
       }
     }),
     PrismaModule,
