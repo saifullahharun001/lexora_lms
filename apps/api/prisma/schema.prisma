@@ -304,6 +304,33 @@ enum ResultComponentSourceType {
   MANUAL
 }
 
+enum TranscriptRecordStatus {
+  DRAFT
+  GENERATED
+  ISSUED
+  REVOKED
+  ARCHIVED
+}
+
+enum TranscriptVersionStatus {
+  GENERATED
+  ISSUED
+  SUPERSEDED
+  REVOKED
+}
+
+enum TranscriptVerificationTokenStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum TranscriptRevocationStatus {
+  REQUESTED
+  APPLIED
+  REJECTED
+}
+
 model Department {
   id                String              @id @default(cuid())
   code              String              @unique
@@ -353,6 +380,13 @@ model Department {
   cgpaRecords       CGPARecord[]
   resultPublicationBatches ResultPublicationBatch[]
   resultAmendmentRecords ResultAmendmentRecord[]
+  transcriptRecords  TranscriptRecord[]
+  transcriptVersions TranscriptVersion[]
+  transcriptTermSummaries TranscriptTermSummary[]
+  transcriptCourseLines TranscriptCourseLine[]
+  transcriptVerificationTokens TranscriptVerificationToken[]
+  transcriptRevocationRecords TranscriptRevocationRecord[]
+  transcriptSealMetadatas TranscriptSealMetadata[]
   settings          DepartmentSetting[]
   auditLogs         AuditLog[]
   overrideActions   OverrideAction[]
@@ -407,6 +441,14 @@ model User {
   resultAmendmentsRequested ResultAmendmentRecord[] @relation("ResultAmendmentRequestedBy")
   resultAmendmentsApproved ResultAmendmentRecord[] @relation("ResultAmendmentApprovedBy")
   resultAmendmentsApplied ResultAmendmentRecord[] @relation("ResultAmendmentAppliedBy")
+  transcriptRecordsAsStudent TranscriptRecord[] @relation("TranscriptStudentRecords")
+  transcriptRecordsGenerated TranscriptRecord[] @relation("TranscriptRecordGeneratedBy")
+  transcriptVersionsGenerated TranscriptVersion[] @relation("TranscriptVersionGeneratedBy")
+  transcriptVersionsIssued TranscriptVersion[] @relation("TranscriptVersionIssuedBy")
+  transcriptVerificationTokensIssued TranscriptVerificationToken[] @relation("TranscriptVerificationTokenIssuedBy")
+  transcriptRevocationsRequested TranscriptRevocationRecord[] @relation("TranscriptRevocationRequestedBy")
+  transcriptRevocationsApplied TranscriptRevocationRecord[] @relation("TranscriptRevocationAppliedBy")
+  transcriptRevocationsRejected TranscriptRevocationRecord[] @relation("TranscriptRevocationRejectedBy")
   auditLogs          AuditLog[]          @relation("AuditActor")
   settingsUpdated    DepartmentSetting[] @relation("DepartmentSettingUpdatedBy")
   overrideActions    OverrideAction[]    @relation("OverrideActor")
@@ -501,6 +543,7 @@ model AcademicTerm {
   gpaRecords       GPARecord[]
   cgpaRecordsAsOf  CGPARecord[]
   resultPublicationBatches ResultPublicationBatch[]
+  transcriptTermSummaries TranscriptTermSummary[]
 
   @@unique([departmentId, code])
   @@index([departmentId])
@@ -558,6 +601,7 @@ model CourseOffering {
   quizAttempts       QuizAttempt[]
   gradingRecords     GradingRecord[]
   resultRecords      ResultRecord[]
+  transcriptCourseLines TranscriptCourseLine[]
 
   @@unique([departmentId, academicTermId, courseId, sectionCode])
   @@index([departmentId])
@@ -1353,6 +1397,7 @@ model ResultRecord {
   publishedByUser   User?              @relation("ResultPublishedBy", fields: [publishedByUserId], references: [id])
   components        ResultComponent[]
   amendments        ResultAmendmentRecord[]
+  transcriptCourseLines TranscriptCourseLine[]
 
   @@unique([enrollmentId, courseOfferingId])
   @@index([departmentId, academicTermId, status])
@@ -1414,6 +1459,7 @@ model GPARecord {
   publicationBatch  ResultPublicationBatch? @relation(fields: [publicationBatchId], references: [id])
   computedByUser    User?       @relation("GPAComputedBy", fields: [computedByUserId], references: [id])
   publishedByUser   User?       @relation("GPAPublishedBy", fields: [publishedByUserId], references: [id])
+  transcriptTermSummaries TranscriptTermSummary[]
 
   @@unique([departmentId, academicTermId, studentUserId])
   @@index([departmentId, academicTermId])
@@ -1445,6 +1491,7 @@ model CGPARecord {
   publicationBatch  ResultPublicationBatch? @relation(fields: [publicationBatchId], references: [id])
   computedByUser    User?       @relation("CGPAComputedBy", fields: [computedByUserId], references: [id])
   publishedByUser   User?       @relation("CGPAPublishedBy", fields: [publishedByUserId], references: [id])
+  transcriptVersions TranscriptVersion[]
 
   @@unique([departmentId, studentUserId])
   @@index([departmentId, asOfAcademicTermId])
@@ -1513,6 +1560,210 @@ model ResultAmendmentRecord {
   @@index([departmentId, resultRecordId, status])
   @@index([overrideActionId])
   @@map("result_amendment_records")
+}
+
+model TranscriptRecord {
+  id                 String                 @id @default(cuid())
+  departmentId       String                 @map("department_id")
+  studentUserId      String                 @map("student_user_id")
+  transcriptNumber   String                 @map("transcript_number")
+  status             TranscriptRecordStatus @default(DRAFT)
+  latestVersionNumber Int                   @default(0) @map("latest_version_number")
+  generatedByUserId  String?                @map("generated_by_user_id")
+  issuedAt           DateTime?              @map("issued_at")
+  revokedAt          DateTime?              @map("revoked_at")
+  archivedAt         DateTime?              @map("archived_at")
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @updatedAt @map("updated_at")
+  department         Department             @relation(fields: [departmentId], references: [id])
+  studentUser        User                   @relation("TranscriptStudentRecords", fields: [studentUserId], references: [id])
+  generatedByUser    User?                  @relation("TranscriptRecordGeneratedBy", fields: [generatedByUserId], references: [id])
+  versions           TranscriptVersion[]
+  revocationRecords  TranscriptRevocationRecord[]
+
+  @@unique([departmentId, transcriptNumber])
+  @@index([departmentId, studentUserId, status])
+  @@map("transcript_records")
+}
+
+model TranscriptVersion {
+  id                        String                  @id @default(cuid())
+  departmentId              String                  @map("department_id")
+  transcriptRecordId        String                  @map("transcript_record_id")
+  sourceCgpaRecordId        String?                 @map("source_cgpa_record_id")
+  versionNumber             Int                     @map("version_number")
+  status                    TranscriptVersionStatus @default(GENERATED)
+  generatedByUserId         String?                 @map("generated_by_user_id")
+  issuedByUserId            String?                 @map("issued_by_user_id")
+  studentSnapshotJson       Json                    @map("student_snapshot_json")
+  programSnapshotJson       Json?                   @map("program_snapshot_json")
+  departmentSnapshotJson    Json?                   @map("department_snapshot_json")
+  printStructureJson        Json?                   @map("print_structure_json")
+  cumulativeAttemptedCredits Decimal?               @db.Decimal(6, 2) @map("cumulative_attempted_credits")
+  cumulativeEarnedCredits   Decimal?                @db.Decimal(6, 2) @map("cumulative_earned_credits")
+  cgpaSnapshot              Decimal?                @db.Decimal(4, 2) @map("cgpa_snapshot")
+  academicStandingStatus    String?                 @map("academic_standing_status")
+  completionStatus          String?                 @map("completion_status")
+  graduationStatus          String?                 @map("graduation_status")
+  generatedAt               DateTime                @default(now()) @map("generated_at")
+  issuedAt                  DateTime?               @map("issued_at")
+  supersededAt              DateTime?               @map("superseded_at")
+  revokedAt                 DateTime?               @map("revoked_at")
+  createdAt                 DateTime                @default(now()) @map("created_at")
+  updatedAt                 DateTime                @updatedAt @map("updated_at")
+  department                Department              @relation(fields: [departmentId], references: [id])
+  transcriptRecord          TranscriptRecord        @relation(fields: [transcriptRecordId], references: [id], onDelete: Cascade)
+  sourceCgpaRecord          CGPARecord?             @relation(fields: [sourceCgpaRecordId], references: [id])
+  generatedByUser           User?                   @relation("TranscriptVersionGeneratedBy", fields: [generatedByUserId], references: [id])
+  issuedByUser              User?                   @relation("TranscriptVersionIssuedBy", fields: [issuedByUserId], references: [id])
+  termSummaries             TranscriptTermSummary[]
+  courseLines               TranscriptCourseLine[]
+  verificationTokens        TranscriptVerificationToken[]
+  revocationRecords         TranscriptRevocationRecord[]
+  sealMetadata              TranscriptSealMetadata?
+
+  @@unique([transcriptRecordId, versionNumber])
+  @@index([departmentId, transcriptRecordId, status])
+  @@index([sourceCgpaRecordId])
+  @@map("transcript_versions")
+}
+
+model TranscriptTermSummary {
+  id                        String      @id @default(cuid())
+  departmentId              String      @map("department_id")
+  transcriptVersionId       String      @map("transcript_version_id")
+  academicTermId            String?     @map("academic_term_id")
+  sourceGpaRecordId         String?     @map("source_gpa_record_id")
+  sortOrder                 Int         @default(0) @map("sort_order")
+  termCodeSnapshot          String      @map("term_code_snapshot")
+  termNameSnapshot          String      @map("term_name_snapshot")
+  attemptedCredits          Decimal?    @db.Decimal(6, 2) @map("attempted_credits")
+  earnedCredits             Decimal?    @db.Decimal(6, 2) @map("earned_credits")
+  qualityPoints             Decimal?    @db.Decimal(8, 2) @map("quality_points")
+  termGpaSnapshot           Decimal?    @db.Decimal(4, 2) @map("term_gpa_snapshot")
+  cumulativeCgpaSnapshot    Decimal?    @db.Decimal(4, 2) @map("cumulative_cgpa_snapshot")
+  academicStandingStatus    String?     @map("academic_standing_status")
+  createdAt                 DateTime    @default(now()) @map("created_at")
+  updatedAt                 DateTime    @updatedAt @map("updated_at")
+  department                Department  @relation(fields: [departmentId], references: [id])
+  transcriptVersion         TranscriptVersion @relation(fields: [transcriptVersionId], references: [id], onDelete: Cascade)
+  academicTerm              AcademicTerm? @relation(fields: [academicTermId], references: [id])
+  sourceGpaRecord           GPARecord?  @relation(fields: [sourceGpaRecordId], references: [id])
+  courseLines               TranscriptCourseLine[]
+
+  @@unique([transcriptVersionId, sortOrder])
+  @@index([departmentId, transcriptVersionId])
+  @@index([academicTermId])
+  @@index([sourceGpaRecordId])
+  @@map("transcript_term_summaries")
+}
+
+model TranscriptCourseLine {
+  id                        String      @id @default(cuid())
+  departmentId              String      @map("department_id")
+  transcriptVersionId       String      @map("transcript_version_id")
+  transcriptTermSummaryId   String      @map("transcript_term_summary_id")
+  resultRecordId            String?     @map("result_record_id")
+  courseOfferingId          String?     @map("course_offering_id")
+  sortOrder                 Int         @default(0) @map("sort_order")
+  courseCodeSnapshot        String      @map("course_code_snapshot")
+  courseTitleSnapshot       String      @map("course_title_snapshot")
+  creditHoursSnapshot       Decimal     @db.Decimal(4, 2) @map("credit_hours_snapshot")
+  normalizedPercentage      Decimal?    @db.Decimal(5, 2) @map("normalized_percentage")
+  letterGrade               String?     @map("letter_grade")
+  gradePoint                Decimal?    @db.Decimal(4, 2) @map("grade_point")
+  qualityPoints             Decimal?    @db.Decimal(8, 2) @map("quality_points")
+  isCountedInGpa            Boolean     @default(true) @map("is_counted_in_gpa")
+  completionStatus          String?     @map("completion_status")
+  remarks                   String?
+  createdAt                 DateTime    @default(now()) @map("created_at")
+  updatedAt                 DateTime    @updatedAt @map("updated_at")
+  department                Department  @relation(fields: [departmentId], references: [id])
+  transcriptVersion         TranscriptVersion @relation(fields: [transcriptVersionId], references: [id], onDelete: Cascade)
+  transcriptTermSummary     TranscriptTermSummary @relation(fields: [transcriptTermSummaryId], references: [id], onDelete: Cascade)
+  resultRecord              ResultRecord? @relation(fields: [resultRecordId], references: [id])
+  courseOffering            CourseOffering? @relation(fields: [courseOfferingId], references: [id])
+
+  @@unique([transcriptTermSummaryId, sortOrder])
+  @@index([departmentId, transcriptVersionId])
+  @@index([resultRecordId])
+  @@index([courseOfferingId])
+  @@map("transcript_course_lines")
+}
+
+model TranscriptVerificationToken {
+  id                        String                            @id @default(cuid())
+  departmentId              String                            @map("department_id")
+  transcriptVersionId       String                            @map("transcript_version_id")
+  issuedByUserId            String?                           @map("issued_by_user_id")
+  publicCode                String                            @unique @map("public_code")
+  status                    TranscriptVerificationTokenStatus @default(ACTIVE)
+  publicSummaryJson         Json?                             @map("public_summary_json")
+  verificationCount         Int                               @default(0) @map("verification_count")
+  lastVerifiedAt            DateTime?                         @map("last_verified_at")
+  expiresAt                 DateTime?                         @map("expires_at")
+  revokedAt                 DateTime?                         @map("revoked_at")
+  issuedAt                  DateTime                          @default(now()) @map("issued_at")
+  createdAt                 DateTime                          @default(now()) @map("created_at")
+  updatedAt                 DateTime                          @updatedAt @map("updated_at")
+  department                Department                        @relation(fields: [departmentId], references: [id])
+  transcriptVersion         TranscriptVersion                 @relation(fields: [transcriptVersionId], references: [id], onDelete: Cascade)
+  issuedByUser              User?                             @relation("TranscriptVerificationTokenIssuedBy", fields: [issuedByUserId], references: [id])
+
+  @@index([departmentId, transcriptVersionId, status])
+  @@index([expiresAt])
+  @@map("transcript_verification_tokens")
+}
+
+model TranscriptRevocationRecord {
+  id                        String                     @id @default(cuid())
+  departmentId              String                     @map("department_id")
+  transcriptRecordId        String                     @map("transcript_record_id")
+  transcriptVersionId       String?                    @map("transcript_version_id")
+  status                    TranscriptRevocationStatus @default(REQUESTED)
+  reason                    String
+  requestedByUserId         String                     @map("requested_by_user_id")
+  appliedByUserId           String?                    @map("applied_by_user_id")
+  rejectedByUserId          String?                    @map("rejected_by_user_id")
+  appliesToAllTokens        Boolean                    @default(true) @map("applies_to_all_tokens")
+  requestSnapshotJson       Json?                      @map("request_snapshot_json")
+  requestedAt               DateTime                   @default(now()) @map("requested_at")
+  appliedAt                 DateTime?                  @map("applied_at")
+  rejectedAt                DateTime?                  @map("rejected_at")
+  createdAt                 DateTime                   @default(now()) @map("created_at")
+  updatedAt                 DateTime                   @updatedAt @map("updated_at")
+  department                Department                 @relation(fields: [departmentId], references: [id])
+  transcriptRecord          TranscriptRecord           @relation(fields: [transcriptRecordId], references: [id], onDelete: Cascade)
+  transcriptVersion         TranscriptVersion?         @relation(fields: [transcriptVersionId], references: [id])
+  requestedByUser           User                       @relation("TranscriptRevocationRequestedBy", fields: [requestedByUserId], references: [id])
+  appliedByUser             User?                      @relation("TranscriptRevocationAppliedBy", fields: [appliedByUserId], references: [id])
+  rejectedByUser            User?                      @relation("TranscriptRevocationRejectedBy", fields: [rejectedByUserId], references: [id])
+
+  @@index([departmentId, transcriptRecordId, status])
+  @@index([transcriptVersionId])
+  @@map("transcript_revocation_records")
+}
+
+model TranscriptSealMetadata {
+  id                        String      @id @default(cuid())
+  departmentId              String      @map("department_id")
+  transcriptVersionId       String      @unique @map("transcript_version_id")
+  sealType                  String      @map("seal_type")
+  signerDisplayName         String?     @map("signer_display_name")
+  signerTitle               String?     @map("signer_title")
+  signatureAlgorithm        String?     @map("signature_algorithm")
+  signatureReference        String?     @map("signature_reference")
+  sealReference             String?     @map("seal_reference")
+  payloadDigest             String?     @map("payload_digest")
+  metadataJson              Json?       @map("metadata_json")
+  signedAt                  DateTime?   @map("signed_at")
+  createdAt                 DateTime    @default(now()) @map("created_at")
+  updatedAt                 DateTime    @updatedAt @map("updated_at")
+  department                Department  @relation(fields: [departmentId], references: [id])
+  transcriptVersion         TranscriptVersion @relation(fields: [transcriptVersionId], references: [id], onDelete: Cascade)
+
+  @@index([departmentId, transcriptVersionId])
+  @@map("transcript_seal_metadatas")
 }
 
 model FileObject {
