@@ -331,6 +331,45 @@ enum TranscriptRevocationStatus {
   REJECTED
 }
 
+enum NotificationEventStatus {
+  RECEIVED
+  MAPPED
+  PROCESSED
+  FAILED
+  CANCELED
+}
+
+enum NotificationRecordStatus {
+  PENDING
+  READY
+  SENT
+  READ
+  DISMISSED
+  FAILED
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  RETRY_SCHEDULED
+  CANCELED
+}
+
+enum NotificationTemplateStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  PUSH
+}
+
 model Department {
   id                String              @id @default(cuid())
   code              String              @unique
@@ -387,6 +426,12 @@ model Department {
   transcriptVerificationTokens TranscriptVerificationToken[]
   transcriptRevocationRecords TranscriptRevocationRecord[]
   transcriptSealMetadatas TranscriptSealMetadata[]
+  notificationEvents   NotificationEvent[]
+  notifications        Notification[]
+  notificationDeliveries NotificationDelivery[]
+  notificationTemplates NotificationTemplate[]
+  notificationPreferences NotificationPreference[]
+  pushSubscriptions    PushSubscription[]
   settings          DepartmentSetting[]
   auditLogs         AuditLog[]
   overrideActions   OverrideAction[]
@@ -449,6 +494,14 @@ model User {
   transcriptRevocationsRequested TranscriptRevocationRecord[] @relation("TranscriptRevocationRequestedBy")
   transcriptRevocationsApplied TranscriptRevocationRecord[] @relation("TranscriptRevocationAppliedBy")
   transcriptRevocationsRejected TranscriptRevocationRecord[] @relation("TranscriptRevocationRejectedBy")
+  notificationEventsTriggered NotificationEvent[] @relation("NotificationEventTriggeredBy")
+  notificationsRecipient Notification[] @relation("NotificationRecipient")
+  notificationsCreated Notification[] @relation("NotificationCreatedBy")
+  notificationDeliveriesProcessed NotificationDelivery[] @relation("NotificationDeliveryProcessedBy")
+  notificationTemplatesCreated NotificationTemplate[] @relation("NotificationTemplateCreatedBy")
+  notificationTemplatesUpdated NotificationTemplate[] @relation("NotificationTemplateUpdatedBy")
+  notificationPreferences NotificationPreference[]
+  pushSubscriptions PushSubscription[]
   auditLogs          AuditLog[]          @relation("AuditActor")
   settingsUpdated    DepartmentSetting[] @relation("DepartmentSettingUpdatedBy")
   overrideActions    OverrideAction[]    @relation("OverrideActor")
@@ -1764,6 +1817,166 @@ model TranscriptSealMetadata {
 
   @@index([departmentId, transcriptVersionId])
   @@map("transcript_seal_metadatas")
+}
+
+model NotificationEvent {
+  id                String                  @id @default(cuid())
+  departmentId      String?                 @map("department_id")
+  triggeredByUserId String?                 @map("triggered_by_user_id")
+  eventCode         String                  @map("event_code")
+  channelTargets    NotificationChannel[]   @map("channel_targets")
+  status            NotificationEventStatus @default(RECEIVED)
+  recipientCount    Int                     @default(0) @map("recipient_count")
+  payloadJson       Json?                   @map("payload_json")
+  contextJson       Json?                   @map("context_json")
+  dedupeKey         String?                 @map("dedupe_key")
+  occurredAt        DateTime                @default(now()) @map("occurred_at")
+  processedAt       DateTime?               @map("processed_at")
+  failedAt          DateTime?               @map("failed_at")
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+  department        Department?             @relation(fields: [departmentId], references: [id])
+  triggeredByUser   User?                   @relation("NotificationEventTriggeredBy", fields: [triggeredByUserId], references: [id])
+  notifications     Notification[]
+
+  @@index([departmentId, eventCode, occurredAt])
+  @@index([status, occurredAt])
+  @@unique([departmentId, dedupeKey])
+  @@map("notification_events")
+}
+
+model Notification {
+  id                String                   @id @default(cuid())
+  departmentId      String?                  @map("department_id")
+  notificationEventId String?                @map("notification_event_id")
+  recipientUserId   String                   @map("recipient_user_id")
+  templateId        String?                  @map("template_id")
+  createdByUserId   String?                  @map("created_by_user_id")
+  primaryChannel    NotificationChannel      @map("primary_channel")
+  status            NotificationRecordStatus @default(PENDING)
+  eventCode         String                   @map("event_code")
+  subject           String?
+  title             String?
+  body              String?
+  payloadJson       Json?                    @map("payload_json")
+  actionUrl         String?                  @map("action_url")
+  isCritical        Boolean                  @default(false) @map("is_critical")
+  readAt            DateTime?                @map("read_at")
+  dismissedAt       DateTime?                @map("dismissed_at")
+  expiresAt         DateTime?                @map("expires_at")
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+  department        Department?              @relation(fields: [departmentId], references: [id])
+  notificationEvent NotificationEvent?       @relation(fields: [notificationEventId], references: [id])
+  recipientUser     User                     @relation("NotificationRecipient", fields: [recipientUserId], references: [id])
+  template          NotificationTemplate?    @relation(fields: [templateId], references: [id])
+  createdByUser     User?                    @relation("NotificationCreatedBy", fields: [createdByUserId], references: [id])
+  deliveries        NotificationDelivery[]
+
+  @@index([departmentId, recipientUserId, status])
+  @@index([notificationEventId])
+  @@index([templateId])
+  @@map("notifications")
+}
+
+model NotificationDelivery {
+  id                String                     @id @default(cuid())
+  departmentId      String?                    @map("department_id")
+  notificationId    String                     @map("notification_id")
+  processedByUserId String?                    @map("processed_by_user_id")
+  channel           NotificationChannel
+  status            NotificationDeliveryStatus @default(PENDING)
+  destination       String?
+  provider          String?
+  providerMessageId String?                    @map("provider_message_id")
+  attemptNumber     Int                        @default(1) @map("attempt_number")
+  retryCount        Int                        @default(0) @map("retry_count")
+  nextRetryAt       DateTime?                  @map("next_retry_at")
+  errorCode         String?                    @map("error_code")
+  errorMessage      String?                    @map("error_message")
+  metadataJson      Json?                      @map("metadata_json")
+  sentAt            DateTime?                  @map("sent_at")
+  deliveredAt       DateTime?                  @map("delivered_at")
+  failedAt          DateTime?                  @map("failed_at")
+  createdAt         DateTime                   @default(now()) @map("created_at")
+  updatedAt         DateTime                   @updatedAt @map("updated_at")
+  department        Department?                @relation(fields: [departmentId], references: [id])
+  notification      Notification               @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  processedByUser   User?                      @relation("NotificationDeliveryProcessedBy", fields: [processedByUserId], references: [id])
+
+  @@unique([notificationId, channel, attemptNumber])
+  @@index([departmentId, channel, status])
+  @@index([nextRetryAt])
+  @@map("notification_deliveries")
+}
+
+model NotificationTemplate {
+  id                String                     @id @default(cuid())
+  departmentId      String?                    @map("department_id")
+  code              String
+  name              String
+  eventCode         String                     @map("event_code")
+  channel           NotificationChannel
+  status            NotificationTemplateStatus @default(DRAFT)
+  locale            String                     @default("en")
+  subjectTemplate   String?                    @map("subject_template")
+  titleTemplate     String?                    @map("title_template")
+  bodyTemplate      String                     @map("body_template")
+  variablesJson     Json?                      @map("variables_json")
+  isCritical        Boolean                    @default(false) @map("is_critical")
+  createdByUserId   String?                    @map("created_by_user_id")
+  updatedByUserId   String?                    @map("updated_by_user_id")
+  archivedAt        DateTime?                  @map("archived_at")
+  createdAt         DateTime                   @default(now()) @map("created_at")
+  updatedAt         DateTime                   @updatedAt @map("updated_at")
+  department        Department?                @relation(fields: [departmentId], references: [id])
+  createdByUser     User?                      @relation("NotificationTemplateCreatedBy", fields: [createdByUserId], references: [id])
+  updatedByUser     User?                      @relation("NotificationTemplateUpdatedBy", fields: [updatedByUserId], references: [id])
+  notifications     Notification[]
+
+  @@unique([departmentId, code, channel, locale])
+  @@index([eventCode, channel, status])
+  @@map("notification_templates")
+}
+
+model NotificationPreference {
+  id                String                @id @default(cuid())
+  departmentId      String?               @map("department_id")
+  userId            String                @map("user_id")
+  eventCode         String                @map("event_code")
+  channel           NotificationChannel
+  isEnabled         Boolean               @default(true) @map("is_enabled")
+  isCriticalLocked  Boolean               @default(false) @map("is_critical_locked")
+  settingsJson      Json?                 @map("settings_json")
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+  department        Department?           @relation(fields: [departmentId], references: [id])
+  user              User                  @relation(fields: [userId], references: [id])
+
+  @@unique([userId, eventCode, channel])
+  @@index([departmentId, userId])
+  @@map("notification_preferences")
+}
+
+model PushSubscription {
+  id                String      @id @default(cuid())
+  departmentId      String?     @map("department_id")
+  userId            String      @map("user_id")
+  endpoint          String      @unique
+  endpointHash      String      @unique @map("endpoint_hash")
+  p256dhKey         String?     @map("p256dh_key")
+  authKey           String?     @map("auth_key")
+  userAgent         String?     @map("user_agent")
+  isActive          Boolean     @default(true) @map("is_active")
+  lastUsedAt        DateTime?   @map("last_used_at")
+  revokedAt         DateTime?   @map("revoked_at")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+  department        Department? @relation(fields: [departmentId], references: [id])
+  user              User        @relation(fields: [userId], references: [id])
+
+  @@index([departmentId, userId, isActive])
+  @@map("push_subscriptions")
 }
 
 model FileObject {
