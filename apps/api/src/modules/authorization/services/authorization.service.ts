@@ -24,6 +24,8 @@ const STATIC_ROLE_POLICIES: Record<PlatformRole, string[]> = {
     "system-configuration.*"
   ],
   teacher: [
+    "course-management.course.read",
+    "course-management.offering.read",
     "course-management.offering.manage",
     "course-management.teacher-assignment.manage",
     "attendance.record.read",

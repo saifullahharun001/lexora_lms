@@ -1,0 +1,1 @@
+export const ACADEMIC_REPOSITORY = Symbol("ACADEMIC_REPOSITORY");

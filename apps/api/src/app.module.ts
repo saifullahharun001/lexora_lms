@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 
 import { HealthModule } from "./common/health/health.module";
 import {
+  AcademicModule,
   AssignmentModule,
   AttendanceModule,
   AuditComplianceModule,
@@ -30,6 +31,7 @@ import { PlatformModule } from "./platform/platform.module";
     HealthModule,
     IdentityAccessModule,
     AuthorizationModule,
+    AcademicModule,
     DepartmentConfigModule,
     UserManagementModule,
     CourseManagementModule,
