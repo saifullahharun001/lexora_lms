@@ -52,6 +52,9 @@ const STATIC_ROLE_POLICIES: Record<PlatformRole, string[]> = {
     "attempt.read",
     "result-processing.result.draft.prepare",
     "result-processing.result.compute",
+    "result-processing.result.read",
+    "result-processing.grade-scale.read",
+    "result-processing.gpa.read",
     "notification.notification.self-read",
     "notification.notification.event-trigger"
   ],
@@ -70,6 +73,7 @@ const STATIC_ROLE_POLICIES: Record<PlatformRole, string[]> = {
     "attempt.submit",
     "attempt.read",
     "result-processing.result.read",
+    "result-processing.gpa.read",
     "transcript-verification.transcript.self-read",
     "notification.notification.self-read",
     "notification.preference.update",
