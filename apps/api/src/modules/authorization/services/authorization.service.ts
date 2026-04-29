@@ -74,7 +74,8 @@ const STATIC_ROLE_POLICIES: Record<PlatformRole, string[]> = {
     "attempt.read",
     "result-processing.result.read",
     "result-processing.gpa.read",
-    "transcript-verification.transcript.self-read",
+    "transcript-verification.transcript.read",
+    "transcript-verification.version.read",
     "notification.notification.self-read",
     "notification.preference.update",
     "notification.push-subscription.self-manage"

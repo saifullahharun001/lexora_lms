@@ -1,9 +1,9 @@
 export const TRANSCRIPT_VERIFICATION_AUDIT_EVENTS = {
-  TRANSCRIPT_GENERATED: "transcript-verification.transcript.generated",
-  TRANSCRIPT_VERSION_GENERATED: "transcript-verification.transcript-version.generated",
+  TRANSCRIPT_CREATED: "transcript-verification.transcript.created",
   TRANSCRIPT_ISSUED: "transcript-verification.transcript.issued",
-  VERIFICATION_TOKEN_ISSUED: "transcript-verification.verification-token.issued",
+  TRANSCRIPT_REVOKED: "transcript-verification.transcript.revoked",
+  VERIFICATION_TOKEN_CREATED: "transcript-verification.verification-token.created",
   VERIFICATION_PUBLIC_ACCESSED: "transcript-verification.verification.public-accessed",
-  VERIFICATION_TOKEN_EXPIRED: "transcript-verification.verification-token.expired",
-  TRANSCRIPT_REVOKED: "transcript-verification.transcript.revoked"
+  SEAL_CREATED: "transcript-verification.seal.created",
+  SEAL_UPDATED: "transcript-verification.seal.updated"
 } as const;
