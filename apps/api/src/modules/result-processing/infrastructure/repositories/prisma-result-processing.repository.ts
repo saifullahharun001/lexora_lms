@@ -163,7 +163,9 @@ export class PrismaResultProcessingRepository implements ResultProcessingReposit
         gradeScale: true,
         enrollment: true
       },
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
+      take: filters.limit,
+      skip: filters.offset
     });
   }
 
@@ -358,7 +360,9 @@ export class PrismaResultProcessingRepository implements ResultProcessingReposit
         ...(filters.academicTermId ? { academicTermId: filters.academicTermId } : {}),
         ...(filters.status ? { status: filters.status } : {})
       },
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
+      take: filters.limit,
+      skip: filters.offset
     });
   }
 
@@ -508,7 +512,9 @@ export class PrismaResultProcessingRepository implements ResultProcessingReposit
         ...(filters.resultRecordId ? { resultRecordId: filters.resultRecordId } : {}),
         ...(filters.status ? { status: filters.status } : {})
       },
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
+      take: filters.limit,
+      skip: filters.offset
     });
   }
 

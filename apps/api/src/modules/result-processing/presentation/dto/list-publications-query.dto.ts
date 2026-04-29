@@ -1,5 +1,6 @@
+import { Type } from "class-transformer";
 import { ResultPublicationBatchStatus } from "@prisma/client";
-import { IsEnum, IsOptional, IsString, MinLength } from "class-validator";
+import { IsEnum, IsInt, IsOptional, IsString, Max, Min, MinLength } from "class-validator";
 
 export class ListPublicationsQueryDto {
   @IsOptional()
@@ -10,5 +11,17 @@ export class ListPublicationsQueryDto {
   @IsOptional()
   @IsEnum(ResultPublicationBatchStatus)
   status?: ResultPublicationBatchStatus;
-}
 
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 50;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset = 0;
+}

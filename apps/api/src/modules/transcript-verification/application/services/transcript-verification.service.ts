@@ -45,10 +45,17 @@ interface CreateTranscriptInput {
 interface ListTranscriptInput {
   studentUserId?: string;
   status?: TranscriptRecordStatus;
+  limit?: number;
+  offset?: number;
 }
 
 interface CreateTokenInput {
   expiresAt?: Date;
+}
+
+interface ListTranscriptVersionsInput {
+  limit?: number;
+  offset?: number;
 }
 
 interface RevokeTranscriptInput {
@@ -70,6 +77,8 @@ interface CreateSealInput {
 }
 
 type UpdateSealInput = Partial<Omit<CreateSealInput, "transcriptVersionId">>;
+
+const VERIFICATION_TOKEN_DEFAULT_TTL_MS = 72 * 60 * 60 * 1000;
 
 @Injectable()
 export class TranscriptVerificationService {
@@ -135,7 +144,9 @@ export class TranscriptVerificationService {
     return this.repository.listTranscriptRecords({
       departmentId,
       studentUserId,
-      status: input.status
+      status: input.status,
+      limit: input.limit,
+      offset: input.offset
     });
   }
 
@@ -148,9 +159,12 @@ export class TranscriptVerificationService {
     return record;
   }
 
-  async listVersions(transcriptRecordId: string) {
+  async listVersions(transcriptRecordId: string, input: ListTranscriptVersionsInput = {}) {
     const record = await this.getTranscript(transcriptRecordId);
-    return this.repository.listTranscriptVersions(this.getDepartmentId(), record.id);
+    return this.repository.listTranscriptVersions(this.getDepartmentId(), record.id, {
+      limit: input.limit,
+      offset: input.offset
+    });
   }
 
   async getVersion(id: string) {
@@ -246,13 +260,14 @@ export class TranscriptVerificationService {
     const publicCode = this.createOpaqueToken();
     const publicCodeHash = this.hashPublicToken(publicCode);
     const publicSummaryJson = this.buildPublicSummary(record, issuedVersion.versionNumber);
+    const expiresAt = this.resolveVerificationTokenExpiry(input.expiresAt);
     const token = await this.repository.createVerificationToken({
       departmentId: this.getDepartmentId(),
       transcriptRecordId,
       actorId: this.getActorId(),
       publicCodeHash,
       publicSummaryJson,
-      expiresAt: input.expiresAt
+      expiresAt
     });
 
     if (!token) {
@@ -278,20 +293,20 @@ export class TranscriptVerificationService {
 
     if (!record) {
       await this.writePublicVerificationAudit(null, null, "NOT_FOUND");
-      return { valid: false, status: "NOT_FOUND" };
+      return this.invalidPublicVerificationResponse();
     }
 
     if (!this.constantTimeEquals(publicCodeHash, record.publicCode)) {
       await this.writePublicVerificationAudit(record.departmentId, record.id, "HASH_MISMATCH");
-      return { valid: false, status: "NOT_FOUND" };
+      return this.invalidPublicVerificationResponse();
     }
 
     const now = new Date();
 
-    if (record.expiresAt && record.expiresAt <= now) {
+    if (!record.expiresAt || record.expiresAt <= now) {
       await this.repository.markVerificationTokenExpired(record.id);
       await this.writePublicVerificationAudit(record.departmentId, record.id, "EXPIRED");
-      return { valid: false, status: TranscriptVerificationTokenStatus.EXPIRED };
+      return this.invalidPublicVerificationResponse();
     }
 
     const transcriptVersion = record.transcriptVersion;
@@ -306,11 +321,7 @@ export class TranscriptVerificationService {
 
     if (!valid) {
       await this.writePublicVerificationAudit(record.departmentId, record.id, record.status);
-      return {
-        valid: false,
-        status: record.status,
-        summary: this.safePublicSummary(record.publicSummaryJson)
-      };
+      return this.invalidPublicVerificationResponse();
     }
 
     await this.repository.recordPublicVerification(record.id);
@@ -526,6 +537,21 @@ export class TranscriptVerificationService {
 
   private createOpaqueToken() {
     return randomBytes(32).toString("base64url");
+  }
+
+  private resolveVerificationTokenExpiry(expiresAt?: Date) {
+    const now = new Date();
+    const resolvedExpiresAt = expiresAt ?? new Date(now.getTime() + VERIFICATION_TOKEN_DEFAULT_TTL_MS);
+
+    if (resolvedExpiresAt <= now) {
+      throw new BadRequestException("Verification token expiry must be in the future");
+    }
+
+    return resolvedExpiresAt;
+  }
+
+  private invalidPublicVerificationResponse() {
+    return { valid: false, status: "INVALID" };
   }
 
   private hashPublicToken(token: string) {

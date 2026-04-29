@@ -26,6 +26,15 @@ Result Processing APIs are exposed under `/api/v1` and require `AuthGuard`, `Pol
 | POST | `/result-amendments/:id/approve` | `result-processing.amendment.approve` | Approve a requested amendment. |
 | POST | `/result-amendments/:id/apply` | `result-processing.amendment.apply` | Apply an approved amendment. |
 
+## Pagination
+
+The high-volume list endpoints below accept `limit` and `offset` query parameters. `limit`
+defaults to `50` and is capped at `100`; `offset` defaults to `0`.
+
+- `GET /results`
+- `GET /result-publications`
+- `GET /result-amendments`
+
 ## Security Constraints
 
 - Every repository query and update is scoped by `departmentId`.
@@ -49,4 +58,3 @@ Result Processing APIs are exposed under `/api/v1` and require `AuthGuard`, `Pol
 - CGPA is computed from cumulative GPA records.
 
 Transcript, notification, frontend, and full publication workflow side effects are intentionally out of scope.
-

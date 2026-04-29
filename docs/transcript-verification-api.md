@@ -20,11 +20,20 @@ All internal endpoints are versioned under `/api/v1` and require `AuthGuard`, `P
 | `GET` | `/transcript-seals` | `transcript-verification.seal.read` |
 | `PATCH` | `/transcript-seals/:id` | `transcript-verification.seal.manage` |
 
-The public endpoint is intentionally unauthenticated:
+The public endpoint is intentionally unauthenticated, but rate limited with the existing NestJS
+throttler guard:
 
 | Method | Path | Guard |
 | --- | --- | --- |
-| `GET` | `/public/transcript-verification/:token` | none |
+| `GET` | `/public/transcript-verification/:token` | `ThrottlerGuard` only |
+
+## Pagination
+
+The list endpoints below accept `limit` and `offset` query parameters. `limit` defaults to `50`
+and is capped at `100`; `offset` defaults to `0`.
+
+- `GET /transcripts`
+- `GET /transcripts/:id/versions`
 
 ## Security Model
 
@@ -41,13 +50,18 @@ The public endpoint is intentionally unauthenticated:
 
 Verification tokens are opaque random values. The existing `publicCode` column stores the token digest, not the raw token, and verification compares digests with constant-time comparison.
 
+Verification tokens are always finite-lived. If `expiresAt` is omitted when issuing a token, the
+API sets it to 72 hours from creation. If `expiresAt` is supplied, it must be in the future; past
+or current timestamps are rejected.
+
 The public endpoint never returns transcript JSON, term summaries, course lines, student profile data, GPA details, or department-internal ids. It returns only:
 
 - validity and token status
 - safe public summary: transcript number, status, version number, issued timestamp
 - seal metadata needed to validate the public artifact digest
 
-Expired, revoked, superseded, or revoked-transcript tokens return invalid status with the same safe summary shape.
+Expired, revoked, superseded, missing, or revoked-transcript tokens return the same minimal invalid
+response shape and do not expose whether a token exists.
 
 ## Snapshot Assumptions
 

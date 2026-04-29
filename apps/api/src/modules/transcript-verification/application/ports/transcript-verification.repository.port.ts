@@ -100,6 +100,8 @@ export interface ListTranscriptFilters {
   departmentId: string;
   studentUserId?: string;
   status?: string;
+  limit?: number;
+  offset?: number;
 }
 
 export interface TranscriptVerificationRepositoryPort {
@@ -113,7 +115,8 @@ export interface TranscriptVerificationRepositoryPort {
   ): Promise<TranscriptRecordDetails>;
   listTranscriptVersions(
     departmentId: string,
-    transcriptRecordId: string
+    transcriptRecordId: string,
+    pagination?: { limit?: number; offset?: number }
   ): Promise<TranscriptVersionDetails[]>;
   findTranscriptVersionById(
     departmentId: string,
@@ -137,7 +140,7 @@ export interface TranscriptVerificationRepositoryPort {
     actorId: string;
     publicCodeHash: string;
     publicSummaryJson: Prisma.InputJsonValue;
-    expiresAt?: Date;
+    expiresAt: Date;
   }): Promise<TranscriptVerificationToken | null>;
   findPublicVerificationToken(
     publicCodeHash: string

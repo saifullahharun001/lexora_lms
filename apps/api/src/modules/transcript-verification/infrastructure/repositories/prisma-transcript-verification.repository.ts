@@ -32,7 +32,9 @@ export class PrismaTranscriptVerificationRepository
         status: filters.status as TranscriptRecordStatus | undefined,
         archivedAt: null
       },
-      orderBy: { updatedAt: "desc" }
+      orderBy: { updatedAt: "desc" },
+      take: filters.limit,
+      skip: filters.offset
     });
   }
 
@@ -160,7 +162,11 @@ export class PrismaTranscriptVerificationRepository
     });
   }
 
-  listTranscriptVersions(departmentId: string, transcriptRecordId: string) {
+  listTranscriptVersions(
+    departmentId: string,
+    transcriptRecordId: string,
+    pagination?: { limit?: number; offset?: number }
+  ) {
     return this.prisma.transcriptVersion.findMany({
       where: {
         departmentId,
@@ -168,7 +174,9 @@ export class PrismaTranscriptVerificationRepository
         transcriptRecord: { departmentId, archivedAt: null }
       },
       include: this.versionInclude(),
-      orderBy: { versionNumber: "desc" }
+      orderBy: { versionNumber: "desc" },
+      take: pagination?.limit,
+      skip: pagination?.offset
     });
   }
 
@@ -330,7 +338,7 @@ export class PrismaTranscriptVerificationRepository
     actorId: string;
     publicCodeHash: string;
     publicSummaryJson: Prisma.InputJsonValue;
-    expiresAt?: Date;
+    expiresAt: Date;
   }) {
     return this.prisma.$transaction(async (tx) => {
       const issuedVersion = await tx.transcriptVersion.findFirst({
@@ -352,6 +360,8 @@ export class PrismaTranscriptVerificationRepository
         return null;
       }
 
+      const { expiresAt } = input;
+
       return tx.transcriptVerificationToken.create({
         data: {
           departmentId: input.departmentId,
@@ -359,7 +369,7 @@ export class PrismaTranscriptVerificationRepository
           issuedByUserId: input.actorId,
           publicCode: input.publicCodeHash,
           publicSummaryJson: input.publicSummaryJson,
-          expiresAt: input.expiresAt
+          expiresAt
         }
       });
     });

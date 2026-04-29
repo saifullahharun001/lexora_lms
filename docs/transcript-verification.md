@@ -11,7 +11,7 @@ This design follows these rules:
 - `TranscriptRecord` is the student-level official transcript aggregate
 - `TranscriptVersion` is the immutable issuance snapshot
 - term summaries and course lines are copied from published result and GPA/CGPA sources rather than rendered live from mutable tables
-- verification tokens are isolated public artifacts and may expire or be revoked
+- verification tokens are isolated public artifacts and always expire or may be revoked
 - revocation is append-oriented and auditable
 - seal and signature metadata are stored separately from rendering assets and PDF generation
 
@@ -314,7 +314,7 @@ model TranscriptSealMetadata {
 - new academic corrections require a new version, not in-place mutation of an issued version
 - QR and public verification resolve through `TranscriptVerificationToken.publicCode`
 - public verification must expose only safe summary data
-- verification tokens may expire or be revoked independently of transcript record creation
+- verification tokens expire independently of transcript record creation; omitted expiry defaults to 72 hours from issue, and supplied expiry must be in the future
 - transcript revocation requires reason capture and append-only revocation records
 - transcript revocation may invalidate all active verification tokens for the affected transcript or version
 - digital signature and seal metadata are stored separately from rendering output
@@ -373,6 +373,7 @@ model TranscriptSealMetadata {
   - completion or graduation status snapshot
 - optional course or term detail should be explicitly controlled by department policy, not assumed by default
 - revoked or expired verification tokens should return only a minimal invalid-status response
+- public verification is unauthenticated but rate limited with the existing NestJS throttler guard
 
 ## NestJS Scaffolding
 

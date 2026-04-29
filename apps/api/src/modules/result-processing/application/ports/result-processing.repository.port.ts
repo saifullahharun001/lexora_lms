@@ -64,6 +64,8 @@ export interface ResultFilters {
   enrollmentId?: string;
   studentUserId?: string;
   status?: ResultRecordStatus;
+  limit?: number;
+  offset?: number;
 }
 
 export interface GradeScaleFilters {
@@ -121,12 +123,16 @@ export interface PublicationFilters {
   departmentId: string;
   academicTermId?: string;
   status?: ResultPublicationBatchStatus;
+  limit?: number;
+  offset?: number;
 }
 
 export interface AmendmentFilters {
   departmentId: string;
   resultRecordId?: string;
   status?: ResultAmendmentStatus;
+  limit?: number;
+  offset?: number;
 }
 
 export interface ResultProcessingRepositoryPort {

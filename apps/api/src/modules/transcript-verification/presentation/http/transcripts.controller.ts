@@ -7,6 +7,7 @@ import { TranscriptVerificationService } from "../../application/services/transc
 import { TRANSCRIPT_VERIFICATION_POLICY_NAMES } from "../../domain/transcript-verification.policy-names";
 import { CreateTranscriptDto } from "../dto/create-transcript.dto";
 import { CreateVerificationTokenDto } from "../dto/create-verification-token.dto";
+import { ListTranscriptVersionsQueryDto } from "../dto/list-transcript-versions-query.dto";
 import { ListTranscriptsQueryDto } from "../dto/list-transcripts-query.dto";
 import { ResourceIdParamDto } from "../dto/resource-id-param.dto";
 import { RevokeTranscriptDto } from "../dto/revoke-transcript.dto";
@@ -48,8 +49,11 @@ export class TranscriptsController {
 
   @Get(":id/versions")
   @RequirePolicy(TRANSCRIPT_VERIFICATION_POLICY_NAMES.VERSION_READ)
-  listVersions(@Param() params: ResourceIdParamDto) {
-    return this.transcriptVerificationService.listVersions(params.id);
+  listVersions(
+    @Param() params: ResourceIdParamDto,
+    @Query() query: ListTranscriptVersionsQueryDto
+  ) {
+    return this.transcriptVerificationService.listVersions(params.id, query);
   }
 
   @Post(":id/verification-token")
