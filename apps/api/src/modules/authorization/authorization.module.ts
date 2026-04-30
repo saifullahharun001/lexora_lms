@@ -4,6 +4,7 @@ import { JwtModule } from "@nestjs/jwt";
 
 import { PrismaModule } from "@/common/prisma/prisma.module";
 import { RequestContextModule } from "@/common/request-context/request-context.module";
+import { PlatformModule } from "@/platform/platform.module";
 
 import { AuthGuard } from "./guards/auth.guard";
 import { PolicyGuard } from "./guards/policy.guard";
@@ -13,6 +14,7 @@ import { PrincipalLoaderService } from "./services/principal-loader.service";
 
 @Module({
   imports: [
+    PlatformModule,
     PrismaModule,
     RequestContextModule,
     JwtModule.registerAsync({
@@ -33,6 +35,15 @@ import { PrincipalLoaderService } from "./services/principal-loader.service";
     AuthGuard,
     PolicyGuard
   ],
-  exports: [AuthorizationService, PrincipalLoaderService, AuthGuard, PolicyGuard]
+  exports: [
+    AuthorizationService,
+    PrincipalLoaderService,
+    AuthorizationAuditService,
+    AuthGuard,
+    PolicyGuard,
+    JwtModule,
+    PlatformModule,
+    RequestContextModule
+  ]
 })
 export class AuthorizationModule {}
