@@ -23,14 +23,29 @@
 
 ## 2. Auth Checks
 
-- [ ] Register student user
-- [ ] Login user
-- [ ] Receive access token
-- [ ] Receive refresh token/session
-- [ ] Refresh token works
-- [ ] Logout works
+- [x] Test department 'LAW' created in database
+- [x] Register student user
+- [x] Email verification token generated
+- [x] Verify email
+- [x] Login user
+- [x] Receive access token
+- [x] Receive refresh token/session
+- [x] Refresh token works
+- [x] Logout works
 - [ ] Invalid password rejected
 - [ ] Repeated failed login attempt tracked
+
+### Auth Test Notes
+
+- Test department inserted manually into `departments` table:
+  - `id`: `dept_law_test`
+  - `code`: `LAW`
+  - `slug`: `law`
+  - `name`: `Department of Law`
+- Runtime test user:
+  - Email: `runtime-test-student@cu.ac.bd`
+  - Status after verification: `ACTIVE`
+- Do not store raw access tokens, refresh tokens, or email verification tokens in documentation.
 
 ## 3. Authorization / Department Isolation
 
@@ -102,6 +117,7 @@
 | Date | Module | Issue | Status | Fix Commit |
 |---|---|---|---|---|
 | 2026-05-06 | Deployment | Direct API port 4000 exposed to LAN | Fixed | 46a4eaf |
+| 2026-05-06 | Auth | Malformed refresh token on logout returned `InternalServerError` instead of `400 Bad Request` or `401 Unauthorized` | Open | Pending |
 
 ## 10. Final Runtime Verdict
 
