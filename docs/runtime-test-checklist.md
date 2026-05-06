@@ -32,8 +32,8 @@
 - [x] Receive refresh token/session
 - [x] Refresh token works
 - [x] Logout works
-- [ ] Invalid password rejected
-- [ ] Repeated failed login attempt tracked
+- [x] Invalid password rejected
+- [x] Repeated failed login attempt tracked
 
 ### Auth Test Notes
 
@@ -46,6 +46,11 @@
   - Email: `runtime-test-student@cu.ac.bd`
   - Status after verification: `ACTIVE`
 - Do not store raw access tokens, refresh tokens, or email verification tokens in documentation.
+- Failed login attempt was recorded in `login_attempts` with:
+  - `outcome`: `FAILURE`
+  - `failure_reason`: `invalid_credentials`
+- Successful login attempt was also recorded with:
+  - `outcome`: `SUCCESS`
 
 ## 3. Authorization / Department Isolation
 
