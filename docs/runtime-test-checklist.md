@@ -54,12 +54,18 @@
 
 ## 3. Authorization / Department Isolation
 
-- [ ] Protected endpoint rejects unauthenticated request
+- [x] Protected endpoint rejects unauthenticated request
 - [ ] Authenticated user can access own allowed resources
 - [ ] Student cannot access another student’s data
 - [ ] Teacher cannot access unassigned course data
 - [ ] Admin cannot access another department’s data
-- [ ] Policy guard works on sensitive endpoints
+- [x] Policy guard works on sensitive endpoints
+
+### Authorization Test Note
+- `GET /api/v1/programs` without token returned `401 Unauthorized`.
+- Logged-in runtime test user has no roles/permissions.
+- Same endpoint with valid token returned `403 Forbidden`.
+- Policy guard returned: `Access denied by policy`.
 
 ## 4. Academic Core
 
