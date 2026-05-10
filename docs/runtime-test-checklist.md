@@ -512,7 +512,70 @@ Recommended follow-up:
   - `message`: `Authentication is required`
 - Expired access token was confirmed during Course Offering runtime test.
 
-## 9. Notes / Issues Found
+## 9. TypeScript Module Resolution Note
+
+Current API TypeScript configuration intentionally avoids a full Node16/ESM migration.
+
+### Current Stable Decision
+
+The API currently uses a NestJS/CommonJS-compatible TypeScript setup.
+
+The attempted `moduleResolution: "node16"` migration caused project-wide TypeScript errors, including:
+
+- `module` must be set to `Node16`
+- ESM import/export extension requirements such as `./audit.js`
+- path alias resolution issues
+- package export/type resolution issues involving `@lexora/types`
+
+Because of this, the project should not be migrated to Node16/ESM casually.
+
+### Current Safe Configuration
+
+For `apps/api/tsconfig.json`, keep the current stable approach:
+
+- `moduleResolution: "node"`
+- `baseUrl: "."`
+- `rootDir: "."`
+- `paths` alias for `@/*`
+
+This keeps the API typecheck/build stable while preserving existing NestJS/CommonJS-compatible behavior.
+
+### Important Warning
+
+Do not change the API TypeScript module system to `Node16`, `NodeNext`, or ESM without a dedicated migration task.
+
+A proper future migration must handle all of the following together:
+
+- `module: "Node16"` or equivalent
+- `moduleResolution: "node16"` or `nodenext`
+- package-level `type` behavior
+- relative import/export `.js` extensions where required
+- `packages/types` export compatibility
+- `@/*` alias compile-time and runtime behavior
+- NestJS build/runtime compatibility
+- full monorepo typecheck/build validation
+
+### Validation Requirement
+
+After any TypeScript config change, always run:
+
+```bash
+pnpm --filter @lexora/api typecheck
+pnpm --filter @lexora/api build
+```
+
+The TypeScript config change must not be committed unless both commands pass.
+
+### Current TypeScript Config Issue Status
+
+- Current API typecheck passed with the stable configuration.
+- Current API build passed with the stable configuration.
+- `moduleResolution: "node16"` is deferred.
+- `ignoreDeprecations: "6.0"` was tested but rejected by the current TypeScript compiler with `Invalid value for '--ignoreDeprecations'`.
+- VS Code may still show deprecation warnings for `moduleResolution=node10`/`node` behavior and `baseUrl`.
+- These warnings are documented and should not be “fixed” by moving to Node16/ESM casually.
+
+## 10. Notes / Issues Found
 
 | Date | Module | Issue | Status | Fix Commit / Note |
 |---|---|---|---|---|
@@ -524,8 +587,10 @@ Recommended follow-up:
 | 2026-05-10 | Runtime DB / psql | Prisma `DATABASE_URL` contained `?schema=public`, which caused `psql` to fail with `invalid URI query parameter: "schema"` | Documented | Temporary `PSQL_URL` used |
 | 2026-05-10 | Runtime DB / psql | Raw SQL insert into `academic_years` and `academic_terms` failed until explicit `updated_at` values were provided | Documented | Used `created_at = now()` and `updated_at = now()` |
 | 2026-05-10 | Env Loading | Loading `.env` printed `LMS: command not found`, likely due to an unquoted value containing spaces | Open / Needs cleanup | Review `.env` formatting later |
+| 2026-05-10 | TypeScript Config | Attempted `moduleResolution: "node16"` caused project-wide TypeScript/ESM migration errors | Documented / Deferred | Keep stable NestJS/CommonJS-compatible config |
+| 2026-05-10 | TypeScript Config | `ignoreDeprecations: "6.0"` was rejected by current TypeScript compiler with `Invalid value for '--ignoreDeprecations'` | Documented / Deferred | Do not use until TypeScript/compiler support is verified |
 
-## 10. Runtime Test Data Created
+## 11. Runtime Test Data Created
 
 ### Department
 
@@ -634,7 +699,7 @@ Recommended follow-up:
 - Test tokens pasted in terminal/chat should not be reused in production.
 - Production/cloud credentials must be rotated if accidentally exposed.
 
-## 11. Current Runtime Verdict
+## 12. Current Runtime Verdict
 
 - [ ] Existing backend modules runtime-tested
 - [x] Critical bugs documented
@@ -647,6 +712,9 @@ Recommended follow-up:
 - [x] Course create/list workflow tested
 - [x] Academic Year and Academic Term runtime dependency setup completed
 - [x] Course Offering create/list workflow tested
+- [x] API TypeScript typecheck passed after stable config fix
+- [x] API TypeScript build passed after stable config fix
+- [x] TypeScript Node16/ESM migration risk documented
 - [ ] Teacher assignment workflow tested
 - [ ] Enrollment workflow tested
 - [ ] Student visibility rules tested
@@ -657,7 +725,7 @@ Recommended follow-up:
 - [ ] Transcript Verification workflow tested
 - [ ] Ready to start Class Session Module
 
-## 12. Next Test Steps
+## 13. Next Test Steps
 
 1. Commit and push the updated runtime checklist.
 2. Inspect teacher assignment DTO/controller or relevant Academic Core service flow.
@@ -678,3 +746,4 @@ Recommended follow-up:
     - PostgreSQL survives reboot
 15. Review `.env` formatting issue that printed `LMS: command not found` during shell loading.
 16. Consider implementing Academic Year and Academic Term management API endpoints later.
+17. Keep the current API TypeScript config stable unless a dedicated Node16/ESM migration task is planned.
