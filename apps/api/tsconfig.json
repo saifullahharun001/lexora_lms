@@ -1,11 +1,13 @@
 {
   "extends": "../../packages/tsconfig/nestjs.json",
   "compilerOptions": {
+    "moduleResolution": "node",
     "baseUrl": ".",
+    "rootDir": ".",
+    "outDir": "dist",
     "noEmit": false,
     "declaration": false,
     "declarationMap": false,
-    "outDir": "dist",
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
     "paths": {
       "@/*": ["src/*"]
@@ -14,4 +16,3 @@
   "include": ["src/**/*.ts", "prisma/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
-
