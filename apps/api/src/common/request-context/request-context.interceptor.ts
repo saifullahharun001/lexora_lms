@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from "@nestjs/common";
 import { Observable } from "rxjs";
 
-import type { RequestContext } from "@lexora/types";
+import type { PrincipalContext, RequestContext } from "@lexora/types";
 
 import { RequestContextService } from "./request-context.service";
 
@@ -12,6 +12,7 @@ type HttpRequestLike = {
   ip?: string;
   method?: string;
   originalUrl?: string;
+  principal?: PrincipalContext;
   requestContext?: RequestContext;
   url?: string;
 };
@@ -27,20 +28,28 @@ export class RequestContextInterceptor implements NestInterceptor {
       typeof requestIdHeader === "string" && requestIdHeader.length > 0
         ? requestIdHeader
         : randomUUID();
+    const principal = request.principal ?? null;
+    const department = principal?.activeDepartmentId
+      ? {
+          kind: "department" as const,
+          departmentId: principal.activeDepartmentId,
+          source: "principal" as const
+        }
+      : {
+          kind: "unresolved" as const,
+          departmentId: null,
+          source: "unknown" as const
+        };
 
     const initialContext: RequestContext = {
       requestId,
       path: request.originalUrl ?? request.url ?? "/",
       method: request.method ?? "GET",
-      principal: null,
-      department: {
-        kind: "unresolved",
-        departmentId: null,
-        source: "unknown"
-      },
+      principal,
+      department,
       audit: {
         requestId,
-        departmentId: null,
+        departmentId: department.departmentId,
         ipAddress: request.ip,
         userAgent:
           typeof request.headers?.["user-agent"] === "string"
