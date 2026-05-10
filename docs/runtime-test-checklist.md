@@ -203,7 +203,7 @@
 - [x] Create academic term for runtime testing
 - [x] Create course offering
 - [x] List course offerings
-- [ ] Assign teacher to course offering
+- [x] Assign teacher to course offering
 - [ ] Enroll student
 - [ ] Validate student course visibility rules
 
@@ -424,6 +424,160 @@ Result:
 - Created course offering appeared in the list response.
 - Course offering response included linked course and academic term data.
 
+### Teacher Assignment Runtime Test
+
+- [x] Confirmed teacher assignment HTTP API/controller is not currently exposed.
+  - `/course-offerings` controller currently supports:
+    - create
+    - list
+    - get by ID
+    - update
+  - `/enrollments` controller is exposed separately.
+  - Teacher assignment exists in Prisma schema/service contract, but no public runtime API route/controller was found.
+
+- [x] Confirmed teacher assignment schema exists.
+  - Prisma model: `TeacherCourseAssignment`
+  - Mapped table: `teacher_course_assignments`
+  - Required runtime fields:
+    - `departmentId`
+    - `courseOfferingId`
+    - `teacherUserId`
+    - `roleCode`
+  - Default status:
+    - `ACTIVE`
+  - Unique constraint:
+    - `courseOfferingId + teacherUserId + roleCode`
+
+- [x] Confirmed static backend role code for teacher.
+  - Authorization static role code: `teacher`
+  - Teacher static policies include course/offering read/manage, teacher-assignment manage, assignment, quiz, result draft, notification read/event policies.
+
+- [x] Confirmed LAW test department initially had no teacher role.
+  - Existing role before setup:
+    - `role_law_department_admin`
+    - `department_admin`
+
+- [x] Created controlled runtime teacher role.
+  - Role ID: `role_law_teacher`
+  - Role code: `teacher`
+  - Role name: `Runtime Teacher`
+  - Department ID: `dept_law_test`
+  - Purpose: Temporary runtime teacher role for teacher assignment testing
+
+- [x] Created controlled runtime teacher user.
+  - User ID: `user_law_runtime_teacher`
+  - Email: `runtime-test-teacher@cu.ac.bd`
+  - Display Name: `Runtime Test Teacher`
+  - Department ID: `dept_law_test`
+  - Status: `ACTIVE`
+
+- [x] Assigned teacher role to runtime teacher user.
+  - User Role ID: `user_role_law_runtime_teacher`
+  - User ID: `user_law_runtime_teacher`
+  - Role ID: `role_law_teacher`
+  - Role code: `teacher`
+  - Department ID: `dept_law_test`
+  - `revokedAt`: `null`
+
+- [x] Assigned teacher to existing LAW-101 course offering through controlled Prisma DB upsert.
+  - Teacher Assignment ID: `teacher_assignment_law_101_runtime`
+  - Course Offering ID: `cmozy23xm000r2i0lccmtg7dl`
+  - Teacher User ID: `user_law_runtime_teacher`
+  - Assignment role code: `primary_instructor`
+  - Status: `ACTIVE`
+  - `unassignedAt`: `null`
+
+- [x] Verified teacher assignment relation.
+  - Course Offering: `cmozy23xm000r2i0lccmtg7dl`
+  - Course: `LAW-101 — Constitutional Law I`
+  - Academic Term: `LAW-2025-2026-S1`
+  - Assigned Teacher: `Runtime Test Teacher`
+  - Teacher platform role: `teacher`
+  - Assignment role: `primary_instructor`
+  - Assignment status: `ACTIVE`
+
+Created runtime teacher role:
+
+| Field | Value |
+|---|---|
+| Role ID | `role_law_teacher` |
+| Department ID | `dept_law_test` |
+| Code | `teacher` |
+| Name | `Runtime Teacher` |
+| Description | `Temporary runtime test teacher role for teacher assignment testing` |
+
+Created runtime teacher user:
+
+| Field | Value |
+|---|---|
+| User ID | `user_law_runtime_teacher` |
+| Department ID | `dept_law_test` |
+| Email | `runtime-test-teacher@cu.ac.bd` |
+| Display Name | `Runtime Test Teacher` |
+| Status | `ACTIVE` |
+
+Created runtime teacher role assignment:
+
+| Field | Value |
+|---|---|
+| User Role ID | `user_role_law_runtime_teacher` |
+| User ID | `user_law_runtime_teacher` |
+| Role ID | `role_law_teacher` |
+| Department ID | `dept_law_test` |
+| Revoked At | `null` |
+
+Created teacher course assignment:
+
+| Field | Value |
+|---|---|
+| Teacher Assignment ID | `teacher_assignment_law_101_runtime` |
+| Department ID | `dept_law_test` |
+| Course Offering ID | `cmozy23xm000r2i0lccmtg7dl` |
+| Teacher User ID | `user_law_runtime_teacher` |
+| Role Code | `primary_instructor` |
+| Status | `ACTIVE` |
+| Unassigned At | `null` |
+
+Teacher assignment verification result:
+
+| Field | Value |
+|---|---|
+| Course Offering ID | `cmozy23xm000r2i0lccmtg7dl` |
+| Course | `LAW-101 — Constitutional Law I` |
+| Academic Term | `LAW-2025-2026-S1` |
+| Section | `A` |
+| Course Offering Status | `PLANNED` |
+| Teacher | `Runtime Test Teacher` |
+| Teacher Email | `runtime-test-teacher@cu.ac.bd` |
+| Teacher Platform Role | `teacher` |
+| Assignment Role | `primary_instructor` |
+| Assignment Status | `ACTIVE` |
+
+Teacher assignment finding:
+
+- Teacher assignment runtime flow could not be completed through HTTP API because no teacher assignment controller/route is currently exposed.
+- Runtime teacher assignment was completed through controlled Prisma DB upsert for testing continuity.
+- This is acceptable as controlled runtime test data setup, but it should not be the normal production workflow.
+
+Teacher assignment recommendation:
+
+- Implement a department-scoped teacher assignment API/controller later.
+- Possible location:
+  - Course Management module, or
+  - Course Offering nested route
+- Suggested future endpoint examples:
+  - `POST /api/v1/course-offerings/:id/teacher-assignments`
+  - `GET /api/v1/course-offerings/:id/teacher-assignments`
+  - `PATCH /api/v1/teacher-assignments/:id`
+  - `DELETE` or `PATCH unassign` style endpoint for unassignment
+- Future implementation must preserve:
+  - `AuthGuard`
+  - `PolicyGuard`
+  - department isolation
+  - assigned-course authorization rules
+  - audit logging for teacher assignment/unassignment
+  - no weakening of existing authorization or request context logic
+
 ### Academic Core Runtime Verdict
 
 Current Academic Core runtime status:
@@ -433,21 +587,77 @@ Current Academic Core runtime status:
 - Academic Year setup for runtime testing: Passed through manual DB insert
 - Academic Term setup for runtime testing: Passed through manual DB insert
 - Course Offering creation/listing: Passed
+- Teacher assignment: Passed through controlled Prisma DB upsert because no HTTP API route is currently exposed
 
-Current limitation discovered:
+Current limitations discovered:
 
 - Academic Term is required for Course Offering creation.
 - Academic Term exists in Prisma schema and database.
-- No dedicated Academic Term API/controller was found in the Academic module during this runtime testing session.
+- No dedicated Academic Term API/controller was found in the Academic module during runtime testing.
+- Teacher assignment exists in schema/service contract, but no teacher assignment HTTP controller/route was found during runtime testing.
 - For runtime testing, Academic Year and Academic Term were inserted manually through `psql`.
+- For runtime testing, teacher assignment was created through controlled Prisma DB upsert.
 
 Recommended follow-up:
 
 - Consider implementing Academic Year and Academic Term management API endpoints later.
+- Consider implementing Teacher Assignment management API endpoints later.
 - These endpoints should remain department-scoped and protected by appropriate admin/policy guards.
-- Manual DB inserts are acceptable for controlled runtime testing but should not be the normal production workflow.
+- Manual DB inserts/upserts are acceptable for controlled runtime testing but should not be the normal production workflow.
 
-## 5. Assessment
+## 5. Enrollment
+
+- [ ] Generate fresh admin access token for enrollment testing
+- [ ] Inspect enrollment DTO/controller
+- [ ] Create enrollment through `POST /api/v1/enrollments`
+- [ ] List enrollments through `GET /api/v1/enrollments`
+- [ ] Verify created enrollment relation with student, course offering, course, and academic term
+- [ ] Validate student course visibility rules
+- [ ] Validate student own-enrollment/self-resource rules if supported
+- [ ] Validate enrollment status update if needed
+
+### Enrollment Current Status
+
+- Enrollment controller is exposed.
+- `/enrollments` controller supports:
+  - `POST /api/v1/enrollments`
+  - `GET /api/v1/enrollments`
+  - `GET /api/v1/enrollments/:id`
+  - `PATCH /api/v1/enrollments/:id`
+- Enrollment runtime test has not started yet.
+- Next test step should begin from fresh login/access token generation.
+
+### Enrollment Known Context
+
+Existing runtime student user:
+
+| Field | Value |
+|---|---|
+| Student User ID | `cmoubvzde00012i216rnx6eaq` |
+| Email | `runtime-test-student@cu.ac.bd` |
+| Display Name | `Runtime Test Student` |
+| Department ID | `dept_law_test` |
+| Status | `ACTIVE` |
+| Runtime Role | `department_admin` |
+
+Existing runtime course offering:
+
+| Field | Value |
+|---|---|
+| Course Offering ID | `cmozy23xm000r2i0lccmtg7dl` |
+| Course | `LAW-101 — Constitutional Law I` |
+| Academic Term ID | `term_law_2025_2026_s1` |
+| Section | `A` |
+| Status | `PLANNED` |
+
+Recommended next runtime step:
+
+1. Generate fresh admin access token.
+2. Call `POST /api/v1/enrollments`.
+3. Verify with `GET /api/v1/enrollments`.
+4. Verify DB relation if API response is insufficient.
+
+## 6. Assessment
 
 - [ ] Create assignment
 - [ ] List assignments
@@ -459,7 +669,7 @@ Recommended follow-up:
 - [ ] Submit quiz attempt
 - [ ] Validate quiz access rules
 
-## 6. Result Processing
+## 7. Result Processing
 
 - [ ] Create/configure grade scale
 - [ ] Compute result
@@ -473,7 +683,7 @@ Recommended follow-up:
 - [ ] GPA computed
 - [ ] CGPA computed
 
-## 7. Transcript Verification
+## 8. Transcript Verification
 
 - [ ] Create transcript record
 - [ ] Issue transcript version
@@ -484,7 +694,7 @@ Recommended follow-up:
 - [ ] Revoke transcript/token
 - [ ] Revoked transcript fails or shows revoked status
 
-## 8. API Quality Checks
+## 9. API Quality Checks
 
 - [ ] Pagination works on list endpoints
 - [ ] Invalid DTO rejected with validation error
@@ -512,7 +722,7 @@ Recommended follow-up:
   - `message`: `Authentication is required`
 - Expired access token was confirmed during Course Offering runtime test.
 
-## 9. TypeScript Module Resolution Note
+## 10. TypeScript Module Resolution Note
 
 Current API TypeScript configuration intentionally avoids a full Node16/ESM migration.
 
@@ -562,188 +772,211 @@ After any TypeScript config change, always run:
 ```bash
 pnpm --filter @lexora/api typecheck
 pnpm --filter @lexora/api build
-```
 
 The TypeScript config change must not be committed unless both commands pass.
 
-### Current TypeScript Config Issue Status
-
-- Current API typecheck passed with the stable configuration.
-- Current API build passed with the stable configuration.
-- `moduleResolution: "node16"` is deferred.
-- `ignoreDeprecations: "6.0"` was tested but rejected by the current TypeScript compiler with `Invalid value for '--ignoreDeprecations'`.
-- VS Code may still show deprecation warnings for `moduleResolution=node10`/`node` behavior and `baseUrl`.
-- These warnings are documented and should not be “fixed” by moving to Node16/ESM casually.
-
-## 10. Notes / Issues Found
-
-| Date | Module | Issue | Status | Fix Commit / Note |
-|---|---|---|---|---|
-| 2026-05-06 | Deployment | Direct API port `4000` exposed to LAN | Fixed | `46a4eaf` |
-| 2026-05-06 | Auth | Malformed refresh token on logout returned `InternalServerError` instead of `400 Bad Request` or `401 Unauthorized` | Open | Pending |
-| 2026-05-10 | RBAC/Test Data | Runtime database had no seeded permissions, roles, or user-role assignments, so authorized Academic API testing required manual runtime role setup | Documented | Runtime role created |
-| 2026-05-10 | Request Context | Authenticated `department_admin` request reached AcademicService but failed because RequestContextInterceptor initialized `principal` as null after guards had already set `request.principal` | Fixed | `025f8ba` |
-| 2026-05-10 | Academic Core | Course Offering required `academicTermId`, but no Academic Term API/controller was found in the Academic module during runtime testing | Documented | Manual Academic Year/Term insert used |
-| 2026-05-10 | Runtime DB / psql | Prisma `DATABASE_URL` contained `?schema=public`, which caused `psql` to fail with `invalid URI query parameter: "schema"` | Documented | Temporary `PSQL_URL` used |
-| 2026-05-10 | Runtime DB / psql | Raw SQL insert into `academic_years` and `academic_terms` failed until explicit `updated_at` values were provided | Documented | Used `created_at = now()` and `updated_at = now()` |
-| 2026-05-10 | Env Loading | Loading `.env` printed `LMS: command not found`, likely due to an unquoted value containing spaces | Open / Needs cleanup | Review `.env` formatting later |
-| 2026-05-10 | TypeScript Config | Attempted `moduleResolution: "node16"` caused project-wide TypeScript/ESM migration errors | Documented / Deferred | Keep stable NestJS/CommonJS-compatible config |
-| 2026-05-10 | TypeScript Config | `ignoreDeprecations: "6.0"` was rejected by current TypeScript compiler with `Invalid value for '--ignoreDeprecations'` | Documented / Deferred | Do not use until TypeScript/compiler support is verified |
-
-## 11. Runtime Test Data Created
-
-### Department
-
-| Field | Value |
-|---|---|
-| ID | `dept_law_test` |
-| Code | `LAW` |
-| Slug | `law` |
-| Name | `Department of Law` |
-| Status | `ACTIVE` |
-
-### Runtime Test User
-
-| Field | Value |
-|---|---|
-| Email | `runtime-test-student@cu.ac.bd` |
-| Display Name | `Runtime Test Student` |
-| Status | `ACTIVE` |
-| Department ID | `dept_law_test` |
-
-### Runtime Test Role
-
-| Field | Value |
-|---|---|
-| Role ID | `role_law_department_admin` |
-| Role Code | `department_admin` |
-| Role Name | `Runtime Department Admin` |
-| Department ID | `dept_law_test` |
-| Purpose | Temporary runtime testing role |
-
-### Runtime User Role Assignment
-
-| Field | Value |
-|---|---|
-| User | `runtime-test-student@cu.ac.bd` |
-| Role | `department_admin` |
-| Department | `dept_law_test` |
-
-### Runtime Academic Program
-
-| Field | Value |
-|---|---|
-| Program ID | `cmozwlcul000d2i0lgujx0pw5` |
-| Department ID | `dept_law_test` |
-| Code | `LLB` |
-| Name | `Bachelor of Laws` |
-| Status | `ACTIVE` |
-
-### Runtime Course
-
-| Field | Value |
-|---|---|
-| Course ID | `cmozwxq8r000h2i0lg9hhmeyg` |
-| Department ID | `dept_law_test` |
-| Academic Program ID | `cmozwlcul000d2i0lgujx0pw5` |
-| Code | `LAW-101` |
-| Title | `Constitutional Law I` |
-| Credit Hours | `3` |
-| Lecture Hours | `3` |
-| Lab Hours | `0` |
-| Status | `ACTIVE` |
-
-### Runtime Academic Year
-
-| Field | Value |
-|---|---|
-| Academic Year ID | `ay_law_2025_2026` |
-| Department ID | `dept_law_test` |
-| Code | `AY-2025-2026` |
-| Name | `Academic Year 2025-2026` |
-| Status | `PLANNED` |
-| Purpose | Manual runtime test data for Course Offering dependency |
-
-### Runtime Academic Term
-
-| Field | Value |
-|---|---|
-| Academic Term ID | `term_law_2025_2026_s1` |
-| Department ID | `dept_law_test` |
-| Academic Year ID | `ay_law_2025_2026` |
-| Code | `LAW-2025-2026-S1` |
-| Name | `Law 2025-2026 Semester 1` |
-| Sequence | `1` |
-| Status | `PLANNED` |
-| Purpose | Manual runtime test data for Course Offering dependency |
-
-### Runtime Course Offering
-
-| Field | Value |
-|---|---|
-| Course Offering ID | `cmozy23xm000r2i0lccmtg7dl` |
-| Department ID | `dept_law_test` |
-| Course ID | `cmozwxq8r000h2i0lg9hhmeyg` |
-| Academic Term ID | `term_law_2025_2026_s1` |
-| Section Code | `A` |
-| Capacity | `60` |
-| Status | `PLANNED` |
-
-### Sensitive Data Rule
-
-- Do not store raw access tokens in documentation.
-- Do not store raw refresh tokens in documentation.
-- Do not store raw email verification tokens in documentation.
-- Do not store database connection strings or passwords in documentation.
-- Runtime DB credentials shown in terminal output must not be committed to GitHub.
-- Test tokens pasted in terminal/chat should not be reused in production.
-- Production/cloud credentials must be rotated if accidentally exposed.
-
-## 12. Current Runtime Verdict
-
-- [ ] Existing backend modules runtime-tested
-- [x] Critical bugs documented
-- [x] Request-context bug fixed and verified
-- [x] Deployment hardening fix committed and verified
-- [x] Auth runtime checks passed
-- [x] Basic Authorization/PolicyGuard checks passed
-- [x] Basic authenticated Academic Core read access verified
-- [x] Academic Program create/list workflow tested
-- [x] Course create/list workflow tested
-- [x] Academic Year and Academic Term runtime dependency setup completed
-- [x] Course Offering create/list workflow tested
-- [x] API TypeScript typecheck passed after stable config fix
-- [x] API TypeScript build passed after stable config fix
-- [x] TypeScript Node16/ESM migration risk documented
-- [ ] Teacher assignment workflow tested
-- [ ] Enrollment workflow tested
-- [ ] Student visibility rules tested
-- [ ] Teacher assigned-course isolation tested
-- [ ] Cross-department admin isolation tested
-- [ ] Assessment workflow tested
-- [ ] Result Processing workflow tested
-- [ ] Transcript Verification workflow tested
-- [ ] Ready to start Class Session Module
-
-## 13. Next Test Steps
-
-1. Commit and push the updated runtime checklist.
-2. Inspect teacher assignment DTO/controller or relevant Academic Core service flow.
-3. Identify whether teacher assignment requires a teacher profile, teacher user, or user role setup.
-4. Create or prepare runtime teacher test data if required.
-5. Assign teacher to course offering.
-6. Verify teacher assignment list/get behavior.
-7. Inspect enrollment DTO/controller.
-8. Identify whether enrollment requires a student profile, student user, academic term, and course offering status.
-9. Enroll student into course offering.
-10. Validate enrollment listing.
-11. Continue student-specific access isolation tests.
-12. Continue teacher assigned-course isolation tests.
-13. Continue cross-department admin isolation tests.
-14. Test reboot persistence:
-    - PM2 survives reboot
-    - Nginx survives reboot
-    - PostgreSQL survives reboot
-15. Review `.env` formatting issue that printed `LMS: command not found` during shell loading.
-16. Consider implementing Academic Year and Academic Term management API endpoints later.
-17. Keep the current API TypeScript config stable unless a dedicated Node16/ESM migration task is planned.
+Current TypeScript Config Issue Status
+Current API typecheck passed with the stable configuration.
+Current API build passed with the stable configuration.
+moduleResolution: "node16" is deferred.
+ignoreDeprecations: "6.0" was tested but rejected by the current TypeScript compiler with Invalid value for '--ignoreDeprecations'.
+VS Code may still show deprecation warnings for moduleResolution=node10/node behavior and baseUrl.
+These warnings are documented and should not be “fixed” by moving to Node16/ESM casually.
+11. Notes / Issues Found
+Date	Module	Issue	Status	Fix Commit / Note
+2026-05-06	Deployment	Direct API port 4000 exposed to LAN	Fixed	46a4eaf
+2026-05-06	Auth	Malformed refresh token on logout returned InternalServerError instead of 400 Bad Request or 401 Unauthorized	Open	Pending
+2026-05-10	RBAC/Test Data	Runtime database had no seeded permissions, roles, or user-role assignments, so authorized Academic API testing required manual runtime role setup	Documented	Runtime role created
+2026-05-10	Request Context	Authenticated department_admin request reached AcademicService but failed because RequestContextInterceptor initialized principal as null after guards had already set request.principal	Fixed	025f8ba
+2026-05-10	Academic Core	Course Offering required academicTermId, but no Academic Term API/controller was found in the Academic module during runtime testing	Documented	Manual Academic Year/Term insert used
+2026-05-10	Teacher Assignment	Teacher assignment schema/service contract exists, but no teacher assignment HTTP API/controller was found during runtime testing	Documented	Controlled Prisma DB upsert used
+2026-05-10	Teacher Assignment	LAW test department had no existing teacher role/user, so controlled runtime teacher role and user were created	Documented	role_law_teacher, user_law_runtime_teacher
+2026-05-10	Runtime DB / psql	Prisma DATABASE_URL contained ?schema=public, which caused psql to fail with invalid URI query parameter: "schema"	Documented	Temporary PSQL_URL used
+2026-05-10	Runtime DB / psql	Raw SQL insert into academic_years and academic_terms failed until explicit updated_at values were provided	Documented	Used created_at = now() and updated_at = now()
+2026-05-10	Runtime DB / Node Script	require('dotenv') failed in ad hoc Node runtime script because dotenv was not resolvable from that path	Documented	Manually parsed DATABASE_URL from .env in script
+2026-05-10	Env Loading	Loading .env printed LMS: command not found, likely due to an unquoted value containing spaces	Open / Needs cleanup	Review .env formatting later
+2026-05-10	TypeScript Config	Attempted moduleResolution: "node16" caused project-wide TypeScript/ESM migration errors	Documented / Deferred	Keep stable NestJS/CommonJS-compatible config
+2026-05-10	TypeScript Config	ignoreDeprecations: "6.0" was rejected by current TypeScript compiler with Invalid value for '--ignoreDeprecations'	Documented / Deferred	Do not use until TypeScript/compiler support is verified
+12. Runtime Test Data Created
+Department
+Field	Value
+ID	dept_law_test
+Code	LAW
+Slug	law
+Name	Department of Law
+Status	ACTIVE
+Runtime Test User / Runtime Admin User
+Field	Value
+User ID	cmoubvzde00012i216rnx6eaq
+Email	runtime-test-student@cu.ac.bd
+Display Name	Runtime Test Student
+Status	ACTIVE
+Department ID	dept_law_test
+Current Runtime Role	department_admin
+Purpose	Runtime API testing admin actor
+Runtime Test Admin Role
+Field	Value
+Role ID	role_law_department_admin
+Role Code	department_admin
+Role Name	Runtime Department Admin
+Department ID	dept_law_test
+Purpose	Temporary runtime testing role
+Runtime Admin User Role Assignment
+Field	Value
+User	runtime-test-student@cu.ac.bd
+User ID	cmoubvzde00012i216rnx6eaq
+Role	department_admin
+Role ID	role_law_department_admin
+Department	dept_law_test
+Runtime Teacher Role
+Field	Value
+Role ID	role_law_teacher
+Role Code	teacher
+Role Name	Runtime Teacher
+Department ID	dept_law_test
+Purpose	Temporary runtime teacher role for teacher assignment testing
+Runtime Teacher User
+Field	Value
+User ID	user_law_runtime_teacher
+Email	runtime-test-teacher@cu.ac.bd
+Display Name	Runtime Test Teacher
+Status	ACTIVE
+Department ID	dept_law_test
+Purpose	Runtime teacher assignment testing
+Runtime Teacher User Role Assignment
+Field	Value
+User Role ID	user_role_law_runtime_teacher
+User ID	user_law_runtime_teacher
+User Email	runtime-test-teacher@cu.ac.bd
+Role ID	role_law_teacher
+Role Code	teacher
+Department ID	dept_law_test
+Revoked At	null
+Runtime Academic Program
+Field	Value
+Program ID	cmozwlcul000d2i0lgujx0pw5
+Department ID	dept_law_test
+Code	LLB
+Name	Bachelor of Laws
+Status	ACTIVE
+Runtime Course
+Field	Value
+Course ID	cmozwxq8r000h2i0lg9hhmeyg
+Department ID	dept_law_test
+Academic Program ID	cmozwlcul000d2i0lgujx0pw5
+Code	LAW-101
+Title	Constitutional Law I
+Credit Hours	3
+Lecture Hours	3
+Lab Hours	0
+Status	ACTIVE
+Runtime Academic Year
+Field	Value
+Academic Year ID	ay_law_2025_2026
+Department ID	dept_law_test
+Code	AY-2025-2026
+Name	Academic Year 2025-2026
+Status	PLANNED
+Purpose	Manual runtime test data for Course Offering dependency
+Runtime Academic Term
+Field	Value
+Academic Term ID	term_law_2025_2026_s1
+Department ID	dept_law_test
+Academic Year ID	ay_law_2025_2026
+Code	LAW-2025-2026-S1
+Name	Law 2025-2026 Semester 1
+Sequence	1
+Status	PLANNED
+Purpose	Manual runtime test data for Course Offering dependency
+Runtime Course Offering
+Field	Value
+Course Offering ID	cmozy23xm000r2i0lccmtg7dl
+Department ID	dept_law_test
+Course ID	cmozwxq8r000h2i0lg9hhmeyg
+Academic Term ID	term_law_2025_2026_s1
+Section Code	A
+Capacity	60
+Status	PLANNED
+Runtime Teacher Course Assignment
+Field	Value
+Teacher Assignment ID	teacher_assignment_law_101_runtime
+Department ID	dept_law_test
+Course Offering ID	cmozy23xm000r2i0lccmtg7dl
+Course	LAW-101 — Constitutional Law I
+Academic Term	LAW-2025-2026-S1
+Teacher User ID	user_law_runtime_teacher
+Teacher Email	runtime-test-teacher@cu.ac.bd
+Teacher Display Name	Runtime Test Teacher
+Teacher Platform Role	teacher
+Assignment Role Code	primary_instructor
+Assignment Status	ACTIVE
+Unassigned At	null
+Useful Runtime IDs
+PROGRAM_ID='cmozwlcul000d2i0lgujx0pw5'
+COURSE_ID='cmozwxq8r000h2i0lg9hhmeyg'
+ACADEMIC_YEAR_ID='ay_law_2025_2026'
+ACADEMIC_TERM_ID='term_law_2025_2026_s1'
+COURSE_OFFERING_ID='cmozy23xm000r2i0lccmtg7dl'
+RUNTIME_ADMIN_USER_ID='cmoubvzde00012i216rnx6eaq'
+RUNTIME_TEACHER_USER_ID='user_law_runtime_teacher'
+RUNTIME_TEACHER_ROLE_ID='role_law_teacher'
+RUNTIME_TEACHER_ASSIGNMENT_ID='teacher_assignment_law_101_runtime'
+DEPARTMENT_ID='dept_law_test'
+Sensitive Data Rule
+Do not store raw access tokens in documentation.
+Do not store raw refresh tokens in documentation.
+Do not store raw email verification tokens in documentation.
+Do not store database connection strings or passwords in documentation.
+Runtime DB credentials shown in terminal output must not be committed to GitHub.
+Test tokens pasted in terminal/chat should not be reused in production.
+Production/cloud credentials must be rotated if accidentally exposed.
+Runtime test password should not be committed to public documentation beyond controlled runtime notes.
+13. Current Runtime Verdict
+ Existing backend modules runtime-tested
+ Critical bugs documented
+ Request-context bug fixed and verified
+ Deployment hardening fix committed and verified
+ Auth runtime checks passed
+ Basic Authorization/PolicyGuard checks passed
+ Basic authenticated Academic Core read access verified
+ Academic Program create/list workflow tested
+ Course create/list workflow tested
+ Academic Year and Academic Term runtime dependency setup completed
+ Course Offering create/list workflow tested
+ Teacher assignment workflow tested through controlled Prisma DB upsert
+ Teacher assignment relation verified
+ API TypeScript typecheck passed after stable config fix
+ API TypeScript build passed after stable config fix
+ TypeScript Node16/ESM migration risk documented
+ Enrollment workflow tested
+ Student visibility rules tested
+ Teacher assigned-course isolation tested
+ Cross-department admin isolation tested
+ Assessment workflow tested
+ Result Processing workflow tested
+ Transcript Verification workflow tested
+ Ready to start Class Session Module
+14. Next Test Steps
+Generate a fresh access token for the runtime admin user.
+Inspect CreateEnrollmentDto if needed.
+Create enrollment through POST /api/v1/enrollments.
+List enrollments through GET /api/v1/enrollments.
+Verify enrollment relation with:
+runtime student/admin user
+course offering
+course
+academic term
+department
+Update docs/runtime-test-checklist.md after enrollment test.
+Commit and push the updated runtime checklist.
+Continue student-specific access isolation tests.
+Continue teacher assigned-course isolation tests.
+Continue cross-department admin isolation tests.
+Test reboot persistence:
+PM2 survives reboot
+Nginx survives reboot
+PostgreSQL survives reboot
+Review .env formatting issue that printed LMS: command not found during shell loading.
+Consider implementing Academic Year and Academic Term management API endpoints later.
+Consider implementing Teacher Assignment API/controller later.
+Keep the current API TypeScript config stable unless a dedicated Node16/ESM migration task is planned.
