@@ -1252,3 +1252,127 @@ Do not rely on frontend filtering for this.
 - Student own-resource isolation: Not fully testable yet
 - Required next development: student-safe enrollment self-resource endpoint or ownership-aware service method
 
+
+## Teacher Assigned-Course Isolation Runtime Finding
+
+### Teacher Runtime Setup
+
+- [x] Set bcrypt password hash for runtime teacher user.
+- [x] Verified `runtime-test-teacher@cu.ac.bd` can log in successfully.
+- [x] Login response returned role: `teacher`.
+- [x] Teacher access token was generated successfully.
+
+Runtime teacher:
+
+| Field | Value |
+|---|---|
+| User ID | `user_law_runtime_teacher` |
+| Email | `runtime-test-teacher@cu.ac.bd` |
+| Role | `teacher` |
+| Department ID | `dept_law_test` |
+
+Assigned course offering:
+
+| Field | Value |
+|---|---|
+| Teacher Assignment ID | `teacher_assignment_law_101_runtime` |
+| Course Offering ID | `cmozy23xm000r2i0lccmtg7dl` |
+| Course | `LAW-101 — Constitutional Law I` |
+| Assignment Role | `primary_instructor` |
+| Assignment Status | `ACTIVE` |
+
+### Unassigned Course Offering Runtime Setup
+
+Created controlled unassigned runtime course/offering for isolation testing.
+
+Unassigned course:
+
+| Field | Value |
+|---|---|
+| Course ID | `course_law_999_unassigned_runtime` |
+| Code | `LAW-999` |
+| Title | `Unassigned Runtime Test Course` |
+| Department ID | `dept_law_test` |
+| Academic Program ID | `cmozwlcul000d2i0lgujx0pw5` |
+| Status | `ACTIVE` |
+
+Unassigned course offering:
+
+| Field | Value |
+|---|---|
+| Course Offering ID | `offering_law_999_unassigned_runtime` |
+| Course ID | `course_law_999_unassigned_runtime` |
+| Course Code | `LAW-999` |
+| Academic Term ID | `term_law_2025_2026_s1` |
+| Section Code | `Z` |
+| Status | `PLANNED` |
+| Teacher Assignments | `[]` |
+
+### Teacher Course Offering Access Test
+
+- [x] `GET /api/v1/course-offerings` as teacher returned assigned offering `LAW-101`.
+- [x] `GET /api/v1/course-offerings/cmozy23xm000r2i0lccmtg7dl` as teacher returned assigned offering `LAW-101`.
+
+### Teacher Assigned-Course Isolation Negative Test
+
+- [x] `GET /api/v1/course-offerings` as teacher also returned unassigned offering `LAW-999`.
+- [x] `GET /api/v1/course-offerings/offering_law_999_unassigned_runtime` as teacher returned `200 OK`.
+
+### Finding
+
+Teacher assigned-course isolation is not currently enforced for course offering read/list endpoints.
+
+The teacher can view an unassigned course offering in the same department.
+
+Observed unassigned offering exposed to teacher:
+
+| Field | Value |
+|---|---|
+| Course Offering ID | `offering_law_999_unassigned_runtime` |
+| Course | `LAW-999 — Unassigned Runtime Test Course` |
+| Section | `Z` |
+| Teacher Assignments | none |
+
+### Security Impact
+
+This is an object-level authorization gap.
+
+The teacher role has course/offering read policy, but current course offering read/list behavior appears department-scoped rather than assignment-scoped.
+
+For Lexora LMS, teacher access must be restricted to assigned course offerings only.
+
+### Required Future Fix
+
+Do not solve this by removing teacher course/offering read policies blindly.
+
+Instead, implement assignment-aware service/repository filtering for teacher access.
+
+Required behavior:
+
+- Department admin:
+  - Can list/read all course offerings within own department.
+- Teacher:
+  - Can list/read only course offerings where an active teacher assignment exists:
+    - `teacherUserId = principal.actorId`
+    - `departmentId = principal.activeDepartmentId`
+    - `unassignedAt = null`
+    - assignment status active
+- Student:
+  - Should use separate visibility/enrollment rules, not broad teacher/admin offering access.
+
+Recommended implementation options:
+
+1. Add role-aware filtering inside `AcademicService.listCourseOfferings()` and `AcademicService.getCourseOffering()`.
+2. Or create dedicated teacher-safe endpoints such as:
+   - `GET /api/v1/teacher/course-offerings`
+   - `GET /api/v1/teacher/course-offerings/:id`
+3. Ensure direct ID access to unassigned offerings returns `404 Not Found` or `403 Forbidden`.
+
+### Current Verdict For This Check
+
+- Teacher login: Passed
+- Teacher assigned offering access: Passed
+- Teacher unassigned offering list isolation: Failed / gap detected
+- Teacher unassigned offering direct access isolation: Failed / gap detected
+- Required next development: teacher assigned-course object-level authorization enforcement
+
