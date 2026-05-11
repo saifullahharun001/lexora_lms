@@ -1161,3 +1161,94 @@ DEPARTMENT_ID='dept_law_test'
 10. Consider implementing Academic Year and Academic Term management API endpoints later.
 11. Consider implementing Teacher Assignment API/controller later.
 12. Keep the current API TypeScript config stable unless a dedicated Node16/ESM migration task is planned.
+
+## Student Enrollment Access Isolation Runtime Finding
+
+### Student Role/User Runtime Setup
+
+- [x] Created controlled runtime student role:
+  - Role ID: `role_law_student`
+  - Role Code: `student`
+  - Role Name: `Runtime Student`
+  - Department ID: `dept_law_test`
+
+- [x] Created controlled runtime own-student user:
+  - User ID: `user_law_runtime_student_own`
+  - Email: `runtime-student-own@cu.ac.bd`
+  - Display Name: `Runtime Own Student`
+  - Department ID: `dept_law_test`
+  - Role: `student`
+
+- [x] Created controlled runtime other-student user:
+  - User ID: `user_law_runtime_student_other`
+  - Email: `runtime-student-other@cu.ac.bd`
+  - Display Name: `Runtime Other Student`
+  - Department ID: `dept_law_test`
+  - Role: `student`
+
+- [x] Set bcrypt password hash for both controlled student users.
+- [x] Verified `runtime-student-own@cu.ac.bd` can log in successfully.
+- [x] Login response returned role: `student`.
+- [x] Student access token was generated successfully.
+
+### Student Enrollment API Access Test
+
+- [x] `GET /api/v1/enrollments` as student returned `403 Forbidden`.
+- [x] `GET /api/v1/enrollments/:id` as student returned `403 Forbidden`.
+
+### Finding
+
+Student enrollment own-resource behavior is currently not testable through the existing `/enrollments` endpoints.
+
+Reason:
+
+- `EnrollmentsController` requires `ENROLLMENT_READ` for list/get.
+- `ENROLLMENT_READ` maps to `enrollment.record.read`.
+- Current static `student` role has `enrollment.record.self-request`.
+- Current static `student` role does not have `enrollment.record.read`.
+- Therefore student requests are blocked at `PolicyGuard` before service-level ownership checks.
+
+### Service/Repository Security Observation
+
+Current enrollment read/list methods are department-scoped but not student ownership-scoped:
+
+- `AcademicService.listEnrollments()` passes department and query filters to repository.
+- `AcademicService.getEnrollment(id)` fetches by department and enrollment ID.
+- `PrismaAcademicRepository.findEnrollments()` supports optional `studentUserId` filter but does not automatically force it from the authenticated student actor.
+- `PrismaAcademicRepository.findEnrollmentById()` filters by `id`, `departmentId`, and `archivedAt`, but not by authenticated student actor.
+
+### Security Decision
+
+Do not give broad `enrollment.record.read` policy to the `student` role unless service-layer ownership filtering is implemented first.
+
+Giving broad enrollment read access to students without enforcing `studentUserId = current principal actorId` could create an IDOR / own-resource isolation risk.
+
+### Recommended Future Implementation
+
+Implement student-specific enrollment access using safe self-resource endpoints, for example:
+
+- `GET /api/v1/enrollments/me`
+- `GET /api/v1/enrollments/me/:id`
+- `POST /api/v1/enrollments/self-request`
+
+These should use a student-safe policy such as:
+
+- existing: `enrollment.record.self-request`
+- or new: `enrollment.record.self-read`
+
+Required service-layer rule:
+
+- For student self-resource reads, always enforce:
+  - `studentUserId = principal.actorId`
+  - `departmentId = principal.activeDepartmentId`
+
+Do not rely on frontend filtering for this.
+
+### Current Verdict For This Check
+
+- Student login: Passed
+- Student token generation: Passed
+- Student enrollment API access: Blocked by policy
+- Student own-resource isolation: Not fully testable yet
+- Required next development: student-safe enrollment self-resource endpoint or ownership-aware service method
+
