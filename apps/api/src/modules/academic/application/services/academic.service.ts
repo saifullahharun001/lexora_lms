@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException
 } from "@nestjs/common";
-import { EnrollmentStatus, Prisma, UserStatus } from "@prisma/client";
+import { EnrollmentStatus, Prisma, TeacherAssignmentStatus, UserStatus } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 import { PrismaService } from "@/common/prisma/prisma.service";
@@ -150,6 +150,15 @@ export class AcademicService {
   }
 
   listCourseOfferings(filters: Omit<CourseOfferingListFilters, "departmentId">) {
+    if (this.hasRole("teacher") && !this.hasRole("department_admin")) {
+      return this.repository.findCourseOfferings({
+        departmentId: this.getDepartmentId(),
+        ...filters,
+        assignedTeacherUserId: this.getActorId(),
+        teacherAssignmentStatus: TeacherAssignmentStatus.ACTIVE
+      });
+    }
+
     return this.repository.findCourseOfferings({
       departmentId: this.getDepartmentId(),
       ...filters
@@ -157,7 +166,14 @@ export class AcademicService {
   }
 
   async getCourseOffering(id: string) {
-    const offering = await this.repository.findCourseOfferingById(this.getDepartmentId(), id);
+    const offering =
+      this.hasRole("teacher") && !this.hasRole("department_admin")
+        ? await this.repository.findCourseOfferingByIdForTeacher(
+            this.getDepartmentId(),
+            id,
+            this.getActorId()
+          )
+        : await this.repository.findCourseOfferingById(this.getDepartmentId(), id);
 
     if (!offering) {
       throw new NotFoundException("Course offering not found");
@@ -219,6 +235,33 @@ export class AcademicService {
 
   async getEnrollment(id: string) {
     const enrollment = await this.repository.findEnrollmentById(this.getDepartmentId(), id);
+
+    if (!enrollment) {
+      throw new NotFoundException("Enrollment not found");
+    }
+
+    return enrollment;
+  }
+
+  listMyEnrollments(filters: Omit<EnrollmentListFilters, "departmentId" | "studentUserId">) {
+    const { studentUserId: _ignoredStudentUserId, ...safeFilters } = filters as Omit<
+      EnrollmentListFilters,
+      "departmentId"
+    >;
+
+    return this.repository.findEnrollments({
+      departmentId: this.getDepartmentId(),
+      ...safeFilters,
+      studentUserId: this.getActorId()
+    });
+  }
+
+  async getMyEnrollment(id: string) {
+    const enrollment = await this.repository.findEnrollmentByIdForStudent(
+      this.getDepartmentId(),
+      id,
+      this.getActorId()
+    );
 
     if (!enrollment) {
       throw new NotFoundException("Enrollment not found");
@@ -401,6 +444,18 @@ export class AcademicService {
     }
 
     return principal.actorId;
+  }
+
+  private hasRole(role: "department_admin" | "teacher" | "student") {
+    const principal = this.requestContextService.get()?.principal;
+    const departmentId = principal?.activeDepartmentId;
+
+    return Boolean(
+      departmentId &&
+        principal?.roleAssignments.some(
+          (assignment) => assignment.departmentId === departmentId && assignment.role === role
+        )
+    );
   }
 
   private async writeAudit(

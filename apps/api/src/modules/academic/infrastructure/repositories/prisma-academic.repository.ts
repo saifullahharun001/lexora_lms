@@ -193,7 +193,18 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
         archivedAt: null,
         academicTermId: filters.academicTermId,
         courseId: filters.courseId,
-        status: filters.status
+        status: filters.status,
+        teacherAssignments: filters.assignedTeacherUserId
+          ? {
+              some: {
+                departmentId: filters.departmentId,
+                teacherUserId: filters.assignedTeacherUserId,
+                status: filters.teacherAssignmentStatus,
+                unassignedAt: null,
+                archivedAt: null
+              }
+            }
+          : undefined
       },
       include: {
         course: true,
@@ -211,6 +222,29 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
         id,
         departmentId,
         archivedAt: null
+      },
+      include: {
+        course: true,
+        academicTerm: true
+      }
+    });
+  }
+
+  findCourseOfferingByIdForTeacher(departmentId: string, id: string, teacherUserId: string) {
+    return this.prisma.courseOffering.findFirst({
+      where: {
+        id,
+        departmentId,
+        archivedAt: null,
+        teacherAssignments: {
+          some: {
+            departmentId,
+            teacherUserId,
+            status: "ACTIVE",
+            unassignedAt: null,
+            archivedAt: null
+          }
+        }
       },
       include: {
         course: true,
@@ -315,6 +349,39 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
       where: {
         id,
         departmentId,
+        archivedAt: null
+      },
+      include: {
+        academicTerm: true,
+        courseOffering: {
+          include: {
+            course: true
+          }
+        },
+        studentUser: {
+          select: {
+            id: true,
+            displayName: true,
+            email: true
+          }
+        },
+        approvedByUser: {
+          select: {
+            id: true,
+            displayName: true,
+            email: true
+          }
+        }
+      }
+    });
+  }
+
+  findEnrollmentByIdForStudent(departmentId: string, id: string, studentUserId: string) {
+    return this.prisma.enrollment.findFirst({
+      where: {
+        id,
+        departmentId,
+        studentUserId,
         archivedAt: null
       },
       include: {

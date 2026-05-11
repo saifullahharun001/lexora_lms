@@ -39,6 +39,18 @@ export class EnrollmentsController {
     return this.academicService.listEnrollments(query);
   }
 
+  @Get("me")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.ENROLLMENT_SELF_REQUEST)
+  listMine(@Query() query: ListEnrollmentsQueryDto) {
+    return this.academicService.listMyEnrollments(query);
+  }
+
+  @Get("me/:id")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.ENROLLMENT_SELF_REQUEST)
+  getMineById(@Param() params: ResourceIdParamDto) {
+    return this.academicService.getMyEnrollment(params.id);
+  }
+
   @Get(":id")
   @RequirePolicy(ACADEMIC_POLICY_NAMES.ENROLLMENT_READ)
   getById(@Param() params: ResourceIdParamDto) {

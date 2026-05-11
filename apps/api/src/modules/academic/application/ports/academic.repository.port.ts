@@ -5,7 +5,8 @@ import type {
   EligibilityStatus,
   EnrollmentSourceType,
   EnrollmentStatus,
-  Prisma
+  Prisma,
+  TeacherAssignmentStatus
 } from "@prisma/client";
 
 export interface ProgramListFilters {
@@ -26,6 +27,8 @@ export interface CourseOfferingListFilters {
   academicTermId?: string;
   courseId?: string;
   status?: CourseOfferingStatus;
+  assignedTeacherUserId?: string;
+  teacherAssignmentStatus?: TeacherAssignmentStatus;
 }
 
 export interface EnrollmentListFilters {
@@ -127,6 +130,11 @@ export interface AcademicRepositoryPort {
   updateCourse(departmentId: string, id: string, input: UpdateCourseInput): Promise<unknown | null>;
   findCourseOfferings(filters: CourseOfferingListFilters): Promise<unknown[]>;
   findCourseOfferingById(departmentId: string, id: string): Promise<unknown | null>;
+  findCourseOfferingByIdForTeacher(
+    departmentId: string,
+    id: string,
+    teacherUserId: string
+  ): Promise<unknown | null>;
   createCourseOffering(input: CreateCourseOfferingInput): Promise<unknown>;
   updateCourseOffering(
     departmentId: string,
@@ -135,6 +143,11 @@ export interface AcademicRepositoryPort {
   ): Promise<unknown | null>;
   findEnrollments(filters: EnrollmentListFilters): Promise<unknown[]>;
   findEnrollmentById(departmentId: string, id: string): Promise<unknown | null>;
+  findEnrollmentByIdForStudent(
+    departmentId: string,
+    id: string,
+    studentUserId: string
+  ): Promise<unknown | null>;
   createEnrollment(input: CreateEnrollmentInput): Promise<unknown>;
   updateEnrollment(
     departmentId: string,

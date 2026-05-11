@@ -1252,6 +1252,14 @@ Do not rely on frontend filtering for this.
 - Student own-resource isolation: Not fully testable yet
 - Required next development: student-safe enrollment self-resource endpoint or ownership-aware service method
 
+### Fix Implemented / Retest Required
+
+- Implemented `GET /api/v1/enrollments/me` and `GET /api/v1/enrollments/me/:id`.
+- These endpoints use the existing `enrollment.record.self-request` student policy.
+- Service-layer reads now force `departmentId = principal.activeDepartmentId` and `studentUserId = principal.actorId`.
+- Any `studentUserId` query value sent to `/enrollments/me` is ignored.
+- Retest with fresh student tokens is required.
+
 
 ## Teacher Assigned-Course Isolation Runtime Finding
 
@@ -1375,4 +1383,16 @@ Recommended implementation options:
 - Teacher unassigned offering list isolation: Failed / gap detected
 - Teacher unassigned offering direct access isolation: Failed / gap detected
 - Required next development: teacher assigned-course object-level authorization enforcement
+
+### Fix Implemented / Retest Required
+
+- Course offering list/read now applies assignment-aware filtering for teacher principals.
+- Teachers can only list/read offerings with an active assignment in the active department:
+  - `teacherUserId = principal.actorId`
+  - `departmentId = principal.activeDepartmentId`
+  - `status = ACTIVE`
+  - `unassignedAt = null`
+  - `archivedAt = null`
+- Department admins retain department-scoped offering list/read behavior.
+- Retest with fresh teacher tokens is required.
 
