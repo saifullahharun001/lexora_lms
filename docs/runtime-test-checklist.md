@@ -126,7 +126,7 @@ Verdict:
 
 - [x] Protected endpoint rejects unauthenticated request
 - [x] Authenticated user can access own allowed resources
-- [ ] Student cannot access another student’s data
+- [x] Student cannot access another student’s data
 - [ ] Teacher cannot access unassigned course data
 - [x] Admin cannot access another department’s data
 - [x] Policy guard works on sensitive endpoints
@@ -173,7 +173,7 @@ Verdict:
   - Prefix-style match such as `course-management.*`
 - `department_admin` role works because static role policies include module-level wildcard policies.
 - `Authenticated user can access own allowed resources` is currently verified using the temporary `department_admin` runtime role, not a normal student self-resource flow.
-- Student-specific own-resource isolation still needs separate testing.
+- Student-specific own-resource enrollment isolation has now been tested and passed.
 - Teacher assigned-course isolation still needs separate testing.
 - Cross-department admin isolation has now been tested for programs, courses, course offerings, and enrollments.
 
@@ -702,6 +702,72 @@ Recommended follow-up:
 - Consider implementing Teacher Assignment management API endpoints later.
 - These endpoints should remain department-scoped and protected by appropriate admin/policy guards.
 - Manual DB inserts/upserts are acceptable for controlled runtime testing but should not be the normal production workflow.
+
+### Student Own-Resource Enrollment Isolation Runtime Test
+
+- [x] Created controlled runtime student role:
+  - Role ID: `role_law_student`
+  - Role Code: `student`
+  - Department: `dept_law_test`
+
+- [x] Created controlled runtime student users:
+  - Own Student User ID: `user_law_runtime_student_own`
+  - Own Student Email: `runtime-student-own@cu.ac.bd`
+  - Other Student User ID: `user_law_runtime_student_other`
+  - Other Student Email: `runtime-student-other@cu.ac.bd`
+  - Department: `dept_law_test`
+  - Role: `student`
+
+- [x] Created controlled runtime student enrollments:
+  - Own Enrollment ID: `enrollment_law_student_own_runtime`
+  - Other Enrollment ID: `enrollment_law_student_other_runtime`
+  - Course Offering ID: `cmozy23xm000r2i0lccmtg7dl`
+  - Academic Term ID: `term_law_2025_2026_s1`
+
+Runtime test result:
+
+- Own student successfully logged in with role `student`.
+- Other student successfully logged in with role `student`.
+
+- Own student request to broad admin enrollment list was blocked:
+  - `GET /api/v1/enrollments`
+  - Result: `ForbiddenException`
+  - Message: `Access denied by policy`
+
+- Own student request to self-resource enrollment list worked:
+  - `GET /api/v1/enrollments/me`
+  - Result: returned only `enrollment_law_student_own_runtime`
+
+- Own student request to own self-resource enrollment detail worked:
+  - `GET /api/v1/enrollments/me/enrollment_law_student_own_runtime`
+  - Result: returned own enrollment
+
+- Own student request to other student's self-resource enrollment was blocked:
+  - `GET /api/v1/enrollments/me/enrollment_law_student_other_runtime`
+  - Result: `NotFoundException`
+  - Message: `Enrollment not found`
+
+- Own student request to broad admin-style enrollment detail remained blocked:
+  - `GET /api/v1/enrollments/enrollment_law_student_own_runtime`
+  - Result: `ForbiddenException`
+  - Message: `Access denied by policy`
+
+- Other student request to self-resource enrollment list worked:
+  - `GET /api/v1/enrollments/me`
+  - Result: returned only `enrollment_law_student_other_runtime`
+
+- Other student request to own student's enrollment was blocked:
+  - `GET /api/v1/enrollments/me/enrollment_law_student_own_runtime`
+  - Result: `NotFoundException`
+  - Message: `Enrollment not found`
+
+Verdict:
+
+- Student broad/admin enrollment endpoints remain blocked.
+- Student self-resource enrollment endpoint returns only the authenticated student's own enrollment records.
+- Student direct access to another student's enrollment is blocked.
+- Student direct broad/admin-style access remains blocked even for own enrollment.
+- Student-to-student enrollment data isolation is working as expected.
 
 ## 5. Enrollment
 
@@ -1233,7 +1299,7 @@ DEPARTMENT_ID='dept_law_test'
 - [x] API TypeScript build passed after stable config fix
 - [x] TypeScript Node16/ESM migration risk documented
 - [ ] Student visibility rules tested
-- [ ] Student own-resource rules tested
+- [x] Student own-resource rules tested
 - [ ] Teacher assigned-course isolation tested
 - [x] Cross-department admin isolation tested
 - [ ] Assessment workflow tested
@@ -1246,7 +1312,7 @@ DEPARTMENT_ID='dept_law_test'
 1. Commit and push the updated runtime checklist.
 2. Continue student-specific access isolation tests.
 3. Continue student course visibility rules test.
-4. Continue student own-enrollment/self-resource rules test.
+4. Student own-enrollment/self-resource rules test completed.
 5. Continue teacher assigned-course isolation tests.
 6. Cross-department admin isolation tests completed for programs, courses, course offerings, and enrollments.
 7. Reboot persistence completed:
