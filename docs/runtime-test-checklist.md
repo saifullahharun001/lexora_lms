@@ -302,7 +302,7 @@ Verdict:
 - [x] List course offerings
 - [x] Assign teacher to course offering
 - [x] Enroll student
-- [ ] Validate student course visibility rules
+- [ ] Validate student course visibility rules — dedicated student course-offering visibility endpoint not implemented yet
 
 ### Academic Core Runtime Context
 
@@ -826,7 +826,7 @@ Verdict:
 - [x] Verify created enrollment relation with student, course offering, course, and academic term
 - [x] Update enrollment through `PATCH /api/v1/enrollments/:id`
 - [x] Verify updated enrollment state after PATCH
-- [ ] Validate student course visibility rules
+- [ ] Validate student course visibility rules — dedicated student course-offering visibility endpoint not implemented yet
 - [ ] Validate student own-enrollment/self-resource rules if supported
 
 ### Enrollment Current Status
@@ -961,6 +961,54 @@ Final enrollment state verified:
 | Eligibility Status | `CONDITIONAL` |
 | Snapshot Flag | `updatedDuringRuntimeTest: true` |
 | Updated At | `2026-05-11T13:49:06.427Z` |
+
+
+### Student Course Visibility Runtime Test
+
+- [x] Logged in as runtime own student.
+- [x] Confirmed runtime own student has role `student`.
+- [x] Tested `GET /api/v1/course-offerings` with student access token.
+- [x] Confirmed `GET /api/v1/course-offerings` returned `403 Forbidden`.
+- [x] Confirmed error response:
+  - `code`: `ForbiddenException`
+  - `message`: `Access denied by policy`
+- [x] Tested `GET /api/v1/enrollments/me` with the same student access token.
+- [x] Confirmed `GET /api/v1/enrollments/me` returned `200 OK`.
+- [x] Confirmed response included only the runtime own student enrollment:
+  - Enrollment ID: `enrollment_law_student_own_runtime`
+  - Student User ID: `user_law_runtime_student_own`
+  - Course Offering ID: `cmozy23xm000r2i0lccmtg7dl`
+  - Course: `LAW-101 — Constitutional Law I`
+  - Status: `APPROVED`
+  - Eligibility Status: `CONDITIONAL`
+
+Finding:
+
+- Student role does not currently have direct access to `GET /api/v1/course-offerings`.
+- `GET /api/v1/course-offerings` is protected by `OFFERING_READ`.
+- Current `AcademicService.listCourseOfferings()` includes teacher assigned-course filtering, but no dedicated student enrolled/current-term/eligible course-offering visibility filter.
+- Student enrolled-course visibility currently works through `GET /api/v1/enrollments/me`.
+- A dedicated student-facing available-course/course-offering visibility endpoint is still needed.
+
+Recommended future endpoint options:
+
+- `GET /api/v1/course-offerings/me`
+- `GET /api/v1/student/course-offerings`
+- `GET /api/v1/enrollments/available`
+
+Future implementation must enforce:
+
+- own department only
+- own program/year/semester only
+- eligible/current academic term offerings only
+- no other department offerings
+- no higher/lower year offerings unless policy allows
+- backend-side filtering, not frontend-only filtering
+
+Verdict:
+
+- Student own enrolled-course visibility through `/enrollments/me`: passed.
+- Dedicated student course-offering visibility for available/eligible courses: not implemented yet / pending.
 
 ### Enrollment Runtime Verdict
 
