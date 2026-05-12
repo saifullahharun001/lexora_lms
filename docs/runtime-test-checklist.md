@@ -19,9 +19,9 @@
 - [x] API health works from VM through Nginx
 - [x] API health works from Windows host through Nginx
 - [x] Direct `192.168.197.130:4000` access blocked from Windows host
-- [ ] PM2 survives reboot
-- [ ] Nginx survives reboot
-- [ ] PostgreSQL survives reboot
+- [x] PM2 survives reboot
+- [x] Nginx survives reboot
+- [x] PostgreSQL survives reboot
 
 ### Deployment Test Notes
 
@@ -37,6 +37,40 @@
 - Deployment hardening change was committed with:
   - Commit: `46a4eaf`
   - Message: `Bind API server to localhost for reverse proxy hardening`
+
+### Reboot Persistence Runtime Test
+
+- [x] VM reboot completed successfully.
+- [x] SSH reconnect after reboot worked.
+- [x] Git working tree remained clean after reboot.
+- [x] PM2 systemd service `pm2-sh002.service` was enabled and active after reboot.
+- [x] PM2 resurrect restored the saved process list from `/home/sh002/.pm2/dump.pm2`.
+- [x] PM2 process `lexora-api` came back online automatically after reboot.
+- [x] Nginx remained enabled and active after reboot.
+- [x] PostgreSQL remained enabled and active after reboot.
+- [x] API health worked through Nginx inside VM:
+  - `http://localhost/api/v1/health`
+- [x] API health worked through direct localhost app port inside VM:
+  - `http://localhost:4000/api/v1/health`
+- [x] API health worked from Windows host through Nginx:
+  - `http://192.168.197.130/api/v1/health`
+- [x] Direct API port access from Windows host remained blocked:
+  - `http://192.168.197.130:4000/api/v1/health`
+  - Result: connection failed / could not connect to server
+
+Post-reboot port verification:
+
+- PostgreSQL listened on `127.0.0.1:5432`.
+- Lexora API listened on `127.0.0.1:4000`.
+- Nginx listened on `0.0.0.0:80`.
+
+Verdict:
+
+- PM2 survives reboot.
+- Nginx survives reboot.
+- PostgreSQL survives reboot.
+- Reverse proxy routing survives reboot.
+- Direct application port hardening survives reboot.
 
 ## 2. Auth Checks
 
@@ -1215,7 +1249,7 @@ DEPARTMENT_ID='dept_law_test'
 4. Continue student own-enrollment/self-resource rules test.
 5. Continue teacher assigned-course isolation tests.
 6. Cross-department admin isolation tests completed for programs, courses, course offerings, and enrollments.
-7. Test reboot persistence:
+7. Reboot persistence completed:
    - PM2 survives reboot
    - Nginx survives reboot
    - PostgreSQL survives reboot
