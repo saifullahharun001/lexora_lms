@@ -127,7 +127,7 @@ Verdict:
 - [x] Protected endpoint rejects unauthenticated request
 - [x] Authenticated user can access own allowed resources
 - [x] Student cannot access another student’s data
-- [ ] Teacher cannot access unassigned course data
+- [x] Teacher cannot access unassigned course data
 - [x] Admin cannot access another department’s data
 - [x] Policy guard works on sensitive endpoints
 
@@ -174,7 +174,7 @@ Verdict:
 - `department_admin` role works because static role policies include module-level wildcard policies.
 - `Authenticated user can access own allowed resources` is currently verified using the temporary `department_admin` runtime role, not a normal student self-resource flow.
 - Student-specific own-resource enrollment isolation has now been tested and passed.
-- Teacher assigned-course isolation still needs separate testing.
+- Teacher assigned-course isolation has now been tested and passed.
 - Cross-department admin isolation has now been tested for programs, courses, course offerings, and enrollments.
 
 ### Cross-Department Admin Isolation Runtime Test
@@ -674,6 +674,53 @@ Teacher assignment recommendation:
   - assigned-course authorization rules
   - audit logging for teacher assignment/unassignment
   - no weakening of existing authorization or request context logic
+
+### Teacher Assigned-Course Isolation Runtime Test
+
+- [x] Runtime teacher login verified:
+  - User ID: `user_law_runtime_teacher`
+  - Email: `runtime-test-teacher@cu.ac.bd`
+  - Role: `teacher`
+  - Department: `dept_law_test`
+
+- [x] Runtime teacher assignment verified:
+  - Teacher Assignment ID: `teacher_assignment_law_101_runtime`
+  - Assigned Course Offering ID: `cmozy23xm000r2i0lccmtg7dl`
+  - Assigned Course: `LAW-101 — Constitutional Law I`
+  - Assignment Role Code: `primary_instructor`
+  - Assignment Status: `ACTIVE`
+  - `unassignedAt`: `null`
+
+- [x] Controlled unassigned offering remained available for negative test:
+  - Unassigned Course Offering ID: `offering_law_999_unassigned_runtime`
+  - Unassigned Course: `LAW-999 — Unassigned Runtime Test Course`
+  - Teacher assignments: none
+
+Runtime test result:
+
+- Teacher successfully logged in with role `teacher`.
+- Teacher listed course offerings:
+  - `GET /api/v1/course-offerings`
+  - Result: returned only assigned offering `cmozy23xm000r2i0lccmtg7dl`
+  - Assigned course `LAW-101` appeared.
+  - Unassigned course/offering `LAW-999` / `offering_law_999_unassigned_runtime` did not appear.
+
+- Teacher direct-read request to assigned course offering worked:
+  - `GET /api/v1/course-offerings/cmozy23xm000r2i0lccmtg7dl`
+  - Result: returned assigned `LAW-101` course offering.
+
+- Teacher direct-read request to unassigned course offering was blocked:
+  - `GET /api/v1/course-offerings/offering_law_999_unassigned_runtime`
+  - Result: `NotFoundException`
+  - Message: `Course offering not found`
+
+Verdict:
+
+- Teacher can list only assigned course offerings.
+- Teacher can directly read assigned course offering.
+- Teacher cannot list unassigned course offering.
+- Teacher cannot directly read unassigned course offering.
+- Assignment-aware teacher course offering isolation is working as expected.
 
 ### Academic Core Runtime Verdict
 
@@ -1300,7 +1347,7 @@ DEPARTMENT_ID='dept_law_test'
 - [x] TypeScript Node16/ESM migration risk documented
 - [ ] Student visibility rules tested
 - [x] Student own-resource rules tested
-- [ ] Teacher assigned-course isolation tested
+- [x] Teacher assigned-course isolation tested
 - [x] Cross-department admin isolation tested
 - [ ] Assessment workflow tested
 - [ ] Result Processing workflow tested
@@ -1313,7 +1360,7 @@ DEPARTMENT_ID='dept_law_test'
 2. Continue student-specific access isolation tests.
 3. Continue student course visibility rules test.
 4. Student own-enrollment/self-resource rules test completed.
-5. Continue teacher assigned-course isolation tests.
+5. Teacher assigned-course isolation tests completed.
 6. Cross-department admin isolation tests completed for programs, courses, course offerings, and enrollments.
 7. Reboot persistence completed:
    - PM2 survives reboot
