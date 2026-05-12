@@ -94,7 +94,7 @@
 - [x] Authenticated user can access own allowed resources
 - [ ] Student cannot access another student’s data
 - [ ] Teacher cannot access unassigned course data
-- [ ] Admin cannot access another department’s data
+- [x] Admin cannot access another department’s data
 - [x] Policy guard works on sensitive endpoints
 
 ### Authorization Test Notes
@@ -141,7 +141,70 @@
 - `Authenticated user can access own allowed resources` is currently verified using the temporary `department_admin` runtime role, not a normal student self-resource flow.
 - Student-specific own-resource isolation still needs separate testing.
 - Teacher assigned-course isolation still needs separate testing.
-- Cross-department admin isolation still needs separate testing.
+- Cross-department admin isolation has now been tested for programs, courses, course offerings, and enrollments.
+
+### Cross-Department Admin Isolation Runtime Test
+
+- [x] Created controlled second runtime department:
+  - Department ID: `dept_bus_test`
+  - Code: `BUS`
+  - Name: `Department of Business Runtime Test`
+
+- [x] Created controlled BUS runtime department admin:
+  - User ID: `user_bus_runtime_admin`
+  - Email: `runtime-business-admin@cu.ac.bd`
+  - Role: `department_admin`
+  - Department: `dept_bus_test`
+
+- [x] Created BUS runtime academic data:
+  - Program ID: `program_bus_runtime_bba`
+  - Course ID: `course_bus_101_runtime`
+  - Academic Year ID: `ay_bus_2025_2026`
+  - Academic Term ID: `term_bus_2025_2026_s1`
+  - Course Offering ID: `offering_bus_101_runtime`
+  - Enrollment ID: `cmp2sh3ny000d2ig48elycts9`
+
+Runtime test result:
+
+- LAW admin listed programs and saw only LAW program data.
+- LAW admin used `x-department-id: dept_bus_test`, but still saw only LAW program data.
+- BUS admin listed programs and saw only BUS program data.
+- BUS admin used `x-department-id: dept_law_test`, but still saw only BUS program data.
+
+- LAW admin listed courses and saw only LAW courses.
+- LAW admin used `x-department-id: dept_bus_test`, but still saw only LAW courses.
+- BUS admin listed courses and saw only BUS courses.
+- BUS admin used `x-department-id: dept_law_test`, but still saw only BUS courses.
+
+- LAW admin direct-read attempt against BUS course returned `NotFoundException`.
+- BUS admin direct-read attempt against LAW course returned `NotFoundException`.
+
+- LAW admin listed course offerings and saw only LAW course offerings.
+- LAW admin used `x-department-id: dept_bus_test`, but still saw only LAW course offerings.
+- BUS admin listed course offerings and saw only BUS course offerings.
+- BUS admin used `x-department-id: dept_law_test`, but still saw only BUS course offerings.
+
+- LAW admin direct-read attempt against BUS course offering returned `NotFoundException`.
+- BUS admin direct-read attempt against LAW course offering returned `NotFoundException`.
+
+- LAW admin listed enrollments and saw only LAW enrollments.
+- LAW admin used `x-department-id: dept_bus_test`, but still saw only LAW enrollments.
+- BUS admin listed enrollments and saw only BUS enrollments.
+- BUS admin used `x-department-id: dept_law_test`, but still saw only BUS enrollments.
+
+- LAW admin direct-read attempt against BUS enrollment returned `NotFoundException`.
+- BUS admin direct-read attempt against LAW enrollment returned `NotFoundException`.
+
+Verdict:
+
+- Cross-department admin isolation passed for:
+  - Programs
+  - Courses
+  - Course offerings
+  - Enrollments
+- `x-department-id` header abuse did not allow cross-department access.
+- Direct object ID access did not leak opposite department records.
+- Request context / principal department scoping is working as expected.
 
 ### Department Context Notes
 
@@ -1138,7 +1201,7 @@ DEPARTMENT_ID='dept_law_test'
 - [ ] Student visibility rules tested
 - [ ] Student own-resource rules tested
 - [ ] Teacher assigned-course isolation tested
-- [ ] Cross-department admin isolation tested
+- [x] Cross-department admin isolation tested
 - [ ] Assessment workflow tested
 - [ ] Result Processing workflow tested
 - [ ] Transcript Verification workflow tested
@@ -1151,7 +1214,7 @@ DEPARTMENT_ID='dept_law_test'
 3. Continue student course visibility rules test.
 4. Continue student own-enrollment/self-resource rules test.
 5. Continue teacher assigned-course isolation tests.
-6. Continue cross-department admin isolation tests.
+6. Cross-department admin isolation tests completed for programs, courses, course offerings, and enrollments.
 7. Test reboot persistence:
    - PM2 survives reboot
    - Nginx survives reboot
