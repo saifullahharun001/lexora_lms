@@ -1396,3 +1396,62 @@ Recommended implementation options:
 - Department admins retain department-scoped offering list/read behavior.
 - Retest with fresh teacher tokens is required.
 
+
+## Access Control Fix Runtime Retest Result
+
+### Student Enrollment Self-Resource Retest
+
+- [x] Pulled fix commit `52c3b7d` into Ubuntu VM.
+- [x] Rebuilt API successfully with `pnpm --filter @lexora/api build`.
+- [x] Restarted `lexora-api` with PM2.
+- [x] Health check passed after PM2 entry path correction.
+- [x] Logged in as `runtime-student-own@cu.ac.bd`.
+- [x] Student access token generated successfully.
+- [x] `GET /api/v1/enrollments/me` returned `200 OK`.
+- [x] Response was `[]`, expected because `runtime-student-own@cu.ac.bd` currently has no own enrollment.
+- [x] `GET /api/v1/enrollments` as student still returned `403 Forbidden`.
+
+Student retest verdict:
+
+- Student self-resource endpoint works.
+- Student broad/admin enrollment endpoint remains blocked.
+- Student enrollment access-control fix passed initial runtime retest.
+
+### Teacher Assigned-Course Isolation Retest
+
+- [x] Logged in as `runtime-test-teacher@cu.ac.bd`.
+- [x] Teacher access token generated successfully.
+- [x] `GET /api/v1/course-offerings` as teacher returned only assigned offering:
+  - `LAW-101 — Constitutional Law I`
+  - Course Offering ID: `cmozy23xm000r2i0lccmtg7dl`
+- [x] Unassigned offering `LAW-999` no longer appeared in teacher course offering list.
+- [x] `GET /api/v1/course-offerings/offering_law_999_unassigned_runtime` as teacher returned `NotFoundException`.
+- [x] Direct access to unassigned course offering is now blocked for teacher.
+
+Teacher retest verdict:
+
+- Teacher assigned offering access works.
+- Teacher unassigned offering list isolation works.
+- Teacher unassigned offering direct access isolation works.
+- Teacher assigned-course object-level authorization fix passed runtime retest.
+
+### PM2 Runtime Note
+
+During retest, PM2 initially failed because it was still trying to run:
+
+- `apps/api/dist/main.js`
+
+Actual build output was:
+
+- `apps/api/dist/src/main.js`
+
+PM2 process was recreated with the correct entry path:
+
+- `node -r ./apps/api/register-paths.js apps/api/dist/src/main.js`
+
+After that:
+
+- `pm2 save` completed.
+- `lexora-api` became online.
+- `/api/v1/health` returned successful health response.
+
