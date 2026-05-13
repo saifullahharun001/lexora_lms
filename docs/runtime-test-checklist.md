@@ -1019,15 +1019,139 @@ Verdict:
 
 ## 6. Assessment
 
-- [ ] Create assignment
-- [ ] List assignments
-- [ ] Submit assignment
-- [ ] Student can only see own submissions
-- [ ] Teacher can review assigned course submissions
-- [ ] Create quiz
-- [ ] Start quiz attempt
-- [ ] Submit quiz attempt
-- [ ] Validate quiz access rules
+- [x] Create assignment
+- [x] List assignments — teacher/student list works, but student can currently see DRAFT assignment visibility gap
+- [x] Submit assignment
+- [x] Student can only see own submissions
+- [x] Teacher can review assigned course submissions
+- [x] Create quiz
+- [x] Start quiz attempt
+- [x] Submit quiz attempt
+- [x] Validate quiz access rules — attempt ownership works, but student can currently see DRAFT quiz visibility gap
+
+
+
+### Assessment Workflow Runtime Test
+
+Runtime test date: 2026-05-13
+
+Runtime context:
+
+| Item | Value |
+|---|---|
+| Course Offering ID | `cmozy23xm000r2i0lccmtg7dl` |
+| Course | `LAW-101 — Constitutional Law I` |
+| Teacher User ID | `user_law_runtime_teacher` |
+| Own Student User ID | `user_law_runtime_student_own` |
+| Own Student Enrollment ID | `enrollment_law_student_own_runtime` |
+| Other Student User ID | `user_law_runtime_student_other` |
+| Other Student Enrollment ID | `enrollment_law_student_other_runtime` |
+
+Created runtime assignment:
+
+| Field | Value |
+|---|---|
+| Assignment ID | `cmp3g37ba000r2iavun7dkqd6` |
+| Course Offering ID | `cmozy23xm000r2i0lccmtg7dl` |
+| Title | `Runtime Assessment Assignment` |
+| Status | `DRAFT` |
+| Max Points | `10` |
+| Max Submission Count | `1` |
+
+Created runtime assignment submission:
+
+| Field | Value |
+|---|---|
+| Submission ID | `cmp3g3ley000v2iav09wa8nzr` |
+| Assignment ID | `cmp3g37ba000r2iavun7dkqd6` |
+| Enrollment ID | `enrollment_law_student_own_runtime` |
+| Attempt Number | `1` |
+| Status | `SUBMITTED` |
+| Is Late | `false` |
+
+Assignment workflow verified:
+
+- [x] Teacher login worked with role `teacher`.
+- [x] Other student login worked with role `student`.
+- [x] Teacher created assignment through `POST /api/v1/assignments`.
+- [x] Own student submitted assignment through `POST /api/v1/assignment-submissions`.
+- [x] Other student direct read of own student submission was blocked:
+  - Endpoint: `GET /api/v1/assignment-submissions/cmp3g3ley000v2iav09wa8nzr`
+  - Result: `403 Forbidden`
+  - Message: `Students can only access their own assessment records`
+- [x] Teacher direct read of the submission worked:
+  - Endpoint: `GET /api/v1/assignment-submissions/cmp3g3ley000v2iav09wa8nzr`
+  - Result: `200 OK`
+
+Created runtime quiz:
+
+| Field | Value |
+|---|---|
+| Quiz ID | `cmp3g641e000z2iavjxp5v437` |
+| Course Offering ID | `cmozy23xm000r2i0lccmtg7dl` |
+| Title | `Runtime Assessment Quiz` |
+| Status | `DRAFT` |
+| Max Points | `10` |
+| Max Attempts | `1` |
+| Time Limit Minutes | `30` |
+| Auto Grading Enabled | `false` |
+
+Created runtime quiz attempt:
+
+| Field | Value |
+|---|---|
+| Quiz Attempt ID | `cmp3g6hkz00132iavif5ah5jc` |
+| Quiz ID | `cmp3g641e000z2iavjxp5v437` |
+| Enrollment ID | `enrollment_law_student_own_runtime` |
+| Attempt Number | `1` |
+| Initial Status | `IN_PROGRESS` |
+| Final Status | `SUBMITTED` |
+| Time Limit Snapshot | `30` |
+
+Quiz workflow verified:
+
+- [x] Teacher created quiz through `POST /api/v1/quizzes`.
+- [x] Teacher listed quiz through `GET /api/v1/quizzes?courseOfferingId=cmozy23xm000r2i0lccmtg7dl`.
+- [x] Own student listed quiz through `GET /api/v1/quizzes?courseOfferingId=cmozy23xm000r2i0lccmtg7dl`.
+- [x] Own student started quiz attempt through `POST /api/v1/quiz-attempts/start`.
+- [x] Other student direct read of own student quiz attempt was blocked:
+  - Endpoint: `GET /api/v1/quiz-attempts/cmp3g6hkz00132iavif5ah5jc`
+  - Result: `403 Forbidden`
+  - Message: `Students can only access their own assessment records`
+- [x] Own student submitted quiz attempt through `POST /api/v1/quiz-attempts/submit`.
+- [x] Teacher direct read of submitted quiz attempt worked:
+  - Endpoint: `GET /api/v1/quiz-attempts/cmp3g6hkz00132iavif5ah5jc`
+  - Result: `200 OK`
+
+Assessment visibility findings:
+
+- Student submission ownership protection works.
+- Student quiz attempt ownership protection works.
+- Teacher can create and read assessment records for assigned course offering.
+- Student can currently list `DRAFT` assignment through:
+  - `GET /api/v1/assignments?courseOfferingId=cmozy23xm000r2i0lccmtg7dl`
+- Student can currently list `DRAFT` quiz through:
+  - `GET /api/v1/quizzes?courseOfferingId=cmozy23xm000r2i0lccmtg7dl`
+
+Assessment visibility gap:
+
+- Assignment and quiz list endpoints currently allow student role to see DRAFT assessment records.
+- Student-facing assignment/quiz list should be filtered by enrollment, visibility window, and published/available status.
+- Backend-side filtering is required; frontend-only hiding is not sufficient.
+- Recommended future behavior:
+  - Students should only see assessments for their own enrolled course offerings.
+  - Students should not see `DRAFT` assignments or quizzes.
+  - Students should only see published/available assessments.
+  - Teachers should only manage assessments for assigned course offerings.
+  - Admins should remain department-scoped.
+
+Assessment runtime verdict:
+
+- Assignment create/list/submit basic workflow: passed.
+- Assignment submission ownership isolation: passed.
+- Quiz create/list/start/submit basic workflow: passed.
+- Quiz attempt ownership isolation: passed.
+- Student assignment/quiz list visibility filtering: gap found; needs improvement.
 
 ## 7. Result Processing
 
