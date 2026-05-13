@@ -1151,7 +1151,74 @@ Assessment runtime verdict:
 - Assignment submission ownership isolation: passed.
 - Quiz create/list/start/submit basic workflow: passed.
 - Quiz attempt ownership isolation: passed.
-- Student assignment/quiz list visibility filtering: gap found; needs improvement.
+- Student assignment/quiz list visibility filtering: fixed and runtime retested.
+
+
+
+### Assessment Visibility Fix Runtime Retest
+
+Runtime retest date: 2026-05-13
+
+Code fix commit:
+
+| Field | Value |
+|---|---|
+| Commit | `0d93462` |
+| Message | `Fix assessment visibility filtering` |
+
+Retest context:
+
+| Item | Value |
+|---|---|
+| Assignment ID | `cmp3g37ba000r2iavun7dkqd6` |
+| Quiz ID | `cmp3g641e000z2iavjxp5v437` |
+| Course Offering ID | `cmozy23xm000r2i0lccmtg7dl` |
+| Teacher User ID | `user_law_runtime_teacher` |
+| Own Student User ID | `user_law_runtime_student_own` |
+
+Verified behavior after fix:
+
+- [x] API typecheck passed after fix.
+- [x] API build passed after fix.
+- [x] `lexora-api` restarted with PM2.
+- [x] Teacher login worked with role `teacher`.
+- [x] Own student login worked with role `student`.
+- [x] Teacher can still list DRAFT assignment:
+  - Endpoint: `GET /api/v1/assignments?courseOfferingId=cmozy23xm000r2i0lccmtg7dl`
+  - Result: `200 OK`
+  - DRAFT assignment visible to assigned teacher.
+- [x] Teacher can still list DRAFT quiz:
+  - Endpoint: `GET /api/v1/quizzes?courseOfferingId=cmozy23xm000r2i0lccmtg7dl`
+  - Result: `200 OK`
+  - DRAFT quiz visible to assigned teacher.
+- [x] Student cannot list DRAFT assignment:
+  - Endpoint: `GET /api/v1/assignments?courseOfferingId=cmozy23xm000r2i0lccmtg7dl`
+  - Result: `[]`
+- [x] Student cannot list DRAFT quiz:
+  - Endpoint: `GET /api/v1/quizzes?courseOfferingId=cmozy23xm000r2i0lccmtg7dl`
+  - Result: `[]`
+- [x] Student direct read of DRAFT assignment is blocked:
+  - Endpoint: `GET /api/v1/assignments/cmp3g37ba000r2iavun7dkqd6`
+  - Result: `404 Not Found`
+  - Message: `Assignment not found`
+- [x] Student direct read of DRAFT quiz is blocked:
+  - Endpoint: `GET /api/v1/quizzes/cmp3g641e000z2iavjxp5v437`
+  - Result: `404 Not Found`
+  - Message: `Quiz not found`
+- [x] Teacher direct read of DRAFT assignment still works:
+  - Endpoint: `GET /api/v1/assignments/cmp3g37ba000r2iavun7dkqd6`
+  - Result: `200 OK`
+- [x] Teacher direct read of DRAFT quiz still works:
+  - Endpoint: `GET /api/v1/quizzes/cmp3g641e000z2iavjxp5v437`
+  - Result: `200 OK`
+
+Assessment visibility fix verdict:
+
+- Student DRAFT assignment list visibility gap: fixed.
+- Student DRAFT quiz list visibility gap: fixed.
+- Student direct object access to DRAFT assignment/quiz: blocked with `404 Not Found`.
+- Teacher assigned-course DRAFT assessment visibility: preserved.
+- Assessment visibility filtering fix: passed runtime retest.
 
 ## 7. Result Processing
 
