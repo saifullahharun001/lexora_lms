@@ -79,14 +79,18 @@ export class AssessmentService {
   ) {}
 
   listAssignments(filters: Omit<AssignmentListFilters, "departmentId">) {
-    return this.repository.findAssignments({
-      departmentId: this.getDepartmentId(),
-      ...filters
-    });
+    const scopedFilters = this.buildAssignmentReadFilters(filters);
+
+    if (!scopedFilters) {
+      return [];
+    }
+
+    return this.repository.findAssignments(scopedFilters);
   }
 
   async getAssignment(id: string) {
-    const assignment = await this.repository.findAssignmentById(this.getDepartmentId(), id);
+    const filters = this.buildAssignmentReadFilters({ id });
+    const assignment = filters ? (await this.repository.findAssignments(filters))[0] : null;
 
     if (!assignment) {
       throw new NotFoundException("Assignment not found");
@@ -221,14 +225,18 @@ export class AssessmentService {
   }
 
   listQuizzes(filters: Omit<QuizListFilters, "departmentId">) {
-    return this.repository.findQuizzes({
-      departmentId: this.getDepartmentId(),
-      ...filters
-    });
+    const scopedFilters = this.buildQuizReadFilters(filters);
+
+    if (!scopedFilters) {
+      return [];
+    }
+
+    return this.repository.findQuizzes(scopedFilters);
   }
 
   async getQuiz(id: string) {
-    const quiz = await this.repository.findQuizById(this.getDepartmentId(), id);
+    const filters = this.buildQuizReadFilters({ id });
+    const quiz = filters ? (await this.repository.findQuizzes(filters))[0] : null;
 
     if (!quiz) {
       throw new NotFoundException("Quiz not found");
@@ -486,6 +494,79 @@ export class AssessmentService {
     if (!assignment) {
       throw new ForbiddenException("Teacher is not assigned to this course offering");
     }
+  }
+
+  private buildAssignmentReadFilters(
+    filters: Omit<AssignmentListFilters, "departmentId" | "teacherUserId" | "studentUserId" | "visibleToStudentAt" | "statuses">
+  ): AssignmentListFilters | null {
+    const baseFilters = {
+      departmentId: this.getDepartmentId(),
+      id: filters.id,
+      courseOfferingId: filters.courseOfferingId
+    };
+
+    if (this.hasRole("department_admin")) {
+      return {
+        ...baseFilters,
+        status: filters.status
+      };
+    }
+
+    if (this.isTeacher()) {
+      return {
+        ...baseFilters,
+        status: filters.status,
+        teacherUserId: this.getActorId()
+      };
+    }
+
+    if (!this.isStudent() || (filters.status && filters.status !== AssignmentStatus.PUBLISHED)) {
+      return null;
+    }
+
+    return {
+      ...baseFilters,
+      statuses: [AssignmentStatus.PUBLISHED],
+      studentUserId: this.getActorId(),
+      visibleToStudentAt: new Date()
+    };
+  }
+
+  private buildQuizReadFilters(
+    filters: Omit<QuizListFilters, "departmentId" | "teacherUserId" | "studentUserId" | "visibleToStudentAt" | "statuses">
+  ): QuizListFilters | null {
+    const baseFilters = {
+      departmentId: this.getDepartmentId(),
+      id: filters.id,
+      courseOfferingId: filters.courseOfferingId
+    };
+    const studentStatuses: QuizStatus[] = [QuizStatus.PUBLISHED, QuizStatus.ACTIVE];
+
+    if (this.hasRole("department_admin")) {
+      return {
+        ...baseFilters,
+        status: filters.status
+      };
+    }
+
+    if (this.isTeacher()) {
+      return {
+        ...baseFilters,
+        status: filters.status,
+        teacherUserId: this.getActorId()
+      };
+    }
+
+    if (!this.isStudent() || (filters.status && !studentStatuses.includes(filters.status))) {
+      return null;
+    }
+
+    return {
+      ...baseFilters,
+      statuses: filters.status ? [filters.status] : studentStatuses,
+      studentUserId: this.getActorId(),
+      visibleToStudentAt: new Date()
+    };
   }
 
   private assertDateWindow(start?: Date, due?: Date, close?: Date) {

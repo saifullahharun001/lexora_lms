@@ -1,5 +1,10 @@
 import { Injectable } from "@nestjs/common";
-import { EnrollmentStatus, Prisma, QuizAttemptStatus } from "@prisma/client";
+import {
+  EnrollmentStatus,
+  Prisma,
+  QuizAttemptStatus,
+  TeacherAssignmentStatus
+} from "@prisma/client";
 
 import { PrismaService } from "@/common/prisma/prisma.service";
 import type {
@@ -21,10 +26,21 @@ export class PrismaAssessmentRepository implements AssessmentRepositoryPort {
   findAssignments(filters: AssignmentListFilters) {
     return this.prisma.assignment.findMany({
       where: {
+        ...this.buildAssessmentVisibilityWhere(filters),
+        id: filters.id,
         departmentId: filters.departmentId,
         archivedAt: null,
         ...(filters.courseOfferingId ? { courseOfferingId: filters.courseOfferingId } : {}),
-        ...(filters.status ? { status: filters.status } : {})
+        ...(filters.status ? { status: filters.status } : {}),
+        ...(filters.statuses ? { status: { in: filters.statuses } } : {}),
+        ...(filters.visibleToStudentAt
+          ? {
+              AND: [
+                { OR: [{ availableFrom: null }, { availableFrom: { lte: filters.visibleToStudentAt } }] },
+                { OR: [{ closeAt: null }, { closeAt: { gte: filters.visibleToStudentAt } }] }
+              ]
+            }
+          : {})
       },
       orderBy: {
         createdAt: "desc"
@@ -149,10 +165,21 @@ export class PrismaAssessmentRepository implements AssessmentRepositoryPort {
   findQuizzes(filters: QuizListFilters) {
     return this.prisma.quiz.findMany({
       where: {
+        ...this.buildAssessmentVisibilityWhere(filters),
+        id: filters.id,
         departmentId: filters.departmentId,
         archivedAt: null,
         ...(filters.courseOfferingId ? { courseOfferingId: filters.courseOfferingId } : {}),
-        ...(filters.status ? { status: filters.status } : {})
+        ...(filters.status ? { status: filters.status } : {}),
+        ...(filters.statuses ? { status: { in: filters.statuses } } : {}),
+        ...(filters.visibleToStudentAt
+          ? {
+              AND: [
+                { OR: [{ availableFrom: null }, { availableFrom: { lte: filters.visibleToStudentAt } }] },
+                { OR: [{ closeAt: null }, { closeAt: { gte: filters.visibleToStudentAt } }] }
+              ]
+            }
+          : {})
       },
       orderBy: {
         createdAt: "desc"
@@ -254,5 +281,40 @@ export class PrismaAssessmentRepository implements AssessmentRepositoryPort {
         }
       });
     });
+  }
+
+  private buildAssessmentVisibilityWhere(filters: AssignmentListFilters | QuizListFilters) {
+    if (!filters.teacherUserId && !filters.studentUserId) {
+      return {};
+    }
+
+    return {
+      courseOffering: {
+        ...(filters.teacherUserId
+          ? {
+              teacherAssignments: {
+                some: {
+                  departmentId: filters.departmentId,
+                  teacherUserId: filters.teacherUserId,
+                  status: TeacherAssignmentStatus.ACTIVE,
+                  archivedAt: null
+                }
+              }
+            }
+          : {}),
+        ...(filters.studentUserId
+          ? {
+              enrollments: {
+                some: {
+                  departmentId: filters.departmentId,
+                  studentUserId: filters.studentUserId,
+                  status: EnrollmentStatus.APPROVED,
+                  archivedAt: null
+                }
+              }
+            }
+          : {})
+      }
+    };
   }
 }

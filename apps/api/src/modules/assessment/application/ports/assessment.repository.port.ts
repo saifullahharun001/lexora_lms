@@ -6,8 +6,13 @@ import type {
 
 export interface AssignmentListFilters {
   departmentId: string;
+  id?: string;
   courseOfferingId?: string;
   status?: AssignmentStatus;
+  statuses?: AssignmentStatus[];
+  teacherUserId?: string;
+  studentUserId?: string;
+  visibleToStudentAt?: Date;
 }
 
 export interface CreateAssignmentInput {
@@ -48,8 +53,13 @@ export interface CreateSubmissionInput {
 
 export interface QuizListFilters {
   departmentId: string;
+  id?: string;
   courseOfferingId?: string;
   status?: QuizStatus;
+  statuses?: QuizStatus[];
+  teacherUserId?: string;
+  studentUserId?: string;
+  visibleToStudentAt?: Date;
 }
 
 export interface CreateQuizInput {
