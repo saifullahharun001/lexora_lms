@@ -1222,17 +1222,156 @@ Assessment visibility fix verdict:
 
 ## 7. Result Processing
 
-- [ ] Create/configure grade scale
-- [ ] Compute result
-- [ ] Verify result
-- [ ] Publish result
-- [ ] Published result becomes locked
-- [ ] Direct edit after publish blocked
-- [ ] Amendment request created
-- [ ] Amendment approved
-- [ ] Amendment applied
-- [ ] GPA computed
-- [ ] CGPA computed
+- [x] Create/configure grade scale
+- [x] Compute result
+- [x] Verify result
+- [x] Publish result
+- [x] Published result becomes locked
+- [x] Direct edit after publish blocked
+- [x] Amendment request created
+- [x] Amendment approved
+- [x] Amendment applied
+- [x] GPA computed
+- [x] CGPA computed
+
+### Result Processing Runtime Test
+
+Runtime test dates: 2026-05-13 and 2026-05-18
+
+Runtime context:
+
+| Item | Value |
+|---|---|
+| Department ID | `dept_law_test` |
+| Academic Term ID | `term_law_2025_2026_s1` |
+| Course Offering ID | `cmozy23xm000r2i0lccmtg7dl` |
+| Enrollment ID | `enrollment_law_student_own_runtime` |
+| Student User ID | `user_law_runtime_student_own` |
+| Grade Scale ID | `cmp4ceyyf000d2ixxy9ubtc5r` |
+| Result Record ID | `cmp4cpg36000r2ixx5fv5svv5` |
+| Amendment ID | `cmp4csl1q00112ixxl5wnxyxh` |
+| GPA Record ID | `cmpbeb1yy00072i4hnudbu9pr` |
+| CGPA Record ID | `cmpbebghv000b2i4haymf3i6d` |
+
+Created runtime grade scale:
+
+| Field | Value |
+|---|---|
+| Code | `LAW_RUNTIME_SCALE_20260513` |
+| Name | `LAW Runtime Test Grade Scale` |
+| Is Default | `true` |
+| Is Active | `true` |
+| Pass Percentage | `40` |
+| Pass Grade Point | `2` |
+| Rules | `A+` to `F`, 10 active rules |
+
+Controlled grading records created for runtime result computation:
+
+| Grading Record ID | Target Type | Points Awarded | Source |
+|---|---|---:|---|
+| `grading_law_assignment_runtime` | `ASSIGNMENT_SUBMISSION` | `8.00` | Assignment submission `cmp3g3ley000v2iav09wa8nzr` |
+| `grading_law_quiz_runtime` | `QUIZ_ATTEMPT` | `9.00` | Quiz attempt `cmp3g6hkz00132iavif5ah5jc` |
+
+Result compute verified:
+
+| Field | Value |
+|---|---|
+| Status after compute | `COMPUTED` |
+| Total Raw Score | `17` |
+| Normalized Percentage | `85` |
+| Letter Grade | `A+` |
+| Grade Point | `4` |
+| Credit Hours Snapshot | `3` |
+| Quality Points | `12` |
+| Eligibility Status | `CONDITIONAL` |
+
+Result component verification:
+
+| Component | Raw Score | Max Score | Normalized | Weight | Weighted Score |
+|---|---:|---:|---:|---:|---:|
+| Assignment | `8` | `10` | `80` | `50` | `40` |
+| Quiz | `9` | `10` | `90` | `50` | `45` |
+
+Workflow verified:
+
+- [x] Grade scale created through `POST /api/v1/grade-scales`.
+- [x] Grade scale listed through `GET /api/v1/grade-scales?isActive=true`.
+- [x] Result computed through `POST /api/v1/results/compute`.
+- [x] Result verified through `POST /api/v1/results/:id/verify`.
+- [x] Result published through `POST /api/v1/results/:id/publish`.
+- [x] Published result read through `GET /api/v1/results/:id`.
+- [x] Published result became locked.
+- [x] Recompute after publish returned `ConflictException`.
+- [x] Recompute after publish returned message: `Published, locked, verified, or amended results require amendment flow`.
+- [x] Amendment request created through `POST /api/v1/result-amendments`.
+- [x] Amendment approved through `POST /api/v1/result-amendments/:id/approve`.
+- [x] Amendment applied through `POST /api/v1/result-amendments/:id/apply`.
+- [x] Result status became `AMENDED`.
+- [x] Result retained `isPublished: true`.
+- [x] Result retained `lockedAt`.
+- [x] Result set `amendedAt`.
+- [x] GPA computed through `POST /api/v1/gpa/compute-term`.
+- [x] GPA listed through `GET /api/v1/gpa`.
+- [x] CGPA computed/listed through `GET /api/v1/cgpa`.
+
+Published result lock verification:
+
+| Test | Result |
+|---|---|
+| Recompute after publish | Blocked |
+| Error Code | `ConflictException` |
+| Error Message | `Published, locked, verified, or amended results require amendment flow` |
+
+Amendment verification:
+
+| Field | Before | After |
+|---|---:|---:|
+| Status | `PUBLISHED` | `AMENDED` |
+| Normalized Percentage | `85` | `82` |
+| Letter Grade | `A+` | `A+` |
+| Grade Point | `4` | `4` |
+| Quality Points | `12` | `12` |
+
+GPA / CGPA verification after AMENDED result inclusion fix:
+
+| Field | Value |
+|---|---|
+| GPA Attempted Credits | `3` |
+| GPA Earned Credits | `3` |
+| GPA Quality Points | `12` |
+| GPA | `4` |
+| GPA Result Count | `1` |
+| CGPA Attempted Credits | `3` |
+| CGPA Earned Credits | `3` |
+| CGPA Cumulative Quality Points | `12` |
+| CGPA | `4` |
+| CGPA Term Count | `1` |
+
+Runtime issue found and fixed:
+
+- Initial GPA compute after amendment returned `[]`.
+- Cause: GPA computation only included `ResultRecordStatus.PUBLISHED`.
+- After amendment apply, the result status became `AMENDED` while `isPublished` remained `true`.
+- Fix commit:
+  - Commit: `a92f5c4`
+  - Message: `Include amended results in GPA computation`
+- Fix changed GPA result lookup to include both:
+  - `PUBLISHED`
+  - `AMENDED`
+- API typecheck passed after fix.
+- API build passed after fix.
+- Runtime retest confirmed GPA and CGPA now include amended published results.
+
+Result Processing runtime verdict:
+
+- Grade scale workflow passed.
+- Result compute workflow passed.
+- Verify/publish workflow passed.
+- Published result lock passed.
+- Amendment request/approve/apply workflow passed.
+- GPA compute passed after AMENDED inclusion fix.
+- CGPA compute/list passed after AMENDED inclusion fix.
+- Result Processing runtime workflow passed.
 
 ## 8. Transcript Verification
 
