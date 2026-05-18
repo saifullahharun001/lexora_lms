@@ -1,3 +1,5 @@
+import type { ClassSessionStatus } from "@prisma/client";
+
 export interface ClassSessionRecord {
   id: string;
   departmentId: string;
@@ -5,8 +7,16 @@ export interface ClassSessionRecord {
   teacherAssignmentId?: string | null;
   sessionCode?: string | null;
   title?: string | null;
-  status: string;
+  status: ClassSessionStatus;
   scheduledStartAt: Date;
   scheduledEndAt: Date;
+  actualStartAt?: Date | null;
+  actualEndAt?: Date | null;
+  location?: string | null;
+  externalSourceRef?: string | null;
+  lockedAt?: Date | null;
+  canceledAt?: Date | null;
+  archivedAt?: Date | null;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
-
