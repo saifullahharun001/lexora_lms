@@ -638,7 +638,7 @@ export class ResultProcessingService {
       departmentId: this.getDepartmentId(),
       academicTermId,
       studentUserId,
-      status: ResultRecordStatus.PUBLISHED
+      statuses: [ResultRecordStatus.PUBLISHED, ResultRecordStatus.AMENDED]
     })) as Array<ResultRecord & { enrollment: { studentUserId: string } }>;
     const grouped = new Map<string, ResultRecord[]>();
 

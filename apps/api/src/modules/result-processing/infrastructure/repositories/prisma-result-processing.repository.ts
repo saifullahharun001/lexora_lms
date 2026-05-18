@@ -155,7 +155,11 @@ export class PrismaResultProcessingRepository implements ResultProcessingReposit
         ...(filters.academicTermId ? { academicTermId: filters.academicTermId } : {}),
         ...(filters.courseOfferingId ? { courseOfferingId: filters.courseOfferingId } : {}),
         ...(filters.enrollmentId ? { enrollmentId: filters.enrollmentId } : {}),
-        ...(filters.status ? { status: filters.status } : {}),
+        ...(filters.statuses?.length
+          ? { status: { in: filters.statuses } }
+          : filters.status
+            ? { status: filters.status }
+            : {}),
         enrollment: filters.studentUserId ? { studentUserId: filters.studentUserId } : undefined
       },
       include: {

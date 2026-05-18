@@ -64,6 +64,7 @@ export interface ResultFilters {
   enrollmentId?: string;
   studentUserId?: string;
   status?: ResultRecordStatus;
+  statuses?: ResultRecordStatus[];
   limit?: number;
   offset?: number;
 }
