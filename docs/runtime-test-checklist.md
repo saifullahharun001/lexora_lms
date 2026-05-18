@@ -1885,13 +1885,166 @@ DEPARTMENT_ID='dept_law_test'
 - [x] Assessment workflow tested
 - [x] Result Processing workflow tested
 - [x] Transcript Verification workflow tested
-- [ ] Ready to start Class Session Module
+- [x] Ready to start Class Session Module
+
+## Class Session Module Runtime Test
+
+Runtime test date: 2026-05-18
+
+Code commit tested:
+
+| Field | Value |
+|---|---|
+| Commit | `7bf42b8` |
+| Message | `Implement class session API foundation` |
+
+Runtime context:
+
+| Item | Value |
+|---|---|
+| Department ID | `dept_law_test` |
+| Course Offering ID | `cmozy23xm000r2i0lccmtg7dl` |
+| Assigned Course | `LAW-101 — Constitutional Law I` |
+| Teacher Assignment ID | `teacher_assignment_law_101_runtime` |
+| Teacher User ID | `user_law_runtime_teacher` |
+| Student User ID | `user_law_runtime_student_own` |
+| Unassigned Course Offering ID | `offering_law_999_unassigned_runtime` |
+
+Implemented endpoints verified:
+
+- [x] `POST /api/v1/class-sessions`
+- [x] `GET /api/v1/class-sessions`
+- [x] `GET /api/v1/class-sessions/:id`
+- [x] `PATCH /api/v1/class-sessions/:id`
+- [x] `POST /api/v1/class-sessions/:id/activate`
+- [x] `POST /api/v1/class-sessions/:id/complete`
+- [x] `POST /api/v1/class-sessions/:id/cancel`
+- [x] `POST /api/v1/class-sessions/:id/lock`
+- [x] `POST /api/v1/class-sessions/:id/archive`
+
+Created runtime class session:
+
+| Field | Value |
+|---|---|
+| Class Session ID | `cmpbijz8700072idedkeqqcxc` |
+| Course Offering ID | `cmozy23xm000r2i0lccmtg7dl` |
+| Teacher Assignment ID | `teacher_assignment_law_101_runtime` |
+| Session Code | `LAW101-CS-RT-001` |
+| Initial Title | `Runtime Class Session 001` |
+| Updated Title | `Runtime Class Session 001 Updated` |
+| Updated Location | `Room 102` |
+| Initial Status | `SCHEDULED` |
+| Final Status | `ARCHIVED` |
+
+Validation verified:
+
+- [x] Invalid schedule range was rejected.
+- [x] `scheduledEndAt` before `scheduledStartAt` returned `BadRequestException`.
+- [x] Error message: `scheduledEndAt must be after scheduledStartAt`.
+
+Admin CRUD verified:
+
+- [x] Department admin created a class session.
+- [x] Department admin listed class sessions by course offering.
+- [x] Department admin read class session by ID.
+- [x] Department admin updated editable fields while session was `SCHEDULED`.
+- [x] Linked course offering, course, academic term, teacher assignment, and teacher user were returned.
+
+Lifecycle workflow verified:
+
+| Transition / Check | Result |
+|---|---|
+| `SCHEDULED → ACTIVE` | Passed |
+| `ACTIVE → COMPLETED` | Passed |
+| `COMPLETED → LOCKED` | Passed |
+| `LOCKED → ARCHIVED` | Passed |
+| `SCHEDULED → CANCELED` | Passed |
+| Update schedule date while `ACTIVE` | Blocked |
+| Re-activate `COMPLETED` session | Blocked |
+| Update `LOCKED` session | Blocked |
+
+Lifecycle timestamps verified:
+
+| Field | Value |
+|---|---|
+| `actualStartAt` | populated |
+| `actualEndAt` | populated |
+| `lockedAt` | populated |
+| `archivedAt` | populated |
+| `canceledAt` | populated for cancel test session |
+
+Cancel workflow test:
+
+| Field | Value |
+|---|---|
+| Cancel Session ID | `cmpbis1uw000l2ide44csy6y1` |
+| Session Code | `LAW101-CS-RT-CANCEL-001` |
+| Initial Status | `SCHEDULED` |
+| Final Status | `CANCELED` |
+| Canceled At | `2026-05-18T18:10:47.408Z` |
+
+Unassigned teacher isolation setup:
+
+| Field | Value |
+|---|---|
+| Unassigned Class Session ID | `cmpbiuqrt000r2ide7eyou2ge` |
+| Course Offering ID | `offering_law_999_unassigned_runtime` |
+| Session Code | `LAW999-CS-RT-UNASSIGNED-001` |
+| Status | `SCHEDULED` |
+
+Teacher assigned-course isolation verified:
+
+- [x] Teacher could list class sessions for assigned course offering `cmozy23xm000r2i0lccmtg7dl`.
+- [x] Teacher could direct-read assigned class session.
+- [x] Teacher could create a class session for assigned course offering.
+- [x] Teacher could not list class sessions for unassigned course offering `offering_law_999_unassigned_runtime`.
+- [x] Teacher direct-read of unassigned class session returned `NotFoundException`.
+- [x] Teacher create attempt for unassigned course offering returned `ForbiddenException`.
+- [x] Error message: `Teacher is not assigned to this course offering`.
+
+Teacher-created class session:
+
+| Field | Value |
+|---|---|
+| Class Session ID | `cmpbj0yob00152idexwimmanr` |
+| Course Offering ID | `cmozy23xm000r2i0lccmtg7dl` |
+| Teacher Assignment ID | `teacher_assignment_law_101_runtime` |
+| Session Code | `LAW101-CS-RT-TEACHER-001` |
+| Status | `SCHEDULED` |
+
+Student access verification:
+
+- [x] Student broad list access to `GET /api/v1/class-sessions` was blocked.
+- [x] Student direct read access to `GET /api/v1/class-sessions/:id` was blocked.
+- [x] Both returned `403 Forbidden`.
+- [x] Error message: `Access denied by policy`.
+
+Runtime observations:
+
+- Class Session module routes mapped successfully after PM2 restart.
+- Health endpoint remained OK after deployment.
+- Runtime test passwords for teacher/student had to be reset through controlled local Prisma scripts because stored passwords did not match expected runtime password.
+- Password hashes were not printed or documented.
+- Raw access tokens were not committed into documentation.
+- Student-facing enrolled/visible class-session endpoint is not implemented yet and should be considered a future enhancement.
+
+Class Session runtime verdict:
+
+- Class Session API foundation: Passed
+- Admin CRUD: Passed
+- Lifecycle transitions: Passed
+- Invalid transition blocking: Passed
+- Teacher assigned-course isolation: Passed
+- Student broad access blocked: Passed
+- API typecheck: Passed
+- API build: Passed
+
 
 ## 14. Next Test Steps
 
 1. Commit and push the updated runtime checklist.
-2. Continue student-specific access isolation tests.
-3. Continue student course visibility rules test.
+2. Start Attendance Sync Module planning/runtime foundation next.
+3. Student-facing class-session visibility endpoint remains a future enhancement.
 4. Student own-enrollment/self-resource rules test completed.
 5. Teacher assigned-course isolation tests completed.
 6. Cross-department admin isolation tests completed for programs, courses, course offerings, and enrollments.
