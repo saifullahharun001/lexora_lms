@@ -2529,3 +2529,138 @@ Attendance runtime verdict:
 - Admin override without reason block: Passed
 - Admin override with reason: Passed
 
+
+## Eligibility Engine Runtime Test
+
+Runtime test date: 2026-05-19
+
+Code commit tested:
+
+| Field | Value |
+|---|---|
+| Eligibility Engine foundation commit | `2f3e936` |
+| Message | `Implement eligibility engine foundation` |
+
+Runtime context:
+
+| Item | Value |
+|---|---|
+| Department ID | `dept_law_test` |
+| Course Offering ID | `cmozy23xm000r2i0lccmtg7dl` |
+| Course | `LAW-101 — Constitutional Law I` |
+| Academic Term ID | `term_law_2025_2026_s1` |
+| Enrollment ID | `enrollment_law_student_own_runtime` |
+| Student User ID | `user_law_runtime_student_own` |
+| Teacher User ID | `user_law_runtime_teacher` |
+| Attendance Record ID | `cmpcoytqo000n2ifensuu4gvn` |
+
+Implemented endpoints verified:
+
+- [x] `POST /api/v1/eligibility/compute/enrollment/:enrollmentId`
+- [x] `POST /api/v1/eligibility/compute/course-offering/:courseOfferingId`
+- [x] `GET /api/v1/eligibility/enrollments/:enrollmentId`
+- [x] `GET /api/v1/eligibility/me`
+- [x] `PATCH /api/v1/eligibility/enrollments/:enrollmentId/override`
+
+Eligibility computation rule verified:
+
+- [x] Attendance-based eligibility calculation uses counted attendance records for the enrollment and course offering.
+- [x] `PRESENT`, `LATE`, and `EXCUSED` are treated as attended/allowed for MVP.
+- [x] `ABSENT` is treated as not attended.
+- [x] Default eligible threshold is `75%`.
+- [x] Conditional threshold is `65%`.
+- [x] No attendance records result in `PENDING_REVIEW`.
+
+Single enrollment compute verified:
+
+- [x] Admin computed eligibility for one enrollment.
+- [x] Enrollment eligibility status updated to `ELIGIBLE`.
+- [x] `eligibilitySnapshotJson` was written.
+- [x] Snapshot stored rule, counts, percentage, enrollment ID, course offering ID, computed actor, and computed timestamp.
+
+Computed eligibility snapshot:
+
+| Field | Value |
+|---|---|
+| Enrollment ID | `enrollment_law_student_own_runtime` |
+| Course Offering ID | `cmozy23xm000r2i0lccmtg7dl` |
+| Computed By | `cmoubvzde00012i216rnx6eaq` |
+| Rule Type | `attendance_percentage` |
+| Threshold Percentage | `75` |
+| Conditional Threshold Percentage | `65` |
+| Total Counted Sessions | `1` |
+| Present Count | `0` |
+| Late Count | `0` |
+| Excused Count | `1` |
+| Absent Count | `0` |
+| Attendance Percentage | `100` |
+| Computed Status | `ELIGIBLE` |
+
+Course offering bulk compute verified:
+
+- [x] Admin computed eligibility for all approved enrollments in course offering.
+- [x] Summary returned successfully.
+- [x] Total approved enrollments: `3`.
+- [x] Computed count: `3`.
+- [x] Eligible count: `1`.
+- [x] Conditional count: `0`.
+- [x] Ineligible count: `0`.
+- [x] Pending review count: `2`.
+- [x] Enrollments without attendance records remained `PENDING_REVIEW`.
+
+Eligibility read access verified:
+
+- [x] Admin read enrollment eligibility by enrollment ID.
+- [x] Student self endpoint worked:
+  - `GET /api/v1/eligibility/me?courseOfferingId=cmozy23xm000r2i0lccmtg7dl`
+- [x] Student saw only own enrollment eligibility.
+- [x] Assigned teacher read eligibility by enrollment ID.
+- [x] Teacher read was scoped to assigned course offering.
+- [x] Eligibility result included student, term, course offering, course, and snapshot details.
+
+Admin override workflow verified:
+
+- [x] Override without reason was blocked.
+- [x] Empty `overrideReason` returned `BadRequestException`.
+- [x] Override with documented reason succeeded.
+- [x] Final eligibility status became `CONDITIONAL`.
+- [x] Override metadata was stored in `eligibilitySnapshotJson`.
+- [x] Previous eligibility status was preserved.
+- [x] Previous computed snapshot was preserved.
+
+Eligibility override final state:
+
+| Field | Value |
+|---|---|
+| Enrollment ID | `enrollment_law_student_own_runtime` |
+| Final Eligibility Status | `CONDITIONAL` |
+| Overridden By | `cmoubvzde00012i216rnx6eaq` |
+| Override Reason | `Runtime test eligibility correction with documented reason` |
+| Previous Eligibility Status | `ELIGIBLE` |
+| Previous Attendance Percentage | `100` |
+| Previous Total Counted Sessions | `1` |
+| Previous Excused Count | `1` |
+
+Security and architecture findings:
+
+- Eligibility computation is admin-only.
+- Student self-read is restricted to the authenticated student's own enrollments.
+- Teacher eligibility read is assignment-scoped.
+- Admin override requires non-empty reason.
+- Override preserves previous computed eligibility status and snapshot.
+- Result Processing compatibility is preserved because eligibility continues to be stored on enrollment.
+- No new Prisma migration was required.
+- TypeScript module configuration was not changed.
+
+Eligibility runtime verdict:
+
+- Eligibility Engine API foundation: Passed
+- Single enrollment compute: Passed
+- Course offering bulk compute: Passed
+- Admin eligibility read: Passed
+- Student self eligibility read: Passed
+- Assigned teacher eligibility read: Passed
+- Override without reason block: Passed
+- Override with reason: Passed
+- Snapshot preservation: Passed
+
