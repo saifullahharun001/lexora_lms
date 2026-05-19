@@ -1,0 +1,12 @@
+import { EligibilityStatus } from "@prisma/client";
+import { IsEnum, IsString, MinLength } from "class-validator";
+
+export class OverrideEligibilityDto {
+  @IsEnum(EligibilityStatus)
+  eligibilityStatus!: EligibilityStatus;
+
+  @IsString()
+  @MinLength(1)
+  overrideReason!: string;
+}
+

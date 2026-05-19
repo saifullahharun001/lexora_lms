@@ -8,6 +8,7 @@ export { CourseManagementModule } from "./course-management/course-management.mo
 export { EnrollmentModule } from "./enrollment/enrollment.module";
 export { ClassSessionModule } from "./class-session/class-session.module";
 export { AttendanceModule } from "./attendance/attendance.module";
+export { EligibilityModule } from "./eligibility/eligibility.module";
 export { AssignmentModule } from "./assignment/assignment.module";
 export { QuizModule } from "./quiz/quiz.module";
 export { ResultProcessingModule } from "./result-processing/result-processing.module";
