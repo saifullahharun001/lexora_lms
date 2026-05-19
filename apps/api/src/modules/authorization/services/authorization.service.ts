@@ -78,6 +78,7 @@ const STATIC_ROLE_POLICIES: Record<PlatformRole, string[]> = {
     "attempt.create",
     "attempt.submit",
     "attempt.read",
+    "attendance.record.read",
     "result-processing.result.read",
     "result-processing.gpa.read",
     "transcript-verification.transcript.read",
