@@ -2664,3 +2664,79 @@ Eligibility runtime verdict:
 - Override with reason: Passed
 - Snapshot preservation: Passed
 
+
+## Notification / Alert Foundation
+
+Implementation summary:
+
+- Notification / Alert API foundation has been added on top of the existing notification Prisma models.
+- The module now exposes event emission, in-app notification list/read/read-status/dismiss flows, department-scoped template management, current-user preference updates, and placeholder delivery records for future email/push.
+- Real email sending, browser push sending, background workers, queues, and frontend work remain intentionally out of scope for this foundation.
+- The implementation uses the existing Prisma enums/models:
+  - `NotificationEventStatus`
+  - `NotificationRecordStatus`
+  - `NotificationDeliveryStatus`
+  - `NotificationTemplateStatus`
+  - `NotificationChannel`
+  - `NotificationEvent`
+  - `Notification`
+  - `NotificationDelivery`
+  - `NotificationTemplate`
+  - `NotificationPreference`
+  - `PushSubscription`
+
+Endpoints added:
+
+- [ ] `POST /api/v1/notifications/events`
+- [ ] `GET /api/v1/notifications`
+- [ ] `GET /api/v1/notifications/:id`
+- [ ] `PATCH /api/v1/notifications/:id/read`
+- [ ] `PATCH /api/v1/notifications/:id/dismiss`
+- [ ] `POST /api/v1/notification-templates`
+- [ ] `GET /api/v1/notification-templates`
+- [ ] `PATCH /api/v1/notification-templates/:id`
+- [ ] `GET /api/v1/notification-preferences/me`
+- [ ] `PATCH /api/v1/notification-preferences/me`
+
+Security rules to verify at runtime:
+
+- [ ] Department admin can list/read notification records only within their active department.
+- [ ] Department admin can filter notifications by `recipientUserId` only within the active department.
+- [ ] Student notification list/read/read-status/dismiss is forced to `principal.actorId`.
+- [ ] Teacher notification list/read/read-status/dismiss is forced to `principal.actorId`.
+- [ ] Direct ID access to another user's notification returns a safe not-found response for teacher/student users.
+- [ ] Direct ID access to a notification in another department returns a safe not-found response.
+- [ ] Client-supplied department IDs are not accepted by DTOs and cannot override request context.
+- [ ] Critical locked notification preferences cannot be disabled.
+- [ ] Event dedupe keys return the existing event safely instead of crashing on the unique constraint.
+
+Runtime test checklist placeholders:
+
+- [ ] Department admin emits an `IN_APP` notification event for one or more recipients.
+- [ ] Emitted event creates `NotificationEvent` with status `PROCESSED`.
+- [ ] Emitted `IN_APP` event creates `Notification` rows with status `READY`.
+- [ ] Emitted `EMAIL` or `PUSH` target creates `NotificationDelivery` placeholder rows with status `PENDING`.
+- [ ] No external email or push provider is called.
+- [ ] Student can list own notification.
+- [ ] Student can read own notification by ID.
+- [ ] Student can mark own notification as `READ`.
+- [ ] Student can dismiss own notification.
+- [ ] Student cannot read or dismiss another user's notification.
+- [ ] Teacher can list/read/dismiss only own notifications.
+- [ ] Department admin can create a notification template.
+- [ ] Department admin can list templates in own department.
+- [ ] Department admin can update a template in own department.
+- [ ] User can read own notification preferences.
+- [ ] User can upsert own notification preference.
+- [ ] User cannot disable an existing or requested critical-locked preference.
+
+Architecture notes:
+
+- Event emission uses request-context department and actor information.
+- The event endpoint stores channel targets and optional payload/context JSON.
+- In-app notification creation is synchronous and minimal.
+- Email/push delivery rows are placeholders for future delivery workers.
+- Notification template storage does not render templates yet.
+- Preference updates are current-user only and upsert by the existing unique key.
+- Audit events are written for event emission, notification creation, dismissals, template create/update, and preference updates.
+

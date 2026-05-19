@@ -64,7 +64,8 @@ const STATIC_ROLE_POLICIES: Record<PlatformRole, string[]> = {
     "result-processing.grade-scale.read",
     "result-processing.gpa.read",
     "notification.notification.self-read",
-    "notification.notification.event-trigger"
+    "notification.notification.event-trigger",
+    "notification.preference.update"
   ],
   student: [
     "user.read.self",
