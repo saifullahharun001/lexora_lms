@@ -142,6 +142,7 @@ export class AttendanceService {
   }
 
   async captureAttendance(input: Omit<SaveAttendanceRecordInput, "departmentId" | "markedByUserId">) {
+    this.assertTeacherCapturePrincipal();
     this.assertNotStudentSelfMarking(input.studentUserId);
     const session = await this.assertClassSessionInDepartment(input.classSessionId);
     const enrollment = await this.assertEnrollmentInDepartment(input.enrollmentId);
@@ -327,10 +328,6 @@ export class AttendanceService {
   }
 
   private async assertTeacherCanUseOffering(courseOfferingId: string) {
-    if (!this.shouldConstrainToTeacher()) {
-      return;
-    }
-
     const assignment = await this.prisma.teacherCourseAssignment.findFirst({
       where: {
         departmentId: this.getDepartmentId(),
@@ -347,6 +344,12 @@ export class AttendanceService {
 
     if (!assignment) {
       throw new ForbiddenException("Teacher is not assigned to this course offering");
+    }
+  }
+
+  private assertTeacherCapturePrincipal() {
+    if (!this.hasRole("teacher") || this.hasRole("department_admin")) {
+      throw new ForbiddenException("Only assigned teachers can capture attendance");
     }
   }
 
