@@ -2740,3 +2740,324 @@ Architecture notes:
 - Preference updates are current-user only and upsert by the existing unique key.
 - Audit events are written for event emission, notification creation, dismissals, template create/update, and preference updates.
 
+
+## Notification / Alert Foundation Runtime Test
+
+Runtime test date: 2026-05-19
+
+Code commit tested:
+
+| Field | Value |
+|---|---|
+| Commit | `9ba4016` |
+| Message | `Implement notification alert API foundation` |
+
+Runtime context:
+
+| Item | Value |
+|---|---|
+| Department ID | `dept_law_test` |
+| Department Code | `LAW` |
+| Runtime Admin User ID | `cmoubvzde00012i216rnx6eaq` |
+| Runtime Admin Email | `runtime-test-student@cu.ac.bd` |
+| Student Own User ID | `user_law_runtime_student_own` |
+| Student Own Email | `runtime-student-own@cu.ac.bd` |
+| Other Student User ID | `user_law_runtime_student_other` |
+| Other Student Email | `runtime-student-other@cu.ac.bd` |
+| Course Offering ID | `cmozy23xm000r2i0lccmtg7dl` |
+| Course | `LAW-101 — Constitutional Law I` |
+| Enrollment ID | `enrollment_law_student_own_runtime` |
+
+Deployment/runtime verification:
+
+- [x] Ubuntu server repo pulled latest `origin/main`.
+- [x] Fast-forwarded from `049986c` to `9ba4016`.
+- [x] API typecheck passed.
+- [x] API build passed.
+- [x] PM2 process `lexora-api` restarted successfully.
+- [x] Health endpoint returned `status: ok`.
+- [x] Notification routes were mapped successfully.
+- [x] Nest application started successfully.
+
+Mapped Notification routes verified:
+
+- [x] `POST /api/v1/notifications/events`
+- [x] `GET /api/v1/notifications`
+- [x] `GET /api/v1/notifications/:id`
+- [x] `PATCH /api/v1/notifications/:id/read`
+- [x] `PATCH /api/v1/notifications/:id/dismiss`
+- [x] `POST /api/v1/notification-templates`
+- [x] `GET /api/v1/notification-templates`
+- [x] `PATCH /api/v1/notification-templates/:id`
+- [x] `GET /api/v1/notification-preferences/me`
+- [x] `PATCH /api/v1/notification-preferences/me`
+
+Runtime authentication notes:
+
+- Runtime admin login initially failed until the required `departmentCode` field was included.
+- Runtime admin password was reset through a controlled local Prisma script for test continuity.
+- Runtime own-student password was reset through a controlled local Prisma script for test continuity.
+- Runtime other-student password was reset through a controlled local Prisma script for isolation testing.
+- Password hashes were not printed or documented.
+- Raw access tokens and refresh tokens must not be committed into documentation.
+
+### Notification Event Runtime Test
+
+Created runtime in-app notification event:
+
+| Field | Value |
+|---|---|
+| Notification Event ID | `cmpcwk9ic000b2i6xasby3jun` |
+| Department ID | `dept_law_test` |
+| Triggered By User ID | `cmoubvzde00012i216rnx6eaq` |
+| Event Code | `attendance.low-warning.runtime` |
+| Channel Targets | `IN_APP` |
+| Status | `PROCESSED` |
+| Recipient Count | `1` |
+| Recipient User ID | `user_law_runtime_student_own` |
+| Dedupe Key | `notification-runtime-low-attendance-20260519-001` |
+
+Created runtime notification:
+
+| Field | Value |
+|---|---|
+| Notification ID | `cmpcwk9im000d2i6xbyh14qjq` |
+| Notification Event ID | `cmpcwk9ic000b2i6xasby3jun` |
+| Recipient User ID | `user_law_runtime_student_own` |
+| Primary Channel | `IN_APP` |
+| Initial Status | `READY` |
+| Event Code | `attendance.low-warning.runtime` |
+| Title | `Runtime attendance warning` |
+| Body | `Runtime test notification for low attendance warning.` |
+
+Event emission verification:
+
+- [x] Department admin emitted an `IN_APP` notification event.
+- [x] Event was created with department context from request/principal.
+- [x] Event status became `PROCESSED`.
+- [x] Recipient count was `1`.
+- [x] In-app notification row was created.
+- [x] Notification status was initially `READY`.
+- [x] Payload JSON preserved `courseOfferingId`, `studentUserId`, and runtime source context.
+
+### Student Notification Self-Read Runtime Test
+
+Student own notification behavior:
+
+- [x] Own student logged in successfully.
+- [x] `GET /api/v1/notifications?eventCode=attendance.low-warning.runtime` returned the student's own notification only.
+- [x] `GET /api/v1/notifications/:id` returned the own notification.
+- [x] `PATCH /api/v1/notifications/:id/read` marked the notification as `READ`.
+- [x] `readAt` was populated.
+- [x] `PATCH /api/v1/notifications/:id/dismiss` marked the notification as `DISMISSED`.
+- [x] `dismissedAt` was populated.
+
+Notification lifecycle verification:
+
+| Step | Result |
+|---|---|
+| Initial student list | `READY` |
+| Direct read | `READY` |
+| Mark read | `READ` with `readAt` |
+| Dismiss | `DISMISSED` with `dismissedAt` |
+
+### Student-to-Student Notification Isolation Runtime Test
+
+Other student isolation behavior:
+
+- [x] Other student logged in successfully.
+- [x] Other student direct-read attempt against own student's notification was blocked.
+- [x] Other student dismiss attempt against own student's notification was blocked.
+
+Isolation result:
+
+| Request | Result |
+|---|---|
+| `GET /api/v1/notifications/:id` as other student | `NotFoundException` |
+| `PATCH /api/v1/notifications/:id/dismiss` as other student | `NotFoundException` |
+
+Verdict:
+
+- Student users can only access their own notifications.
+- Direct ID access to another student's notification returns a safe not-found response.
+- No notification data was leaked across student accounts.
+
+### Admin Notification Read Runtime Test
+
+Admin behavior:
+
+- [x] Department admin listed notifications filtered by `recipientUserId`.
+- [x] Department admin listed notifications filtered by `eventCode`.
+- [x] Department admin directly read the notification by ID.
+- [x] Returned notification stayed department-scoped to `dept_law_test`.
+
+Admin verification result:
+
+| Field | Value |
+|---|---|
+| Notification ID | `cmpcwk9im000d2i6xbyh14qjq` |
+| Recipient User ID | `user_law_runtime_student_own` |
+| Event Code | `attendance.low-warning.runtime` |
+| Final Status | `DISMISSED` |
+
+Verdict:
+
+- Department admin can list/read notification records within own department.
+- Admin recipient filtering works for own department records.
+
+### Dedupe Key Runtime Test
+
+Dedupe test:
+
+- [x] Re-sent notification event with the same dedupe key:
+  - `notification-runtime-low-attendance-20260519-001`
+- [x] API returned the existing event instead of creating a duplicate.
+- [x] Returned event ID matched the original event ID:
+  - `cmpcwk9ic000b2i6xasby3jun`
+
+Verdict:
+
+- Dedupe key behavior passed.
+- Duplicate event requests safely return existing event data.
+
+### Email/Push Placeholder Delivery Runtime Test
+
+Created runtime mixed-channel event:
+
+| Field | Value |
+|---|---|
+| Notification Event ID | `cmpcwukvh00192i6xwlxxiils` |
+| Department ID | `dept_law_test` |
+| Triggered By User ID | `cmoubvzde00012i216rnx6eaq` |
+| Event Code | `eligibility.warning.runtime` |
+| Channel Targets | `IN_APP`, `EMAIL`, `PUSH` |
+| Status | `PROCESSED` |
+| Recipient Count | `1` |
+| Dedupe Key | `notification-runtime-eligibility-warning-20260519-001` |
+| Is Critical | `true` |
+
+Created runtime mixed-channel notification:
+
+| Field | Value |
+|---|---|
+| Notification ID | `cmpcwukvk001b2i6x4y199p0g` |
+| Primary Channel | `IN_APP` |
+| Status | `READY` |
+| Recipient User ID | `user_law_runtime_student_own` |
+| Event Code | `eligibility.warning.runtime` |
+| Is Critical | `true` |
+
+Delivery placeholder rows verified through Prisma query:
+
+| Delivery ID | Channel | Status | Placeholder |
+|---|---|---|---|
+| `cmpcwukvm001d2i6x67c3qfqh` | `EMAIL` | `PENDING` | `true` |
+| `cmpcwukvs001f2i6xslc1azkn` | `PUSH` | `PENDING` | `true` |
+
+Delivery verification:
+
+- [x] Mixed channel event created successfully.
+- [x] In-app notification row was created with `READY` status.
+- [x] EMAIL delivery placeholder row was created with `PENDING` status.
+- [x] PUSH delivery placeholder row was created with `PENDING` status.
+- [x] Placeholder metadata stated external delivery is intentionally out of scope.
+- [x] No provider, provider message ID, sent timestamp, or delivered timestamp was set.
+- [x] No real email sending occurred.
+- [x] No real push sending occurred.
+
+### Notification Template Runtime Test
+
+Created notification template:
+
+| Field | Value |
+|---|---|
+| Template ID | `228e79a9-0133-42ea-94ef-5adafa954432` |
+| Department ID | `dept_law_test` |
+| Code | `runtime_eligibility_warning_in_app` |
+| Initial Name | `Runtime Eligibility Warning In-App` |
+| Updated Name | `Runtime Eligibility Warning In-App Updated` |
+| Event Code | `eligibility.warning.runtime` |
+| Channel | `IN_APP` |
+| Status | `ACTIVE` |
+| Locale | `en` |
+| Is Critical | `true` |
+
+Template workflow verified:
+
+- [x] Department admin created a notification template.
+- [x] Department admin listed templates filtered by event code.
+- [x] Created template appeared in the list response.
+- [x] Department admin updated template name, title template, and body template.
+- [x] Updated template response returned the changed fields.
+
+Updated template values:
+
+| Field | Value |
+|---|---|
+| Name | `Runtime Eligibility Warning In-App Updated` |
+| Title Template | `Eligibility warning updated` |
+| Body Template | `Your eligibility status requires admin or teacher attention.` |
+
+Verdict:
+
+- Notification template create/list/update foundation passed.
+- Template rendering is still intentionally out of scope.
+
+### Notification Preference Runtime Test
+
+Preference list and critical lock behavior:
+
+- [x] Student listed own notification preferences.
+- [x] Initial preference list returned `[]`.
+- [x] Student attempted to disable a critical-locked preference.
+- [x] Critical-locked disable attempt was blocked with `BadRequestException`.
+- [x] Error message: `Critical notification preferences cannot be disabled`.
+
+Normal preference upsert:
+
+| Field | Value |
+|---|---|
+| Preference ID | `5ff9acc2-f23a-4a49-9d4e-bb4d887cd82f` |
+| Department ID | `dept_law_test` |
+| User ID | `user_law_runtime_student_own` |
+| Event Code | `discussion.reply.runtime` |
+| Channel | `IN_APP` |
+| Is Enabled | `false` |
+| Is Critical Locked | `false` |
+
+Preference workflow verified:
+
+- [x] User can list own preferences.
+- [x] User can upsert own non-critical preference.
+- [x] Upserted preference appeared in own preference list.
+- [x] Critical-locked preference cannot be disabled.
+
+### Notification Runtime Verdict
+
+- Notification routes mapped: Passed
+- Admin event emission: Passed
+- In-app notification creation: Passed
+- Student own notification list/read: Passed
+- Student mark notification read: Passed
+- Student dismiss notification: Passed
+- Student-to-student notification isolation: Passed
+- Admin department-scoped notification read/list: Passed
+- Dedupe key behavior: Passed
+- EMAIL/PUSH placeholder delivery row creation: Passed
+- No real email/push sending: Passed
+- Template create/list/update: Passed
+- Own preference list/upsert: Passed
+- Critical-locked preference disable block: Passed
+- API typecheck after runtime testing: Passed
+- API build after runtime testing: Passed
+- Git working tree before documentation update: Clean
+
+Current limitations:
+
+- Real email sending is not implemented.
+- Real browser/PWA push sending is not implemented.
+- Background queue/worker delivery is not implemented.
+- Template rendering is not implemented.
+- Notification frontend is not implemented.
+- Runtime test passwords were reset through controlled local Prisma scripts for test continuity; passwords/hashes/tokens were not documented.
+
