@@ -2351,3 +2351,181 @@ After that:
 - `lexora-api` became online.
 - `/api/v1/health` returned successful health response.
 
+
+## Attendance Sync Module Runtime Test
+
+Runtime test date: 2026-05-19
+
+Code commits tested:
+
+| Field | Value |
+|---|---|
+| Attendance API foundation commit | `62bae08` |
+| Message | `Implement attendance sync API foundation` |
+| Teacher-only capture patch commit | `629a1b4` |
+| Message | `Restrict attendance capture to assigned teachers` |
+
+Runtime context:
+
+| Item | Value |
+|---|---|
+| Department ID | `dept_law_test` |
+| Course Offering ID | `cmozy23xm000r2i0lccmtg7dl` |
+| Course | `LAW-101 — Constitutional Law I` |
+| Class Session ID | `cmpbj0yob00152idexwimmanr` |
+| Class Session Code | `LAW101-CS-RT-TEACHER-001` |
+| Teacher Assignment ID | `teacher_assignment_law_101_runtime` |
+| Teacher User ID | `user_law_runtime_teacher` |
+| Student User ID | `user_law_runtime_student_own` |
+| Enrollment ID | `enrollment_law_student_own_runtime` |
+| Attendance Import Batch ID | `cmpcov0ih000f2ife7t2unpj6` |
+| Attendance Record ID | `cmpcoytqo000n2ifensuu4gvn` |
+
+Implemented endpoints verified:
+
+- [x] `POST /api/v1/attendance/import-batches`
+- [x] `GET /api/v1/attendance/import-batches`
+- [x] `GET /api/v1/attendance/import-batches/:id`
+- [x] `POST /api/v1/attendance/import-batches/:id/cancel`
+- [x] `POST /api/v1/attendance/records`
+- [x] `GET /api/v1/attendance/records`
+- [x] `GET /api/v1/attendance/records/:id`
+- [x] `GET /api/v1/attendance/me`
+- [x] `PATCH /api/v1/attendance/records/:id/override`
+
+Attendance import batch workflow verified:
+
+- [x] Department admin created attendance import batch.
+- [x] Import batch was linked to course offering and class session.
+- [x] Import batch source type was `BIOMETRIC`.
+- [x] Import batch status was initially `RECEIVED`.
+- [x] Department admin listed import batches by course offering.
+- [x] Department admin read import batch by ID.
+- [x] Department admin canceled import batch.
+- [x] Canceled import batch status became `CANCELED`.
+- [x] `reviewedByUserId` was set to the admin runtime user after cancel.
+
+Created attendance import batch:
+
+| Field | Value |
+|---|---|
+| Attendance Import Batch ID | `cmpcov0ih000f2ife7t2unpj6` |
+| Department ID | `dept_law_test` |
+| Course Offering ID | `cmozy23xm000r2i0lccmtg7dl` |
+| Class Session ID | `cmpbj0yob00152idexwimmanr` |
+| Uploaded By User ID | `cmoubvzde00012i216rnx6eaq` |
+| Reviewed By User ID | `cmoubvzde00012i216rnx6eaq` |
+| Source Type | `BIOMETRIC` |
+| External System Name | `Runtime Biometric Test Source` |
+| External Batch Ref | `ATT-RT-20260519-001` |
+| Initial Status | `RECEIVED` |
+| Final Status | `CANCELED` |
+
+Attendance capture lifecycle verified:
+
+- [x] Attendance capture against `SCHEDULED` class session was blocked.
+- [x] Error message: `Attendance can only be captured for active class sessions`.
+- [x] Class session was activated through `POST /api/v1/class-sessions/:id/activate`.
+- [x] Class session status became `ACTIVE`.
+- [x] `actualStartAt` was populated.
+- [x] Attendance capture succeeded after class session became `ACTIVE`.
+
+Strict attendance capture rule verified:
+
+- [x] Department admin cannot capture/mark attendance.
+- [x] Admin capture attempt returned `ForbiddenException`.
+- [x] Error message: `Only assigned teachers can capture attendance`.
+- [x] Student cannot capture/mark attendance.
+- [x] Student capture attempt returned `ForbiddenException`.
+- [x] Error message: `Access denied by policy`.
+- [x] Assigned teacher can capture attendance for assigned active class session.
+- [x] Teacher capture updated the attendance record.
+- [x] `markedByUserId` became `user_law_runtime_teacher`.
+- [x] `markedByUser` resolved to `Runtime Test Teacher`.
+- [x] Student self-read endpoint remained read-only and worked through `/api/v1/attendance/me`.
+
+Final attendance capture policy decision:
+
+- Admin manages attendance infrastructure.
+- Admin can schedule classes, view attendance records, manage import batches, and perform audited overrides.
+- Admin cannot directly capture/mark attendance through `POST /api/v1/attendance/records`.
+- Attendance capture is allowed only from a teacher account.
+- The teacher must be actively assigned to the class session course offering.
+- The class session must be `ACTIVE`.
+- Student cannot mark attendance.
+- Student can only view own attendance through `/api/v1/attendance/me`.
+
+Attendance record state after assigned teacher capture:
+
+| Field | Value |
+|---|---|
+| Attendance Record ID | `cmpcoytqo000n2ifensuu4gvn` |
+| Department ID | `dept_law_test` |
+| Class Session ID | `cmpbj0yob00152idexwimmanr` |
+| Enrollment ID | `enrollment_law_student_own_runtime` |
+| Student User ID | `user_law_runtime_student_own` |
+| Marked By User ID | `user_law_runtime_teacher` |
+| Marked By User | `Runtime Test Teacher` |
+| Status after teacher capture | `PRESENT` |
+| Source Type after teacher capture | `MANUAL` |
+| External Source Ref | `TEACHER-CAPTURE-RT-20260519` |
+
+Student attendance access verified:
+
+- [x] Student self-read endpoint worked:
+  - `GET /api/v1/attendance/me?classSessionId=cmpbj0yob00152idexwimmanr`
+- [x] Student self-read returned only the authenticated student's attendance record.
+- [x] Student broad attendance record endpoint was blocked:
+  - `GET /api/v1/attendance/records?classSessionId=cmpbj0yob00152idexwimmanr`
+- [x] Broad endpoint block message: `Students must use the attendance self endpoint`.
+- [x] Student attendance create/capture was blocked by policy:
+  - `POST /api/v1/attendance/records`
+- [x] Student capture block message: `Access denied by policy`.
+
+Admin override workflow verified:
+
+- [x] Override without reason was blocked.
+- [x] Empty `overrideReason` returned `BadRequestException`.
+- [x] Override with documented reason succeeded.
+- [x] Final attendance status became `EXCUSED`.
+- [x] `overrideByUserId` was set to admin runtime user.
+- [x] `overrideReason` was stored.
+- [x] Original teacher marker was preserved.
+
+Attendance record state after admin override:
+
+| Field | Value |
+|---|---|
+| Attendance Record ID | `cmpcoytqo000n2ifensuu4gvn` |
+| Marked By User ID | `user_law_runtime_teacher` |
+| Override By User ID | `cmoubvzde00012i216rnx6eaq` |
+| Final Status | `EXCUSED` |
+| Source Type | `MANUAL` |
+| Override Reason | `Runtime test admin correction with documented reason` |
+
+Security and architecture findings:
+
+- Student self-marking is not possible through the API.
+- Admin direct attendance capture is blocked after teacher-only capture patch.
+- Teacher attendance capture is assignment-aware.
+- Attendance capture requires an active class session.
+- Enrollment must belong to the same course offering as the class session.
+- `studentUserId` must match the enrollment student.
+- Student self-read is isolated to the authenticated student.
+- Admin override requires a reason and preserves teacher marking context.
+- Biometric source is represented as external verified data only; fingerprint templates are not stored in LMS.
+- Direct biometric device integration is not implemented and remains intentionally out of scope.
+
+Attendance runtime verdict:
+
+- Attendance API foundation: Passed
+- Import batch create/list/read/cancel: Passed
+- Non-active session attendance capture block: Passed
+- Admin direct capture block: Passed
+- Assigned teacher active-session capture: Passed
+- Student capture block: Passed
+- Student own attendance read: Passed
+- Student broad attendance endpoint block: Passed
+- Admin override without reason block: Passed
+- Admin override with reason: Passed
+
