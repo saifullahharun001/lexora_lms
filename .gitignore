@@ -19,3 +19,6 @@ packages/*/node_modules
 apps/api/prisma/migrations
 *.log
 
+
+# Local database backups
+backups/
