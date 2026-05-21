@@ -3061,3 +3061,245 @@ Current limitations:
 - Notification frontend is not implemented.
 - Runtime test passwords were reset through controlled local Prisma scripts for test continuity; passwords/hashes/tokens were not documented.
 
+
+---
+
+## Notice / Announcement Foundation Runtime Test
+
+Date: 2026-05-21  
+Runtime environment: Ubuntu Server VM  
+API base URL: `http://localhost/api/v1`  
+Nginx base URL: `http://localhost/api/v1`  
+Department: `dept_law_test` / `LAW`
+
+### Related Commits
+
+| Commit | Message |
+|---|---|
+| `49285a2` | Add notice foundation schema |
+| `22f3f56` | Add notice module API scaffold |
+| `79dffaf` | Fix notice notification module dependency |
+| `7c2f221` | Add notice policies to authorization mapping |
+
+### Migration / Runtime Boot Verification
+
+Notice migration applied successfully:
+
+- [x] Prisma migration `20260521_add_notice_foundation` applied.
+- [x] `notices` table created.
+- [x] `NoticeAudienceType` enum created.
+- [x] `NoticePriority` enum created.
+- [x] `NoticeStatus` enum created.
+- [x] Prisma Client regenerated after migration.
+- [x] API typecheck passed after migration.
+- [x] API build passed after migration.
+- [x] PM2 `lexora-api` restarted successfully.
+- [x] Direct health check passed at `http://localhost:4000/api/v1/health`.
+- [x] Nginx health check passed at `http://localhost/api/v1/health`.
+
+Runtime backup note:
+
+- A local PostgreSQL backup was created before applying the notice migration.
+- Backup folder is ignored by Git through `.gitignore`.
+- Backup files were not committed.
+
+### Route Mapping Verification
+
+Notice routes mapped successfully after `NoticeModule` was added to `AppModule` and `NotificationModule` was imported into `NoticeModule`.
+
+Verified mapped routes:
+
+| Method | Route |
+|---|---|
+| `POST` | `/api/v1/notices` |
+| `GET` | `/api/v1/notices` |
+| `GET` | `/api/v1/notices/me` |
+| `GET` | `/api/v1/notices/me/:id` |
+| `GET` | `/api/v1/notices/:id` |
+| `PATCH` | `/api/v1/notices/:id` |
+| `POST` | `/api/v1/notices/:id/publish` |
+| `POST` | `/api/v1/notices/:id/archive` |
+
+Unauthenticated route checks:
+
+- [x] Direct `GET /api/v1/notices` returned `401 Unauthorized`.
+- [x] Nginx-proxied `GET /api/v1/notices` returned `401 Unauthorized`.
+- [x] AuthGuard remained active.
+- [x] No `404` route-missing error occurred.
+- [x] No `500` runtime dependency error occurred after dependency fix.
+
+### Authorization Mapping Verification
+
+Initial authenticated admin create attempt failed with:
+
+| Field | Value |
+|---|---|
+| Error Code | `ForbiddenException` |
+| Message | `Access denied by policy` |
+
+Root cause:
+
+- Notice policies were added in the controller but were not yet included in static role policy mapping.
+
+Fix applied:
+
+| Role | Notice Policies Added |
+|---|---|
+| `department_admin` | `notice.*` |
+| `teacher` | `notice.notice.read`, `notice.notice.manage` |
+| `student` | `notice.notice.self-read` |
+
+Post-fix verification:
+
+- [x] API typecheck passed.
+- [x] API build passed.
+- [x] PM2 restart passed.
+- [x] Direct health check passed.
+- [x] Nginx health check passed.
+- [x] Admin notice create passed after policy mapping fix.
+
+### Runtime Test Users
+
+| Role | User ID | Email | Department |
+|---|---|---|---|
+| Department Admin | `cmoubvzde00012i216rnx6eaq` | `runtime-test-student@cu.ac.bd` | `dept_law_test` |
+| Student | `user_law_runtime_student_own` | `runtime-student-own@cu.ac.bd` | `dept_law_test` |
+
+Security note:
+
+- Runtime admin and student passwords were reset through controlled local Prisma scripts for test continuity.
+- Passwords, password hashes, access tokens, and refresh tokens are intentionally not documented.
+- Existing sessions for reset users were revoked during password reset.
+
+### Admin Notice Workflow Runtime Test
+
+Created notice:
+
+| Field | Value |
+|---|---|
+| Notice ID | `cmpf8w3e300072ix3ev8hes2c` |
+| Department ID | `dept_law_test` |
+| Created By User ID | `cmoubvzde00012i216rnx6eaq` |
+| Initial Title | `Runtime Notice Test` |
+| Initial Body | `This is a runtime notice API test for Lexora LMS.` |
+| Audience Type | `DEPARTMENT` |
+| Initial Priority | `IMPORTANT` |
+| Initial Status | `DRAFT` |
+| Publish Notification | `false` |
+
+Admin workflow verified:
+
+- [x] Department admin login succeeded.
+- [x] Department admin created draft notice.
+- [x] Created notice returned `DRAFT` status.
+- [x] Created notice was scoped to `dept_law_test`.
+- [x] `createdByUserId` was set correctly.
+- [x] Admin listed notices through `GET /api/v1/notices`.
+- [x] Admin read notice through `GET /api/v1/notices/:id`.
+
+Updated draft notice:
+
+| Field | Value |
+|---|---|
+| Updated Title | `Runtime Notice Test Updated` |
+| Updated Body | `This notice was updated during runtime testing.` |
+| Updated Priority | `URGENT` |
+| Updated By User ID | `cmoubvzde00012i216rnx6eaq` |
+| Status After Update | `DRAFT` |
+
+Draft update verification:
+
+- [x] Admin updated draft notice.
+- [x] `updatedByUserId` was set correctly.
+- [x] Title/body/priority updated correctly.
+- [x] Notice remained `DRAFT` after update.
+
+### Publish Workflow Runtime Test
+
+Published notice:
+
+| Field | Value |
+|---|---|
+| Notice ID | `cmpf8w3e300072ix3ev8hes2c` |
+| Status | `PUBLISHED` |
+| Published By User ID | `cmoubvzde00012i216rnx6eaq` |
+| Published At | `2026-05-21T08:45:58.535Z` |
+| Notification Event ID | `null` |
+
+Publish verification:
+
+- [x] Admin published draft notice.
+- [x] Status changed from `DRAFT` to `PUBLISHED`.
+- [x] `publishedByUserId` was set correctly.
+- [x] `publishedAt` was set.
+- [x] `notificationEventId` remained `null` because `publishNotification=false`.
+- [x] Admin could read the notice after publish.
+
+Published notice update block:
+
+- [x] Admin attempted to update published notice.
+- [x] Update was blocked with `BadRequestException`.
+- [x] Error message: `Only draft notices can be updated`.
+
+### Student Visibility Runtime Test
+
+Student workflow verified:
+
+- [x] Runtime student login succeeded.
+- [x] Student listed published notices through `GET /api/v1/notices/me`.
+- [x] Published department notice appeared in student `/notices/me`.
+- [x] Student read published notice through `GET /api/v1/notices/me/:id`.
+- [x] Student broad `GET /api/v1/notices` was blocked with `ForbiddenException`.
+- [x] Student cannot access admin/teacher broad notice endpoint.
+
+Student visibility result:
+
+| Endpoint | Result |
+|---|---|
+| `GET /api/v1/notices/me` | Published notice visible |
+| `GET /api/v1/notices/me/:id` | Published notice readable |
+| `GET /api/v1/notices` | Blocked by policy |
+
+### Archive Workflow Runtime Test
+
+Archived notice:
+
+| Field | Value |
+|---|---|
+| Notice ID | `cmpf8w3e300072ix3ev8hes2c` |
+| Status | `ARCHIVED` |
+| Archived At | `2026-05-21T08:49:30.136Z` |
+
+Archive verification:
+
+- [x] Admin archived published notice.
+- [x] Status changed from `PUBLISHED` to `ARCHIVED`.
+- [x] `archivedAt` was set.
+- [x] Archived notice was hidden from student `/notices/me`.
+- [x] Student `/notices/me` returned `[]` after archive.
+
+### Notice Runtime Verdict
+
+- Notice schema foundation: Passed
+- Notice migration apply: Passed
+- Notice route mapping: Passed
+- Notice module dependency resolution: Passed
+- Authorization policy mapping: Passed
+- Admin draft create/list/read/update: Passed
+- Admin publish: Passed
+- Published notice update block: Passed
+- Student published notice self-list/read: Passed
+- Student broad notice endpoint block: Passed
+- Admin archive: Passed
+- Archived notice hidden from student list: Passed
+- API typecheck after runtime testing: Passed
+- API build after runtime testing: Passed
+- PM2/Nginx health after runtime testing: Passed
+
+Current limitations:
+
+- Notice frontend is not implemented.
+- Notice attachment support is not implemented.
+- Rich targeting beyond basic department/program/term/course-offering fields is not fully runtime-tested.
+- Notification emission on notice publish with `publishNotification=true` is not yet runtime-tested.
+- Real email/push delivery remains out of scope and is covered by the Notification foundation limitations.
