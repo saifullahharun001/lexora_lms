@@ -22,6 +22,7 @@ const STATIC_ROLE_POLICIES: Record<PlatformRole, string[]> = {
     "result-processing.*",
     "transcript-verification.*",
     "notification.*",
+    "notice.*",
     "audit-compliance.*",
     "file-storage.*",
     "reporting-dashboard.*",
@@ -65,7 +66,9 @@ const STATIC_ROLE_POLICIES: Record<PlatformRole, string[]> = {
     "result-processing.gpa.read",
     "notification.notification.self-read",
     "notification.notification.event-trigger",
-    "notification.preference.update"
+    "notification.preference.update",
+    "notice.notice.read",
+    "notice.notice.manage"
   ],
   student: [
     "user.read.self",
@@ -90,7 +93,8 @@ const STATIC_ROLE_POLICIES: Record<PlatformRole, string[]> = {
     "transcript-verification.version.read",
     "notification.notification.self-read",
     "notification.preference.update",
-    "notification.push-subscription.self-manage"
+    "notification.push-subscription.self-manage",
+    "notice.notice.self-read"
   ],
   auditor: [
     "audit-compliance.audit.read",
