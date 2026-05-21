@@ -15,6 +15,7 @@ export { ResultProcessingModule } from "./result-processing/result-processing.mo
 export { TranscriptVerificationModule } from "./transcript-verification/transcript-verification.module";
 export { DiscussionModule } from "./discussion/discussion.module";
 export { NotificationModule } from "./notification/notification.module";
+export { NoticeModule } from "./notice/notice.module";
 export { FileStorageModule } from "./file-storage/file-storage.module";
 export { AuditComplianceModule } from "./audit-compliance/audit-compliance.module";
 export { ReportingDashboardModule } from "./reporting-dashboard/reporting-dashboard.module";
