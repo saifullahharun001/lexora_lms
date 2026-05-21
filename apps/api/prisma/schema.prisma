@@ -370,6 +370,26 @@ enum NotificationChannel {
   PUSH
 }
 
+enum NoticeStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum NoticeAudienceType {
+  DEPARTMENT
+  PROGRAM
+  ACADEMIC_TERM
+  COURSE_OFFERING
+}
+
+enum NoticePriority {
+  NORMAL
+  IMPORTANT
+  URGENT
+}
+
+
 model Department {
   id                String              @id @default(cuid())
   code              String              @unique
@@ -431,6 +451,7 @@ model Department {
   notificationDeliveries NotificationDelivery[]
   notificationTemplates NotificationTemplate[]
   notificationPreferences NotificationPreference[]
+  notices           Notice[]
   pushSubscriptions    PushSubscription[]
   settings          DepartmentSetting[]
   auditLogs         AuditLog[]
@@ -501,6 +522,9 @@ model User {
   notificationTemplatesCreated NotificationTemplate[] @relation("NotificationTemplateCreatedBy")
   notificationTemplatesUpdated NotificationTemplate[] @relation("NotificationTemplateUpdatedBy")
   notificationPreferences NotificationPreference[]
+  noticesCreated    Notice[] @relation("NoticeCreatedBy")
+  noticesUpdated    Notice[] @relation("NoticeUpdatedBy")
+  noticesPublished  Notice[] @relation("NoticePublishedBy")
   pushSubscriptions PushSubscription[]
   auditLogs          AuditLog[]          @relation("AuditActor")
   settingsUpdated    DepartmentSetting[] @relation("DepartmentSettingUpdatedBy")
@@ -546,6 +570,7 @@ model AcademicProgram {
   department       Department           @relation(fields: [departmentId], references: [id])
   courses          Course[]
   eligibilityRuleBindings EligibilityRuleBinding[]
+  notices          Notice[]
 
   @@unique([departmentId, code])
   @@index([departmentId])
@@ -597,6 +622,7 @@ model AcademicTerm {
   cgpaRecordsAsOf  CGPARecord[]
   resultPublicationBatches ResultPublicationBatch[]
   transcriptTermSummaries TranscriptTermSummary[]
+  notices          Notice[]
 
   @@unique([departmentId, code])
   @@index([departmentId])
@@ -655,6 +681,7 @@ model CourseOffering {
   gradingRecords     GradingRecord[]
   resultRecords      ResultRecord[]
   transcriptCourseLines TranscriptCourseLine[]
+  notices            Notice[]
 
   @@unique([departmentId, academicTermId, courseId, sectionCode])
   @@index([departmentId])
@@ -1838,6 +1865,7 @@ model NotificationEvent {
   department        Department?             @relation(fields: [departmentId], references: [id])
   triggeredByUser   User?                   @relation("NotificationEventTriggeredBy", fields: [triggeredByUserId], references: [id])
   notifications     Notification[]
+  notices           Notice[]
 
   @@index([departmentId, eventCode, occurredAt])
   @@index([status, occurredAt])
@@ -1957,6 +1985,48 @@ model NotificationPreference {
   @@index([departmentId, userId])
   @@map("notification_preferences")
 }
+
+model Notice {
+  id                  String             @id @default(cuid())
+  departmentId        String             @map("department_id")
+  academicProgramId   String?            @map("academic_program_id")
+  academicTermId      String?            @map("academic_term_id")
+  courseOfferingId    String?            @map("course_offering_id")
+  createdByUserId     String             @map("created_by_user_id")
+  updatedByUserId     String?            @map("updated_by_user_id")
+  publishedByUserId   String?            @map("published_by_user_id")
+  notificationEventId String?            @map("notification_event_id")
+  title               String
+  body                String
+  audienceType        NoticeAudienceType @default(DEPARTMENT) @map("audience_type")
+  priority            NoticePriority     @default(NORMAL)
+  status              NoticeStatus       @default(DRAFT)
+  publishNotification Boolean            @default(false) @map("publish_notification")
+  publishedAt         DateTime?          @map("published_at")
+  expiresAt           DateTime?          @map("expires_at")
+  archivedAt          DateTime?          @map("archived_at")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+
+  department          Department         @relation(fields: [departmentId], references: [id])
+  academicProgram     AcademicProgram?   @relation(fields: [academicProgramId], references: [id])
+  academicTerm        AcademicTerm?      @relation(fields: [academicTermId], references: [id])
+  courseOffering      CourseOffering?    @relation(fields: [courseOfferingId], references: [id])
+  createdByUser       User               @relation("NoticeCreatedBy", fields: [createdByUserId], references: [id])
+  updatedByUser       User?              @relation("NoticeUpdatedBy", fields: [updatedByUserId], references: [id])
+  publishedByUser     User?              @relation("NoticePublishedBy", fields: [publishedByUserId], references: [id])
+  notificationEvent   NotificationEvent? @relation(fields: [notificationEventId], references: [id])
+
+  @@index([departmentId, status, createdAt])
+  @@index([departmentId, audienceType, status])
+  @@index([academicProgramId])
+  @@index([academicTermId])
+  @@index([courseOfferingId])
+  @@index([createdByUserId])
+  @@index([notificationEventId])
+  @@map("notices")
+}
+
 
 model PushSubscription {
   id                String      @id @default(cuid())
