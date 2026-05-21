@@ -3301,5 +3301,67 @@ Current limitations:
 - Notice frontend is not implemented.
 - Notice attachment support is not implemented.
 - Rich targeting beyond basic department/program/term/course-offering fields is not fully runtime-tested.
-- Notification emission on notice publish with `publishNotification=true` is not yet runtime-tested.
 - Real email/push delivery remains out of scope and is covered by the Notification foundation limitations.
+
+### Notice Publish Notification Integration Runtime Test
+
+Additional notice created with notification emission enabled:
+
+| Field | Value |
+|---|---|
+| Notice ID | `cmpf9aa9v000z2ix3gobubqeh` |
+| Department ID | `dept_law_test` |
+| Title | `Runtime Notice Notification Test` |
+| Body | `This notice should emit an in-app notification when published.` |
+| Audience Type | `DEPARTMENT` |
+| Priority | `URGENT` |
+| Publish Notification | `true` |
+| Published Status | `PUBLISHED` |
+| Notification Event ID | `cmpf9b0xe00132ix3bz9ytst3` |
+
+Notification event verification:
+
+| Field | Value |
+|---|---|
+| Event ID | `cmpf9b0xe00132ix3bz9ytst3` |
+| Event Code | `notice.published` |
+| Channel Targets | `{IN_APP}` |
+| Event Status | `PROCESSED` |
+| Recipient Count | `4` |
+| Dedupe Key | `notice.published.cmpf9aa9v000z2ix3gobubqeh` |
+| Payload Notice ID | `cmpf9aa9v000z2ix3gobubqeh` |
+| Payload Priority | `URGENT` |
+| Payload Audience Type | `DEPARTMENT` |
+
+Generated in-app notification rows:
+
+| Recipient User ID | Channel | Status | Critical | Action URL |
+|---|---|---|---|---|
+| `cmoubvzde00012i216rnx6eaq` | `IN_APP` | `READY` | `true` | `/notices/cmpf9aa9v000z2ix3gobubqeh` |
+| `user_law_runtime_student_other` | `IN_APP` | `READY` | `true` | `/notices/cmpf9aa9v000z2ix3gobubqeh` |
+| `user_law_runtime_student_own` | `IN_APP` | `READY` | `true` | `/notices/cmpf9aa9v000z2ix3gobubqeh` |
+| `user_law_runtime_teacher` | `IN_APP` | `READY` | `true` | `/notices/cmpf9aa9v000z2ix3gobubqeh` |
+
+Notification integration verification:
+
+- [x] Notice with `publishNotification=true` was created as `DRAFT`.
+- [x] Publishing the notice changed status to `PUBLISHED`.
+- [x] Publishing created a `notification_events` row.
+- [x] Notice stored the generated `notificationEventId`.
+- [x] Event code was `notice.published`.
+- [x] Channel target was `IN_APP`.
+- [x] Event status became `PROCESSED`.
+- [x] Recipient count was `4`.
+- [x] Dedupe key included the notice ID.
+- [x] Payload JSON included notice ID, priority, and audience type.
+- [x] Four in-app notification rows were created.
+- [x] All generated notification rows used primary channel `IN_APP`.
+- [x] All generated notification rows had status `READY`.
+- [x] All generated notification rows were marked critical because notice priority was `URGENT`.
+- [x] All generated notification rows pointed to `/notices/cmpf9aa9v000z2ix3gobubqeh`.
+
+Updated limitation note:
+
+- Notification emission on notice publish with `publishNotification=true` is runtime-tested for `IN_APP`.
+- Real email/push delivery remains out of scope.
+- Background queue/worker delivery remains out of scope.
