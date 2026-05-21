@@ -1,11 +1,10 @@
+import "./globals.css";
+
+import { appMetadata } from "@lexora/config";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-import { appMetadata } from "@lexora/config";
-
 import { AppProviders } from "@/components/providers/app-providers";
-
-import "./globals.css";
 
 export const metadata: Metadata = {
   title: appMetadata.name,

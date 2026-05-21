@@ -1,6 +1,5 @@
-import Link from "next/link";
-
 import { SectionCard } from "@lexora/ui";
+import Link from "next/link";
 
 const routeAreas = [
   {

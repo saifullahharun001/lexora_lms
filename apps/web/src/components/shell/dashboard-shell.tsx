@@ -1,7 +1,6 @@
+import { AppShell } from "@lexora/ui";
 import Link from "next/link";
 import type { ReactNode } from "react";
-
-import { AppShell } from "@lexora/ui";
 
 import { dashboardNavigation } from "@/lib/navigation";
 
