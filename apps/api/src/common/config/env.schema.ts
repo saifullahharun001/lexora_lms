@@ -27,7 +27,7 @@ export const envSchema = z.object({
   REFRESH_TOKEN_COOKIE_SECURE: z
     .enum(["true", "false"])
     .transform((value) => value === "true"),
-  REFRESH_TOKEN_COOKIE_DOMAIN: z.string().min(1),
+  REFRESH_TOKEN_COOKIE_DOMAIN: z.string().optional().default(""),
   SMTP_HOST: z.string().min(1),
   SMTP_PORT: z.coerce.number().int().positive(),
   SMTP_SECURE: z.enum(["true", "false"]).transform((value) => value === "true"),

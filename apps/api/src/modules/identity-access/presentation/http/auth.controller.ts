@@ -137,7 +137,7 @@ export class AuthController {
       httpOnly: true,
       secure: this.configService.getOrThrow<boolean>("auth.refreshCookieSecure"),
       sameSite: "lax",
-      domain: this.configService.getOrThrow<string>("auth.refreshCookieDomain") || undefined,
+      domain: this.configService.get<string>("auth.refreshCookieDomain"),
       path: "/api/v1/auth",
       expires: new Date(refreshTokenExpiresAtIso)
     });
@@ -148,7 +148,7 @@ export class AuthController {
       httpOnly: true,
       secure: this.configService.getOrThrow<boolean>("auth.refreshCookieSecure"),
       sameSite: "lax",
-      domain: this.configService.getOrThrow<string>("auth.refreshCookieDomain") || undefined,
+      domain: this.configService.get<string>("auth.refreshCookieDomain"),
       path: "/api/v1/auth"
     });
   }

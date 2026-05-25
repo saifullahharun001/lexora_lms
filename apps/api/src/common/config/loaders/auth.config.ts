@@ -4,6 +4,7 @@ import { getValidatedEnv } from "../env.schema";
 
 export const authConfig = registerAs("auth", () => {
   const env = getValidatedEnv();
+  const refreshCookieDomain = env.REFRESH_TOKEN_COOKIE_DOMAIN.trim();
 
   return {
     accessSecret: env.JWT_ACCESS_SECRET,
@@ -14,7 +15,7 @@ export const authConfig = registerAs("auth", () => {
     audience: env.JWT_AUDIENCE,
     refreshCookieName: env.REFRESH_TOKEN_COOKIE_NAME,
     refreshCookieSecure: env.REFRESH_TOKEN_COOKIE_SECURE,
-    refreshCookieDomain: env.REFRESH_TOKEN_COOKIE_DOMAIN,
+    refreshCookieDomain: refreshCookieDomain || undefined,
     otpIssuer: env.OTP_ISSUER,
     otpDigits: env.OTP_DIGITS,
     otpTtlSeconds: env.OTP_TTL_SECONDS,
