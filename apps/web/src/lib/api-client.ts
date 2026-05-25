@@ -30,6 +30,10 @@ export interface LoginPayload {
   deviceFingerprint?: string;
 }
 
+export interface LogoutResponse {
+  success: boolean;
+}
+
 interface ApiErrorResponse {
   code?: string;
   message?: string;
@@ -86,4 +90,12 @@ export async function apiPost<TResponse, TPayload>(
 
 export function login(payload: LoginPayload) {
   return apiPost<AuthResponse, LoginPayload>("/auth/login", payload);
+}
+
+export function refreshSession() {
+  return apiPost<AuthResponse, Record<string, never>>("/auth/refresh", {});
+}
+
+export function logout() {
+  return apiPost<LogoutResponse, Record<string, never>>("/auth/logout", {});
 }

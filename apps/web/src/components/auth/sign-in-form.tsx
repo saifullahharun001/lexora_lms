@@ -2,7 +2,8 @@
 
 import { FormEvent, useState } from "react";
 
-import { ApiClientError, AuthResponse, login } from "@/lib/api-client";
+import { useAuth } from "@/components/providers/auth-provider";
+import { ApiClientError } from "@/lib/api-client";
 
 type SignInStatus = "idle" | "submitting" | "success";
 
@@ -32,7 +33,7 @@ export function SignInForm() {
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<SignInStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [authResponse, setAuthResponse] = useState<AuthResponse | null>(null);
+  const { session, signIn, signOut } = useAuth();
 
   const isSubmitting = status === "submitting";
 
@@ -41,17 +42,15 @@ export function SignInForm() {
 
     setStatus("submitting");
     setErrorMessage(null);
-    setAuthResponse(null);
 
     try {
-      const response = await login({
+      await signIn({
         departmentCode: departmentCode.trim(),
         email: email.trim(),
         password,
         deviceLabel: "Lexora Web"
       });
 
-      setAuthResponse(response);
       setStatus("success");
     } catch (error) {
       setErrorMessage(getSafeErrorMessage(error));
@@ -138,29 +137,41 @@ export function SignInForm() {
         </button>
       </form>
 
-      {authResponse ? (
+      {session ? (
         <section
           aria-live="polite"
           className="mt-8 rounded-lg border border-emerald-900/70 bg-emerald-950/25 p-4"
         >
-          <p className="text-sm font-medium text-emerald-100">Signed in successfully</p>
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm font-medium text-emerald-100">Signed in successfully</p>
+            <button
+              className="rounded-lg border border-emerald-800 px-3 py-1.5 text-xs font-medium text-emerald-100 transition hover:border-emerald-600 hover:bg-emerald-950"
+              onClick={() => {
+                void signOut();
+                setStatus("idle");
+              }}
+              type="button"
+            >
+              Log out
+            </button>
+          </div>
           <dl className="mt-4 space-y-3 text-sm">
             <div>
               <dt className="text-stone-500">Name</dt>
-              <dd className="mt-1 text-stone-100">{authResponse.user.displayName}</dd>
+              <dd className="mt-1 text-stone-100">{session.user.displayName}</dd>
             </div>
             <div>
               <dt className="text-stone-500">Email</dt>
-              <dd className="mt-1 text-stone-100">{authResponse.user.email}</dd>
+              <dd className="mt-1 text-stone-100">{session.user.email}</dd>
             </div>
             <div>
               <dt className="text-stone-500">Department ID</dt>
-              <dd className="mt-1 break-all text-stone-100">{authResponse.user.departmentId}</dd>
+              <dd className="mt-1 break-all text-stone-100">{session.user.departmentId}</dd>
             </div>
             <div>
               <dt className="text-stone-500">Roles</dt>
               <dd className="mt-1 text-stone-100">
-                {authResponse.user.roles.length > 0 ? authResponse.user.roles.join(", ") : "None"}
+                {session.user.roles.length > 0 ? session.user.roles.join(", ") : "None"}
               </dd>
             </div>
           </dl>
