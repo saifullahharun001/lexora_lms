@@ -1,11 +1,22 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { ApiClientError } from "@/lib/api-client";
 
 type SignInStatus = "idle" | "submitting" | "success";
+
+const roleHomes = [
+  { role: "department_admin", path: "/admin" },
+  { role: "teacher", path: "/teacher" },
+  { role: "student", path: "/student" }
+] as const;
+
+function getRoleHome(roles: string[]) {
+  return roleHomes.find((home) => roles.includes(home.role))?.path;
+}
 
 function getSafeErrorMessage(error: unknown) {
   if (error instanceof ApiClientError) {
@@ -28,6 +39,7 @@ function getSafeErrorMessage(error: unknown) {
 }
 
 export function SignInForm() {
+  const router = useRouter();
   const [departmentCode, setDepartmentCode] = useState("LAW");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,12 +56,19 @@ export function SignInForm() {
     setErrorMessage(null);
 
     try {
-      await signIn({
+      const nextSession = await signIn({
         departmentCode: departmentCode.trim(),
         email: email.trim(),
         password,
         deviceLabel: "Lexora Web"
       });
+
+      const roleHome = getRoleHome(nextSession.user.roles);
+
+      if (roleHome) {
+        router.replace(roleHome);
+        return;
+      }
 
       setStatus("success");
     } catch (error) {

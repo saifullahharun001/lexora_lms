@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { ProtectedRoute } from "@/components/auth/protected-route";
 import { DashboardShell } from "@/components/shell/dashboard-shell";
 
 interface DashboardLayoutProps {
@@ -12,8 +13,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       title="Lexora Control Surface"
       subtitle="Shared application shell for department-aware workspaces."
     >
-      {children}
+      <ProtectedRoute>{children}</ProtectedRoute>
     </DashboardShell>
   );
 }
-

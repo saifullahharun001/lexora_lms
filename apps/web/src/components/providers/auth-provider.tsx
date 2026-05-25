@@ -19,7 +19,7 @@ import {
 
 type AuthStatus = "bootstrapping" | "authenticated" | "anonymous";
 
-interface AuthSession {
+export interface AuthSession {
   user: AuthUser;
   accessToken: string;
   refreshTokenExpiresAt: string;
@@ -28,7 +28,7 @@ interface AuthSession {
 interface AuthContextValue {
   status: AuthStatus;
   session: AuthSession | null;
-  signIn: (payload: LoginPayload) => Promise<void>;
+  signIn: (payload: LoginPayload) => Promise<AuthSession>;
   signOut: () => Promise<void>;
 }
 
@@ -88,9 +88,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const signIn = useCallback(async (payload: LoginPayload) => {
     const response = await login(payload);
+    const nextSession = toSession(response);
 
-    setSession(toSession(response));
+    setSession(nextSession);
     setStatus("authenticated");
+
+    return nextSession;
   }, []);
 
   const signOut = useCallback(async () => {
