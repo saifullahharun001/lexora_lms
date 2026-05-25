@@ -3365,3 +3365,349 @@ Updated limitation note:
 - Notification emission on notice publish with `publishNotification=true` is runtime-tested for `IN_APP`.
 - Real email/push delivery remains out of scope.
 - Background queue/worker delivery remains out of scope.
+
+
+---
+
+## Web Frontend Sign-In Foundation Runtime Test
+
+Runtime test date: 2026-05-25
+
+Runtime environment:
+
+| Item | Value |
+|---|---|
+| Frontend app | `@lexora/web` |
+| Frontend framework | Next.js |
+| Runtime URL used | `http://192.168.197.129:3000/sign-in` |
+| API proxy path | `/api/v1/*` |
+| Backend API behind Nginx | `http://localhost/api/v1` |
+| Backend direct app port | `127.0.0.1:4000` |
+| Backend process | PM2 process `lexora-api` |
+
+Related frontend commits:
+
+| Commit | Message |
+|---|---|
+| `83e7ed3` | `Add web API base URL environment config` |
+| `1bec765` | `Add web API client and API rewrite config` |
+| `4cff777` | `Add functional web sign-in form` |
+
+### Frontend Sign-In Foundation Summary
+
+The Lexora LMS web frontend now has a working sign-in foundation.
+
+Implemented and verified:
+
+- [x] Web API base URL environment configuration added.
+- [x] Web API client foundation added.
+- [x] Next.js API rewrite/proxy foundation added for `/api/v1/*`.
+- [x] `/sign-in` page implemented.
+- [x] Functional sign-in form implemented.
+- [x] Browser login through the web UI succeeded.
+- [x] Sign-in success card displayed authenticated user information.
+- [x] Runtime user information rendered after successful login:
+  - Display name
+  - Email
+  - Department ID
+  - Roles
+
+Runtime sign-in verification:
+
+| Check | Result |
+|---|---|
+| `/sign-in` route loads | Passed |
+| Web form submits to API | Passed |
+| Valid runtime credentials authenticate | Passed |
+| Login response is consumed by frontend | Passed |
+| Success card displays user data | Passed |
+| Backend health during frontend test | Passed |
+| Web typecheck | Passed |
+| Web build | Passed |
+
+Security notes:
+
+- Raw access tokens and refresh tokens were not intentionally documented.
+- Runtime credentials, password hashes, and token values must not be committed.
+- Runtime test account credentials were used only for controlled local VM testing.
+
+### Web Sign-In Foundation Verdict
+
+- Frontend sign-in foundation: Passed
+- API client/rewrite foundation: Passed
+- Browser login through `/sign-in`: Passed
+- Web build/typecheck after implementation: Passed
+
+
+---
+
+## Web Auth Session Foundation Runtime Test
+
+Runtime test date: 2026-05-25
+
+Related commits:
+
+| Commit | Message |
+|---|---|
+| `e9d8a71` | `Add memory-only web auth session handling` |
+| `cb4ef60` | `Support refresh token cookie in auth refresh` |
+| `5fc458b` | `Allow host-only refresh cookie domain` |
+
+Runtime context:
+
+| Item | Value |
+|---|---|
+| Frontend URL | `http://192.168.197.129:3000/sign-in` |
+| Runtime department code | `LAW` |
+| Runtime department ID | `dept_law_test` |
+| Runtime login user | `runtime-test-student@cu.ac.bd` |
+| Runtime displayed name | `Runtime Test Student` |
+| Runtime role displayed | `department_admin` |
+| Refresh cookie name | `lexora_rt` |
+| Refresh cookie path | `/api/v1/auth` |
+| Refresh cookie mode | httpOnly, host-only in VM/IP dev |
+| Access token storage strategy | Memory-only frontend state |
+
+### Frontend Memory-Only Auth Session Implementation
+
+Implemented files:
+
+| File | Purpose |
+|---|---|
+| `apps/web/src/lib/api-client.ts` | Added `refreshSession()` and `logout()` API helpers |
+| `apps/web/src/components/providers/auth-provider.tsx` | Added memory-only `AuthProvider` and `useAuth()` |
+| `apps/web/src/components/providers/app-providers.tsx` | Wrapped application providers with `AuthProvider` |
+| `apps/web/src/components/auth/sign-in-form.tsx` | Updated sign-in form to use shared auth state and logout |
+
+Verified frontend security behavior:
+
+- [x] Access token stored only in React memory state.
+- [x] Refresh token is not stored in frontend state.
+- [x] Refresh token is not stored in `localStorage`.
+- [x] Refresh token is not stored in `sessionStorage`.
+- [x] `localStorage` and `sessionStorage` token persistence were not added.
+- [x] Login success state is read from shared auth session.
+- [x] Logout clears frontend memory state.
+- [x] App bootstrap calls `/auth/refresh` to restore session when a valid refresh cookie exists.
+- [x] No role redirect or protected dashboard was implemented in this task.
+- [x] No frontend dashboard/protected route scope was added.
+
+Frontend verification:
+
+| Command / Check | Result |
+|---|---|
+| `pnpm --filter @lexora/web typecheck` | Passed |
+| `pnpm --filter @lexora/web build` | Passed |
+| Browser login | Passed |
+| Success card from shared auth state | Passed |
+| Logout button clears UI state | Passed |
+| Reload after logout shows anonymous sign-in form | Passed |
+
+### Backend Cookie-Based Refresh Support
+
+Initial reload-while-logged-in test revealed that frontend bootstrap was calling `/auth/refresh`, but the backend returned:
+
+| Field | Value |
+|---|---|
+| HTTP Status | `400 Bad Request` before fix |
+| Error Code | `BadRequestException` |
+| Error Message | `Refresh token is required` |
+| Refresh Payload | `{}` |
+
+Root cause:
+
+- Frontend was intentionally sending an empty refresh payload because refresh token must remain in the httpOnly cookie.
+- Backend `/auth/refresh` still expected `refreshToken` in the request body.
+- This was incompatible with the memory-only frontend auth strategy.
+
+Backend fix implemented in commit `cb4ef60`:
+
+- `/auth/refresh` now reads refresh token from the configured `lexora_rt` cookie.
+- Body `refreshToken` remains supported as fallback.
+- Cookie token is preferred when available.
+- Missing refresh token now returns `401 UnauthorizedException`.
+- Successful refresh keeps existing refresh validation and rotation behavior.
+- Successful refresh sets the rotated refresh cookie again.
+- Logout was also updated to read cookies from `@Req()` explicitly while preserving body-first behavior.
+
+Backend verification after cookie refresh fix:
+
+| Command / Check | Result |
+|---|---|
+| Prisma client regenerate after stale client issue | Passed |
+| `pnpm --filter @lexora/api typecheck` | Passed |
+| `pnpm --filter @lexora/api build` | Passed |
+| Server pull/build | Passed |
+| PM2 restart | Passed |
+| Direct API health | Passed |
+| Nginx API health | Passed |
+
+Related runtime note:
+
+- API typecheck initially failed because Prisma Client was stale and did not expose `PrismaService.notice`.
+- `Notice` model existed in `schema.prisma`.
+- Running Prisma generate fixed the typecheck issue.
+- No Notice source-code change was required for that typecheck issue.
+
+### Refresh Cookie Domain Runtime Issue
+
+After backend cookie refresh support, browser reload still failed.
+
+Observed behavior:
+
+| Check | Result |
+|---|---|
+| Login succeeded | Passed |
+| Login response included `Set-Cookie` | Passed |
+| `/auth/refresh` request happened on reload | Passed |
+| `/auth/refresh` status | `401 Unauthorized` |
+| Error message | `Refresh token is required` |
+| Refresh request cookie | Missing |
+| Application Cookies | `lexora_rt` not stored |
+
+Root cause:
+
+- Backend was sending `Set-Cookie` with `Domain=localhost`.
+- Browser was accessing frontend through `192.168.197.129:3000`.
+- A cookie with `Domain=localhost` is not valid for the `192.168.197.129` browser origin.
+- Therefore the browser did not persist the refresh cookie for the VM IP origin.
+
+Environment/config finding:
+
+- Root `.env` was changed first:
+  - `REFRESH_TOKEN_COOKIE_DOMAIN=`
+- Raw `Set-Cookie` still showed `Domain=localhost`.
+- Further inspection found another runtime env file:
+  - `apps/api/.env`
+- `apps/api/.env` still had:
+  - `REFRESH_TOKEN_COOKIE_DOMAIN=localhost`
+- After setting `apps/api/.env` to:
+  - `REFRESH_TOKEN_COOKIE_DOMAIN=`
+  and restarting PM2 with `--update-env`, raw `Set-Cookie` no longer included `Domain=localhost`.
+
+Backend config fix implemented in commit `5fc458b`:
+
+- `REFRESH_TOKEN_COOKIE_DOMAIN` is now allowed to be empty/optional in env schema.
+- Empty cookie domain is normalized to `undefined`.
+- Controller reads optional cookie domain via config.
+- If no real domain is configured, `Set-Cookie` omits the `Domain` attribute.
+- Explicit production cookie domains are still supported.
+- `httpOnly`, `sameSite`, `secure`, `path`, expiry, and refresh token validation were not weakened.
+
+Verified fixed raw cookie shape:
+
+| Attribute | Result |
+|---|---|
+| Cookie name | `lexora_rt` |
+| Domain attribute | Omitted |
+| Path | `/api/v1/auth` |
+| HttpOnly | Enabled |
+| SameSite | `Lax` |
+| Secure in local VM | `false` |
+| Storage behavior | Host-only cookie under `192.168.197.129` |
+
+### Final Browser Runtime Verification
+
+Final verified flow:
+
+- [x] Browser opened `http://192.168.197.129:3000/sign-in`.
+- [x] User logged in successfully.
+- [x] Success card displayed runtime user information.
+- [x] Browser Application Cookies stored `lexora_rt` under `192.168.197.129`.
+- [x] Cookie was httpOnly.
+- [x] Cookie path was `/api/v1/auth`.
+- [x] Cookie domain was host-only / VM IP, not `localhost`.
+- [x] Page reload triggered `/api/v1/auth/refresh`.
+- [x] Refresh request included `lexora_rt` request cookie.
+- [x] Refresh response returned successfully.
+- [x] Refresh response rotated/set `lexora_rt`.
+- [x] Signed-in success card was restored after reload.
+- [x] Logout cleared frontend session state.
+- [x] Reload after logout returned to anonymous sign-in form.
+
+Final auth session flow verdict:
+
+| Flow | Result |
+|---|---|
+| Login | Passed |
+| Access token memory state | Passed |
+| Refresh cookie storage | Passed |
+| Reload bootstrap through `/auth/refresh` | Passed |
+| Refresh cookie sent on reload | Passed |
+| Refresh cookie rotation/reset | Passed |
+| Signed-in card restored after reload | Passed |
+| Logout | Passed |
+| Reload after logout remains anonymous | Passed |
+
+### Web Auth Session Runtime Verdict
+
+- Minimal frontend memory-only auth session handling: Passed
+- Backend cookie-based refresh support: Passed
+- Host-only cookie domain support for VM/IP development: Passed
+- Full login → reload refresh bootstrap → logout flow: Passed
+- Frontend typecheck/build: Passed
+- API typecheck/build: Passed
+- Local PC repository status after commits: Clean
+- Ubuntu server repository status after deployment: Clean
+
+### Security Notes From This Runtime Test
+
+- During manual terminal/browser debugging, a runtime test password and raw refresh token were exposed in chat/terminal output.
+- These values must not be copied into committed documentation.
+- Raw access tokens, raw refresh tokens, raw cookie values, passwords, password hashes, database URLs, and transcript verification tokens must not be committed.
+- Recommended cleanup:
+  - Reset the affected runtime test account password.
+  - Revoke existing sessions for the affected runtime account.
+- This was a controlled local VM/runtime test account, not production.
+- Production or cloud credentials must be rotated immediately if ever exposed.
+
+### Runtime Environment Notes
+
+- Next.js dev server showed a development warning about cross-origin requests from `192.168.197.129` to `/_next/*`.
+- This warning did not block runtime testing.
+- It may require `allowedDevOrigins` configuration in a future Next.js major version.
+- Nginx `502 Bad Gateway` appeared immediately after PM2 restarts when health was checked too quickly.
+- Retesting after a short wait showed both direct and Nginx health endpoints returned OK.
+- This was treated as restart timing, not a persistent Nginx failure.
+
+### Current Auth Session Limitation
+
+- Login response still includes `refreshToken` in the JSON response shape.
+- The frontend does not persist it and only uses the httpOnly cookie strategy.
+- Recommended future hardening:
+  - Consider removing raw `refreshToken` from browser-facing login/refresh JSON responses once all clients support cookie-based refresh.
+  - Keep refresh token rotation and session validation behavior.
+  - Preserve httpOnly refresh cookie flow.
+
+
+## Web Auth Runtime Issues / Findings Addendum
+
+| Date | Module | Issue | Status | Fix Commit / Note |
+|---|---|---|---|---|
+| 2026-05-25 | Web Auth | Frontend login worked but session was not shared globally or restored after page reload | Fixed | `e9d8a71` |
+| 2026-05-25 | Auth Refresh | `/auth/refresh` expected body `refreshToken`, but memory-only frontend refresh sends `{}` and relies on httpOnly cookie | Fixed | `cb4ef60` |
+| 2026-05-25 | Cookie Domain | Refresh cookie was set with `Domain=localhost`, so browser at `192.168.197.129:3000` did not store/send it | Fixed | `5fc458b` |
+| 2026-05-25 | Runtime Env | Root `.env` was blanked first, but actual API runtime also used `apps/api/.env`, which still had `REFRESH_TOKEN_COOKIE_DOMAIN=localhost` | Fixed / Documented | Set `apps/api/.env` to `REFRESH_TOKEN_COOKIE_DOMAIN=` and restarted PM2 with `--update-env` |
+| 2026-05-25 | Runtime Security | Runtime test password and refresh token were exposed during manual debugging | Cleanup Recommended | Reset runtime test account password and revoke old sessions |
+| 2026-05-25 | Dev Server | Next.js dev warning about future `allowedDevOrigins` requirement appeared when accessing dev server by VM IP | Documented | Not blocking |
+| 2026-05-25 | PM2/Nginx Timing | Nginx briefly returned `502` immediately after API PM2 restart | Documented | Direct/Nginx health passed after short wait |
+
+
+## Updated Next Test Steps After Web Auth Session Foundation
+
+1. Reset the affected runtime test account password and revoke old sessions because a runtime password/token appeared during debugging.
+2. Keep `REFRESH_TOKEN_COOKIE_DOMAIN=` for local VM/IP development.
+3. Use a real domain and HTTPS before production; set cookie `Secure=true` in production.
+4. Consider removing raw `refreshToken` from browser-facing JSON responses after cookie-based refresh is fully adopted.
+5. Implement minimal auth-aware route foundation next:
+   - unauthenticated protected route access should redirect to `/sign-in`
+   - authenticated users should route based on role
+   - no dashboard feature scope should be added until route guards are stable
+6. Implement protected placeholder routes for:
+   - admin
+   - teacher
+   - student
+7. Later implement role-specific dashboards after auth-aware routing is verified.
+8. Keep token storage memory-only on frontend.
+9. Do not introduce `localStorage` or `sessionStorage` token persistence.
+10. Continue documenting frontend runtime tests in this checklist after each completed scope.
