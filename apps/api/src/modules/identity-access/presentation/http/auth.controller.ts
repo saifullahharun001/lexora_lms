@@ -1,9 +1,10 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Post,
+  Req,
   Res,
+  UnauthorizedException,
   UseGuards
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -21,9 +22,10 @@ import { VerifyEmailDto } from "../dto/verify-email.dto";
 type CookieResponse = {
   cookie: (name: string, value: string, options: Record<string, unknown>) => void;
   clearCookie: (name: string, options: Record<string, unknown>) => void;
-  req: {
-    cookies?: Record<string, string | undefined>;
-  };
+};
+
+type CookieRequest = {
+  cookies?: Record<string, string | undefined>;
 };
 
 @Controller({
@@ -65,11 +67,12 @@ export class AuthController {
   @Post("logout")
   async logout(
     @Body() body: LogoutDto,
+    @Req() request: CookieRequest,
     @Res({ passthrough: true }) response: CookieResponse
   ) {
     const refreshToken =
       body.refreshToken ??
-      response.req.cookies?.[this.configService.getOrThrow<string>("auth.refreshCookieName")];
+      request.cookies?.[this.configService.getOrThrow<string>("auth.refreshCookieName")];
     const result = await this.identityAccessService.logout(refreshToken);
     this.clearRefreshCookie(response);
     return result;
@@ -81,14 +84,16 @@ export class AuthController {
   })
   async refresh(
     @Body() body: RefreshTokenDto,
+    @Req() request: CookieRequest,
     @Res({ passthrough: true }) response: CookieResponse
   ) {
+    const refreshCookieName = this.configService.getOrThrow<string>("auth.refreshCookieName");
     const refreshToken =
-      body.refreshToken ??
-      response.req.cookies?.[this.configService.getOrThrow<string>("auth.refreshCookieName")];
+      request.cookies?.[refreshCookieName] ??
+      body.refreshToken;
 
     if (!refreshToken) {
-      throw new BadRequestException("Refresh token is required");
+      throw new UnauthorizedException("Refresh token is required");
     }
 
     const result = await this.identityAccessService.refresh(refreshToken);
