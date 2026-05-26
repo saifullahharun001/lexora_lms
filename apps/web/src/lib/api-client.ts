@@ -34,6 +34,20 @@ export interface LogoutResponse {
   success: boolean;
 }
 
+export interface ApiAuthContext {
+  accessToken: string;
+  departmentId: string;
+}
+
+export interface AcademicProgram {
+  id: string;
+  departmentId: string;
+  code: string;
+  name: string;
+  description: string | null;
+  status: string;
+}
+
 interface ApiErrorResponse {
   code?: string;
   message?: string;
@@ -88,6 +102,26 @@ export async function apiPost<TResponse, TPayload>(
   return (await response.json()) as TResponse;
 }
 
+export async function apiAuthenticatedGet<TResponse>(
+  path: string,
+  { accessToken, departmentId }: ApiAuthContext
+): Promise<TResponse> {
+  const response = await fetch(`${clientEnv.NEXT_PUBLIC_API_BASE_URL}${path}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "x-department-id": departmentId
+    },
+    credentials: "include"
+  });
+
+  if (!response.ok) {
+    throw await parseApiError(response);
+  }
+
+  return (await response.json()) as TResponse;
+}
+
 export function login(payload: LoginPayload) {
   return apiPost<AuthResponse, LoginPayload>("/auth/login", payload);
 }
@@ -98,4 +132,8 @@ export function refreshSession() {
 
 export function logout() {
   return apiPost<LogoutResponse, Record<string, never>>("/auth/logout", {});
+}
+
+export function getPrograms(authContext: ApiAuthContext) {
+  return apiAuthenticatedGet<AcademicProgram[]>("/programs", authContext);
 }
