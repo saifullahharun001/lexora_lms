@@ -4334,3 +4334,168 @@ Runtime browser verdict:
    - httpOnly refresh cookie
    - no `localStorage` or `sessionStorage` token persistence
    - backend as the source of truth for authorization
+
+## Admin Programs Panel Frontend Runtime Verification
+
+Runtime test date: 2026-05-26
+
+Tested commit:
+
+| Field | Value |
+|---|---|
+| Commit | `f4cd8ef` |
+| Message | `Connect admin programs panel to API` |
+
+### Implementation Summary
+
+The Admin dashboard was connected to the backend Programs API.
+
+Frontend changes:
+
+| File | Purpose |
+|---|---|
+| `apps/web/src/lib/api-client.ts` | Added authenticated GET helper and typed Programs API function |
+| `apps/web/src/components/admin/admin-programs-panel.tsx` | Added React Query powered Admin Programs panel |
+| `apps/web/src/app/(dashboard)/admin/page.tsx` | Mounted Admin Programs panel in the Admin dashboard |
+
+Implemented behavior:
+
+- [x] Added reusable authenticated frontend GET helper.
+- [x] Authenticated helper sends `Authorization: Bearer <accessToken>`.
+- [x] Authenticated helper sends `x-department-id` from the authenticated user's department ID.
+- [x] Added typed Programs API function for `GET /programs`.
+- [x] Added Admin Programs panel using React Query.
+- [x] Query is gated on memory-only auth session availability.
+- [x] Loading, error, empty, and data table states were added.
+- [x] Existing admin dashboard context card was preserved.
+- [x] No backend code was changed.
+- [x] No database schema was changed.
+- [x] No token persistence was added.
+
+Security posture preserved:
+
+- [x] Access token remains memory-only through `AuthProvider`.
+- [x] No `localStorage` token persistence was introduced.
+- [x] No `sessionStorage` token persistence was introduced.
+- [x] Backend authorization remains the source of truth.
+- [x] Existing `ProtectedRoute` behavior remains in place.
+- [x] Existing role-aware sidebar behavior remains in place.
+- [x] Department scoping is still enforced by backend policy/request-context logic.
+
+### Local PC Validation
+
+| Validation | Result |
+|---|---|
+| Web typecheck | Passed |
+| Web build | Passed |
+| Commit created | Passed |
+| Push to `origin/main` | Passed |
+
+Committed change:
+
+| Field | Value |
+|---|---|
+| Commit | `f4cd8ef` |
+| Message | `Connect admin programs panel to API` |
+
+Build artifact handling:
+
+- `apps/web/tsconfig.tsbuildinfo` changed after web builds.
+- It was not committed as source work.
+- It was restored where needed.
+
+### Ubuntu Server Validation
+
+| Validation | Result |
+|---|---|
+| Fast-forward from `1dd48d9` to `f4cd8ef` | Passed |
+| Web typecheck | Passed |
+| Web build | Passed |
+| `/admin` route build | Passed |
+| Working tree restored after build artifact change | Passed |
+
+Server build summary:
+
+- Next.js production build completed successfully.
+- `/admin` route was generated successfully.
+- `/sign-in`, `/teacher`, and `/student` routes remained available.
+
+### Runtime Browser Verification
+
+Runtime browser URL:
+
+- `http://192.168.197.129:3000/sign-in`
+
+Runtime server command used:
+
+- `pnpm --filter @lexora/web dev`
+
+Verified browser behavior:
+
+- [x] Sign-in page loaded.
+- [x] Admin canonical account could sign in.
+- [x] Admin user reached `/admin`.
+- [x] Role-aware sidebar showed Admin workspace.
+- [x] Admin Programs panel appeared on `/admin`.
+- [x] Programs panel loaded real backend data from `GET /programs`.
+- [x] Teacher workspace route loaded.
+- [x] Student workspace route loaded.
+- [x] Existing role-aware sidebar behavior remained functional.
+
+Verified Admin Programs data displayed in browser:
+
+| Code | Program | Status |
+|---|---|---|
+| `LLB` | `Bachelor of Laws` | `ACTIVE` |
+
+Runtime verdict:
+
+- [x] Frontend authenticated API helper works for the Programs API.
+- [x] Admin dashboard can display real department-scoped academic program data.
+- [x] Admin dashboard is no longer purely placeholder-level for academic programs.
+- [x] Backend Programs API integration through the frontend passed runtime smoke test.
+
+### Development Warning Observed
+
+Next.js dev server showed a cross-origin development warning for `192.168.197.129` access to `/_next/*` resources.
+
+Finding:
+
+- This warning appeared only during development server access from the LAN IP.
+- It did not block sign-in.
+- It did not block `/admin`.
+- It did not block Programs API rendering.
+
+Future optional improvement:
+
+- Configure `allowedDevOrigins` in `apps/web/next.config.ts` if repeated LAN-based Next.js dev testing needs warning-free operation.
+
+This is not treated as a production blocker.
+
+### Updated Current Limitations / Follow-Up
+
+Superseded limitation:
+
+- Previous note said role-specific dashboards were still placeholder-level.
+- Updated status: Admin dashboard now has one real API-connected section: Academic Programs.
+
+Still pending:
+
+- Admin create/update academic program UI is not implemented yet.
+- Admin courses UI remains pending.
+- Admin course offerings UI remains pending.
+- Academic Year/Term frontend remains pending.
+- Teacher assigned-course UI remains pending.
+- Student enrolled-course UI using `/enrollments/me` remains pending.
+- Notice/notification frontend remains pending.
+- Secure file upload frontend remains pending.
+
+### Recommended Next Frontend Step
+
+The next safe frontend step can be one of:
+
+1. Add Admin Courses panel using the existing authenticated API helper.
+2. Add Student enrolled-course surface using existing `/enrollments/me`.
+3. Add Teacher assigned-course surface using existing teacher-scoped course-offering behavior.
+
+For continuity after the Admin Programs panel, the most natural next step is Admin Courses panel connected to `GET /courses`.
