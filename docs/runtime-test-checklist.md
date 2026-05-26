@@ -3827,3 +3827,169 @@ Observed route behavior:
    - httpOnly refresh cookie
    - no `localStorage` or `sessionStorage` token persistence
    - backend as the source of truth for authorization
+
+## Web Visual Foundation Refresh and Homepage Workspace Gate Runtime Test
+
+Runtime test date: 2026-05-26
+
+### Scope
+
+Implemented a bright, gentle, minimal academic visual refresh for the existing Lexora LMS frontend foundation.
+
+This scope intentionally remained a visual/UX foundation task. It did not add real LMS dashboard features, enrollment data, course data, result data, attendance data, or backend changes.
+
+### Code Commits Tested
+
+| Commit | Message |
+|---|---|
+| `065fbb4` | `Refresh web visual foundation` |
+| `84a8e6c` | `Gate homepage workspace actions` |
+
+### Visual Design Direction
+
+The frontend was updated away from the previous dark control-surface/security-console look.
+
+New intended style:
+
+- bright
+- gentle
+- minimal
+- academic
+- readable
+- calm
+- trustworthy
+- university-portal oriented
+
+The updated foundation uses a light warm academic palette with soft backgrounds, slate text, subtle borders, teal accents, minimal shadows, and cleaner placeholder copy.
+
+### Files Changed for Visual Foundation
+
+| File | Purpose |
+|---|---|
+| `apps/web/src/app/page.tsx` | Updated public landing page copy and visual style |
+| `apps/web/src/app/globals.css` | Switched global base from dark to light visual foundation |
+| `apps/web/src/app/(auth)/layout.tsx` | Restyled auth shell as bright centered card |
+| `apps/web/src/app/(auth)/forgot-password/page.tsx` | Restyled recovery placeholder copy and colors |
+| `apps/web/src/app/(dashboard)/layout.tsx` | Renamed shell wording to `Lexora Workspace` |
+| `apps/web/src/app/(dashboard)/admin/page.tsx` | Restyled admin placeholder copy |
+| `apps/web/src/app/(dashboard)/teacher/page.tsx` | Restyled teacher placeholder copy |
+| `apps/web/src/app/(dashboard)/student/page.tsx` | Restyled student placeholder copy |
+| `apps/web/src/app/verify/[code]/page.tsx` | Restyled public verification placeholder |
+| `apps/web/src/components/auth/protected-route.tsx` | Restyled route-guard bootstrapping state |
+| `apps/web/src/components/auth/sign-in-form.tsx` | Restyled sign-in form, inputs, error, and signed-in card |
+| `apps/web/src/components/shell/dashboard-shell.tsx` | Restyled dashboard navigation links |
+| `apps/web/src/lib/navigation.ts` | Updated navigation labels |
+| `packages/ui/src/components/app-shell.tsx` | Updated shared shell from dark to light foundation |
+| `packages/ui/src/components/section-card.tsx` | Updated shared card component from dark to light foundation |
+
+### Homepage Workspace Action Gate
+
+A follow-up UX/auth navigation fix was added after runtime testing showed that the public homepage could display route cards linking directly to protected workspaces.
+
+New component:
+
+| File | Purpose |
+|---|---|
+| `apps/web/src/components/home/home-route-action.tsx` | Adds auth-aware homepage actions for protected workspace cards |
+
+Updated behavior:
+
+- Homepage `/` remains public.
+- Public links such as `/sign-in`, `/forgot-password`, and `/verify/sample-code` remain directly accessible.
+- Admin, Teacher, and Student homepage cards are now auth-aware.
+- Anonymous users clicking protected workspace cards are sent to `/sign-in`.
+- Bootstrapping state disables the protected workspace action and shows `Checking session...`.
+- Authenticated users can navigate to workspace routes.
+- Existing `ProtectedRoute` remains the final frontend guard for wrong-role redirects.
+
+### Verified Browser Behavior
+
+Runtime browser URL:
+
+- `http://192.168.197.129:3000`
+
+Incognito/private-window verification:
+
+- [x] Homepage `/` loads publicly.
+- [x] Anonymous user clicking Admin workspace from homepage goes to `/sign-in`.
+- [x] Anonymous user clicking Teacher workspace from homepage goes to `/sign-in`.
+- [x] Anonymous user clicking Student workspace from homepage goes to `/sign-in`.
+- [x] Direct anonymous visit to `/admin` redirects to `/sign-in`.
+- [x] Admin content is not usable before sign-in.
+- [x] Public verification placeholder remains accessible.
+- [x] Forgot password placeholder remains accessible.
+- [x] Sign-in page remains accessible and bright/readable.
+
+Runtime observation:
+
+- Next.js dev server logs may show `GET /admin 200`, `GET /teacher 200`, or `GET /student 200`.
+- This is expected for Next.js App Router serving route assets/pages during development.
+- The browser-side `ProtectedRoute` and homepage action behavior were verified in incognito state.
+- The observed `GET 200` log entries were not treated as route-guard failure.
+
+### Validation
+
+Local PC validation:
+
+- [x] `pnpm --filter @lexora/web typecheck` passed.
+- [x] `pnpm --filter @lexora/web build` passed.
+- [x] `git diff --check` had no blocking whitespace errors.
+- [x] `apps/web/tsconfig.tsbuildinfo` build artifact was restored before commit.
+- [x] Local PC repository clean after commit and push.
+
+Ubuntu server validation:
+
+- [x] Server synced to latest `origin/main`.
+- [x] `pnpm --filter @lexora/web typecheck` passed.
+- [x] `pnpm --filter @lexora/web build` passed.
+- [x] `apps/web/tsconfig.tsbuildinfo` build artifact restored after validation.
+- [x] Server repository clean after validation.
+
+### Security and Session Behavior
+
+Preserved:
+
+- [x] Access token remains memory-only in React auth state.
+- [x] Refresh token remains httpOnly cookie-based.
+- [x] No `localStorage` token persistence introduced.
+- [x] No `sessionStorage` token persistence introduced.
+- [x] No backend auth code changed.
+- [x] No backend policy, guard, request-context, or department-isolation code changed.
+- [x] `ProtectedRoute` remains in place for dashboard routes.
+- [x] Backend remains the source of truth for authorization.
+- [x] No real dashboard business features were added.
+
+### Runtime Environment Notes
+
+- Next.js dev server was run with `pnpm --filter @lexora/web dev --hostname 0.0.0.0`.
+- Next.js showed the known development warning about cross-origin requests from `192.168.197.129` to `/_next/*`.
+- This warning did not block visual foundation or homepage gate runtime testing.
+- It may require `allowedDevOrigins` configuration in a future Next.js major version.
+
+### Web Visual Refresh Runtime Verdict
+
+- Bright academic visual foundation: Passed
+- Sign-in visual refresh: Passed
+- Dashboard shell visual refresh: Passed
+- Placeholder page visual refresh: Passed
+- Shared AppShell and SectionCard light foundation: Passed
+- Homepage protected workspace action gate: Passed
+- Existing auth-aware route guard behavior: Preserved
+- Token storage security posture: Preserved
+- Frontend typecheck/build: Passed
+- Local PC and Ubuntu server repositories: Clean after sync
+
+## Updated Next Test Steps After Web Visual Refresh
+
+1. Document the visual refresh and homepage workspace gate as complete.
+2. Keep homepage public but keep protected workspace actions gated.
+3. Do not add business widgets/metrics until role-specific dashboard scope is defined.
+4. Next safe frontend step can be:
+   - student enrolled-course surface using existing `/enrollments/me`
+   - role-aware dashboard landing cards without real metrics
+   - navigation active-state cleanup
+5. Continue preserving:
+   - memory-only access token
+   - httpOnly refresh cookie
+   - no `localStorage` or `sessionStorage` token persistence
+   - backend as the source of truth for authorization
