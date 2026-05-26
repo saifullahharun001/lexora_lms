@@ -60,7 +60,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (status === "bootstrapping") {
     return (
-      <div className="rounded-lg border border-stone-800 bg-stone-950/60 px-4 py-3 text-sm text-stone-300">
+      <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
         Restoring your session...
       </div>
     );

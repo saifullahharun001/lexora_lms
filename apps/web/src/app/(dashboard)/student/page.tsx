@@ -4,14 +4,13 @@ export default function StudentPage() {
   return (
     <div className="space-y-4">
       <SectionCard
-        title="Student foundation"
-        description="Reserved for enrollment, coursework, results, and transcript access surfaces."
+        title="Student workspace"
+        description="Reserved for future coursework and academic record access."
       />
       <SectionCard
-        title="Verification-aware"
-        description="Student-facing records will later align with transcript verification and audit-ready delivery paths."
+        title="Academic records"
+        description="Future records will align with verification-ready delivery paths."
       />
     </div>
   );
 }
-

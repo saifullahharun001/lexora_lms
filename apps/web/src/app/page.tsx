@@ -4,51 +4,51 @@ import Link from "next/link";
 const routeAreas = [
   {
     href: "/sign-in",
-    title: "Auth Surface",
-    description: "Identity entry points, session bootstrap, and account recovery shells."
+    title: "Academic workspace",
+    description: "Sign in with an institutional account and continue to the right workspace."
   },
   {
     href: "/forgot-password",
-    title: "Recovery Surface",
-    description: "Password recovery shell for audited identity-access flows."
+    title: "Account recovery",
+    description: "A calm placeholder for future institutional password recovery."
   },
   {
     href: "/admin",
     title: "Admin Workspace",
-    description: "Department-aware administrative shell for configuration and governance."
+    description: "Department-aware space for future administration and governance tools."
   },
   {
     href: "/teacher",
     title: "Teacher Workspace",
-    description: "Instruction-facing shell for course delivery and class operations."
+    description: "Instruction-facing space for future course and class workflows."
   },
   {
     href: "/student",
     title: "Student Workspace",
-    description: "Learner-facing shell for enrollment, coursework, and record access."
+    description: "Learner-facing space for future coursework and academic records."
   },
   {
     href: "/verify/sample-code",
     title: "Public Verification",
-    description: "Public verification surface for transcripts and academic artifacts."
+    description: "Read-only placeholder for future academic document verification."
   }
 ];
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-lexora-grid bg-grid px-4 py-10">
+    <main className="min-h-screen px-4 py-10">
       <div className="mx-auto max-w-6xl">
-        <div className="rounded-[2rem] border border-stone-800 bg-stone-900/80 p-8 shadow-2xl shadow-black/20">
-          <p className="text-sm uppercase tracking-[0.35em] text-amber-400">
-            Security-First Foundation
+        <div className="rounded-3xl border border-slate-200 bg-white/88 p-8 shadow-sm">
+          <p className="text-sm uppercase tracking-[0.22em] text-teal-700">
+            Academic foundation
           </p>
-          <h1 className="mt-4 font-[family-name:var(--font-heading)] text-4xl text-stone-50 md:text-5xl">
-            Lexora LMS project foundation
+          <h1 className="mt-4 font-[family-name:var(--font-heading)] text-4xl text-slate-950 md:text-5xl">
+            Lexora LMS academic portal
           </h1>
-          <p className="mt-4 max-w-3xl text-base leading-7 text-stone-300">
-            This initial scaffold establishes a modular monolith, department-scoped
-            tenancy assumptions, shared configuration, and workspace conventions without
-            introducing business features.
+          <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">
+            A bright, minimal project foundation for department-scoped academic
+            workspaces. These routes are intentionally simple while real LMS
+            features are prepared in later phases.
           </p>
         </div>
 
@@ -61,7 +61,7 @@ export default function HomePage() {
             >
               <Link
                 href={area.href}
-                className="inline-flex rounded-full border border-amber-400/40 px-4 py-2 text-sm text-amber-300 hover:border-amber-300 hover:text-amber-200"
+                className="inline-flex rounded-full border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-800 hover:border-teal-300 hover:bg-teal-100"
               >
                 Open route
               </Link>

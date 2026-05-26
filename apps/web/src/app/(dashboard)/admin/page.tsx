@@ -4,14 +4,13 @@ export default function AdminPage() {
   return (
     <div className="space-y-4">
       <SectionCard
-        title="Admin foundation"
-        description="Reserved for governance, department configuration, and platform controls."
+        title="Admin workspace"
+        description="Reserved for future department administration and governance tools."
       />
       <SectionCard
-        title="Security posture"
-        description="Future admin flows will require explicit policy checks, audit emission, and department scoping."
+        title="Academic operations"
+        description="Future admin flows will stay department-scoped and policy-aware."
       />
     </div>
   );
 }
-

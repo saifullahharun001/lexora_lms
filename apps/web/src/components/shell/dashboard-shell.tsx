@@ -25,7 +25,7 @@ export function DashboardShell({
             <Link
               key={item.href}
               href={item.href}
-              className="block rounded-xl border border-stone-800 px-3 py-2 text-sm text-stone-300 transition hover:border-amber-400/50 hover:text-stone-50"
+              className="block rounded-xl border border-transparent px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-teal-100 hover:bg-teal-50 hover:text-teal-800"
             >
               {item.label}
             </Link>
