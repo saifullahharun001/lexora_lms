@@ -4499,3 +4499,198 @@ The next safe frontend step can be one of:
 3. Add Teacher assigned-course surface using existing teacher-scoped course-offering behavior.
 
 For continuity after the Admin Programs panel, the most natural next step is Admin Courses panel connected to `GET /courses`.
+
+## Admin Courses Panel and Official LL.B. Curriculum Runtime Verification
+
+Runtime test date: 2026-05-26
+
+Tested commits:
+
+| Field | Value |
+|---|---|
+| Courses panel commit | `5fdacf1` |
+| Courses panel message | `Connect admin courses panel to API` |
+| Active-course filter commit | `0b7db34` |
+| Active-course filter message | `Filter admin courses panel to active courses` |
+
+### Source Curriculum
+
+The runtime course seed was based on the official LL.B. (Honours) Semester System curriculum PDF provided for the Department of Law, University of Chittagong.
+
+Curriculum summary:
+
+| Item | Value |
+|---|---|
+| Programme | LL.B. (Honours) |
+| Curriculum model | Semester System / OBE curriculum |
+| Total courses | 58 |
+| Total credits | 140 |
+| Minimum degree credit requirement | 134 |
+
+### Runtime Database Course Seed
+
+The runtime database previously contained legacy/fake test courses:
+
+| Code | Title | Previous Status |
+|---|---|---|
+| `LAW-101` | `Constitutional Law I` | `ACTIVE` |
+| `LAW-999` | `Unassigned Runtime Test Course` | `ACTIVE` |
+
+These old runtime courses were not deleted because existing runtime evidence depends on them through course offerings, teacher assignments, enrollments, result records, and transcript verification history.
+
+Safe runtime data action performed:
+
+- [x] Inserted/upserted 58 official LL.B. curriculum courses.
+- [x] Set all official curriculum courses to `ACTIVE`.
+- [x] Archived old runtime/fake courses instead of deleting them.
+- [x] Preserved old runtime evidence links.
+- [x] No backend schema change was made.
+- [x] No migration was created.
+- [x] No existing course offering, enrollment, result, or transcript evidence was deleted.
+
+Database verification result:
+
+| Status | Count |
+|---|---:|
+| `ACTIVE` | 58 |
+| `ARCHIVED` | 2 |
+
+Archived legacy runtime courses:
+
+| Code | Title |
+|---|---|
+| `LAW-101` | `Constitutional Law I` |
+| `LAW-999` | `Unassigned Runtime Test Course` |
+
+### Frontend Courses Panel Implementation
+
+The Admin dashboard now includes an Academic Courses panel.
+
+Frontend changes:
+
+| File | Purpose |
+|---|---|
+| `apps/web/src/lib/api-client.ts` | Added typed `AcademicCourse` API support and active course query |
+| `apps/web/src/components/admin/admin-courses-panel.tsx` | Added React Query powered Admin Courses panel |
+| `apps/web/src/app/(dashboard)/admin/page.tsx` | Mounted Admin Courses panel after Admin Programs panel |
+
+Implemented behavior:
+
+- [x] Admin Courses panel uses the existing authenticated API helper.
+- [x] Authenticated helper still sends `Authorization: Bearer <accessToken>`.
+- [x] Authenticated helper still sends `x-department-id`.
+- [x] Access token remains memory-only through `AuthProvider`.
+- [x] No token persistence was introduced.
+- [x] Admin Courses panel uses React Query.
+- [x] Query is gated on memory-only auth session availability.
+- [x] Loading, error, empty, and table states are present.
+- [x] Courses table displays code, title, credits, and status.
+- [x] Admin Programs panel was not changed.
+
+### Active-Course Filter
+
+Backend already supported course status filtering through:
+
+- `GET /api/v1/courses?status=ACTIVE`
+
+Frontend `getCourses()` was updated to call only active courses:
+
+- `/courses?status=ACTIVE`
+
+Reason:
+
+- Legacy runtime/fake courses remain preserved in the database as `ARCHIVED`.
+- Admin dashboard should show real active curriculum courses, not old runtime test data.
+
+### Validation
+
+Local PC validation:
+
+| Validation | Result |
+|---|---|
+| Web typecheck | Passed |
+| Web build | Passed |
+| Commit/push for Admin Courses panel | Passed |
+| Commit/push for active-course filter | Passed |
+
+Ubuntu server validation:
+
+| Validation | Result |
+|---|---|
+| Fast-forward pull to `5fdacf1` | Passed |
+| Fast-forward pull to `0b7db34` | Passed |
+| Web typecheck | Passed |
+| Web build | Passed |
+| `/admin` route build | Passed |
+
+### Runtime Browser Verification
+
+Runtime browser URL:
+
+- `http://192.168.197.129:3000/admin`
+
+Runtime server command used:
+
+- `pnpm --filter @lexora/web dev`
+
+Verified browser behavior:
+
+- [x] Sign-in page loaded.
+- [x] Admin dashboard loaded.
+- [x] Academic Programs panel remained functional.
+- [x] Academic Courses panel loaded real official curriculum courses.
+- [x] Real curriculum course codes appeared, including `0421-1102`, `0421-1103`, `0421-1104`, `0231-1105`, `0311-1106`, `0421-1201`, and `0421-2101`.
+- [x] Course credits displayed correctly.
+- [x] Course status displayed as `ACTIVE`.
+- [x] Archived legacy runtime courses `LAW-101` and `LAW-999` no longer appeared in the Admin Courses panel.
+
+Runtime verdict:
+
+- [x] Official LL.B. curriculum course seed passed.
+- [x] Legacy runtime/fake course archival passed.
+- [x] Admin Courses panel passed runtime smoke test.
+- [x] Active-course filtering passed runtime smoke test.
+- [x] Admin dashboard now has two real API-connected academic sections:
+  - Academic Programs
+  - Academic Courses
+
+### Development Warning Observed
+
+Next.js dev server again showed a cross-origin development warning for LAN IP access to `/_next/*` resources.
+
+Finding:
+
+- This warning is development-only.
+- It did not block sign-in.
+- It did not block `/admin`.
+- It did not block Programs rendering.
+- It did not block Courses rendering.
+
+Future optional improvement:
+
+- Configure `allowedDevOrigins` in `apps/web/next.config.ts` if repeated LAN-based Next.js dev testing needs warning-free operation.
+
+This is not treated as a production blocker.
+
+### Updated Current Limitations / Follow-Up
+
+Superseded limitation:
+
+- Previous note said Admin courses UI remained pending.
+- Updated status: Admin dashboard now has a real API-connected Academic Courses panel.
+
+Still pending:
+
+- Admin create/update course UI is not implemented yet.
+- Admin course offering UI remains pending.
+- Academic Year/Term frontend remains pending.
+- Teacher assigned-course UI remains pending.
+- Student enrolled-course UI using `/enrollments/me` remains pending.
+- Notice/notification frontend remains pending.
+- Secure file upload frontend remains pending.
+
+Recommended next frontend step:
+
+- Add Student enrolled-course surface using existing `/enrollments/me`, or
+- Add Teacher assigned-course surface using existing assigned course offering behavior, or
+- Add Admin course offerings panel after checking current course offering API shape.
