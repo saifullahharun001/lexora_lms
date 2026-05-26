@@ -3711,3 +3711,119 @@ Final auth session flow verdict:
 8. Keep token storage memory-only on frontend.
 9. Do not introduce `localStorage` or `sessionStorage` token persistence.
 10. Continue documenting frontend runtime tests in this checklist after each completed scope.
+
+## Web Auth-Aware Route Foundation Runtime Test
+
+Runtime test date: 2026-05-26
+
+### Scope
+
+Implemented minimal frontend auth-aware route protection for dashboard placeholder routes:
+
+- `/admin`
+- `/teacher`
+- `/student`
+
+This scope intentionally did **not** implement full dashboards or business feature pages.
+
+### Code Commits Tested
+
+| Commit | Message |
+|---|---|
+| `4a03fcb` | `Add auth-aware web route guards` |
+| `b0f069d` | `Fix dashboard guard shell flash` |
+
+### Files Changed
+
+| File | Purpose |
+|---|---|
+| `apps/web/src/components/auth/protected-route.tsx` | Added client-side route guard for dashboard workspaces |
+| `apps/web/src/app/(dashboard)/layout.tsx` | Wrapped dashboard shell with `ProtectedRoute` |
+| `apps/web/src/components/auth/sign-in-form.tsx` | Added role-aware redirect after successful sign-in |
+| `apps/web/src/components/providers/auth-provider.tsx` | Updated `signIn()` to return the in-memory authenticated session |
+
+### Verified Behavior
+
+- [x] Unauthenticated access to `/admin` redirects to `/sign-in`.
+- [x] Dashboard shell no longer flashes before redirect.
+- [x] Login redirects user to role-appropriate workspace.
+- [x] `department_admin` routes to `/admin`.
+- [x] `teacher` routes to `/teacher`.
+- [x] `student` routes to `/student`.
+- [x] Authenticated user accessing the wrong role workspace is redirected to own workspace.
+- [x] Existing placeholder pages remain minimal.
+- [x] No full dashboard/business module was added.
+
+### Security Verification
+
+- [x] No `localStorage` token persistence introduced.
+- [x] No `sessionStorage` token persistence introduced.
+- [x] Refresh token remains httpOnly cookie-based.
+- [x] Access token remains memory-only in React auth state.
+- [x] `credentials: "include"` auth request behavior preserved.
+- [x] No backend auth, guard, policy, request-context, or department-isolation code changed.
+- [x] No Next.js middleware was added.
+- [x] Backend remains source of truth for authorization.
+
+### Validation
+
+Local PC validation:
+
+- [x] `pnpm --filter @lexora/web typecheck` passed.
+- [x] `pnpm --filter @lexora/web build` passed.
+- [x] `apps/web/tsconfig.tsbuildinfo` build artifact restored before commit.
+- [x] Local PC repository clean after commit and push.
+
+Ubuntu server validation:
+
+- [x] Server synced to latest `origin/main`.
+- [x] `pnpm --filter @lexora/web typecheck` passed.
+- [x] `pnpm --filter @lexora/web build` passed.
+- [x] `apps/web/tsconfig.tsbuildinfo` build artifact restored after validation.
+- [x] Server repository clean after validation.
+
+### Browser Runtime Verification
+
+Runtime browser URL:
+
+- `http://192.168.197.129:3000`
+
+Observed route behavior:
+
+- Opening `/admin` while unauthenticated redirected to `/sign-in`.
+- Initial implementation briefly showed the dashboard shell before redirect.
+- Follow-up fix moved `ProtectedRoute` outside `DashboardShell`.
+- After fix, `/admin` no longer showed the "Lexora Control Surface" shell before redirect.
+- Login routed the authenticated user back to the correct role workspace.
+- `/admin`, `/teacher`, and `/student` routes compiled and loaded during dev-server runtime testing.
+
+### Runtime Environment Notes
+
+- Next.js dev server was run with `pnpm --filter @lexora/web dev --hostname 0.0.0.0`.
+- Next.js showed the known development warning about cross-origin requests from `192.168.197.129` to `/_next/*`.
+- This warning did not block route-guard runtime testing.
+- It may require `allowedDevOrigins` configuration in a future Next.js major version.
+
+### Web Route Guard Runtime Verdict
+
+- Minimal auth-aware frontend route guard foundation: Passed
+- Role-aware sign-in redirect: Passed
+- Dashboard shell flash fix: Passed
+- Token storage security posture: Preserved
+- Frontend typecheck/build: Passed
+- Local PC repository status after commits: Clean
+- Ubuntu server repository status after sync/validation: Clean
+
+## Updated Next Test Steps After Web Route Guard Foundation
+
+1. Keep auth route guards minimal until real dashboards are implemented.
+2. Do not add dashboard business features until each role workspace has a clear module plan.
+3. Next safe frontend step can be one of:
+   - minimal role-aware dashboard landing cards
+   - student enrolled-course surface using existing `/enrollments/me`
+   - admin/teacher/student navigation cleanup
+4. Continue preserving:
+   - memory-only access token
+   - httpOnly refresh cookie
+   - no `localStorage` or `sessionStorage` token persistence
+   - backend as the source of truth for authorization
