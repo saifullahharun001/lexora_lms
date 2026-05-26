@@ -9,11 +9,13 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
-    <DashboardShell
-      title="Lexora Control Surface"
-      subtitle="Shared application shell for department-aware workspaces."
-    >
-      <ProtectedRoute>{children}</ProtectedRoute>
-    </DashboardShell>
+    <ProtectedRoute>
+      <DashboardShell
+        title="Lexora Control Surface"
+        subtitle="Shared application shell for department-aware workspaces."
+      >
+        {children}
+      </DashboardShell>
+    </ProtectedRoute>
   );
 }
