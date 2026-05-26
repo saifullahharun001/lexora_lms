@@ -152,5 +152,5 @@ export function getPrograms(authContext: ApiAuthContext) {
 }
 
 export function getCourses(authContext: ApiAuthContext) {
-  return apiAuthenticatedGet<AcademicCourse[]>("/courses", authContext);
+  return apiAuthenticatedGet<AcademicCourse[]>("/courses?status=ACTIVE", authContext);
 }
