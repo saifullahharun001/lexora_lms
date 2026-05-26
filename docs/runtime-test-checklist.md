@@ -3993,3 +3993,344 @@ Preserved:
    - httpOnly refresh cookie
    - no `localStorage` or `sessionStorage` token persistence
    - backend as the source of truth for authorization
+
+
+---
+
+## Runtime Law Test Account Reset and Role-Aware Frontend Sidebar Runtime Test
+
+Runtime test date: 2026-05-26
+
+### Scope
+
+This runtime update created a safer, repeatable testing foundation for Lexora LMS frontend/backend development.
+
+The scope included:
+
+- Department of Law runtime department code alignment to `0421`
+- canonical runtime test accounts for admin, teacher, and student testing
+- safe reset script for local/runtime test accounts
+- role-aware dashboard sidebar cleanup
+- sign-in default department code update from `LAW` to `0421`
+- frontend/browser verification using the canonical accounts
+
+This scope intentionally did **not** add real LMS dashboard business features.
+
+### Related Commits
+
+| Commit | Message |
+|---|---|
+| `03c481c` | `Make dashboard sidebar role aware` |
+| `ad144a3` | `Add runtime Law test account reset script` |
+| `61592c6` | `Set Law sign-in department code default` |
+
+### Department Code Decision
+
+The Department of Law runtime department now uses the academic/curriculum department code:
+
+| Field | Value |
+|---|---|
+| Department ID | `dept_law_test` |
+| Department Code | `0421` |
+| Department Slug | `law` |
+| Department Name | `Department of Law` |
+
+Reason:
+
+- The uploaded LL.B. syllabus uses Law course codes beginning with `0421`, such as `0421-1101`, `0421-1201`, and related semester course codes.
+- `0421` is now treated as the canonical Department of Law runtime department code.
+- The existing department ID `dept_law_test` was preserved to avoid breaking linked runtime records.
+
+Important compatibility note:
+
+- Older sections of this checklist may still mention Department Code `LAW`.
+- Current runtime test login and frontend sign-in now use Department Code `0421`.
+- The preserved department ID remains `dept_law_test`.
+
+### Runtime Account Reset Script
+
+Runtime-only script added:
+
+| File | Purpose |
+|---|---|
+| `apps/api/prisma/reset-runtime-law-accounts.ts` | Safe local/runtime reset and seed workflow for canonical Law test accounts |
+
+Package script added:
+
+    pnpm --filter @lexora/api runtime:reset-law-accounts
+
+Safety behavior verified by code review/build/runtime execution:
+
+- [x] Script refuses to run when `NODE_ENV=production`.
+- [x] Script ensures `dept_law_test` exists.
+- [x] Script safely sets Department of Law code to `0421`.
+- [x] Script preserves department ID `dept_law_test`.
+- [x] Script refuses to continue if another department already owns code `0421` or slug `law`.
+- [x] Script upserts required roles:
+  - `department_admin`
+  - `teacher`
+  - `student`
+- [x] Script upserts canonical runtime users.
+- [x] Script hashes passwords using the existing backend bcryptjs-based hashing approach.
+- [x] Script marks canonical runtime users as `ACTIVE`.
+- [x] Script assigns exactly the intended active role to each canonical user.
+- [x] Script revokes active sessions for canonical users before fresh login.
+- [x] Script suspends clearly runtime-only legacy test users.
+- [x] Script revokes active sessions for legacy runtime users.
+- [x] Script does not hard-delete users.
+- [x] Script does not delete linked academic/runtime records.
+
+Sensitive data rule:
+
+- Raw passwords are intentionally not documented in this checklist.
+- Password hashes are intentionally not documented.
+- Raw access tokens, refresh tokens, cookie values, and database credentials must not be documented or committed.
+
+### Runtime Script Execution Result
+
+Command executed on Ubuntu server:
+
+    pnpm --filter @lexora/api runtime:reset-law-accounts
+
+Runtime result:
+
+| Field | Value |
+|---|---|
+| Department ID | `dept_law_test` |
+| Department Code | `0421` |
+| Department Slug | `law` |
+| Department Name | `Department of Law` |
+| Canonical Users Upserted | `3` |
+| Canonical Sessions Revoked | `0` |
+| Legacy Runtime Users Deactivated | `5` |
+| Legacy Runtime Sessions Revoked | `28` |
+
+Runtime verdict:
+
+- [x] Runtime Law account reset script executed successfully.
+- [x] Canonical test users were created/updated.
+- [x] Legacy runtime users were safely suspended.
+- [x] Legacy runtime sessions were revoked.
+- [x] No hard-delete was performed.
+
+### Canonical Runtime Test Accounts
+
+These accounts are intended for controlled local/runtime testing.
+
+| Role | Email | Expected Role |
+|---|---|---|
+| Department Admin | `admin.law@cu.ac.bd` | `department_admin` |
+| Teacher | `teacher.law@cu.ac.bd` | `teacher` |
+| Student | `student.law@cu.ac.bd` | `student` |
+
+Security note:
+
+- Passwords for these accounts must not be documented here.
+- These are local/runtime testing accounts only.
+- They must not be treated as production onboarding accounts.
+
+### Canonical Account Login Verification
+
+Login verification was performed through the backend API using:
+
+| Field | Value |
+|---|---|
+| API Endpoint | `POST /api/v1/auth/login` |
+| Department Code | `0421` |
+| API Base | `http://localhost/api/v1` |
+| Token Logging | Raw tokens were not printed or documented |
+
+Verified login results:
+
+| Email | HTTP Status | Returned Role | Department ID | Display Name |
+|---|---:|---|---|---|
+| `admin.law@cu.ac.bd` | `201` | `department_admin` | `dept_law_test` | `Law Test Admin` |
+| `teacher.law@cu.ac.bd` | `201` | `teacher` | `dept_law_test` | `Law Test Teacher` |
+| `student.law@cu.ac.bd` | `201` | `student` | `dept_law_test` | `Law Test Student` |
+
+Two-factor status during runtime verification:
+
+| Account Type | 2FA Enabled | 2FA Required | Available Methods |
+|---|---|---|---|
+| Admin / Teacher / Student runtime accounts | `false` | `false` | `[]` |
+
+Login verification verdict:
+
+- [x] Canonical admin login passed.
+- [x] Canonical teacher login passed.
+- [x] Canonical student login passed.
+- [x] Returned roles matched expected role assignments.
+- [x] Department ID remained `dept_law_test`.
+- [x] Department code `0421` works for login.
+
+### Role-Aware Dashboard Sidebar Update
+
+Frontend dashboard sidebar was updated to use authenticated session roles.
+
+Changed behavior:
+
+- [x] Dashboard sidebar now filters workspace links by `session.user.roles`.
+- [x] Department admin sees admin workspace navigation.
+- [x] Teacher sees teacher workspace navigation.
+- [x] Student sees student workspace navigation.
+- [x] Active route highlighting was added.
+- [x] Signed-in user panel was added to the sidebar.
+- [x] Sign out button was added to the dashboard sidebar.
+- [x] `/sign-in` link was removed from the authenticated dashboard sidebar.
+- [x] `/verify/sample-code` link was removed from the authenticated dashboard sidebar.
+
+Files changed:
+
+| File | Purpose |
+|---|---|
+| `apps/web/src/components/shell/dashboard-shell.tsx` | Role-aware dashboard sidebar, active route styling, signed-in user panel, sign out action |
+| `apps/web/src/lib/navigation.ts` | Dashboard navigation metadata with role and description |
+
+Security posture preserved:
+
+- [x] `ProtectedRoute` remained in place.
+- [x] Backend authorization remains the source of truth.
+- [x] No backend auth/guard/policy/request-context code was changed.
+- [x] No `localStorage` token persistence was introduced.
+- [x] No `sessionStorage` token persistence was introduced.
+- [x] Access token remains memory-only.
+- [x] Refresh token remains httpOnly cookie-based.
+
+### Sign-In Department Code Default Update
+
+The sign-in form default department code was updated:
+
+| Field | Previous | Current |
+|---|---|---|
+| Default Department Code | `LAW` | `0421` |
+
+Changed file:
+
+| File | Purpose |
+|---|---|
+| `apps/web/src/components/auth/sign-in-form.tsx` | Default department code changed to `0421` |
+
+Reason:
+
+- Backend canonical runtime department code is now `0421`.
+- Frontend sign-in default must match the current Department of Law runtime department code.
+- Browser users can sign in without manually replacing the old `LAW` value.
+
+### Local PC Validation
+
+Local PC validation passed for the related frontend/backend changes:
+
+| Validation | Result |
+|---|---|
+| Web typecheck after role-aware sidebar | Passed |
+| Web build after role-aware sidebar | Passed |
+| API typecheck after reset script | Passed |
+| API build after reset script | Passed |
+| Web typecheck after sign-in default update | Passed |
+| Web build after sign-in default update | Passed |
+| Local working tree after commits | Clean |
+
+Build artifact handling:
+
+- `apps/web/tsconfig.tsbuildinfo` changed after web builds.
+- It was restored before commits.
+- It was not committed.
+
+### Ubuntu Server Validation
+
+Ubuntu server validation passed after pulling latest `origin/main`.
+
+| Validation | Result |
+|---|---|
+| Server fast-forward to `03c481c` | Passed |
+| Web typecheck after role-aware sidebar | Passed |
+| Web build after role-aware sidebar | Passed |
+| Server fast-forward to `ad144a3` | Passed |
+| API typecheck after reset script | Passed |
+| API build after reset script | Passed |
+| Runtime reset script execution | Passed |
+| Canonical account backend login verification | Passed |
+| Server fast-forward to `61592c6` | Passed |
+| Web typecheck after sign-in default update | Passed |
+| Web build after sign-in default update | Passed |
+| Server working tree restored/clean after build artifacts | Passed |
+
+### Browser Runtime Verification
+
+Runtime browser URL:
+
+- `http://192.168.197.129:3000/sign-in`
+
+Verified browser behavior:
+
+- [x] Sign-in page loads.
+- [x] Department code defaults to `0421`.
+- [x] Admin canonical account can sign in.
+- [x] Teacher canonical account can sign in.
+- [x] Student canonical account can sign in.
+- [x] Admin routes to `/admin`.
+- [x] Teacher routes to `/teacher`.
+- [x] Student routes to `/student`.
+- [x] Role-aware sidebar shows only the authenticated user's workspace link.
+- [x] Sidebar no longer shows `Sign in`.
+- [x] Sidebar no longer shows `Verification`.
+- [x] Signed-in user panel appears.
+- [x] Sign out button appears.
+- [x] Protected dashboard route behavior remains correct.
+
+Runtime browser verdict:
+
+- [x] Canonical accounts work through frontend sign-in.
+- [x] Department code `0421` default works.
+- [x] Role-aware dashboard sidebar works.
+- [x] Existing protected route guard behavior is preserved.
+
+### Current Runtime Status After This Update
+
+- Canonical runtime test accounts are now available for repeatable frontend/backend testing.
+- Older clearly-runtime users have been suspended instead of deleted.
+- Department of Law runtime code is now `0421`.
+- Dashboard sidebar is now cleaner and role-aware.
+- Frontend sign-in default aligns with the new department code.
+- Existing backend authorization remains unchanged and authoritative.
+
+### Current Limitations / Follow-Up
+
+- The three canonical accounts are for local/runtime testing only.
+- Do not store their raw passwords in committed documentation.
+- Role-specific dashboards are still placeholder-level.
+- Real admin/teacher/student business feature pages are not implemented yet.
+- Student enrolled-course UI using `/enrollments/me` remains a safe future frontend step.
+- Admin academic management UI remains pending.
+- Teacher assigned-course UI remains pending.
+- Notice/notification frontend remains pending.
+- Secure file upload frontend remains pending.
+
+### Runtime Verdict
+
+- Runtime Law account reset workflow: Passed
+- Canonical Department of Law test accounts: Passed
+- Department code `0421` login alignment: Passed
+- Role-aware dashboard sidebar: Passed
+- Sign-in default department code update: Passed
+- Frontend typecheck/build: Passed
+- API typecheck/build: Passed
+- Server/runtime verification: Passed
+- Token/password documentation safety: Preserved
+
+## Updated Next Test Steps After Runtime Account and Sidebar Foundation
+
+1. Use the canonical accounts for future frontend/backend runtime testing.
+2. Keep Department of Law runtime code as `0421`.
+3. Do not hard-delete old runtime users because linked runtime evidence may depend on them.
+4. Continue avoiding raw passwords, password hashes, tokens, cookies, and database credentials in documentation.
+5. Next safe frontend step can be one of:
+   - student enrolled-course surface using existing `/enrollments/me`
+   - role-aware dashboard landing cards without real metrics
+   - admin academic management UI planning
+   - teacher assigned-course UI planning
+6. Continue preserving:
+   - memory-only access token
+   - httpOnly refresh cookie
+   - no `localStorage` or `sessionStorage` token persistence
+   - backend as the source of truth for authorization
