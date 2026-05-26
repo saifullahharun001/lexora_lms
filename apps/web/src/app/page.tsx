@@ -1,5 +1,6 @@
 import { SectionCard } from "@lexora/ui";
-import Link from "next/link";
+
+import { HomeRouteAction } from "@/components/home/home-route-action";
 
 const routeAreas = [
   {
@@ -14,16 +15,19 @@ const routeAreas = [
   },
   {
     href: "/admin",
+    isProtected: true,
     title: "Admin Workspace",
     description: "Department-aware space for future administration and governance tools."
   },
   {
     href: "/teacher",
+    isProtected: true,
     title: "Teacher Workspace",
     description: "Instruction-facing space for future course and class workflows."
   },
   {
     href: "/student",
+    isProtected: true,
     title: "Student Workspace",
     description: "Learner-facing space for future coursework and academic records."
   },
@@ -59,12 +63,7 @@ export default function HomePage() {
               title={area.title}
               description={area.description}
             >
-              <Link
-                href={area.href}
-                className="inline-flex rounded-full border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-800 hover:border-teal-300 hover:bg-teal-100"
-              >
-                Open route
-              </Link>
+              <HomeRouteAction href={area.href} isProtected={area.isProtected} />
             </SectionCard>
           ))}
         </div>
