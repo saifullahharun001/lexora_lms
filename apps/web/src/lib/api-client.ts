@@ -48,6 +48,19 @@ export interface AcademicProgram {
   status: string;
 }
 
+export interface AcademicCourse {
+  id: string;
+  departmentId: string;
+  academicProgramId: string;
+  code: string;
+  title: string;
+  description: string | null;
+  creditHours: string | number;
+  lectureHours: string | number;
+  labHours: string | number;
+  status: string;
+}
+
 interface ApiErrorResponse {
   code?: string;
   message?: string;
@@ -136,4 +149,8 @@ export function logout() {
 
 export function getPrograms(authContext: ApiAuthContext) {
   return apiAuthenticatedGet<AcademicProgram[]>("/programs", authContext);
+}
+
+export function getCourses(authContext: ApiAuthContext) {
+  return apiAuthenticatedGet<AcademicCourse[]>("/courses", authContext);
 }
