@@ -40,7 +40,7 @@ function getSafeErrorMessage(error: unknown) {
 
 export function SignInForm() {
   const router = useRouter();
-  const [departmentCode, setDepartmentCode] = useState("LAW");
+  const [departmentCode, setDepartmentCode] = useState("0421");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<SignInStatus>("idle");
