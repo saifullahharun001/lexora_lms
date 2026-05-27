@@ -61,6 +61,27 @@ export interface AcademicCourse {
   status: string;
 }
 
+export interface AcademicTerm {
+  id: string;
+  code: string;
+  name: string;
+  status?: string;
+}
+
+export interface CourseOffering {
+  id: string;
+  departmentId?: string;
+  courseId?: string;
+  academicTermId?: string;
+  sectionCode?: string | null;
+  capacity?: number | null;
+  status?: string | null;
+  visibilityStartAt?: string | null;
+  visibilityEndAt?: string | null;
+  course?: Partial<AcademicCourse> | null;
+  academicTerm?: Partial<AcademicTerm> | null;
+}
+
 export interface EnrollmentAcademicTerm {
   id: string;
   code: string;
@@ -181,6 +202,10 @@ export function getPrograms(authContext: ApiAuthContext) {
 
 export function getCourses(authContext: ApiAuthContext) {
   return apiAuthenticatedGet<AcademicCourse[]>("/courses?status=ACTIVE", authContext);
+}
+
+export function getCourseOfferings(authContext: ApiAuthContext) {
+  return apiAuthenticatedGet<CourseOffering[]>("/course-offerings", authContext);
 }
 
 export function getMyEnrollments(authContext: ApiAuthContext) {
