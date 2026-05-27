@@ -4486,7 +4486,7 @@ Still pending:
 - Admin course offerings UI remains pending.
 - Academic Year/Term frontend remains pending.
 - Teacher assigned-course UI remains pending.
-- Student enrolled-course UI using `/enrollments/me` remains pending.
+- Student enrolled-course UI using `/enrollments/me` is now implemented and runtime verified.
 - Notice/notification frontend remains pending.
 - Secure file upload frontend remains pending.
 
@@ -4685,12 +4685,252 @@ Still pending:
 - Admin course offering UI remains pending.
 - Academic Year/Term frontend remains pending.
 - Teacher assigned-course UI remains pending.
-- Student enrolled-course UI using `/enrollments/me` remains pending.
+- Student enrolled-course UI using `/enrollments/me` is now implemented and runtime verified.
 - Notice/notification frontend remains pending.
 - Secure file upload frontend remains pending.
 
 Recommended next frontend step:
 
-- Add Student enrolled-course surface using existing `/enrollments/me`, or
 - Add Teacher assigned-course surface using existing assigned course offering behavior, or
-- Add Admin course offerings panel after checking current course offering API shape.
+- Add Admin course offerings panel after checking current course offering API shape, or
+- Add Admin create/update course workflow after API/DTO review.
+
+Superseded next-step note:
+
+- Student enrolled-course surface using existing `/enrollments/me` is no longer pending; it was implemented and runtime verified in the next section.
+
+## Student Enrolled-Course Frontend Runtime Verification
+
+Runtime test date: 2026-05-27
+
+Tested commit:
+
+| Field | Value |
+|---|---|
+| Commit | `079bd9d` |
+| Message | `Add student enrolled courses surface` |
+
+### Purpose
+
+The goal of this frontend task was to surface a student's already-enrolled courses in the existing Next.js student dashboard by using the already verified backend self-resource endpoint `GET /api/v1/enrollments/me`.
+
+This task intentionally did not implement the dedicated available/eligible course-offering discovery endpoint.
+
+### Implementation Summary
+
+Frontend changes:
+
+| File | Purpose |
+|---|---|
+| `apps/web/src/lib/api-client.ts` | Added typed enrollment response support and `getMyEnrollments()` API client wrapper |
+| `apps/web/src/app/(dashboard)/student/page.tsx` | Replaced placeholder student page with enrolled-course card surface |
+
+Implemented behavior:
+
+- [x] Student page uses the existing frontend auth session.
+- [x] Student page uses the memory-only access token from `AuthProvider`.
+- [x] Student page sends the authenticated user's `departmentId` through the existing authenticated API helper.
+- [x] Student page fetches data from `GET /api/v1/enrollments/me`.
+- [x] Student page does not call broad `GET /api/v1/course-offerings`.
+- [x] Student page has loading state.
+- [x] Student page has empty state.
+- [x] Student page has API error state.
+- [x] Student page renders enrolled-course cards when records are returned.
+
+Displayed fields:
+
+- course code
+- course title
+- section
+- academic term
+- enrollment status
+- eligibility status
+
+### Validation
+
+Local PC validation:
+
+| Validation | Result |
+|---|---|
+| Web build | Passed |
+| Next.js compile | Passed |
+| Linting/type validity during build | Passed |
+| Commit created | Passed |
+| Push to `origin/main` | Passed |
+
+Ubuntu Server validation:
+
+| Validation | Result |
+|---|---|
+| Fast-forward pull to `079bd9d` | Passed |
+| Web build | Passed |
+| `/student` route build | Passed |
+| Git working tree clean after build | Passed |
+
+Ubuntu Server build command:
+
+- `pnpm --filter @lexora/web build`
+
+Ubuntu Server build result summary:
+
+- Next.js version: `15.5.15`
+- Production build completed successfully.
+- `/student` route built successfully.
+- Linting and type validity checks passed during build.
+- Static page generation completed successfully.
+
+### Runtime API / Environment Verification
+
+API health check through Nginx passed:
+
+- `curl -s http://localhost/api/v1/health`
+
+Result:
+
+- API returned `success: true`.
+- API service status returned `ok`.
+
+Frontend API base URL behavior:
+
+- `NEXT_PUBLIC_API_BASE_URL` defaults to `/api/v1`.
+- Built frontend bundle confirmed the student API wrapper calls `/enrollments/me`.
+
+### Runtime Browser Verification
+
+Runtime browser URL:
+
+- `http://192.168.197.129:3000/student`
+
+Runtime server command used:
+
+- `pnpm exec next dev --hostname 0.0.0.0 --port 3000`
+
+Initial browser behavior:
+
+- [x] Student dashboard loaded successfully.
+- [x] Student account `student.law@cu.ac.bd` could access `/student`.
+- [x] Empty state appeared when `GET /api/v1/enrollments/me` returned `[]`.
+
+Initial empty-state finding:
+
+- The account `student.law@cu.ac.bd` existed.
+- The account had role `student`.
+- The account had department `dept_law_test`.
+- The account had status `ACTIVE`.
+- The account had no enrollment records before this frontend runtime test.
+- Therefore the empty state was correct.
+
+### Controlled Runtime Test Data Setup
+
+Important data rule:
+
+- Existing active curriculum courses were used.
+- No new course was created.
+- First-year first-semester course offerings were created from existing active courses because the curriculum courses existed but had no course offerings yet.
+- The student `student.law@cu.ac.bd` was enrolled into the first-year first-semester offerings.
+
+Existing student used:
+
+| Field | Value |
+|---|---|
+| Email | `student.law@cu.ac.bd` |
+| Display Name | `Law Test Student` |
+| User ID | `cmpmmnn00000f2imt3sqhgto9` |
+| Department ID | `dept_law_test` |
+| Role | `student` |
+| Status | `ACTIVE` |
+
+Course offering setup:
+
+| Course Code | Course Title | Offering ID | Section | Term |
+|---|---|---|---|---|
+| `0231-1105` | `General English (GED)` | `offering_0231_1105_2025_2026_s1_a` | `A` | `LAW-2025-2026-S1` |
+| `0311-1106` | `Fundamentals of Economics (GED)` | `offering_0311_1106_2025_2026_s1_a` | `A` | `LAW-2025-2026-S1` |
+| `0421-1101` | `Jurisprudence-I` | `offering_0421_1101_2025_2026_s1_a` | `A` | `LAW-2025-2026-S1` |
+| `0421-1102` | `Muslim Law-I` | `offering_0421_1102_2025_2026_s1_a` | `A` | `LAW-2025-2026-S1` |
+| `0421-1103` | `Hindu Law` | `offering_0421_1103_2025_2026_s1_a` | `A` | `LAW-2025-2026-S1` |
+| `0421-1104` | `Legal History of Bangladesh and Roman Law` | `offering_0421_1104_2025_2026_s1_a` | `A` | `LAW-2025-2026-S1` |
+
+Runtime enrollments created:
+
+| Enrollment ID | Course Code | Status | Eligibility Status |
+|---|---|---|---|
+| `enrollment_student_law_0231_1105_2025_2026_s1` | `0231-1105` | `APPROVED` | `PENDING_REVIEW` |
+| `enrollment_student_law_0311_1106_2025_2026_s1` | `0311-1106` | `APPROVED` | `PENDING_REVIEW` |
+| `enrollment_student_law_0421_1101_2025_2026_s1` | `0421-1101` | `APPROVED` | `PENDING_REVIEW` |
+| `enrollment_student_law_0421_1102_2025_2026_s1` | `0421-1102` | `APPROVED` | `PENDING_REVIEW` |
+| `enrollment_student_law_0421_1103_2025_2026_s1` | `0421-1103` | `APPROVED` | `PENDING_REVIEW` |
+| `enrollment_student_law_0421_1104_2025_2026_s1` | `0421-1104` | `APPROVED` | `PENDING_REVIEW` |
+
+### Final UI Verification
+
+Final browser verification result:
+
+- [x] `/student` dashboard displayed `My enrolled courses`.
+- [x] Six enrolled-course cards rendered.
+- [x] Course codes appeared correctly.
+- [x] Course titles appeared correctly.
+- [x] Section `A` appeared correctly.
+- [x] Academic term appeared as `Law 2025-2026 Semester 1 (LAW-2025-2026-S1)`.
+- [x] Enrollment status appeared as `Approved`.
+- [x] Eligibility status appeared as `Pending Review`.
+
+Visible course cards:
+
+- `0231-1105` — `General English (GED)`
+- `0311-1106` — `Fundamentals of Economics (GED)`
+- `0421-1101` — `Jurisprudence-I`
+- `0421-1102` — `Muslim Law-I`
+- `0421-1103` — `Hindu Law`
+- `0421-1104` — `Legal History of Bangladesh and Roman Law`
+
+### Security Verification
+
+- [x] No backend authorization logic was changed.
+- [x] No `AuthGuard` logic was changed.
+- [x] No `PolicyGuard` logic was changed.
+- [x] No request-context logic was changed.
+- [x] No department-isolation logic was changed.
+- [x] No broad `OFFERING_READ` access was granted to students.
+- [x] Student page uses the existing self-resource endpoint `GET /api/v1/enrollments/me`.
+- [x] Student direct/broad `GET /api/v1/course-offerings` access remains intentionally unavailable.
+- [x] No access token persistence was introduced.
+- [x] Existing memory-only auth posture was preserved.
+- [x] Backend remains the source of truth for authorization and department isolation.
+
+### Scope Note
+
+This completed feature is:
+
+- Student enrolled-course frontend surface using `/enrollments/me`.
+
+This is not:
+
+- Student available-course discovery.
+- Student eligible-course discovery.
+- Student self-enrollment workflow.
+- Broad student course-offering access.
+
+The dedicated student-facing available/eligible course-offering endpoint remains pending.
+
+Possible future endpoint options remain:
+
+- `GET /api/v1/course-offerings/me`
+- `GET /api/v1/student/course-offerings`
+- `GET /api/v1/enrollments/available`
+
+### Runtime Verdict
+
+- [x] Student enrolled-course frontend implementation passed.
+- [x] Ubuntu Server sync passed.
+- [x] Web production build passed.
+- [x] Runtime browser verification passed.
+- [x] Existing `/enrollments/me` self-resource model was preserved.
+- [x] Student course-offering broad access remained blocked.
+- [x] Security boundary was preserved.
+
+Updated frontend status:
+
+- Admin dashboard has API-connected Academic Programs panel.
+- Admin dashboard has API-connected Academic Courses panel.
+- Student dashboard now has API-connected Enrolled Courses surface.
