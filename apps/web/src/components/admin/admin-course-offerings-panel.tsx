@@ -26,6 +26,9 @@ export function AdminCourseOfferingsPanel() {
     },
     enabled: Boolean(accessToken && departmentId)
   });
+  const visibleCourseOfferings = (courseOfferingsQuery.data ?? []).filter(
+    (offering) => offering.course?.status === "ACTIVE"
+  );
 
   return (
     <SectionCard
@@ -46,14 +49,14 @@ export function AdminCourseOfferingsPanel() {
         </div>
       ) : null}
 
-      {courseOfferingsQuery.isSuccess && courseOfferingsQuery.data.length === 0 ? (
+      {courseOfferingsQuery.isSuccess && visibleCourseOfferings.length === 0 ? (
         <p className="text-sm text-slate-600">
-          No course offerings have been published for this department yet.
+          No active course offerings have been published for this department yet.
         </p>
       ) : null}
 
-      {courseOfferingsQuery.isSuccess && courseOfferingsQuery.data.length > 0 ? (
-        <div className="overflow-hidden rounded-lg border border-slate-200">
+      {courseOfferingsQuery.isSuccess && visibleCourseOfferings.length > 0 ? (
+        <div className="overflow-x-auto rounded-lg border border-slate-200">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
@@ -66,7 +69,7 @@ export function AdminCourseOfferingsPanel() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 bg-white">
-              {courseOfferingsQuery.data.map((offering) => (
+              {visibleCourseOfferings.map((offering) => (
                 <tr key={offering.id}>
                   <td className="px-4 py-3">
                     <p className="font-semibold text-slate-950">
