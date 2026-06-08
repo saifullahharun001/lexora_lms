@@ -183,11 +183,10 @@ export class AcademicService {
   }
 
   async updateAcademicYear(id: string, input: UpdateAcademicYearInput) {
-    if (Object.keys(input).length === 0) {
-      throw new BadRequestException(
-        "At least one academic year field must be provided",
-      );
-    }
+    this.assertUpdateHasAtLeastOneDefinedField(
+      input as Record<string, unknown>,
+      "At least one academic year field must be provided",
+    );
 
     const existing = (await this.repository.findAcademicYearById(
       this.getDepartmentId(),
@@ -287,11 +286,10 @@ export class AcademicService {
   }
 
   async updateAcademicTerm(id: string, input: UpdateAcademicTermInput) {
-    if (Object.keys(input).length === 0) {
-      throw new BadRequestException(
-        "At least one academic term field must be provided",
-      );
-    }
+    this.assertUpdateHasAtLeastOneDefinedField(
+      input as Record<string, unknown>,
+      "At least one academic term field must be provided",
+    );
 
     const existing = (await this.repository.findAcademicTermById(
       this.getDepartmentId(),
@@ -811,6 +809,19 @@ export class AcademicService {
 
   private assertDateRange(startDate: Date, endDate: Date, message: string) {
     if (endDate <= startDate) {
+      throw new BadRequestException(message);
+    }
+  }
+
+  private assertUpdateHasAtLeastOneDefinedField(
+    input: Record<string, unknown>,
+    message: string,
+  ) {
+    const hasDefinedField = Object.values(input).some(
+      (value) => value !== undefined,
+    );
+
+    if (!hasDefinedField) {
       throw new BadRequestException(message);
     }
   }
