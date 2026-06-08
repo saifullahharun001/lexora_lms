@@ -5121,3 +5121,4 @@ Updated frontend status:
 - Admin dashboard has API-connected Academic Programs panel.
 - Admin dashboard has API-connected Academic Courses panel.
 - Student dashboard now has API-connected Enrolled Courses surface.
+
