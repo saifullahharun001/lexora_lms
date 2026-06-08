@@ -3,18 +3,24 @@ import { Injectable } from "@nestjs/common";
 import { PrismaService } from "@/common/prisma/prisma.service";
 import type {
   AcademicRepositoryPort,
+  AcademicTermListFilters,
+  AcademicYearListFilters,
   CourseListFilters,
+  CreateAcademicTermInput,
+  CreateAcademicYearInput,
   CourseOfferingListFilters,
   CreateCourseInput,
   CreateCourseOfferingInput,
   CreateEnrollmentInput,
   CreateProgramInput,
   EnrollmentListFilters,
+  UpdateAcademicTermInput,
+  UpdateAcademicYearInput,
   ProgramListFilters,
   UpdateCourseInput,
   UpdateCourseOfferingInput,
   UpdateEnrollmentInput,
-  UpdateProgramInput
+  UpdateProgramInput,
 } from "../../application/ports/academic.repository.port";
 
 @Injectable()
@@ -31,20 +37,20 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
           ? [
               {
                 code: {
-                  contains: filters.search
-                }
+                  contains: filters.search,
+                },
               },
               {
                 name: {
-                  contains: filters.search
-                }
-              }
+                  contains: filters.search,
+                },
+              },
             ]
-          : undefined
+          : undefined,
       },
       orderBy: {
-        createdAt: "desc"
-      }
+        createdAt: "desc",
+      },
     });
   }
 
@@ -53,8 +59,8 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
       where: {
         id,
         departmentId,
-        archivedAt: null
-      }
+        archivedAt: null,
+      },
     });
   }
 
@@ -65,8 +71,8 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
         code: input.code,
         name: input.name,
         description: input.description,
-        status: input.status
-      }
+        status: input.status,
+      },
     });
   }
 
@@ -76,9 +82,9 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
         where: {
           id,
           departmentId,
-          archivedAt: null
+          archivedAt: null,
         },
-        data: input
+        data: input,
       });
 
       if (result.count === 0) {
@@ -89,8 +95,176 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
         where: {
           id,
           departmentId,
-          archivedAt: null
-        }
+          archivedAt: null,
+        },
+      });
+    });
+  }
+
+  findAcademicYears(filters: AcademicYearListFilters) {
+    return this.prisma.academicYear.findMany({
+      where: {
+        departmentId: filters.departmentId,
+        archivedAt: null,
+        status: filters.status,
+        isCurrent: filters.isCurrent,
+        OR: filters.search
+          ? [
+              {
+                code: {
+                  contains: filters.search,
+                },
+              },
+              {
+                name: {
+                  contains: filters.search,
+                },
+              },
+            ]
+          : undefined,
+      },
+      orderBy: {
+        startDate: "desc",
+      },
+    });
+  }
+
+  findAcademicYearById(departmentId: string, id: string) {
+    return this.prisma.academicYear.findFirst({
+      where: {
+        id,
+        departmentId,
+        archivedAt: null,
+      },
+    });
+  }
+
+  createAcademicYear(input: CreateAcademicYearInput) {
+    return this.prisma.academicYear.create({
+      data: {
+        departmentId: input.departmentId,
+        code: input.code,
+        name: input.name,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        isCurrent: input.isCurrent,
+        status: input.status,
+      },
+    });
+  }
+
+  updateAcademicYear(
+    departmentId: string,
+    id: string,
+    input: UpdateAcademicYearInput,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const result = await tx.academicYear.updateMany({
+        where: {
+          id,
+          departmentId,
+          archivedAt: null,
+        },
+        data: input,
+      });
+
+      if (result.count === 0) {
+        return null;
+      }
+
+      return tx.academicYear.findFirst({
+        where: {
+          id,
+          departmentId,
+          archivedAt: null,
+        },
+      });
+    });
+  }
+
+  findAcademicTerms(filters: AcademicTermListFilters) {
+    return this.prisma.academicTerm.findMany({
+      where: {
+        departmentId: filters.departmentId,
+        archivedAt: null,
+        academicYearId: filters.academicYearId,
+        status: filters.status,
+      },
+      include: {
+        academicYear: true,
+      },
+      orderBy: [
+        {
+          startDate: "desc",
+        },
+        {
+          sequence: "asc",
+        },
+      ],
+    });
+  }
+
+  findAcademicTermById(departmentId: string, id: string) {
+    return this.prisma.academicTerm.findFirst({
+      where: {
+        id,
+        departmentId,
+        archivedAt: null,
+      },
+      include: {
+        academicYear: true,
+      },
+    });
+  }
+
+  createAcademicTerm(input: CreateAcademicTermInput) {
+    return this.prisma.academicTerm.create({
+      data: {
+        departmentId: input.departmentId,
+        academicYearId: input.academicYearId,
+        code: input.code,
+        name: input.name,
+        sequence: input.sequence,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        enrollmentStartAt: input.enrollmentStartAt,
+        enrollmentEndAt: input.enrollmentEndAt,
+        status: input.status,
+      },
+      include: {
+        academicYear: true,
+      },
+    });
+  }
+
+  updateAcademicTerm(
+    departmentId: string,
+    id: string,
+    input: UpdateAcademicTermInput,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const result = await tx.academicTerm.updateMany({
+        where: {
+          id,
+          departmentId,
+          archivedAt: null,
+        },
+        data: input,
+      });
+
+      if (result.count === 0) {
+        return null;
+      }
+
+      return tx.academicTerm.findFirst({
+        where: {
+          id,
+          departmentId,
+          archivedAt: null,
+        },
+        include: {
+          academicYear: true,
+        },
       });
     });
   }
@@ -106,23 +280,23 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
           ? [
               {
                 code: {
-                  contains: filters.search
-                }
+                  contains: filters.search,
+                },
               },
               {
                 title: {
-                  contains: filters.search
-                }
-              }
+                  contains: filters.search,
+                },
+              },
             ]
-          : undefined
+          : undefined,
       },
       include: {
-        academicProgram: true
+        academicProgram: true,
       },
       orderBy: {
-        createdAt: "desc"
-      }
+        createdAt: "desc",
+      },
     });
   }
 
@@ -131,11 +305,11 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
       where: {
         id,
         departmentId,
-        archivedAt: null
+        archivedAt: null,
       },
       include: {
-        academicProgram: true
-      }
+        academicProgram: true,
+      },
     });
   }
 
@@ -150,11 +324,11 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
         creditHours: input.creditHours,
         lectureHours: input.lectureHours,
         labHours: input.labHours,
-        status: input.status
+        status: input.status,
       },
       include: {
-        academicProgram: true
-      }
+        academicProgram: true,
+      },
     });
   }
 
@@ -164,9 +338,9 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
         where: {
           id,
           departmentId,
-          archivedAt: null
+          archivedAt: null,
         },
-        data: input
+        data: input,
       });
 
       if (result.count === 0) {
@@ -177,11 +351,11 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
         where: {
           id,
           departmentId,
-          archivedAt: null
+          archivedAt: null,
         },
         include: {
-          academicProgram: true
-        }
+          academicProgram: true,
+        },
       });
     });
   }
@@ -201,18 +375,18 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
                 teacherUserId: filters.assignedTeacherUserId,
                 status: filters.teacherAssignmentStatus,
                 unassignedAt: null,
-                archivedAt: null
-              }
+                archivedAt: null,
+              },
             }
-          : undefined
+          : undefined,
       },
       include: {
         course: true,
-        academicTerm: true
+        academicTerm: true,
       },
       orderBy: {
-        createdAt: "desc"
-      }
+        createdAt: "desc",
+      },
     });
   }
 
@@ -221,16 +395,20 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
       where: {
         id,
         departmentId,
-        archivedAt: null
+        archivedAt: null,
       },
       include: {
         course: true,
-        academicTerm: true
-      }
+        academicTerm: true,
+      },
     });
   }
 
-  findCourseOfferingByIdForTeacher(departmentId: string, id: string, teacherUserId: string) {
+  findCourseOfferingByIdForTeacher(
+    departmentId: string,
+    id: string,
+    teacherUserId: string,
+  ) {
     return this.prisma.courseOffering.findFirst({
       where: {
         id,
@@ -242,14 +420,14 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
             teacherUserId,
             status: "ACTIVE",
             unassignedAt: null,
-            archivedAt: null
-          }
-        }
+            archivedAt: null,
+          },
+        },
       },
       include: {
         course: true,
-        academicTerm: true
-      }
+        academicTerm: true,
+      },
     });
   }
 
@@ -263,28 +441,28 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
         capacity: input.capacity,
         status: input.status,
         visibilityStartAt: input.visibilityStartAt,
-        visibilityEndAt: input.visibilityEndAt
+        visibilityEndAt: input.visibilityEndAt,
       },
       include: {
         course: true,
-        academicTerm: true
-      }
+        academicTerm: true,
+      },
     });
   }
 
   updateCourseOffering(
     departmentId: string,
     id: string,
-    input: UpdateCourseOfferingInput
+    input: UpdateCourseOfferingInput,
   ) {
     return this.prisma.$transaction(async (tx) => {
       const result = await tx.courseOffering.updateMany({
         where: {
           id,
           departmentId,
-          archivedAt: null
+          archivedAt: null,
         },
-        data: input
+        data: input,
       });
 
       if (result.count === 0) {
@@ -295,12 +473,12 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
         where: {
           id,
           departmentId,
-          archivedAt: null
+          archivedAt: null,
         },
         include: {
           course: true,
-          academicTerm: true
-        }
+          academicTerm: true,
+        },
       });
     });
   }
@@ -314,33 +492,33 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
         courseOfferingId: filters.courseOfferingId,
         studentUserId: filters.studentUserId,
         status: filters.status,
-        eligibilityStatus: filters.eligibilityStatus
+        eligibilityStatus: filters.eligibilityStatus,
       },
       include: {
         academicTerm: true,
         courseOffering: {
           include: {
-            course: true
-          }
+            course: true,
+          },
         },
         studentUser: {
           select: {
             id: true,
             displayName: true,
-            email: true
-          }
+            email: true,
+          },
         },
         approvedByUser: {
           select: {
             id: true,
             displayName: true,
-            email: true
-          }
-        }
+            email: true,
+          },
+        },
       },
       orderBy: {
-        createdAt: "desc"
-      }
+        createdAt: "desc",
+      },
     });
   }
 
@@ -349,63 +527,67 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
       where: {
         id,
         departmentId,
-        archivedAt: null
+        archivedAt: null,
       },
       include: {
         academicTerm: true,
         courseOffering: {
           include: {
-            course: true
-          }
+            course: true,
+          },
         },
         studentUser: {
           select: {
             id: true,
             displayName: true,
-            email: true
-          }
+            email: true,
+          },
         },
         approvedByUser: {
           select: {
             id: true,
             displayName: true,
-            email: true
-          }
-        }
-      }
+            email: true,
+          },
+        },
+      },
     });
   }
 
-  findEnrollmentByIdForStudent(departmentId: string, id: string, studentUserId: string) {
+  findEnrollmentByIdForStudent(
+    departmentId: string,
+    id: string,
+    studentUserId: string,
+  ) {
     return this.prisma.enrollment.findFirst({
       where: {
         id,
         departmentId,
         studentUserId,
-        archivedAt: null
+        archivedAt: null,
       },
       include: {
         academicTerm: true,
         courseOffering: {
           include: {
-            course: true
-          }
+            course: true,
+          },
         },
         studentUser: {
           select: {
             id: true,
             displayName: true,
-            email: true
-          }
+            email: true,
+          },
         },
         approvedByUser: {
           select: {
             id: true,
             displayName: true,
-            email: true
-          }
-        }
-      }
+            email: true,
+          },
+        },
+      },
     });
   }
 
@@ -421,82 +603,86 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
         status: input.status,
         eligibilityStatus: input.eligibilityStatus,
         eligibilitySnapshotJson: input.eligibilitySnapshotJson,
-        enrolledAt: input.status === "APPROVED" ? new Date() : null
+        enrolledAt: input.status === "APPROVED" ? new Date() : null,
       },
       include: {
         academicTerm: true,
         courseOffering: {
           include: {
-            course: true
-          }
+            course: true,
+          },
         },
         studentUser: {
           select: {
             id: true,
             displayName: true,
-            email: true
-          }
+            email: true,
+          },
         },
         approvedByUser: {
           select: {
             id: true,
             displayName: true,
-            email: true
-          }
-        }
-      }
+            email: true,
+          },
+        },
+      },
     });
   }
 
-  updateEnrollment(departmentId: string, id: string, input: UpdateEnrollmentInput) {
-  return this.prisma.$transaction(async (tx) => {
-    const { approvedByUserId, ...rest } = input;
+  updateEnrollment(
+    departmentId: string,
+    id: string,
+    input: UpdateEnrollmentInput,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const { approvedByUserId, ...rest } = input;
 
-    const result = await tx.enrollment.updateMany({
-      where: {
-        id,
-        departmentId,
-        archivedAt: null
-      },
-      data: {
-        ...rest,
-        approvedByUserId
-      }
-    });
-
-    if (result.count === 0) {
-      return null;
-    }
-
-    return tx.enrollment.findFirst({
-      where: {
-        id,
-        departmentId,
-        archivedAt: null
-      },
-      include: {
-        academicTerm: true,
-        courseOffering: {
-          include: {
-            course: true
-          }
+      const result = await tx.enrollment.updateMany({
+        where: {
+          id,
+          departmentId,
+          archivedAt: null,
         },
-        studentUser: {
-          select: {
-            id: true,
-            displayName: true,
-            email: true
-          }
+        data: {
+          ...rest,
+          approvedByUserId,
         },
-        approvedByUser: {
-          select: {
-            id: true,
-            displayName: true,
-            email: true
-          }
-        }
+      });
+
+      if (result.count === 0) {
+        return null;
       }
+
+      return tx.enrollment.findFirst({
+        where: {
+          id,
+          departmentId,
+          archivedAt: null,
+        },
+        include: {
+          academicTerm: true,
+          courseOffering: {
+            include: {
+              course: true,
+            },
+          },
+          studentUser: {
+            select: {
+              id: true,
+              displayName: true,
+              email: true,
+            },
+          },
+          approvedByUser: {
+            select: {
+              id: true,
+              displayName: true,
+              email: true,
+            },
+          },
+        },
+      });
     });
-  });
-}
+  }
 }

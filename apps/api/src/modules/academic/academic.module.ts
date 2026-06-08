@@ -8,6 +8,8 @@ import { PlatformModule } from "@/platform/platform.module";
 import { AcademicService } from "./application/services/academic.service";
 import { ACADEMIC_REPOSITORY } from "./domain/academic.constants";
 import { PrismaAcademicRepository } from "./infrastructure/repositories/prisma-academic.repository";
+import { AcademicTermsController } from "./presentation/http/academic-terms.controller";
+import { AcademicYearsController } from "./presentation/http/academic-years.controller";
 import { CourseOfferingsController } from "./presentation/http/course-offerings.controller";
 import { CoursesController } from "./presentation/http/courses.controller";
 import { EnrollmentsController } from "./presentation/http/enrollments.controller";
@@ -18,20 +20,22 @@ import { ProgramsController } from "./presentation/http/programs.controller";
     PlatformModule,
     AuthorizationModule,
     PrismaModule,
-    RequestContextModule
+    RequestContextModule,
   ],
   controllers: [
+    AcademicYearsController,
+    AcademicTermsController,
     ProgramsController,
     CoursesController,
     CourseOfferingsController,
-    EnrollmentsController
+    EnrollmentsController,
   ],
   providers: [
     AcademicService,
     {
       provide: ACADEMIC_REPOSITORY,
-      useClass: PrismaAcademicRepository
-    }
-  ]
+      useClass: PrismaAcademicRepository,
+    },
+  ],
 })
 export class AcademicModule {}

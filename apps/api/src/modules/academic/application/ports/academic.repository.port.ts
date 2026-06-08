@@ -1,18 +1,33 @@
 import type {
   AcademicProgramStatus,
+  AcademicTermStatus,
+  AcademicYearStatus,
   CourseOfferingStatus,
   CourseStatus,
   EligibilityStatus,
   EnrollmentSourceType,
   EnrollmentStatus,
   Prisma,
-  TeacherAssignmentStatus
+  TeacherAssignmentStatus,
 } from "@prisma/client";
 
 export interface ProgramListFilters {
   departmentId: string;
   status?: AcademicProgramStatus;
   search?: string;
+}
+
+export interface AcademicYearListFilters {
+  departmentId: string;
+  status?: AcademicYearStatus;
+  isCurrent?: boolean;
+  search?: string;
+}
+
+export interface AcademicTermListFilters {
+  departmentId: string;
+  academicYearId?: string;
+  status?: AcademicTermStatus;
 }
 
 export interface CourseListFilters {
@@ -53,6 +68,50 @@ export interface UpdateProgramInput {
   name?: string;
   description?: string | null;
   status?: AcademicProgramStatus;
+}
+
+export interface CreateAcademicYearInput {
+  departmentId: string;
+  code: string;
+  name: string;
+  startDate: Date;
+  endDate: Date;
+  isCurrent?: boolean;
+  status?: AcademicYearStatus;
+}
+
+export interface UpdateAcademicYearInput {
+  code?: string;
+  name?: string;
+  startDate?: Date;
+  endDate?: Date;
+  isCurrent?: boolean;
+  status?: AcademicYearStatus;
+}
+
+export interface CreateAcademicTermInput {
+  departmentId: string;
+  academicYearId: string;
+  code: string;
+  name: string;
+  sequence: number;
+  startDate: Date;
+  endDate: Date;
+  enrollmentStartAt?: Date | null;
+  enrollmentEndAt?: Date | null;
+  status?: AcademicTermStatus;
+}
+
+export interface UpdateAcademicTermInput {
+  academicYearId?: string;
+  code?: string;
+  name?: string;
+  sequence?: number;
+  startDate?: Date;
+  endDate?: Date;
+  enrollmentStartAt?: Date | null;
+  enrollmentEndAt?: Date | null;
+  status?: AcademicTermStatus;
 }
 
 export interface CreateCourseInput {
@@ -106,7 +165,9 @@ export interface CreateEnrollmentInput {
   sourceType?: EnrollmentSourceType;
   status?: EnrollmentStatus;
   eligibilityStatus?: EligibilityStatus;
-  eligibilitySnapshotJson?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
+  eligibilitySnapshotJson?:
+    | Prisma.InputJsonValue
+    | Prisma.NullableJsonNullValueInput;
 }
 
 export interface UpdateEnrollmentInput {
@@ -114,7 +175,9 @@ export interface UpdateEnrollmentInput {
   sourceType?: EnrollmentSourceType;
   status?: EnrollmentStatus;
   eligibilityStatus?: EligibilityStatus;
-  eligibilitySnapshotJson?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
+  eligibilitySnapshotJson?:
+    | Prisma.InputJsonValue
+    | Prisma.NullableJsonNullValueInput;
   enrolledAt?: Date | null;
   droppedAt?: Date | null;
 }
@@ -123,35 +186,68 @@ export interface AcademicRepositoryPort {
   findPrograms(filters: ProgramListFilters): Promise<unknown[]>;
   findProgramById(departmentId: string, id: string): Promise<unknown | null>;
   createProgram(input: CreateProgramInput): Promise<unknown>;
-  updateProgram(departmentId: string, id: string, input: UpdateProgramInput): Promise<unknown | null>;
+  updateProgram(
+    departmentId: string,
+    id: string,
+    input: UpdateProgramInput,
+  ): Promise<unknown | null>;
+  findAcademicYears(filters: AcademicYearListFilters): Promise<unknown[]>;
+  findAcademicYearById(
+    departmentId: string,
+    id: string,
+  ): Promise<unknown | null>;
+  createAcademicYear(input: CreateAcademicYearInput): Promise<unknown>;
+  updateAcademicYear(
+    departmentId: string,
+    id: string,
+    input: UpdateAcademicYearInput,
+  ): Promise<unknown | null>;
+  findAcademicTerms(filters: AcademicTermListFilters): Promise<unknown[]>;
+  findAcademicTermById(
+    departmentId: string,
+    id: string,
+  ): Promise<unknown | null>;
+  createAcademicTerm(input: CreateAcademicTermInput): Promise<unknown>;
+  updateAcademicTerm(
+    departmentId: string,
+    id: string,
+    input: UpdateAcademicTermInput,
+  ): Promise<unknown | null>;
   findCourses(filters: CourseListFilters): Promise<unknown[]>;
   findCourseById(departmentId: string, id: string): Promise<unknown | null>;
   createCourse(input: CreateCourseInput): Promise<unknown>;
-  updateCourse(departmentId: string, id: string, input: UpdateCourseInput): Promise<unknown | null>;
+  updateCourse(
+    departmentId: string,
+    id: string,
+    input: UpdateCourseInput,
+  ): Promise<unknown | null>;
   findCourseOfferings(filters: CourseOfferingListFilters): Promise<unknown[]>;
-  findCourseOfferingById(departmentId: string, id: string): Promise<unknown | null>;
+  findCourseOfferingById(
+    departmentId: string,
+    id: string,
+  ): Promise<unknown | null>;
   findCourseOfferingByIdForTeacher(
     departmentId: string,
     id: string,
-    teacherUserId: string
+    teacherUserId: string,
   ): Promise<unknown | null>;
   createCourseOffering(input: CreateCourseOfferingInput): Promise<unknown>;
   updateCourseOffering(
     departmentId: string,
     id: string,
-    input: UpdateCourseOfferingInput
+    input: UpdateCourseOfferingInput,
   ): Promise<unknown | null>;
   findEnrollments(filters: EnrollmentListFilters): Promise<unknown[]>;
   findEnrollmentById(departmentId: string, id: string): Promise<unknown | null>;
   findEnrollmentByIdForStudent(
     departmentId: string,
     id: string,
-    studentUserId: string
+    studentUserId: string,
   ): Promise<unknown | null>;
   createEnrollment(input: CreateEnrollmentInput): Promise<unknown>;
   updateEnrollment(
     departmentId: string,
     id: string,
-    input: UpdateEnrollmentInput
+    input: UpdateEnrollmentInput,
   ): Promise<unknown | null>;
 }

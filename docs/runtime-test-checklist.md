@@ -468,6 +468,104 @@ Important runtime notes:
   - Prisma `@updatedAt` is handled by Prisma during application writes.
   - It does not automatically run during raw SQL inserts.
 
+### Academic Year / Academic Term API Implementation
+
+Runtime verification status:
+
+- [ ] Pending runtime verification after deployment.
+
+Implementation added:
+
+- `POST /api/v1/academic-years`
+- `GET /api/v1/academic-years`
+- `GET /api/v1/academic-years/:id`
+- `PATCH /api/v1/academic-years/:id`
+- `POST /api/v1/academic-terms`
+- `GET /api/v1/academic-terms`
+- `GET /api/v1/academic-terms/:id`
+- `PATCH /api/v1/academic-terms/:id`
+
+Protection:
+
+- All endpoints are protected by `AuthGuard`.
+- All endpoints are protected by `PolicyGuard`.
+- Academic Year read endpoints use `course-management.term.read`.
+- Academic Year create/update endpoints use `course-management.term.manage`.
+- Academic Term read endpoints use `course-management.term.read`.
+- Academic Term create/update endpoints use `course-management.term.manage`.
+
+Department isolation behavior to verify:
+
+- Create uses the authenticated principal's active department from request context.
+- List returns only records in the authenticated principal's active department.
+- Direct read/update filters by both record ID and active department.
+- Cross-department direct Academic Year ID access should return safe not-found.
+- Cross-department direct Academic Term ID access should return safe not-found.
+- Sending `x-department-id` for another department must not override a valid authenticated principal's real department scope.
+- Academic Term create/update must reject an `academicYearId` that is not in the active department.
+
+Validation behavior to verify:
+
+- Academic Year `endDate` must be after `startDate`.
+- Academic Term `endDate` must be after `startDate`.
+- Academic Term dates must be within the selected Academic Year date range.
+- Academic Term `enrollmentEndAt` must be after `enrollmentStartAt` when both are provided.
+- Academic Term enrollment dates must stay within the term date range.
+- Duplicate Academic Year code in the same department should return conflict.
+- Duplicate Academic Term code in the same department should return conflict.
+
+Suggested runtime commands:
+
+```bash
+curl -s -X POST "$API_BASE/academic-years" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "AY-2026-2027",
+    "name": "Academic Year 2026-2027",
+    "startDate": "2026-07-01T00:00:00.000Z",
+    "endDate": "2027-06-30T23:59:59.000Z",
+    "isCurrent": false,
+    "status": "PLANNED"
+  }'
+
+curl -s "$API_BASE/academic-years" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+
+curl -s -X POST "$API_BASE/academic-terms" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "academicYearId": "<academic-year-id>",
+    "code": "LAW-2026-2027-S1",
+    "name": "Law 2026-2027 Semester 1",
+    "sequence": 1,
+    "startDate": "2026-07-01T00:00:00.000Z",
+    "endDate": "2026-12-31T23:59:59.000Z",
+    "enrollmentStartAt": "2026-07-01T00:00:00.000Z",
+    "enrollmentEndAt": "2026-08-31T23:59:59.000Z",
+    "status": "PLANNED"
+  }'
+
+curl -s "$API_BASE/academic-terms?academicYearId=<academic-year-id>&status=PLANNED" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+
+curl -s -X PATCH "$API_BASE/academic-years/<academic-year-id>" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"ACTIVE","isCurrent":true}'
+
+curl -s -X PATCH "$API_BASE/academic-terms/<academic-term-id>" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"ENROLLMENT_OPEN"}'
+```
+
+Static verification:
+
+- [x] `pnpm --filter @lexora/api typecheck` passed locally after implementation.
+- [x] `pnpm --filter @lexora/api build` passed locally after implementation.
+
 ### Course Offering Runtime Test
 
 - [x] Confirmed `POST /api/v1/course-offerings` is protected by:
