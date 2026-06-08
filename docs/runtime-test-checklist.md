@@ -472,7 +472,37 @@ Important runtime notes:
 
 Runtime verification status:
 
-- [ ] Pending runtime verification after deployment.
+- [x] Runtime verified on Ubuntu VM after follow-up empty PATCH validation fix.
+
+Verified commits:
+
+| Purpose | Commit |
+|---|---|
+| Academic Year / Academic Term API foundation | `88c2b9e` |
+| Empty PATCH validation fix | `97733c5` |
+
+Runtime environment:
+
+- Repo path: `~/lexora_lms`
+- API process: PM2 app `lexora-api`
+- API via Nginx: `http://localhost/api/v1`
+- Direct API port remained bound to `127.0.0.1:4000`
+- Law department login code used: `0421`
+- Canonical runtime accounts used:
+  - `admin.law@cu.ac.bd`
+  - `teacher.law@cu.ac.bd`
+  - `student.law@cu.ac.bd`
+- Do not store raw passwords, access tokens, refresh tokens, or password hashes in documentation.
+
+Runtime records created:
+
+| Field | Value |
+|---|---|
+| Academic Year ID | `cmq5izxji00152ihcx0g9knxg` |
+| Academic Year Code | `AY-RT-20260608180951` |
+| Academic Term ID | `cmq5izxqi001b2ihcvg5hrfsc` |
+| Academic Term Code | `LAW-RT-20260608180951-S1` |
+| Department ID observed | `dept_law_test` |
 
 Implementation added:
 
@@ -565,6 +595,65 @@ Static verification:
 
 - [x] `pnpm --filter @lexora/api typecheck` passed locally after implementation.
 - [x] `pnpm --filter @lexora/api build` passed locally after implementation.
+
+Server deployment / verification evidence:
+
+- [x] Server fast-forwarded from `88c2b9e` to `97733c5`.
+- [x] `pnpm --filter @lexora/api typecheck` passed on server.
+- [x] `pnpm --filter @lexora/api build` passed on server.
+- [x] `pm2 restart lexora-api --update-env` completed.
+- [x] Health endpoint returned `200 OK`.
+- [x] Admin login worked using `admin.law@cu.ac.bd` with `departmentCode: "0421"`.
+- [x] Teacher login worked using `teacher.law@cu.ac.bd` with `departmentCode: "0421"`.
+- [x] Student login worked using `student.law@cu.ac.bd` with `departmentCode: "0421"`.
+- [x] Final server git status was clean.
+
+Positive API verification:
+
+- [x] Admin created Academic Year successfully.
+- [x] Admin listed Academic Years and found runtime year `AY-RT-20260608180951`.
+- [x] Admin read Academic Year by ID `cmq5izxji00152ihcx0g9knxg`.
+- [x] Admin patched Academic Year name.
+- [x] Admin created Academic Term under runtime Academic Year `cmq5izxji00152ihcx0g9knxg`.
+- [x] Admin listed Academic Terms for that Academic Year.
+- [x] Admin read Academic Term by ID `cmq5izxqi001b2ihcvg5hrfsc`.
+- [x] Admin patched Academic Term name.
+
+Negative / security verification:
+
+- [x] Unauthenticated `/academic-years` returned `401 Unauthorized`.
+- [x] Teacher Academic Year create returned `403 Forbidden`.
+- [x] Student Academic Year create returned `403 Forbidden`.
+- [x] Invalid Academic Year date range returned `400 Bad Request`.
+- [x] Empty Academic Year PATCH originally returned `404 Academic year not found`.
+- [x] Empty Academic Year PATCH was fixed in `97733c5`.
+- [x] Empty Academic Year PATCH retest returned `400 Bad Request` with message `At least one academic year field must be provided`.
+- [x] Invalid Academic Term outside selected Academic Year returned `400 Bad Request`.
+- [x] Teacher Academic Term create returned `403 Forbidden`.
+- [x] Student Academic Term create returned `403 Forbidden`.
+- [x] Empty Academic Term PATCH originally returned `404 Academic term not found`.
+- [x] Empty Academic Term PATCH was fixed in `97733c5`.
+- [x] Empty Academic Term PATCH retest returned `400 Bad Request` with message `At least one academic term field must be provided`.
+- [x] `x-department-id: dept_bus_test` did not override authenticated Law admin department scope; the Law runtime year was still returned.
+- [x] Direct read of BUS Academic Year ID `ay_bus_2025_2026` as Law admin returned safe `404 Not Found`.
+- [x] Creating a Law term with BUS Academic Year ID `ay_bus_2025_2026` returned `400 Bad Request` with message `Academic year does not belong to the active department`.
+- [x] Existing Academic Year ID `cmq5izxji00152ihcx0g9knxg` remained readable with `200 OK` after the empty PATCH fix.
+- [x] Existing Academic Term ID `cmq5izxqi001b2ihcvg5hrfsc` remained readable with `200 OK` after the empty PATCH fix.
+
+Runtime verdict:
+
+- Academic Year / Academic Term API foundation is runtime verified after the follow-up empty PATCH validation fix.
+- Department-scoped create/list/read/update behavior passed runtime verification.
+- Guard/policy behavior passed runtime verification for admin, teacher, student, and unauthenticated access paths.
+- Cross-department direct object access and cross-department `academicYearId` usage were blocked safely.
+
+Pending / intentionally deferred:
+
+- Academic Year `isCurrent` uniqueness / single-current-year behavior is not implemented. This remains a future academic configuration rule and needs a policy decision on whether to auto-unset other current years or reject multiple current years.
+- No frontend UI was implemented in this task.
+- Teacher Assignment HTTP API is still pending if not already completed elsewhere.
+- Student available/eligible course offering endpoint is still pending if not already completed elsewhere.
+- Passwords for canonical runtime accounts were accidentally exposed in chat/logs during testing and should be rotated/reset as a security cleanup task. Do not record those passwords in this document.
 
 ### Course Offering Runtime Test
 
