@@ -39,6 +39,8 @@ export interface ApiAuthContext {
   departmentId: string;
 }
 
+export type CourseStatus = "DRAFT" | "ACTIVE" | "INACTIVE" | "ARCHIVED";
+
 export interface AcademicProgram {
   id: string;
   departmentId: string;
@@ -51,15 +53,28 @@ export interface AcademicProgram {
 export interface AcademicCourse {
   id: string;
   departmentId: string;
-  academicProgramId: string;
+  academicProgramId: string | null;
   code: string;
   title: string;
   description: string | null;
   creditHours: string | number;
-  lectureHours: string | number;
-  labHours: string | number;
-  status: string;
+  lectureHours: string | number | null;
+  labHours: string | number | null;
+  status: CourseStatus;
 }
+
+export interface CoursePayload {
+  academicProgramId?: string;
+  code: string;
+  title: string;
+  description?: string;
+  creditHours: string;
+  lectureHours?: string;
+  labHours?: string;
+  status?: CourseStatus;
+}
+
+export type UpdateCoursePayload = Partial<CoursePayload>;
 
 export interface AcademicTerm {
   id: string;
@@ -184,6 +199,30 @@ export async function apiAuthenticatedGet<TResponse>(
   return (await response.json()) as TResponse;
 }
 
+async function apiAuthenticatedJson<TResponse, TPayload>(
+  method: "POST" | "PATCH",
+  path: string,
+  { accessToken, departmentId }: ApiAuthContext,
+  payload: TPayload
+): Promise<TResponse> {
+  const response = await fetch(`${clientEnv.NEXT_PUBLIC_API_BASE_URL}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+      "x-department-id": departmentId
+    },
+    credentials: "include",
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    throw await parseApiError(response);
+  }
+
+  return (await response.json()) as TResponse;
+}
+
 export function login(payload: LoginPayload) {
   return apiPost<AuthResponse, LoginPayload>("/auth/login", payload);
 }
@@ -200,8 +239,38 @@ export function getPrograms(authContext: ApiAuthContext) {
   return apiAuthenticatedGet<AcademicProgram[]>("/programs", authContext);
 }
 
-export function getCourses(authContext: ApiAuthContext) {
-  return apiAuthenticatedGet<AcademicCourse[]>("/courses?status=ACTIVE", authContext);
+export function getCourses(
+  authContext: ApiAuthContext,
+  filters: { status?: CourseStatus | "ALL" } = { status: "ACTIVE" }
+) {
+  const query =
+    filters.status && filters.status !== "ALL"
+      ? `?status=${encodeURIComponent(filters.status)}`
+      : "";
+
+  return apiAuthenticatedGet<AcademicCourse[]>(`/courses${query}`, authContext);
+}
+
+export function createCourse(authContext: ApiAuthContext, payload: CoursePayload) {
+  return apiAuthenticatedJson<AcademicCourse, CoursePayload>(
+    "POST",
+    "/courses",
+    authContext,
+    payload
+  );
+}
+
+export function updateCourse(
+  authContext: ApiAuthContext,
+  courseId: string,
+  payload: UpdateCoursePayload
+) {
+  return apiAuthenticatedJson<AcademicCourse, UpdateCoursePayload>(
+    "PATCH",
+    `/courses/${encodeURIComponent(courseId)}`,
+    authContext,
+    payload
+  );
 }
 
 export function getCourseOfferings(authContext: ApiAuthContext) {
