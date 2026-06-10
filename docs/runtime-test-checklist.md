@@ -5122,3 +5122,207 @@ Updated frontend status:
 - Admin dashboard has API-connected Academic Courses panel.
 - Student dashboard now has API-connected Enrolled Courses surface.
 
+## Admin Academic Frontend Course and Course Offering Management Runtime Verification
+
+### Runtime Test Date
+
+- 2026-06-11
+
+### Scope
+
+This section documents the newly implemented Admin Academic frontend management work for courses and course offerings.
+
+Included scope:
+
+- [x] Admin course create/edit UI.
+- [x] Admin course management bucket UI.
+- [x] Admin course status-change cache refresh fix.
+- [x] Admin course bucket row ordering fixes.
+- [x] Admin course offering create/edit UI.
+- [x] Frontend integration with existing protected backend Course, Academic Term, and Course Offering APIs.
+
+Out of scope for this section:
+
+- [ ] Backend authorization or department-isolation changes.
+- [ ] Teacher assignment UI.
+- [ ] Role-based user creation.
+- [ ] Student available/eligible course-offering endpoint.
+- [ ] Academic Year/Term management UI.
+
+### Related Commits
+
+| Commit | Purpose |
+|---|---|
+| `3600cb8` | Add admin course create edit UI |
+| `9d56639` | Refine admin course management UI |
+| `9abb320` | Add admin course offering management UI |
+| `416f3db` | Fix admin course bucket refresh |
+| `7ef4fcd` | Sort admin course bucket rows |
+| `71585dc` | Fix admin course curriculum ordering |
+
+### Implementation Summary
+
+Admin Courses:
+
+- [x] Added course create/edit UI on the Admin dashboard.
+- [x] Course form is collapsed by default behind the `Create course` action.
+- [x] Edit opens a prefilled course form.
+- [x] Law admin course form does not show lab hours.
+- [x] Academic program is selected through a dropdown.
+- [x] Course list is grouped into status buckets:
+  - Active
+  - Inactive
+  - Draft
+  - Archived
+- [x] Active, Inactive, and Draft course rows remain editable.
+- [x] Archived course rows remain visible but read-only.
+- [x] Course status selector excludes Archived for normal admin editing.
+- [x] Course counts and visible bucket rows derive from the same React Query course data.
+- [x] Course bucket refresh now updates React Query cache with the server-confirmed course before selecting the returned status bucket.
+- [x] Course query is still invalidated/refetched after successful create/update so the backend remains source of truth.
+
+Admin Course Offerings:
+
+- [x] Added course offering create/edit UI on the Admin dashboard.
+- [x] Create offering form is collapsed by default behind the `Create offering` action.
+- [x] Course offering create uses active courses from the Courses API.
+- [x] Course offering create uses academic terms from the Academic Terms API.
+- [x] Admin selects Course and Academic Term from dropdowns instead of typing raw IDs.
+- [x] Create submits `courseId`, `academicTermId`, `sectionCode`, optional capacity, optional status, and optional visibility dates.
+- [x] Edit opens a prefilled offering form.
+- [x] Edit preserves immutable course and academic term fields.
+- [x] Edit submits only supported mutable fields:
+  - `sectionCode`
+  - `capacity`
+  - `status`
+  - `visibilityStartAt`
+  - `visibilityEndAt`
+- [x] Course offering mutations invalidate/refetch the course offerings query after success.
+
+### Validation
+
+Local PC validation:
+
+- [x] `pnpm --filter @lexora/web typecheck` passed.
+- [x] `pnpm --filter @lexora/web build` passed.
+- [x] `git diff --check` passed where run.
+- [x] Build artifact `apps/web/tsconfig.tsbuildinfo` was restored before/after commits where needed.
+- [x] Local repository was clean after relevant commits.
+
+Ubuntu server validation:
+
+- [x] Fast-forward sync passed.
+- [x] `pnpm --filter @lexora/web typecheck` passed.
+- [x] `pnpm --filter @lexora/web build` passed.
+- [x] Build artifact `apps/web/tsconfig.tsbuildinfo` was restored where needed.
+- [x] Server repository was clean after relevant sync/build steps.
+
+Build environment note:
+
+- [x] A previous Ubuntu web build failure was traced to a sourced/non-standard `NODE_ENV` value from an API shell session, not to the frontend code.
+- [x] After `NODE_ENV` and `NEXT_RUNTIME` were unset, the Ubuntu web build passed.
+
+### Browser Runtime Verification
+
+Admin Courses:
+
+- [x] Admin course create flow passed runtime verification.
+- [x] Admin course edit flow passed runtime verification.
+- [x] Course form stayed collapsed on initial Admin dashboard load.
+- [x] Edit opened a prefilled form.
+- [x] Lab hours stayed hidden in the Law admin course form.
+- [x] Academic program dropdown was available.
+- [x] Course buckets displayed Active, Inactive, Draft, and Archived groups.
+- [x] Archived courses remained visible as read-only/no edit.
+- [x] Active to Inactive status update passed.
+- [x] Inactive to Active status update passed.
+- [x] Bucket counts updated after status changes.
+- [x] Updated courses appeared in the selected returned-status bucket after save/refetch.
+
+Admin course curriculum ordering:
+
+- [x] Runtime DB evidence confirmed `0421-1101`, `0421-1102`, `0421-1103`, and `0421-1104` existed and were `ACTIVE`.
+- [x] Active course count was confirmed as `59`.
+- [x] Final ordering fix sorts by the numeric course sequence after the hyphen.
+- [x] Active bucket starts with:
+  - `0421-1101`
+  - `0421-1102`
+  - `0421-1103`
+  - `0421-1104`
+  - `0231-1105`
+  - `0311-1106`
+- [x] Courses such as `0315-3107` and `0312-4206` no longer appear before `0421-1101`.
+
+Admin Course Offerings:
+
+- [x] Admin course offering create/edit UI loaded.
+- [x] Create offering uses active course dropdown data.
+- [x] Create offering uses academic term dropdown data.
+- [x] Admin did not need to type raw `courseId` or `academicTermId`.
+- [x] Create offering flow passed runtime verification.
+- [x] Edit offering flow passed runtime verification.
+- [x] Edit preserved immutable course and academic term fields.
+- [x] Edit updated supported mutable fields only.
+- [x] Course offering list refreshed after create/update.
+- [ ] Final separate teacher/student `/admin` negative access smoke check was not examined for this latest frontend flow.
+- [ ] Final separate `localStorage`/`sessionStorage` token inspection was not examined for this latest frontend flow.
+
+### Bug Fixes and Supersession Notes
+
+- [x] Older pending notes that said Admin create/update course UI was pending are superseded by this section.
+- [x] Older pending notes that said Admin course offering UI was pending are superseded by this section.
+- [x] The first Admin Courses ordering fix sorted by full course code.
+- [x] Runtime screenshot showed that full-code ordering was incorrect because `031x`/`022x` prefixes could appear before `0421-1101`.
+- [x] DB/runtime evidence confirmed the `0421-1101` through `0421-1104` courses existed and were active; the issue was frontend display ordering, not missing data.
+- [x] The final ordering fix uses the numeric segment after the hyphen as the primary curriculum sequence key.
+- [x] Full course-code numeric `localeCompare` remains as fallback when sequence numbers are equal or cannot be parsed.
+
+### Security/Architecture Preservation
+
+- [x] Changes were frontend-only.
+- [x] No backend files were modified for this Admin Academic frontend work.
+- [x] No `AuthProvider` logic was changed.
+- [x] No token storage logic was changed.
+- [x] No `AuthGuard` logic was changed.
+- [x] No `PolicyGuard` logic was changed.
+- [x] No request-context logic was changed.
+- [x] No department-isolation logic was changed.
+- [x] Existing authenticated API helper behavior was preserved.
+- [x] Frontend continued to use the authenticated session's `accessToken` and `departmentId`.
+- [x] Backend remains the source of truth for authorization and department scoping.
+- [x] No secrets, raw tokens, passwords, password hashes, DB credentials, or sensitive runtime tokens are documented here.
+- [ ] Do not treat this section as verifying the latest teacher/student `/admin` negative access smoke check.
+- [ ] Do not treat this section as verifying the latest browser storage token inspection.
+
+### Remaining Pending Checks
+
+- [ ] Teacher/student `/admin` access blocked smoke check for this latest frontend flow.
+- [ ] `localStorage`/`sessionStorage` token inspection for this latest frontend flow.
+- [ ] Academic Year/Term frontend management UI.
+- [ ] Teacher assigned-course surface.
+- [ ] Dedicated student available/eligible course-offering endpoint.
+- [ ] Notice/notification frontend.
+- [ ] Secure file upload frontend.
+
+### Runtime Verdict
+
+- [x] Admin course create/edit UI is implemented and runtime verified.
+- [x] Admin course management buckets are implemented and runtime verified.
+- [x] Admin course bucket refresh after status changes is fixed and runtime verified.
+- [x] Admin course curriculum ordering is fixed and runtime verified.
+- [x] Admin course offering create/edit UI is implemented and functional runtime flow passed.
+- [x] Existing backend security and department-scoping architecture was preserved.
+- [ ] Latest separate teacher/student `/admin` negative access check remains pending.
+- [ ] Latest separate browser storage token inspection remains pending.
+
+### Updated Next Test Steps
+
+Recommended next runtime checks:
+
+1. Verify teacher and student accounts still cannot access `/admin` after the latest Admin Academic frontend changes.
+2. Inspect browser `localStorage` and `sessionStorage` after the latest Admin Academic frontend flow to confirm no token persistence.
+3. Add Academic Year/Term frontend management UI.
+4. Add Teacher assigned-course surface.
+5. Design and implement the dedicated student available/eligible course-offering endpoint before exposing student course discovery.
+6. Continue with Notice/notification frontend and secure file upload frontend after the core academic surfaces are complete.
+
