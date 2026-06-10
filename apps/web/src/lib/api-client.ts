@@ -40,6 +40,14 @@ export interface ApiAuthContext {
 }
 
 export type CourseStatus = "DRAFT" | "ACTIVE" | "INACTIVE" | "ARCHIVED";
+export type CourseOfferingStatus =
+  | "PLANNED"
+  | "PUBLISHED"
+  | "ENROLLMENT_OPEN"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "CANCELED"
+  | "ARCHIVED";
 
 export interface AcademicProgram {
   id: string;
@@ -90,12 +98,29 @@ export interface CourseOffering {
   academicTermId?: string;
   sectionCode?: string | null;
   capacity?: number | null;
-  status?: string | null;
+  status?: CourseOfferingStatus | null;
   visibilityStartAt?: string | null;
   visibilityEndAt?: string | null;
   course?: Partial<AcademicCourse> | null;
   academicTerm?: Partial<AcademicTerm> | null;
 }
+
+export interface CourseOfferingPayload {
+  courseId: string;
+  academicTermId: string;
+  sectionCode: string;
+  capacity?: number;
+  status?: CourseOfferingStatus;
+  visibilityStartAt?: string;
+  visibilityEndAt?: string;
+}
+
+export type UpdateCourseOfferingPayload = Partial<
+  Pick<
+    CourseOfferingPayload,
+    "sectionCode" | "capacity" | "status" | "visibilityStartAt" | "visibilityEndAt"
+  >
+>;
 
 export interface EnrollmentAcademicTerm {
   id: string;
@@ -251,6 +276,10 @@ export function getCourses(
   return apiAuthenticatedGet<AcademicCourse[]>(`/courses${query}`, authContext);
 }
 
+export function getAcademicTerms(authContext: ApiAuthContext) {
+  return apiAuthenticatedGet<AcademicTerm[]>("/academic-terms", authContext);
+}
+
 export function createCourse(authContext: ApiAuthContext, payload: CoursePayload) {
   return apiAuthenticatedJson<AcademicCourse, CoursePayload>(
     "POST",
@@ -275,6 +304,31 @@ export function updateCourse(
 
 export function getCourseOfferings(authContext: ApiAuthContext) {
   return apiAuthenticatedGet<CourseOffering[]>("/course-offerings", authContext);
+}
+
+export function createCourseOffering(
+  authContext: ApiAuthContext,
+  payload: CourseOfferingPayload
+) {
+  return apiAuthenticatedJson<CourseOffering, CourseOfferingPayload>(
+    "POST",
+    "/course-offerings",
+    authContext,
+    payload
+  );
+}
+
+export function updateCourseOffering(
+  authContext: ApiAuthContext,
+  offeringId: string,
+  payload: UpdateCourseOfferingPayload
+) {
+  return apiAuthenticatedJson<CourseOffering, UpdateCourseOfferingPayload>(
+    "PATCH",
+    `/course-offerings/${encodeURIComponent(offeringId)}`,
+    authContext,
+    payload
+  );
 }
 
 export function getMyEnrollments(authContext: ApiAuthContext) {
