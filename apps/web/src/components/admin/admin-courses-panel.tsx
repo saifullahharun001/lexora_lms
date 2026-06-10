@@ -128,9 +128,17 @@ export function AdminCoursesPanel() {
   const selectedBucket = COURSE_BUCKETS.find(
     (bucket) => bucket.status === selectedBucketStatus
   );
-  const visibleCourses = selectedBucketStatus
-    ? (coursesQuery.data ?? []).filter((course) => course.status === selectedBucketStatus)
-    : [];
+  const visibleCourses = useMemo(
+    () =>
+      selectedBucketStatus
+        ? (coursesQuery.data ?? []).filter((course) => course.status === selectedBucketStatus)
+        : [],
+    [coursesQuery.data, selectedBucketStatus]
+  );
+  const sortedVisibleCourses = useMemo(
+    () => [...visibleCourses].sort(compareCoursesByCode),
+    [visibleCourses]
+  );
   const saveCourseMutation = useMutation({
     mutationFn: (payload: CoursePayload) => {
       if (!authContext) {
@@ -449,7 +457,7 @@ export function AdminCoursesPanel() {
       ) : null}
 
       {coursesQuery.isSuccess && selectedBucket ? (
-        visibleCourses.length === 0 ? (
+        sortedVisibleCourses.length === 0 ? (
           <p className="text-sm text-slate-600">{selectedBucket.emptyMessage}</p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-slate-200">
@@ -467,7 +475,7 @@ export function AdminCoursesPanel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 bg-white">
-                {visibleCourses.map((course) => (
+                {sortedVisibleCourses.map((course) => (
                   <tr key={course.id}>
                     <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-950">
                       {course.code}
@@ -554,6 +562,13 @@ function formatCreditHours(creditHours: string | number) {
 
 function isCourseStatus(status: string): status is CourseStatus {
   return COURSE_BUCKETS.some((bucket) => bucket.status === status);
+}
+
+function compareCoursesByCode(courseA: AcademicCourse, courseB: AcademicCourse) {
+  return courseA.code.localeCompare(courseB.code, undefined, {
+    numeric: true,
+    sensitivity: "base"
+  });
 }
 
 function formatStatus(status: string) {
