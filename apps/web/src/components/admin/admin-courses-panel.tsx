@@ -565,10 +565,29 @@ function isCourseStatus(status: string): status is CourseStatus {
 }
 
 function compareCoursesByCode(courseA: AcademicCourse, courseB: AcademicCourse) {
+  const sequenceA = getCourseSequenceNumber(courseA.code);
+  const sequenceB = getCourseSequenceNumber(courseB.code);
+
+  if (sequenceA !== null && sequenceB !== null && sequenceA !== sequenceB) {
+    return sequenceA - sequenceB;
+  }
+
   return courseA.code.localeCompare(courseB.code, undefined, {
     numeric: true,
     sensitivity: "base"
   });
+}
+
+function getCourseSequenceNumber(code: string) {
+  const sequenceSegment = code.split("-")[1];
+
+  if (!sequenceSegment) {
+    return null;
+  }
+
+  const sequenceNumber = Number(sequenceSegment);
+
+  return Number.isFinite(sequenceNumber) ? sequenceNumber : null;
 }
 
 function formatStatus(status: string) {
