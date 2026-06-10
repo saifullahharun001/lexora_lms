@@ -143,9 +143,27 @@ export function AdminCoursesPanel() {
 
       return createCourse(authContext, payload);
     },
-    onSuccess: async (course) => {
-      await queryClient.invalidateQueries({ queryKey: coursesQueryKey });
-      setSelectedBucketStatus(course.status);
+    onSuccess: (course) => {
+      queryClient.setQueryData<AcademicCourse[]>(coursesQueryKey, (currentCourses) => {
+        if (!currentCourses) {
+          return [course];
+        }
+
+        const courseExists = currentCourses.some((currentCourse) => currentCourse.id === course.id);
+
+        if (!courseExists) {
+          return [...currentCourses, course];
+        }
+
+        return currentCourses.map((currentCourse) =>
+          currentCourse.id === course.id ? course : currentCourse
+        );
+      });
+
+      if (isCourseStatus(course.status)) {
+        setSelectedBucketStatus(course.status);
+      }
+
       setSuccessMessage(
         editingCourseId
           ? `${course.code} was updated.`
@@ -153,6 +171,7 @@ export function AdminCoursesPanel() {
       );
       setFormError(null);
       resetForm();
+      void queryClient.invalidateQueries({ queryKey: coursesQueryKey });
     },
     onError: (error) => {
       setSuccessMessage(null);
@@ -531,6 +550,10 @@ function formatCoursesError(error: Error) {
 
 function formatCreditHours(creditHours: string | number) {
   return String(creditHours);
+}
+
+function isCourseStatus(status: string): status is CourseStatus {
+  return COURSE_BUCKETS.some((bucket) => bucket.status === status);
 }
 
 function formatStatus(status: string) {
