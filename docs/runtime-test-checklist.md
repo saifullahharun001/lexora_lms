@@ -5337,3 +5337,195 @@ Recommended next runtime checks:
 3. Design and implement the dedicated student available/eligible course-offering endpoint before exposing student course discovery.
 4. Continue with Notice/notification frontend and secure file upload frontend after the core academic surfaces are complete.
 
+## Admin Academic Calendar Frontend Runtime Verification
+
+### Runtime Test Date
+
+- 2026-06-12
+
+### Scope
+
+This section documents the runtime-verified Admin Academic Calendar frontend flow for Academic Year and Academic Term management on the Admin dashboard.
+
+Included scope:
+
+- [x] Admin Academic Calendar panel rendered on `/admin`.
+- [x] Academic Year list, create, and edit UI.
+- [x] Academic Term list, create, and edit UI.
+- [x] Academic Term create/edit uses an Academic Year dropdown instead of raw `academicYearId` entry.
+- [x] Academic Terms table layout and dashboard overflow containment fixes.
+- [x] Integration with existing protected Academic Year and Academic Term APIs.
+
+Out of scope for this section:
+
+- [ ] Backend authorization or department-isolation changes.
+- [ ] Backend Academic Year single-current uniqueness hardening.
+- [ ] Dedicated reviewed archive/unarchive workflow.
+- [ ] Broad production-readiness claim.
+
+### Related Commits
+
+| Commit | Purpose |
+|---|---|
+| `72bfc9d` | Add admin academic calendar panel |
+| `41bd019` | Improve admin academic calendar table layout |
+| `dd974bb` | Contain admin academic calendar table overflow |
+| `8e2b571` | Fix dashboard shell content overflow |
+
+### Runtime Environment
+
+- Runtime URL used: `http://192.168.197.129:3000/admin`
+- API process: PM2 app `lexora-api`
+- API runtime entrypoint: `apps/api/dist/src/main.js`
+- Existing authenticated admin session was used.
+- No raw access tokens, refresh tokens, cookies, passwords, DB credentials, or secret values are documented here.
+
+### Implemented UI Surface
+
+Admin Academic Calendar:
+
+- [x] Added an Admin dashboard panel for academic calendar management.
+- [x] Panel includes separate sections for:
+  - Academic Years
+  - Academic Terms
+- [x] Create forms are collapsed by default.
+- [x] Edit opens prefilled forms.
+- [x] Date inputs use `datetime-local` UI values and submit ISO strings to the API.
+- [x] Optional enrollment dates are omitted when empty.
+- [x] Academic Year form supports normal admin statuses:
+  - Planned
+  - Active
+  - Closed
+- [x] Academic Term form supports normal admin statuses:
+  - Planned
+  - Enrollment Open
+  - In Progress
+  - Closed
+- [x] Archived Academic Years and Terms remain visible in lists but are read-only through the normal UI.
+- [x] Academic Terms table scrolls horizontally inside its bordered wrapper when needed.
+- [x] Shared dashboard shell/card overflow fixes prevent page-level horizontal scrolling.
+
+### Runtime Verified Actions
+
+Academic Year:
+
+- [x] Admin viewed academic years on `/admin`.
+- [x] Admin created an Academic Year through the UI.
+- [x] Admin edited the Academic Year through the UI.
+- [x] Academic Year list updated after create/edit.
+
+Academic Year runtime evidence:
+
+| Field | Value |
+|---|---|
+| Code | `AY-UI-2026-2027` |
+| Name after edit | `UI Runtime Academic Year 2026-2027 Updated` |
+| DB row ID | `cmq9r6txx002h2i9aiays3udq` |
+| Start Date | `2026-07-01T17:09:00.000Z` |
+| End Date | `2027-07-01T17:09:00.000Z` |
+| Status | `PLANNED` |
+| Is Current | `false` |
+
+Academic Term:
+
+- [x] Admin viewed academic terms on `/admin`.
+- [x] Admin created an Academic Term through the UI after API rebuild/restart.
+- [x] Admin selected the Academic Year from the dropdown.
+- [x] Admin edited the Academic Term through the UI.
+- [x] Academic Term list updated after create/edit.
+
+Academic Term runtime evidence:
+
+| Field | Value |
+|---|---|
+| Code shown in UI | `LAW-UI-2026-2027-S1A` |
+| Initial Name | `UI Runtime Law Semester 1` |
+| Name after edit | `UI Runtime Law Semester 1 Updated` |
+| Academic Year | `AY-UI-2026-2027` |
+| Sequence | `1` |
+| UI Date Range | Begins `8/1/2026` |
+| Status after edit | `Enrollment Open` |
+
+Layout/overflow:
+
+- [x] No browser/page-level horizontal scrollbar after shared shell fix.
+- [x] Academic Terms table scrolls inside its own bordered table container.
+- [x] Academic Courses section below the calendar remains contained.
+
+### Failure Encountered
+
+Before rebuilding/restarting the API runtime, Academic Term creation returned:
+
+- `BadRequestException`
+- `Academic term dates must be within the academic year`
+
+DevTools request payload was valid for the selected Academic Year:
+
+| Field | Value |
+|---|---|
+| `academicYearId` | `cmq9r6txx002h2i9aiays3udq` |
+| `startDate` | `2026-08-01T06:00:00.000Z` |
+| `endDate` | `2026-12-31T06:00:00.000Z` |
+| Enrollment Range | Within the submitted term date range |
+
+### Diagnosis
+
+- [x] Database check confirmed the selected Academic Year boundaries contained the submitted term dates.
+- [x] Standalone JavaScript comparison confirmed `shouldPassWithinYearCheck: true`.
+- [x] The failure was diagnosed as stale API dist/runtime behavior because the valid payload passed after API rebuild and PM2 restart, not because of invalid frontend payload data.
+
+Backend validation rule source-review notes:
+
+- `validateAcademicTermDates()` rejects term dates outside the selected Academic Year.
+- Enrollment start/end dates cannot violate term boundaries.
+- The backend validation rule remains active.
+- No backend code change is claimed by this frontend runtime verification section.
+
+### Resolution
+
+The stale API runtime issue was resolved by rebuilding and restarting the API process:
+
+- `pnpm --filter @lexora/api build`
+- `pm2 restart lexora-api`
+
+After rebuild/restart:
+
+- [x] Academic Term create passed.
+- [x] Academic Term edit passed.
+- [x] The final Academic Term list reflected the updated name and status.
+
+### Security/Architecture Preservation
+
+- [x] Existing protected Academic Year and Academic Term APIs were used.
+- [x] UI used the existing authenticated admin session.
+- [x] No `AuthProvider` logic was changed.
+- [x] No token storage logic was changed.
+- [x] No `AuthGuard` logic was changed.
+- [x] No `PolicyGuard` logic was changed.
+- [x] No request-context logic was changed.
+- [x] No department-isolation logic was changed.
+- [x] Backend remains the source of truth for authorization, validation, and department scoping.
+- [x] No raw tokens, cookies, passwords, DB credentials, or secret values are documented.
+
+### Pending / Future Hardening
+
+- [ ] Improve frontend error display/debuggability for API validation failures without exposing secrets.
+- [ ] Consider adding a visible deployment/runbook reminder: after API source changes, run API build and PM2 restart before runtime testing.
+- [ ] Optional UX improvement: prefill or hint Academic Term date ranges from selected Academic Year boundaries.
+- [ ] Academic Year `isCurrent` uniqueness remains a backend hardening item unless separately implemented and runtime verified.
+- [ ] Dedicated reviewed archive/unarchive workflow remains future work.
+
+### Supersession Note
+
+- [x] The older pending note that said Academic Year/Term frontend management UI was pending is superseded by this section for the tested Admin Academic Calendar UI flow.
+
+### Runtime Verdict
+
+- [x] Admin Academic Calendar panel is implemented on `/admin`.
+- [x] Academic Year create/edit flow passed runtime verification.
+- [x] Academic Term create/edit flow passed runtime verification after API rebuild/restart.
+- [x] Academic Term validation failure was diagnosed and resolved by rebuild/restart of stale API runtime.
+- [x] Academic Terms table overflow is contained within its own bordered scroll wrapper.
+- [x] Dashboard-wide horizontal overflow is fixed by shared shell/card containment changes.
+- [x] Existing backend validation, authorization, and department-scoping architecture was preserved.
+
