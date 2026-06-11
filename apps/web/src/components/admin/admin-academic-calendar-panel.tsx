@@ -391,8 +391,8 @@ export function AdminAcademicCalendarPanel() {
         </div>
       ) : null}
 
-      <div className="space-y-8">
-        <section>
+      <div className="min-w-0 space-y-8">
+        <section className="min-w-0">
           <div className="mb-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -493,7 +493,7 @@ export function AdminAcademicCalendarPanel() {
             <p className="text-sm text-slate-600">No academic years have been created yet.</p>
           ) : null}
           {academicYearsQuery.isSuccess && sortedAcademicYears.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <div className="w-full max-w-full overflow-x-auto rounded-lg border border-slate-200">
               <table className="min-w-[850px] text-left text-sm">
                 <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
@@ -545,7 +545,7 @@ export function AdminAcademicCalendarPanel() {
           ) : null}
         </section>
 
-        <section>
+        <section className="min-w-0">
           <div className="mb-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -684,8 +684,8 @@ export function AdminAcademicCalendarPanel() {
             <p className="text-sm text-slate-600">No academic terms have been created yet.</p>
           ) : null}
           {academicTermsQuery.isSuccess && sortedAcademicTerms.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
-              <table className="min-w-[1300px] text-left text-sm">
+            <div className="w-full max-w-full overflow-x-auto rounded-lg border border-slate-200">
+              <table className="min-w-[1200px] text-left text-sm">
                 <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
                     <th className="w-[180px] whitespace-nowrap px-4 py-3 font-semibold">
