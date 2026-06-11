@@ -7,7 +7,7 @@ import { AdminProgramsPanel } from "@/components/admin/admin-programs-panel";
 
 export default function AdminPage() {
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <SectionCard
         title="Admin workspace"
         description="Reserved for future department administration and governance tools."
