@@ -494,7 +494,7 @@ export function AdminAcademicCalendarPanel() {
           ) : null}
           {academicYearsQuery.isSuccess && sortedAcademicYears.length > 0 ? (
             <div className="overflow-x-auto rounded-lg border border-slate-200">
-              <table className="w-full text-left text-sm">
+              <table className="min-w-[850px] text-left text-sm">
                 <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
                     <th className="px-4 py-3 font-semibold">Code</th>
@@ -685,42 +685,60 @@ export function AdminAcademicCalendarPanel() {
           ) : null}
           {academicTermsQuery.isSuccess && sortedAcademicTerms.length > 0 ? (
             <div className="overflow-x-auto rounded-lg border border-slate-200">
-              <table className="w-full text-left text-sm">
+              <table className="min-w-[1300px] text-left text-sm">
                 <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Code</th>
-                    <th className="px-4 py-3 font-semibold">Name</th>
-                    <th className="px-4 py-3 font-semibold">Sequence</th>
-                    <th className="px-4 py-3 font-semibold">Academic year</th>
-                    <th className="px-4 py-3 font-semibold">Term dates</th>
-                    <th className="px-4 py-3 font-semibold">Enrollment</th>
-                    <th className="px-4 py-3 font-semibold">Status</th>
-                    <th className="px-4 py-3 font-semibold">Actions</th>
+                    <th className="w-[180px] whitespace-nowrap px-4 py-3 font-semibold">
+                      Code
+                    </th>
+                    <th className="min-w-[220px] max-w-[280px] px-4 py-3 font-semibold">
+                      Name
+                    </th>
+                    <th className="w-[90px] whitespace-nowrap px-4 py-3 font-semibold">
+                      Sequence
+                    </th>
+                    <th className="min-w-[260px] max-w-[320px] px-4 py-3 font-semibold">
+                      Academic year
+                    </th>
+                    <th className="w-[160px] whitespace-nowrap px-4 py-3 font-semibold">
+                      Term dates
+                    </th>
+                    <th className="w-[170px] whitespace-nowrap px-4 py-3 font-semibold">
+                      Enrollment
+                    </th>
+                    <th className="w-[110px] whitespace-nowrap px-4 py-3 font-semibold">
+                      Status
+                    </th>
+                    <th className="w-[100px] whitespace-nowrap px-4 py-3 font-semibold">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
                   {sortedAcademicTerms.map((term) => (
                     <tr key={term.id}>
-                      <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-950">
+                      <td className="w-[180px] whitespace-nowrap px-4 py-3 font-semibold text-slate-950">
                         {term.code}
                       </td>
-                      <td className="px-4 py-3 text-slate-600">{term.name}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                      <td className="min-w-[220px] max-w-[280px] px-4 py-3 text-slate-600">
+                        {term.name}
+                      </td>
+                      <td className="w-[90px] whitespace-nowrap px-4 py-3 text-slate-600">
                         {term.sequence}
                       </td>
-                      <td className="px-4 py-3 text-slate-600">
+                      <td className="min-w-[260px] max-w-[320px] px-4 py-3 text-slate-600">
                         {formatTermYearLabel(term, academicYearLabels)}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                      <td className="w-[160px] whitespace-nowrap px-4 py-3 text-slate-600">
                         {formatDateRange(term.startDate, term.endDate)}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                      <td className="w-[170px] whitespace-nowrap px-4 py-3 text-slate-600">
                         {formatOptionalDateRange(term.enrollmentStartAt, term.enrollmentEndAt)}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                      <td className="w-[110px] whitespace-nowrap px-4 py-3 text-slate-600">
                         {formatStatus(term.status)}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3">
+                      <td className="w-[100px] whitespace-nowrap px-4 py-3">
                         {term.status === "ARCHIVED" ? (
                           <span className="inline-flex rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-500">
                             Read-only
