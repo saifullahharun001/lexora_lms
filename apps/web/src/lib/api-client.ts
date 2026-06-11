@@ -40,6 +40,13 @@ export interface ApiAuthContext {
 }
 
 export type CourseStatus = "DRAFT" | "ACTIVE" | "INACTIVE" | "ARCHIVED";
+export type AcademicYearStatus = "PLANNED" | "ACTIVE" | "CLOSED" | "ARCHIVED";
+export type AcademicTermStatus =
+  | "PLANNED"
+  | "ENROLLMENT_OPEN"
+  | "IN_PROGRESS"
+  | "CLOSED"
+  | "ARCHIVED";
 export type CourseOfferingStatus =
   | "PLANNED"
   | "PUBLISHED"
@@ -86,10 +93,56 @@ export type UpdateCoursePayload = Partial<CoursePayload>;
 
 export interface AcademicTerm {
   id: string;
+  departmentId?: string;
+  academicYearId: string;
   code: string;
   name: string;
-  status?: string;
+  sequence: number;
+  startDate: string;
+  endDate: string;
+  enrollmentStartAt?: string | null;
+  enrollmentEndAt?: string | null;
+  status: AcademicTermStatus;
+  academicYear?: Partial<AcademicYear> | null;
 }
+
+export interface AcademicYear {
+  id: string;
+  departmentId?: string;
+  code: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  isCurrent: boolean;
+  status: AcademicYearStatus;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AcademicYearPayload {
+  code: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  isCurrent?: boolean;
+  status?: AcademicYearStatus;
+}
+
+export type UpdateAcademicYearPayload = Partial<AcademicYearPayload>;
+
+export interface AcademicTermPayload {
+  academicYearId: string;
+  code: string;
+  name: string;
+  sequence: number;
+  startDate: string;
+  endDate: string;
+  enrollmentStartAt?: string;
+  enrollmentEndAt?: string;
+  status?: AcademicTermStatus;
+}
+
+export type UpdateAcademicTermPayload = Partial<AcademicTermPayload>;
 
 export interface CourseOffering {
   id: string;
@@ -276,8 +329,74 @@ export function getCourses(
   return apiAuthenticatedGet<AcademicCourse[]>(`/courses${query}`, authContext);
 }
 
-export function getAcademicTerms(authContext: ApiAuthContext) {
-  return apiAuthenticatedGet<AcademicTerm[]>("/academic-terms", authContext);
+export function getAcademicYears(
+  authContext: ApiAuthContext,
+  filters: Record<string, string | number | boolean | undefined> = {}
+) {
+  return apiAuthenticatedGet<AcademicYear[]>(
+    `/academic-years${buildQueryString(filters)}`,
+    authContext
+  );
+}
+
+export function createAcademicYear(
+  authContext: ApiAuthContext,
+  payload: AcademicYearPayload
+) {
+  return apiAuthenticatedJson<AcademicYear, AcademicYearPayload>(
+    "POST",
+    "/academic-years",
+    authContext,
+    payload
+  );
+}
+
+export function updateAcademicYear(
+  authContext: ApiAuthContext,
+  academicYearId: string,
+  payload: UpdateAcademicYearPayload
+) {
+  return apiAuthenticatedJson<AcademicYear, UpdateAcademicYearPayload>(
+    "PATCH",
+    `/academic-years/${encodeURIComponent(academicYearId)}`,
+    authContext,
+    payload
+  );
+}
+
+export function getAcademicTerms(
+  authContext: ApiAuthContext,
+  filters: Record<string, string | number | boolean | undefined> = {}
+) {
+  return apiAuthenticatedGet<AcademicTerm[]>(
+    `/academic-terms${buildQueryString(filters)}`,
+    authContext
+  );
+}
+
+export function createAcademicTerm(
+  authContext: ApiAuthContext,
+  payload: AcademicTermPayload
+) {
+  return apiAuthenticatedJson<AcademicTerm, AcademicTermPayload>(
+    "POST",
+    "/academic-terms",
+    authContext,
+    payload
+  );
+}
+
+export function updateAcademicTerm(
+  authContext: ApiAuthContext,
+  academicTermId: string,
+  payload: UpdateAcademicTermPayload
+) {
+  return apiAuthenticatedJson<AcademicTerm, UpdateAcademicTermPayload>(
+    "PATCH",
+    `/academic-terms/${encodeURIComponent(academicTermId)}`,
+    authContext,
+    payload
+  );
 }
 
 export function createCourse(authContext: ApiAuthContext, payload: CoursePayload) {
@@ -333,4 +452,18 @@ export function updateCourseOffering(
 
 export function getMyEnrollments(authContext: ApiAuthContext) {
   return apiAuthenticatedGet<MyEnrollment[]>("/enrollments/me", authContext);
+}
+
+function buildQueryString(filters: Record<string, string | number | boolean | undefined>) {
+  const query = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined) {
+      query.set(key, String(value));
+    }
+  }
+
+  const queryString = query.toString();
+
+  return queryString ? `?${queryString}` : "";
 }

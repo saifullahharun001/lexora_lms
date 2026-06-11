@@ -1,5 +1,6 @@
 import { SectionCard } from "@lexora/ui";
 
+import { AdminAcademicCalendarPanel } from "@/components/admin/admin-academic-calendar-panel";
 import { AdminCourseOfferingsPanel } from "@/components/admin/admin-course-offerings-panel";
 import { AdminCoursesPanel } from "@/components/admin/admin-courses-panel";
 import { AdminProgramsPanel } from "@/components/admin/admin-programs-panel";
@@ -12,6 +13,7 @@ export default function AdminPage() {
         description="Reserved for future department administration and governance tools."
       />
       <AdminProgramsPanel />
+      <AdminAcademicCalendarPanel />
       <AdminCoursesPanel />
       <AdminCourseOfferingsPanel />
       <SectionCard
