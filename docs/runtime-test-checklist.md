@@ -5224,6 +5224,10 @@ Build environment note:
 
 ### Browser Runtime Verification
 
+Runtime frontend URL:
+
+- `http://192.168.197.129:3000`
+
 Admin Courses:
 
 - [x] Admin course create flow passed runtime verification.
@@ -5264,8 +5268,17 @@ Admin Course Offerings:
 - [x] Edit preserved immutable course and academic term fields.
 - [x] Edit updated supported mutable fields only.
 - [x] Course offering list refreshed after create/update.
-- [ ] Final separate teacher/student `/admin` negative access smoke check was not examined for this latest frontend flow.
-- [ ] Final separate `localStorage`/`sessionStorage` token inspection was not examined for this latest frontend flow.
+
+Latest Admin Academic frontend security smoke checks:
+
+- [x] Teacher account attempted direct `/admin` route access.
+- [x] Student account attempted direct `/admin` route access.
+- [x] Admin panel did not appear for teacher direct `/admin` route access.
+- [x] Admin panel did not appear for student direct `/admin` route access.
+- [x] Browser Application storage inspection found no token in Local Storage.
+- [x] Browser Application storage inspection found no token in Session Storage.
+- [x] Refresh cookie was present and marked HttpOnly.
+- [x] No raw token values were documented.
 
 ### Bug Fixes and Supersession Notes
 
@@ -5291,13 +5304,13 @@ Admin Course Offerings:
 - [x] Frontend continued to use the authenticated session's `accessToken` and `departmentId`.
 - [x] Backend remains the source of truth for authorization and department scoping.
 - [x] No secrets, raw tokens, passwords, password hashes, DB credentials, or sensitive runtime tokens are documented here.
-- [ ] Do not treat this section as verifying the latest teacher/student `/admin` negative access smoke check.
-- [ ] Do not treat this section as verifying the latest browser storage token inspection.
+- [x] Latest teacher/student `/admin` negative access smoke check passed.
+- [x] Latest browser storage token inspection passed.
+- [x] Refresh cookie HttpOnly flag was observed during browser storage inspection.
+- [x] No backend authorization change is claimed by this frontend/runtime smoke verification.
 
 ### Remaining Pending Checks
 
-- [ ] Teacher/student `/admin` access blocked smoke check for this latest frontend flow.
-- [ ] `localStorage`/`sessionStorage` token inspection for this latest frontend flow.
 - [ ] Academic Year/Term frontend management UI.
 - [ ] Teacher assigned-course surface.
 - [ ] Dedicated student available/eligible course-offering endpoint.
@@ -5312,17 +5325,15 @@ Admin Course Offerings:
 - [x] Admin course curriculum ordering is fixed and runtime verified.
 - [x] Admin course offering create/edit UI is implemented and functional runtime flow passed.
 - [x] Existing backend security and department-scoping architecture was preserved.
-- [ ] Latest separate teacher/student `/admin` negative access check remains pending.
-- [ ] Latest separate browser storage token inspection remains pending.
+- [x] Latest separate teacher/student `/admin` negative access check passed.
+- [x] Latest separate browser storage token inspection passed.
 
 ### Updated Next Test Steps
 
 Recommended next runtime checks:
 
-1. Verify teacher and student accounts still cannot access `/admin` after the latest Admin Academic frontend changes.
-2. Inspect browser `localStorage` and `sessionStorage` after the latest Admin Academic frontend flow to confirm no token persistence.
-3. Add Academic Year/Term frontend management UI.
-4. Add Teacher assigned-course surface.
-5. Design and implement the dedicated student available/eligible course-offering endpoint before exposing student course discovery.
-6. Continue with Notice/notification frontend and secure file upload frontend after the core academic surfaces are complete.
+1. Add Academic Year/Term frontend management UI.
+2. Add Teacher assigned-course surface.
+3. Design and implement the dedicated student available/eligible course-offering endpoint before exposing student course discovery.
+4. Continue with Notice/notification frontend and secure file upload frontend after the core academic surfaces are complete.
 
