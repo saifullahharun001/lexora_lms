@@ -4,6 +4,7 @@ import { AdminAcademicCalendarPanel } from "@/components/admin/admin-academic-ca
 import { AdminCourseOfferingsPanel } from "@/components/admin/admin-course-offerings-panel";
 import { AdminCoursesPanel } from "@/components/admin/admin-courses-panel";
 import { AdminProgramsPanel } from "@/components/admin/admin-programs-panel";
+import { AdminUsersPanel } from "@/components/admin/admin-users-panel";
 
 export default function AdminPage() {
   return (
@@ -17,9 +18,10 @@ export default function AdminPage() {
       <AdminCoursesPanel />
       <AdminCourseOfferingsPanel />
       <SectionCard
-        title="Academic operations"
-        description="Future admin flows will stay department-scoped and policy-aware."
+        title="People & Access"
+        description="Department identity tools stay policy-protected and scoped to the active department."
       />
+      <AdminUsersPanel />
     </div>
   );
 }

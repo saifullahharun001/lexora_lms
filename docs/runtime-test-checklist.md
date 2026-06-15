@@ -5529,3 +5529,93 @@ After rebuild/restart:
 - [x] Dashboard-wide horizontal overflow is fixed by shared shell/card containment changes.
 - [x] Existing backend validation, authorization, and department-scoping architecture was preserved.
 
+## Admin User Creation API and Frontend Runtime Verification
+
+### Implementation Scope
+
+- [x] Added department-scoped User Management API under the existing `UserManagementModule`.
+- [x] Added Admin Dashboard Users panel for department admins.
+- [x] Backend creates only `User` plus a department-scoped `UserRole`.
+- [x] Creation accepts only `student` and `teacher` role codes.
+- [x] Creation accepts only safe initial statuses: `ACTIVE` or `INVITED`.
+- [x] Creation does not accept `departmentId`, raw role IDs, arbitrary permissions, admin role creation, or Library Admin role creation.
+- [x] Existing `AuthGuard`, `PolicyGuard`, and `@RequirePolicy()` are used on every user-management endpoint.
+- [x] Department scope is resolved from the authenticated principal/request context.
+- [x] No raw passwords, password hashes, access tokens, refresh tokens, cookies, DB credentials, or secrets are documented.
+
+### Backend Endpoints
+
+- [x] `GET /api/v1/users` lists users in the authenticated principal's active department.
+- [x] `POST /api/v1/users` creates a department-scoped student or teacher user.
+- [x] `GET /api/v1/users/:id` reads only users in the authenticated principal's active department.
+- [x] `PATCH /api/v1/users/:id/status` updates status only for managed student/teacher users in the authenticated principal's active department.
+- [x] `identity-access.user.read` protects read endpoints.
+- [x] `identity-access.user.manage` protects create/status endpoints.
+- [x] `department_admin` is covered by the existing `identity-access.*` static policy mapping.
+- [x] Teacher and Student roles do not receive the new `identity-access.user.*` policies through static mapping.
+
+### Frontend Panel Behavior
+
+- [x] Added `AdminUsersPanel` to `/admin` after academic setup panels in a People & Access section.
+- [x] Create form is collapsed by default.
+- [x] Form includes role, display name, email, temporary password, confirmation, and status.
+- [x] Client validates temporary password confirmation before submit.
+- [x] Users list can be filtered by role and status.
+- [x] Successful create invalidates/refetches the users query, resets the form, and collapses it.
+- [x] UI does not display password hashes, tokens, refresh tokens, or secrets.
+- [x] API client preserves authenticated helper use, memory-only access-token posture, and `credentials: "include"` refresh-cookie behavior.
+
+### Implemented Validation Behavior - Runtime Pending
+
+- [x] Email format is validated by DTO.
+- [x] Official university email domain restriction is reused from `auth.universityEmailDomains`.
+- [x] Service-side trim validation rejects empty email or display name after trimming.
+- [x] Existing password policy is reused for temporary passwords.
+- [x] Existing `PasswordHasherService` is reused.
+- [x] Weak temporary passwords return `400 Bad Request`.
+- [x] Duplicate normalized emails return conflict.
+- [x] Invalid role codes are rejected.
+- [x] Extra payload fields such as `departmentId` are rejected by the global validation pipe.
+- [x] Responses omit password hashes and raw tokens.
+
+### Positive Runtime Tests
+
+- Runtime execution note: live HTTP tests are pending because no local API process was listening on `127.0.0.1:4000` during this implementation pass.
+- [ ] Department admin can list department users.
+- [ ] Department admin can create a Student user.
+- [ ] Department admin can create a Teacher user.
+- [ ] Created users appear in Admin Users panel/list.
+- [ ] Created user is department-scoped.
+- [ ] Created user can log in when created with `ACTIVE` status and current auth/status flow permits login.
+
+### Negative / Security Tests
+
+- [ ] Unauthenticated list/create returns `401`.
+- [ ] Teacher list/create returns `403`.
+- [ ] Student list/create returns `403`.
+- [ ] Weak password returns `400`.
+- [ ] Duplicate email returns conflict.
+- [ ] Invalid `roleCode` is rejected.
+- [ ] Unsafe initial statuses such as `LOCKED`, `SUSPENDED`, or `ARCHIVED` are rejected on create.
+- [ ] Department Admin or otherwise privileged active-role targets cannot be updated through `/users/:id/status`.
+- [ ] Payload `departmentId` is rejected and is never used for scoping.
+- [ ] `x-department-id` for another department does not override the authenticated Law admin department scope.
+- [ ] Cross-department direct user ID access returns safe not-found.
+- [ ] Responses do not expose password hash, raw tokens, refresh tokens, or secrets.
+
+### Limitations
+
+- [x] `StudentProfile`, `TeacherProfile`, and `AdminProfile` models were not present in the inspected Prisma schema, so profile creation remains pending.
+- [x] Runtime data can safely create missing department `student` and `teacher` roles only; it does not auto-create `department_admin` or `library_admin`.
+- [x] Audit rows are written through the existing Prisma audit-log pattern used by academic services.
+
+### Future Library Admin Planning Note
+
+- [x] Future role code: `library_admin`.
+- [x] Future module: `library`.
+- [x] Future policies: `library.book.read`, `library.book.manage`, `library.copy.manage`, `library.borrow.manage`, `library.report.read`.
+- [x] Library Admin must be department-scoped.
+- [x] Library Admin must not manage academic users, courses, results, attendance, transcripts, or system configuration.
+- [x] Activate this role only after Library module/schema/API/dashboard exists.
+- [x] No active `library_admin` role, policy mapping, API, schema, or dashboard behavior was implemented in this task.
+

@@ -55,6 +55,14 @@ export type CourseOfferingStatus =
   | "COMPLETED"
   | "CANCELED"
   | "ARCHIVED";
+export type ManagedUserRoleCode = "student" | "teacher";
+export type ManagedUserStatus =
+  | "INVITED"
+  | "ACTIVE"
+  | "LOCKED"
+  | "SUSPENDED"
+  | "ARCHIVED";
+export type ManagedUserInitialStatus = "ACTIVE" | "INVITED";
 
 export interface AcademicProgram {
   id: string;
@@ -201,6 +209,30 @@ export interface MyEnrollment {
   droppedAt: string | null;
   academicTerm: EnrollmentAcademicTerm;
   courseOffering: EnrollmentCourseOffering;
+}
+
+export interface ManagedUser {
+  id: string;
+  departmentId: string;
+  email: string;
+  displayName: string;
+  status: ManagedUserStatus;
+  roles: string[];
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt: string | null;
+}
+
+export interface CreateManagedUserPayload {
+  email: string;
+  displayName: string;
+  roleCode: ManagedUserRoleCode;
+  temporaryPassword: string;
+  status?: ManagedUserInitialStatus;
+}
+
+export interface UpdateManagedUserStatusPayload {
+  status: ManagedUserStatus;
 }
 
 interface ApiErrorResponse {
@@ -452,6 +484,35 @@ export function updateCourseOffering(
 
 export function getMyEnrollments(authContext: ApiAuthContext) {
   return apiAuthenticatedGet<MyEnrollment[]>("/enrollments/me", authContext);
+}
+
+export function getManagedUsers(authContext: ApiAuthContext) {
+  return apiAuthenticatedGet<ManagedUser[]>("/users", authContext);
+}
+
+export function createManagedUser(
+  authContext: ApiAuthContext,
+  payload: CreateManagedUserPayload
+) {
+  return apiAuthenticatedJson<ManagedUser, CreateManagedUserPayload>(
+    "POST",
+    "/users",
+    authContext,
+    payload
+  );
+}
+
+export function updateManagedUserStatus(
+  authContext: ApiAuthContext,
+  userId: string,
+  payload: UpdateManagedUserStatusPayload
+) {
+  return apiAuthenticatedJson<ManagedUser, UpdateManagedUserStatusPayload>(
+    "PATCH",
+    `/users/${encodeURIComponent(userId)}/status`,
+    authContext,
+    payload
+  );
 }
 
 function buildQueryString(filters: Record<string, string | number | boolean | undefined>) {
