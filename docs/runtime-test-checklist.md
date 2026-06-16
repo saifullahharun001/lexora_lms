@@ -5565,7 +5565,7 @@ After rebuild/restart:
 - [x] UI does not display password hashes, tokens, refresh tokens, or secrets.
 - [x] API client preserves authenticated helper use, memory-only access-token posture, and `credentials: "include"` refresh-cookie behavior.
 
-### Implemented Validation Behavior - Runtime Pending
+### Implemented Validation Behavior - API Runtime Partially Verified
 
 - [x] Email format is validated by DTO.
 - [x] Official university email domain restriction is reused from `auth.universityEmailDomains`.
@@ -5580,28 +5580,39 @@ After rebuild/restart:
 
 ### Positive Runtime Tests
 
-- Runtime execution note: live HTTP tests are pending because no local API process was listening on `127.0.0.1:4000` during this implementation pass.
-- [ ] Department admin can list department users.
-- [ ] Department admin can create a Student user.
-- [ ] Department admin can create a Teacher user.
-- [ ] Created users appear in Admin Users panel/list.
-- [ ] Created user is department-scoped.
-- [ ] Created user can log in when created with `ACTIVE` status and current auth/status flow permits login.
+Runtime evidence after server pull of commit `af02095`:
+
+- Route evidence: `/api/v1/users` is live; `/api/users` returned `404`.
+- Department ID observed in API responses: `dept_law_test`.
+- Runtime Student: `runtime.student.1781576956@cu.ac.bd`, ID `cmqg0x65b000n2ihl2w40re59`.
+- Runtime Teacher: `runtime.teacher.1781576956@cu.ac.bd`, ID `cmqg0x6ns00112ihl2slgjc4z`.
+- Admin, Teacher, and Student login tokens were captured for runtime testing; token values are not documented.
+
+- [x] Department admin can list department users; `GET /api/v1/users` returned `200`.
+- [x] Department admin can create a Student user with `ACTIVE` status; `POST /api/v1/users` returned `201`.
+- [x] Department admin can create a Teacher user with `INVITED` status; `POST /api/v1/users` returned `201`.
+- [x] Created users were returned by API create responses.
+- [ ] Frontend Admin Users panel browser verification remains pending.
+- [x] Created user is department-scoped; fake `x-department-id: dept_bus_fake` still returned only `dept_law_test` users for the admin list test.
+- [x] Created `ACTIVE` student can log in successfully.
+- [x] Department admin can update a managed student's status to `SUSPENDED`; `PATCH /api/v1/users/:id/status` returned `200`.
 
 ### Negative / Security Tests
 
-- [ ] Unauthenticated list/create returns `401`.
-- [ ] Teacher list/create returns `403`.
-- [ ] Student list/create returns `403`.
-- [ ] Weak password returns `400`.
-- [ ] Duplicate email returns conflict.
-- [ ] Invalid `roleCode` is rejected.
-- [ ] Unsafe initial statuses such as `LOCKED`, `SUSPENDED`, or `ARCHIVED` are rejected on create.
-- [ ] Department Admin or otherwise privileged active-role targets cannot be updated through `/users/:id/status`.
+- [x] Unauthenticated `GET /api/v1/users` returns `401`.
+- [ ] Unauthenticated `POST /api/v1/users` remains pending.
+- [x] Teacher list users returns `403`.
+- [x] Student list users returns `403`.
+- [x] Weak password returns `400`.
+- [x] Duplicate email returns `409`.
+- [x] Invalid `roleCode=department_admin` is rejected with `400`.
+- [x] Unsafe initial status `LOCKED` is rejected with `400`.
+- [x] Department Admin or otherwise privileged active-role targets cannot be updated through `/users/:id/status`; privileged admin status update returned safe `404`.
 - [ ] Payload `departmentId` is rejected and is never used for scoping.
-- [ ] `x-department-id` for another department does not override the authenticated Law admin department scope.
+- [x] `x-department-id` for another department does not override the authenticated Law admin department scope for the verified list test.
 - [ ] Cross-department direct user ID access returns safe not-found.
-- [ ] Responses do not expose password hash, raw tokens, refresh tokens, or secrets.
+- [x] Create responses do not expose `passwordHash`, `accessToken`, `refreshToken`, or `token`.
+- [x] Verified create responses do not expose password hash, raw tokens, refresh tokens, or secrets.
 
 ### Limitations
 
