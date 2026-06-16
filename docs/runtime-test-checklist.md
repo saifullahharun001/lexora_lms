@@ -5564,15 +5564,16 @@ After rebuild/restart:
 - [x] Successful create invalidates/refetches the users query, resets the form, and collapses it.
 - [x] UI does not display password hashes, tokens, refresh tokens, or secrets.
 - [x] API client preserves authenticated helper use, memory-only access-token posture, and `credentials: "include"` refresh-cookie behavior.
+- [x] Follow-up UI hardening in commit `9fd2574` replaced inline table-row status dropdowns with explicit `Edit` -> `Save update` status editing.
 
-### Implemented Validation Behavior - API Runtime Partially Verified
+### Implemented Validation Behavior - Static, API, and Browser Runtime Evidence
 
 - [x] Email format is validated by DTO.
 - [x] Official university email domain restriction is reused from `auth.universityEmailDomains`.
 - [x] Service-side trim validation rejects empty email or display name after trimming.
 - [x] Existing password policy is reused for temporary passwords.
 - [x] Existing `PasswordHasherService` is reused.
-- [x] Weak temporary passwords return `400 Bad Request`.
+- [x] Weak temporary passwords return `400 Bad Request`; browser flow displayed safe message `Temporary password does not meet password policy`.
 - [x] Duplicate normalized emails return conflict.
 - [x] Invalid role codes are rejected.
 - [x] Extra payload fields such as `departmentId` are rejected by the global validation pipe.
@@ -5588,11 +5589,54 @@ Runtime evidence after server pull of commit `af02095`:
 - Runtime Teacher: `runtime.teacher.1781576956@cu.ac.bd`, ID `cmqg0x6ns00112ihl2slgjc4z`.
 - Admin, Teacher, and Student login tokens were captured for runtime testing; token values are not documented.
 
+Frontend browser/runtime evidence:
+
+- Browser URL verified: `http://192.168.197.129:3000/admin`.
+- Admin Users / People & access panel loaded successfully on `/admin`.
+- Users list, Role filter, Status filter, and Create user button rendered.
+- Create form was collapsed by default, opened successfully, and cancel/collapse behavior worked.
+- Create role dropdown showed only `Student` and `Teacher`.
+- Create initial status dropdown showed only `Active` and `Invited`.
+- Temporary password and confirm temporary password fields were present.
+- Department Admin / non-managed rows showed `Protected`.
+- Student/Teacher managed rows were available for managed actions.
+- No password, password hash, raw access token, refresh token, cookie, or secret was displayed in the UI.
+
+Frontend-created runtime user evidence:
+
+- Runtime Student: `runtime.student.16062026@cu.ac.bd`, ID `cmqgtwr7900072iejivwik90y`.
+- Department ID: `dept_law_test`.
+- Display name: `Frontend Runtime Student`.
+- Status: `INVITED`.
+- Role: `student`.
+- Created at: `2026-06-16T16:00:46.773Z`.
+- `lastLoginAt`: `null`.
+- Create/list responses did not expose password hashes or raw tokens.
+
+UI hardening evidence after commit `9fd2574` (`Refine admin users status editing UI`):
+
+- Changed file: `apps/web/src/components/admin/admin-users-panel.tsx`.
+- `pnpm --filter @lexora/web typecheck` passed before commit.
+- `pnpm --filter @lexora/web build` passed before commit.
+- Build artifact `apps/web/tsconfig.tsbuildinfo` was restored and not committed.
+- Working tree was clean after commit/push.
+- Role / Status / Create user controls are no longer visually cramped.
+- Managed users no longer have inline status dropdowns in the table.
+- Managed Student/Teacher rows show an `Edit` action.
+- Department Admin / non-managed rows still show `Protected`.
+- Clicking `Edit` opens an explicit edit status form.
+- `Cancel` closes the edit form without updating status.
+- `Save update` is required before a status update occurs.
+- Status update occurs only after explicit save.
+- Create user flow still works after the UI hardening.
+- Weak temporary password submission still returns `Temporary password does not meet password policy`.
+
 - [x] Department admin can list department users; `GET /api/v1/users` returned `200`.
 - [x] Department admin can create a Student user with `ACTIVE` status; `POST /api/v1/users` returned `201`.
 - [x] Department admin can create a Teacher user with `INVITED` status; `POST /api/v1/users` returned `201`.
 - [x] Created users were returned by API create responses.
-- [ ] Frontend Admin Users panel browser verification remains pending.
+- [x] Frontend Admin Users panel browser verification passed for list rendering, create form behavior, protected row display, and no-secret UI display.
+- [x] Created frontend runtime user appeared in the refreshed Admin Users panel/list.
 - [x] Created user is department-scoped; fake `x-department-id: dept_bus_fake` still returned only `dept_law_test` users for the admin list test.
 - [x] Created `ACTIVE` student can log in successfully.
 - [x] Department admin can update a managed student's status to `SUSPENDED`; `PATCH /api/v1/users/:id/status` returned `200`.
@@ -5600,7 +5644,7 @@ Runtime evidence after server pull of commit `af02095`:
 ### Negative / Security Tests
 
 - [x] Unauthenticated `GET /api/v1/users` returns `401`.
-- [ ] Unauthenticated `POST /api/v1/users` remains pending.
+- [x] Unauthenticated `POST /api/v1/users` returns `401 Unauthorized` with `UnauthorizedException` and message `Authentication is required`.
 - [x] Teacher list users returns `403`.
 - [x] Student list users returns `403`.
 - [x] Weak password returns `400`.
@@ -5608,9 +5652,9 @@ Runtime evidence after server pull of commit `af02095`:
 - [x] Invalid `roleCode=department_admin` is rejected with `400`.
 - [x] Unsafe initial status `LOCKED` is rejected with `400`.
 - [x] Department Admin or otherwise privileged active-role targets cannot be updated through `/users/:id/status`; privileged admin status update returned safe `404`.
-- [ ] Payload `departmentId` is rejected and is never used for scoping.
+- [x] Payload `departmentId` is rejected and is never used for scoping; authenticated Law admin create payload with extra `departmentId` returned `400 Bad Request` / `BadRequestException`.
 - [x] `x-department-id` for another department does not override the authenticated Law admin department scope for the verified list test.
-- [ ] Cross-department direct user ID access returns safe not-found.
+- [x] Cross-department direct user ID access returns safe not-found; Law admin `GET /api/v1/users/user_bus_runtime_admin` returned `404 NotFoundException` with message `User not found`.
 - [x] Create responses do not expose `passwordHash`, `accessToken`, `refreshToken`, or `token`.
 - [x] Verified create responses do not expose password hash, raw tokens, refresh tokens, or secrets.
 
@@ -5629,4 +5673,3 @@ Runtime evidence after server pull of commit `af02095`:
 - [x] Library Admin must not manage academic users, courses, results, attendance, transcripts, or system configuration.
 - [x] Activate this role only after Library module/schema/API/dashboard exists.
 - [x] No active `library_admin` role, policy mapping, API, schema, or dashboard behavior was implemented in this task.
-
