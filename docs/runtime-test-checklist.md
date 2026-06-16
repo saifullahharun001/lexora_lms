@@ -4489,7 +4489,7 @@ Runtime browser verdict:
 - Real admin/teacher/student business feature pages are not implemented yet.
 - Student enrolled-course UI using `/enrollments/me` remains a safe future frontend step.
 - Admin academic management UI remains pending.
-- Teacher assigned-course UI remains pending.
+- Teacher assigned-course UI was later implemented and runtime verified in the Teacher Assigned Courses Frontend Runtime Test section.
 - Notice/notification frontend remains pending.
 - Secure file upload frontend remains pending.
 
@@ -4671,8 +4671,8 @@ Still pending:
 - Admin create/update academic program UI is not implemented yet.
 - Admin courses UI remains pending.
 - Admin course offerings UI remains pending.
-- Academic Year/Term frontend remains pending.
-- Teacher assigned-course UI remains pending.
+- Admin Academic Calendar frontend was later implemented and runtime verified in its dedicated section.
+- Teacher assigned-course UI was later implemented and runtime verified in the Teacher Assigned Courses Frontend Runtime Test section.
 - Student enrolled-course UI using `/enrollments/me` is now implemented and runtime verified.
 - Notice/notification frontend remains pending.
 - Secure file upload frontend remains pending.
@@ -4683,7 +4683,7 @@ The next safe frontend step can be one of:
 
 1. Add Admin Courses panel using the existing authenticated API helper.
 2. Add Student enrolled-course surface using existing `/enrollments/me`.
-3. Add Teacher assigned-course surface using existing teacher-scoped course-offering behavior.
+3. Continue with admin course offerings after checking the current API shape.
 
 For continuity after the Admin Programs panel, the most natural next step is Admin Courses panel connected to `GET /courses`.
 
@@ -4870,15 +4870,14 @@ Still pending:
 
 - Admin create/update course UI is not implemented yet.
 - Admin course offering UI remains pending.
-- Academic Year/Term frontend remains pending.
-- Teacher assigned-course UI remains pending.
+- Admin Academic Calendar frontend was later implemented and runtime verified in its dedicated section.
+- Teacher assigned-course UI was later implemented and runtime verified in the Teacher Assigned Courses Frontend Runtime Test section.
 - Student enrolled-course UI using `/enrollments/me` is now implemented and runtime verified.
 - Notice/notification frontend remains pending.
 - Secure file upload frontend remains pending.
 
 Recommended next frontend step:
 
-- Add Teacher assigned-course surface using existing assigned course offering behavior, or
 - Add Admin course offerings panel after checking current course offering API shape, or
 - Add Admin create/update course workflow after API/DTO review.
 
@@ -5311,8 +5310,7 @@ Latest Admin Academic frontend security smoke checks:
 
 ### Remaining Pending Checks
 
-- [ ] Academic Year/Term frontend management UI.
-- [ ] Teacher assigned-course surface.
+- [x] Teacher assigned-course surface: read-only frontend runtime verified.
 - [ ] Dedicated student available/eligible course-offering endpoint.
 - [ ] Notice/notification frontend.
 - [ ] Secure file upload frontend.
@@ -5332,10 +5330,97 @@ Latest Admin Academic frontend security smoke checks:
 
 Recommended next runtime checks:
 
-1. Add Academic Year/Term frontend management UI.
-2. Add Teacher assigned-course surface.
-3. Design and implement the dedicated student available/eligible course-offering endpoint before exposing student course discovery.
-4. Continue with Notice/notification frontend and secure file upload frontend after the core academic surfaces are complete.
+1. Continue Teacher Assignment HTTP API work if it is not completed elsewhere.
+2. Design and implement the dedicated student available/eligible course-offering endpoint before exposing student course discovery.
+3. Continue with Notice/notification frontend.
+4. Continue with secure file upload frontend only after the secure upload pipeline is ready.
+
+## Teacher Assigned Courses Frontend Runtime Test
+
+### Runtime Verification Status
+
+- [x] Feature status: runtime verified for the read-only Teacher Assigned Courses frontend surface.
+- [x] Implemented commit verified on server:
+  - Commit: `60671e8`
+  - Message: `Add teacher assigned courses surface`
+- [x] Implementation files:
+  - `apps/web/src/app/(dashboard)/teacher/page.tsx`
+  - `apps/web/src/components/teacher/teacher-assigned-courses-panel.tsx`
+
+### Server Verification Evidence
+
+- [x] Ubuntu server repo fast-forwarded from `27e2f21` to `60671e8`.
+- [x] `pnpm --filter @lexora/web typecheck` passed on the server.
+- [x] `pnpm --filter @lexora/web build` passed on the server.
+- [x] `/teacher` route appeared in the Next.js production build output.
+- [x] Final server git status was clean after restoring `apps/web/tsconfig.tsbuildinfo`.
+
+### Runtime Browser Verification
+
+- [x] Web dev server launched from `~/lexora_lms/apps/web` with:
+  - `pnpm exec next dev --hostname 0.0.0.0 --port 3000`
+- [x] Earlier command failed because Next treated `--hostname` as a project directory:
+  - `pnpm --filter @lexora/web dev -- --hostname 0.0.0.0 --port 3000`
+- [x] Browser opened `/teacher` at:
+  - `http://192.168.197.129:3000/teacher`
+- [x] Teacher account used:
+  - `teacher.law@cu.ac.bd`
+- [x] Initial `/teacher` page showed the empty state because canonical `teacher.law@cu.ac.bd` had no active course assignment.
+- [x] After controlled runtime test-data setup and hard refresh/sign-in, `/teacher` displayed the assigned course offering table.
+
+Rendered values observed:
+
+| Field | Value |
+|---|---|
+| Course code | `LAW-101` |
+| Course title | `Constitutional Law I` |
+| Section | `A` |
+| Term | `LAW-2025-2026-S1 - Law 2025-2026 Semester 1` |
+| Capacity | `60` |
+| Status | `Planned` |
+| Visibility | `Not set` |
+
+### Controlled Runtime Test Data Setup
+
+- [x] Read-only DB inspection confirmed:
+  - `teacher.law@cu.ac.bd` was `ACTIVE`.
+  - `runtime-test-teacher@cu.ac.bd` was `SUSPENDED`.
+  - Existing `LAW-101` teacher assignment belonged to `runtime-test-teacher@cu.ac.bd`, not the canonical teacher account.
+- [x] Because Teacher Assignment HTTP API is still pending, a controlled runtime DB upsert was used only to assign canonical `teacher.law@cu.ac.bd` to the existing `LAW-101` course offering for verification continuity.
+- [x] Controlled assignment created/activated:
+  - Assignment ID: `teacher_assignment_law_canonical_101_runtime`
+  - Teacher: `teacher.law@cu.ac.bd`
+  - Course Offering ID: `cmozy23xm000r2i0lccmtg7dl`
+  - Course: `LAW-101 - Constitutional Law I`
+  - Section: `A`
+  - Term: `LAW-2025-2026-S1 - Law 2025-2026 Semester 1`
+  - Assignment role: `primary_instructor`
+  - Assignment status: `ACTIVE`
+  - `unassigned_at`: null
+- [x] This DB upsert was controlled runtime test data setup only, not a production workflow.
+- [ ] Teacher Assignment HTTP API remains pending if not completed elsewhere.
+
+### Access And Storage Checks
+
+- [x] No Create/Edit/Delete controls were visible on the teacher surface.
+- [x] Teacher account could not access `/admin`; admin route access was blocked/redirected.
+- [x] Browser DevTools showed Local Storage empty for the frontend origin.
+- [ ] Session Storage verification is not claimed in this section because no separate explicit check is available.
+
+### Security/Architecture Preservation
+
+- [x] This was a frontend-only change.
+- [x] No backend `AuthGuard`, `PolicyGuard`, request context, department isolation, token storage, refresh cookie, or backend service authorization behavior was changed.
+- [x] Assigned-course filtering still relies on existing backend `GET /api/v1/course-offerings` teacher-scoped behavior.
+- [x] The frontend is a read-only surface and is not treated as an authorization boundary.
+- [x] No secrets, passwords, access tokens, refresh tokens, DB credentials, raw cookies, or sensitive values are documented here.
+
+### Runtime Verdict
+
+- [x] Teacher dashboard `/teacher` loads the real assigned-course frontend surface.
+- [x] Assigned course data is fetched through existing `GET /api/v1/course-offerings`.
+- [x] Backend remains the source of truth for teacher-scoped assigned-course filtering.
+- [x] Teacher Assigned Courses read-only frontend surface is runtime verified.
 
 ## Admin Academic Calendar Frontend Runtime Verification
 
@@ -5517,7 +5602,7 @@ After rebuild/restart:
 
 ### Supersession Note
 
-- [x] The older pending note that said Academic Year/Term frontend management UI was pending is superseded by this section for the tested Admin Academic Calendar UI flow.
+- [x] The older pending note for the Academic Calendar frontend is superseded by this section for the tested Admin Academic Calendar UI flow.
 
 ### Runtime Verdict
 
