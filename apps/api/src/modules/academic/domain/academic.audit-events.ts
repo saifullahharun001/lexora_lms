@@ -9,6 +9,10 @@ export const ACADEMIC_AUDIT_EVENTS = {
   COURSE_UPDATED: "course-management.course.updated",
   OFFERING_CREATED: "course-management.offering.created",
   OFFERING_UPDATED: "course-management.offering.updated",
+  TEACHER_ASSIGNMENT_ASSIGNED:
+    "course-management.teacher-assignment.assigned",
+  TEACHER_ASSIGNMENT_UNASSIGNED:
+    "course-management.teacher-assignment.unassigned",
   ENROLLMENT_CREATED: "enrollment.record.created",
   ENROLLMENT_UPDATED: "enrollment.record.updated",
 } as const;

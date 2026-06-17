@@ -14,6 +14,7 @@ import { CourseOfferingsController } from "./presentation/http/course-offerings.
 import { CoursesController } from "./presentation/http/courses.controller";
 import { EnrollmentsController } from "./presentation/http/enrollments.controller";
 import { ProgramsController } from "./presentation/http/programs.controller";
+import { TeacherAssignmentsController } from "./presentation/http/teacher-assignments.controller";
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ProgramsController } from "./presentation/http/programs.controller";
     CoursesController,
     CourseOfferingsController,
     EnrollmentsController,
+    TeacherAssignmentsController,
   ],
   providers: [
     AcademicService,

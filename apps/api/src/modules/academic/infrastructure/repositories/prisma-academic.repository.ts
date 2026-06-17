@@ -6,6 +6,7 @@ import type {
   AcademicTermListFilters,
   AcademicYearListFilters,
   CourseListFilters,
+  CreateTeacherAssignmentInput,
   CreateAcademicTermInput,
   CreateAcademicYearInput,
   CourseOfferingListFilters,
@@ -17,6 +18,7 @@ import type {
   UpdateAcademicTermInput,
   UpdateAcademicYearInput,
   ProgramListFilters,
+  TeacherAssignmentListFilters,
   UpdateCourseInput,
   UpdateCourseOfferingInput,
   UpdateEnrollmentInput,
@@ -483,6 +485,129 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
     });
   }
 
+  findTeacherAssignments(filters: TeacherAssignmentListFilters) {
+    return this.prisma.teacherCourseAssignment.findMany({
+      where: {
+        departmentId: filters.departmentId,
+        courseOfferingId: filters.courseOfferingId,
+        archivedAt: null,
+      },
+      include: this.teacherAssignmentInclude(),
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+  }
+
+  createOrReactivateTeacherAssignment(input: CreateTeacherAssignmentInput) {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.teacherCourseAssignment.findUnique({
+        where: {
+          courseOfferingId_teacherUserId_roleCode: {
+            courseOfferingId: input.courseOfferingId,
+            teacherUserId: input.teacherUserId,
+            roleCode: input.roleCode,
+          },
+        },
+        select: {
+          id: true,
+          departmentId: true,
+          archivedAt: true,
+        },
+      });
+
+      if (existing?.archivedAt) {
+        return null;
+      }
+
+      if (existing) {
+        const now = new Date();
+        const result = await tx.teacherCourseAssignment.updateMany({
+          where: {
+            id: existing.id,
+            departmentId: input.departmentId,
+            archivedAt: null,
+          },
+          data: {
+            status: "ACTIVE",
+            assignedAt: now,
+            unassignedAt: null,
+          },
+        });
+
+        if (result.count === 0) {
+          return null;
+        }
+      } else {
+        await tx.teacherCourseAssignment.create({
+          data: {
+            departmentId: input.departmentId,
+            courseOfferingId: input.courseOfferingId,
+            teacherUserId: input.teacherUserId,
+            roleCode: input.roleCode,
+            status: "ACTIVE",
+            unassignedAt: null,
+          },
+        });
+      }
+
+      return tx.teacherCourseAssignment.findFirst({
+        where: {
+          departmentId: input.departmentId,
+          courseOfferingId: input.courseOfferingId,
+          teacherUserId: input.teacherUserId,
+          roleCode: input.roleCode,
+          archivedAt: null,
+        },
+        include: this.teacherAssignmentInclude(),
+      });
+    });
+  }
+
+  findTeacherAssignmentById(departmentId: string, id: string) {
+    return this.prisma.teacherCourseAssignment.findFirst({
+      where: {
+        id,
+        departmentId,
+        archivedAt: null,
+      },
+      include: this.teacherAssignmentInclude(),
+    });
+  }
+
+  unassignTeacherAssignment(
+    departmentId: string,
+    id: string,
+    unassignedAt: Date,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const result = await tx.teacherCourseAssignment.updateMany({
+        where: {
+          id,
+          departmentId,
+          archivedAt: null,
+        },
+        data: {
+          status: "INACTIVE",
+          unassignedAt,
+        },
+      });
+
+      if (result.count === 0) {
+        return null;
+      }
+
+      return tx.teacherCourseAssignment.findFirst({
+        where: {
+          id,
+          departmentId,
+          archivedAt: null,
+        },
+        include: this.teacherAssignmentInclude(),
+      });
+    });
+  }
+
   findEnrollments(filters: EnrollmentListFilters) {
     return this.prisma.enrollment.findMany({
       where: {
@@ -684,5 +809,18 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
         },
       });
     });
+  }
+
+  private teacherAssignmentInclude() {
+    return {
+      teacherUser: {
+        select: {
+          id: true,
+          displayName: true,
+          email: true,
+          status: true,
+        },
+      },
+    };
   }
 }

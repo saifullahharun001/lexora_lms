@@ -46,6 +46,11 @@ export interface CourseOfferingListFilters {
   teacherAssignmentStatus?: TeacherAssignmentStatus;
 }
 
+export interface TeacherAssignmentListFilters {
+  departmentId: string;
+  courseOfferingId: string;
+}
+
 export interface EnrollmentListFilters {
   departmentId: string;
   academicTermId?: string;
@@ -148,6 +153,13 @@ export interface CreateCourseOfferingInput {
   visibilityEndAt?: Date | null;
 }
 
+export interface CreateTeacherAssignmentInput {
+  departmentId: string;
+  courseOfferingId: string;
+  teacherUserId: string;
+  roleCode: string;
+}
+
 export interface UpdateCourseOfferingInput {
   sectionCode?: string;
   capacity?: number | null;
@@ -236,6 +248,21 @@ export interface AcademicRepositoryPort {
     departmentId: string,
     id: string,
     input: UpdateCourseOfferingInput,
+  ): Promise<unknown | null>;
+  findTeacherAssignments(
+    filters: TeacherAssignmentListFilters,
+  ): Promise<unknown[]>;
+  createOrReactivateTeacherAssignment(
+    input: CreateTeacherAssignmentInput,
+  ): Promise<unknown | null>;
+  findTeacherAssignmentById(
+    departmentId: string,
+    id: string,
+  ): Promise<unknown | null>;
+  unassignTeacherAssignment(
+    departmentId: string,
+    id: string,
+    unassignedAt: Date,
   ): Promise<unknown | null>;
   findEnrollments(filters: EnrollmentListFilters): Promise<unknown[]>;
   findEnrollmentById(departmentId: string, id: string): Promise<unknown | null>;

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -8,6 +9,7 @@ import {
 import {
   AcademicTerm,
   AcademicYear,
+  DepartmentStatus,
   EnrollmentStatus,
   Prisma,
   TeacherAssignmentStatus,
@@ -29,6 +31,7 @@ import type {
   CreateCourseOfferingInput,
   CreateEnrollmentInput,
   CreateProgramInput,
+  CreateTeacherAssignmentInput,
   EnrollmentListFilters,
   UpdateAcademicTermInput,
   UpdateAcademicYearInput,
@@ -526,6 +529,104 @@ export class AcademicService {
     }
   }
 
+  async assignTeacherToCourseOffering(
+    courseOfferingId: string,
+    input: Omit<
+      CreateTeacherAssignmentInput,
+      "departmentId" | "courseOfferingId" | "roleCode"
+    > & { roleCode?: string },
+  ) {
+    const departmentId =
+      await this.assertDepartmentAdminCanManageTeacherAssignments();
+    await this.assertCourseOfferingInDepartment(courseOfferingId);
+    await this.assertTeacherInDepartment(input.teacherUserId);
+
+    const roleCode = input.roleCode?.trim() || "primary_instructor";
+
+    try {
+      const assignment =
+        await this.repository.createOrReactivateTeacherAssignment({
+          departmentId,
+          courseOfferingId,
+          teacherUserId: input.teacherUserId,
+          roleCode,
+        });
+
+      if (!assignment) {
+        throw new ConflictException(
+          "Archived teacher assignment cannot be reactivated",
+        );
+      }
+
+      await this.writeAudit(
+        ACADEMIC_AUDIT_EVENTS.TEACHER_ASSIGNMENT_ASSIGNED,
+        "teacher_course_assignment",
+        assignment,
+        {
+          courseOfferingId,
+          teacherUserId: input.teacherUserId,
+          roleCode,
+        },
+      );
+
+      return assignment;
+    } catch (error) {
+      this.rethrowKnownError(
+        error,
+        "Teacher is already assigned to this course offering with that role",
+      );
+    }
+  }
+
+  async listTeacherAssignmentsForCourseOffering(courseOfferingId: string) {
+    const departmentId =
+      await this.assertDepartmentAdminCanManageTeacherAssignments();
+    await this.assertCourseOfferingInDepartment(courseOfferingId);
+
+    return this.repository.findTeacherAssignments({
+      departmentId,
+      courseOfferingId,
+    });
+  }
+
+  async unassignTeacherAssignment(assignmentId: string) {
+    const departmentId =
+      await this.assertDepartmentAdminCanManageTeacherAssignments();
+    const existing = await this.repository.findTeacherAssignmentById(
+      departmentId,
+      assignmentId,
+    );
+
+    if (!existing) {
+      throw new NotFoundException("Teacher assignment not found");
+    }
+
+    const assignment = await this.repository.unassignTeacherAssignment(
+      departmentId,
+      assignmentId,
+      new Date(),
+    );
+
+    if (!assignment) {
+      throw new NotFoundException("Teacher assignment not found");
+    }
+
+    await this.writeAudit(
+      ACADEMIC_AUDIT_EVENTS.TEACHER_ASSIGNMENT_UNASSIGNED,
+      "teacher_course_assignment",
+      assignment,
+      {
+        courseOfferingId: (assignment as { courseOfferingId?: string })
+          .courseOfferingId,
+        teacherUserId: (assignment as { teacherUserId?: string })
+          .teacherUserId,
+        roleCode: (assignment as { roleCode?: string }).roleCode,
+      },
+    );
+
+    return assignment;
+  }
+
   listEnrollments(filters: Omit<EnrollmentListFilters, "departmentId">) {
     return this.repository.findEnrollments({
       departmentId: this.getDepartmentId(),
@@ -845,6 +946,69 @@ export class AcademicService {
     if (!student) {
       throw new BadRequestException(
         "Student user does not belong to the active department",
+      );
+    }
+  }
+
+  private async assertDepartmentAdminCanManageTeacherAssignments() {
+    const departmentId = this.getDepartmentId();
+
+    if (!this.hasRole("department_admin")) {
+      throw new ForbiddenException(
+        "Only department admins can manage teacher assignments",
+      );
+    }
+
+    const department = await this.prisma.department.findFirst({
+      where: {
+        id: departmentId,
+        status: DepartmentStatus.ACTIVE,
+        archivedAt: null,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!department) {
+      throw new BadRequestException("Active department context is required");
+    }
+
+    return departmentId;
+  }
+
+  private async assertTeacherInDepartment(teacherUserId: string) {
+    const departmentId = this.getDepartmentId();
+    const now = new Date();
+    const teacher = await this.prisma.user.findFirst({
+      where: {
+        id: teacherUserId,
+        departmentId,
+        deletedAt: null,
+        archivedAt: null,
+        status: UserStatus.ACTIVE,
+        userRoles: {
+          some: {
+            departmentId,
+            revokedAt: null,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+            role: {
+              code: "teacher",
+              departmentId,
+              archivedAt: null,
+            },
+          },
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!teacher) {
+      throw new BadRequestException(
+        "Teacher user does not belong to the active department",
       );
     }
   }
