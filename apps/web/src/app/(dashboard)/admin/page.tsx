@@ -4,6 +4,7 @@ import { AdminAcademicCalendarPanel } from "@/components/admin/admin-academic-ca
 import { AdminCourseOfferingsPanel } from "@/components/admin/admin-course-offerings-panel";
 import { AdminCoursesPanel } from "@/components/admin/admin-courses-panel";
 import { AdminProgramsPanel } from "@/components/admin/admin-programs-panel";
+import { AdminTeacherAssignmentsPanel } from "@/components/admin/admin-teacher-assignments-panel";
 import { AdminUsersPanel } from "@/components/admin/admin-users-panel";
 
 export default function AdminPage() {
@@ -17,6 +18,7 @@ export default function AdminPage() {
       <AdminAcademicCalendarPanel />
       <AdminCoursesPanel />
       <AdminCourseOfferingsPanel />
+      <AdminTeacherAssignmentsPanel />
       <SectionCard
         title="People & Access"
         description="Department identity tools stay policy-protected and scoped to the active department."

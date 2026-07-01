@@ -55,6 +55,7 @@ export type CourseOfferingStatus =
   | "COMPLETED"
   | "CANCELED"
   | "ARCHIVED";
+export type TeacherAssignmentStatus = "ACTIVE" | "INACTIVE";
 export type ManagedUserRoleCode = "student" | "teacher";
 export type ManagedUserStatus =
   | "INVITED"
@@ -183,6 +184,31 @@ export type UpdateCourseOfferingPayload = Partial<
   >
 >;
 
+export interface TeacherAssignmentTeacherSummary {
+  id: string;
+  displayName: string;
+  email: string;
+  status: string;
+}
+
+export interface TeacherAssignment {
+  id: string;
+  departmentId: string;
+  courseOfferingId: string;
+  teacherUserId: string;
+  roleCode: string;
+  status: TeacherAssignmentStatus;
+  assignedAt: string;
+  unassignedAt: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  teacherUser?: TeacherAssignmentTeacherSummary | null;
+}
+
+export interface CreateTeacherAssignmentPayload {
+  teacherUserId: string;
+  roleCode?: string;
+}
 export interface EnrollmentAcademicTerm {
   id: string;
   code: string;
@@ -482,6 +508,40 @@ export function updateCourseOffering(
   );
 }
 
+export function listTeacherAssignmentsForCourseOffering(
+  authContext: ApiAuthContext,
+  offeringId: string
+) {
+  return apiAuthenticatedGet<TeacherAssignment[]>(
+    `/course-offerings/${encodeURIComponent(offeringId)}/teacher-assignments`,
+    authContext
+  );
+}
+
+export function assignTeacherToCourseOffering(
+  authContext: ApiAuthContext,
+  offeringId: string,
+  payload: CreateTeacherAssignmentPayload
+) {
+  return apiAuthenticatedJson<TeacherAssignment, CreateTeacherAssignmentPayload>(
+    "POST",
+    `/course-offerings/${encodeURIComponent(offeringId)}/teacher-assignments`,
+    authContext,
+    payload
+  );
+}
+
+export function unassignTeacherAssignment(
+  authContext: ApiAuthContext,
+  assignmentId: string
+) {
+  return apiAuthenticatedJson<TeacherAssignment, Record<string, never>>(
+    "POST",
+    `/teacher-assignments/${encodeURIComponent(assignmentId)}/unassign`,
+    authContext,
+    {}
+  );
+}
 export function getMyEnrollments(authContext: ApiAuthContext) {
   return apiAuthenticatedGet<MyEnrollment[]>("/enrollments/me", authContext);
 }
