@@ -651,7 +651,7 @@ Pending / intentionally deferred:
 
 - Academic Year `isCurrent` uniqueness / single-current-year behavior is not implemented. This remains a future academic configuration rule and needs a policy decision on whether to auto-unset other current years or reject multiple current years.
 - No frontend UI was implemented in this task.
-- Teacher Assignment HTTP API is still pending if not already completed elsewhere.
+- Superseded note: Teacher Assignment HTTP API was pending at the time of this Academic Year / Academic Term verification, but it was later implemented and runtime verified in the Teacher Assignment HTTP API Runtime Verification section.
 - Student available/eligible course offering endpoint is still pending if not already completed elsewhere.
 - Passwords for canonical runtime accounts were accidentally exposed in chat/logs during testing and should be rotated/reset as a security cleanup task. Do not record those passwords in this document.
 
@@ -710,14 +710,15 @@ Result:
 
 ### Teacher Assignment Runtime Test
 
-- [x] Confirmed teacher assignment HTTP API/controller is not currently exposed.
+- [x] Superseded note: During this earlier runtime test, teacher assignment HTTP API/controller was not exposed.
   - `/course-offerings` controller currently supports:
     - create
     - list
     - get by ID
     - update
   - `/enrollments` controller is exposed separately.
-  - Teacher assignment exists in Prisma schema/service contract, but no public runtime API route/controller was found.
+  - Teacher assignment existed in Prisma schema/service contract, but no public runtime API route/controller was found at that time.
+  - The Teacher Assignment HTTP API was later implemented and runtime verified in the dedicated section below.
 
 - [x] Confirmed teacher assignment schema exists.
   - Prisma model: `TeacherCourseAssignment`
@@ -933,7 +934,7 @@ Current limitations discovered:
 Recommended follow-up:
 
 - Consider implementing Academic Year and Academic Term management API endpoints later.
-- Consider implementing Teacher Assignment management API endpoints later.
+- Superseded note: Teacher Assignment management API endpoints were later implemented and runtime verified.
 - These endpoints should remain department-scoped and protected by appropriate admin/policy guards.
 - Manual DB inserts/upserts are acceptable for controlled runtime testing but should not be the normal production workflow.
 
@@ -2242,7 +2243,7 @@ Class Session runtime verdict:
 8. Review `.env` formatting issue that printed `LMS: command not found` during shell loading.
 9. Consider improving DTO validation error responses so invalid enum values show safe field-level details.
 10. Consider implementing Academic Year and Academic Term management API endpoints later.
-11. Consider implementing Teacher Assignment API/controller later.
+11. Superseded note: Teacher Assignment API/controller was later implemented and runtime verified.
 12. Keep the current API TypeScript config stable unless a dedicated Node16/ESM migration task is planned.
 
 ## Student Enrollment Access Isolation Runtime Finding
@@ -5311,6 +5312,7 @@ Latest Admin Academic frontend security smoke checks:
 ### Remaining Pending Checks
 
 - [x] Teacher assigned-course surface: read-only frontend runtime verified.
+- [x] Teacher Assignment HTTP API: runtime verified.
 - [ ] Dedicated student available/eligible course-offering endpoint.
 - [ ] Notice/notification frontend.
 - [ ] Secure file upload frontend.
@@ -5330,10 +5332,10 @@ Latest Admin Academic frontend security smoke checks:
 
 Recommended next runtime checks:
 
-1. Continue Teacher Assignment HTTP API work if it is not completed elsewhere.
-2. Design and implement the dedicated student available/eligible course-offering endpoint before exposing student course discovery.
-3. Continue with Notice/notification frontend.
-4. Continue with secure file upload frontend only after the secure upload pipeline is ready.
+1. Build Admin frontend workflow for teacher assignment management, or continue with the dedicated student available/eligible course-offering endpoint.
+2. Dedicated student available/eligible course-offering endpoint remains pending.
+3. Notice/notification frontend remains pending.
+4. Secure file upload frontend remains pending until the secure upload pipeline is ready.
 
 ## Teacher Assigned Courses Frontend Runtime Test
 
@@ -5386,7 +5388,7 @@ Rendered values observed:
   - `teacher.law@cu.ac.bd` was `ACTIVE`.
   - `runtime-test-teacher@cu.ac.bd` was `SUSPENDED`.
   - Existing `LAW-101` teacher assignment belonged to `runtime-test-teacher@cu.ac.bd`, not the canonical teacher account.
-- [x] Because Teacher Assignment HTTP API is still pending, a controlled runtime DB upsert was used only to assign canonical `teacher.law@cu.ac.bd` to the existing `LAW-101` course offering for verification continuity.
+- [x] Superseded note: Because Teacher Assignment HTTP API was still pending during this earlier frontend verification, a controlled runtime DB upsert was used only to assign canonical `teacher.law@cu.ac.bd` to the existing `LAW-101` course offering for verification continuity.
 - [x] Controlled assignment created/activated:
   - Assignment ID: `teacher_assignment_law_canonical_101_runtime`
   - Teacher: `teacher.law@cu.ac.bd`
@@ -5398,7 +5400,7 @@ Rendered values observed:
   - Assignment status: `ACTIVE`
   - `unassigned_at`: null
 - [x] This DB upsert was controlled runtime test data setup only, not a production workflow.
-- [ ] Teacher Assignment HTTP API remains pending if not completed elsewhere.
+- [x] Superseded by the Teacher Assignment HTTP API Runtime Verification section; the API foundation is now runtime verified.
 
 ### Access And Storage Checks
 
@@ -5421,6 +5423,105 @@ Rendered values observed:
 - [x] Assigned course data is fetched through existing `GET /api/v1/course-offerings`.
 - [x] Backend remains the source of truth for teacher-scoped assigned-course filtering.
 - [x] Teacher Assigned Courses read-only frontend surface is runtime verified.
+
+## Teacher Assignment HTTP API Runtime Verification
+
+### Runtime Verification Status
+
+- [x] Feature status: runtime verified for the Teacher Assignment HTTP API foundation.
+- [x] Implemented commit verified on server:
+  - Commit: `b6dcb3e`
+  - Message: `Add teacher assignment API foundation`
+
+### Implemented
+
+- [x] API foundation for assigning, listing, and unassigning teachers from course offerings.
+- [x] Endpoints:
+  - `POST /api/v1/course-offerings/:id/teacher-assignments`
+  - `GET /api/v1/course-offerings/:id/teacher-assignments`
+  - `POST /api/v1/teacher-assignments/:id/unassign`
+- [x] Protected by `AuthGuard` and `PolicyGuard`.
+- [x] Uses `@RequirePolicy(ACADEMIC_POLICY_NAMES.TEACHER_ASSIGNMENT_MANAGE)`.
+- [x] `ACADEMIC_POLICY_NAMES.TEACHER_ASSIGNMENT_MANAGE` maps to `course-management.teacher-assignment.manage`.
+- [x] Service-level management requires `department_admin`.
+- [x] Teacher assignment create validates:
+  - Course offering belongs to the active department.
+  - Teacher user belongs to the active department.
+  - Teacher user has an active, non-revoked teacher role in the active department.
+  - Linked role is department-scoped.
+  - `roleCode` uses safe slug-style validation.
+- [x] Unassign does not hard-delete.
+- [x] Unassign sets status to `INACTIVE` and sets `unassignedAt`.
+- [x] Audit events added:
+  - `course-management.teacher-assignment.assigned`
+  - `course-management.teacher-assignment.unassigned`
+
+### Static And Server Verification
+
+- [x] Local API typecheck passed.
+- [x] Local API build passed.
+- [x] Server fast-forwarded to `b6dcb3e`.
+- [x] Server API typecheck passed.
+- [x] Server API build passed.
+- [x] PM2 restart `lexora-api` passed.
+- [x] Health endpoint through Nginx returned `HTTP 200 OK`.
+
+### Runtime Verified
+
+- [x] Admin login returned `201`.
+- [x] Teacher login returned `201`.
+- [x] Student login returned `201`.
+- [x] Teacher user ID was found.
+- [x] Student user ID was found.
+- [x] Unassigned test offering was found.
+- [x] Unauthenticated list returned `401`.
+- [x] Teacher assignment attempt returned `403`.
+- [x] Student assignment attempt returned `403`.
+- [x] Bad `roleCode` assignment returned `400`.
+- [x] Non-teacher user assignment returned `400`.
+- [x] Admin assignment returned `201`.
+- [x] Assignment ID was returned.
+- [x] Admin list assignments returned `200`.
+- [x] Listed assignment count was `1`.
+- [x] Admin unassign returned `201`.
+- [x] Unassigned assignment status was `INACTIVE`.
+- [x] `unassignedAt` was present.
+- [x] Teacher `GET /api/v1/course-offerings` after assign returned `200`.
+- [x] Teacher saw the test offering after assignment.
+- [x] Teacher `GET /api/v1/course-offerings` after unassign returned `200`.
+- [x] Teacher no longer saw the test offering after unassign.
+- [x] `audit_logs` columns include `occurred_at`, not `created_at`.
+- [x] Recent teacher assignment audit rows included:
+  - `course-management.teacher-assignment.unassigned|teacher_course_assignment`
+  - `course-management.teacher-assignment.assigned|teacher_course_assignment`
+
+### Preserved
+
+- [x] Existing teacher-scoped `GET /api/v1/course-offerings` filtering was preserved.
+- [x] Department isolation model was preserved.
+- [x] `AuthGuard`, `PolicyGuard`, and `@RequirePolicy()` were preserved.
+- [x] No hard delete is used for unassign.
+- [x] No tokens, passwords, cookies, DB URLs, password hashes, or secrets are documented.
+
+### Script Note
+
+- [x] First runtime script mistakenly treated login `HTTP 201` as failure and used `exit` directly in the interactive SSH shell, which closed the SSH session.
+- [x] This was a test-script issue, not an API/server failure.
+- [x] Corrected script accepted `200` or `201` login responses and executed from a temporary script file so SSH remained alive.
+
+### Pending
+
+- [ ] Admin frontend UI for teacher assignment management is not implemented yet.
+- [ ] More exhaustive cross-department direct-object negative testing may still be added later if not already covered by broader academic isolation tests.
+
+### Runtime Verdict
+
+- [x] Teacher Assignment HTTP API foundation is implemented and runtime verified.
+- [x] Admin assign/list/unassign passed.
+- [x] Teacher, student, and unauthenticated assignment management attempts were blocked.
+- [x] Invalid `roleCode` and non-teacher assignment attempts were blocked.
+- [x] Teacher sees assigned offering after assign and no longer sees it after unassign.
+- [x] Assignment audit rows are present.
 
 ## Admin Academic Calendar Frontend Runtime Verification
 
