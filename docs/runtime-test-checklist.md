@@ -5313,6 +5313,7 @@ Latest Admin Academic frontend security smoke checks:
 
 - [x] Teacher assigned-course surface: read-only frontend runtime verified.
 - [x] Teacher Assignment HTTP API: runtime verified.
+- [x] Admin frontend teacher assignment management UI: runtime verified.
 - [ ] Dedicated student available/eligible course-offering endpoint.
 - [ ] Notice/notification frontend.
 - [ ] Secure file upload frontend.
@@ -5332,7 +5333,7 @@ Latest Admin Academic frontend security smoke checks:
 
 Recommended next runtime checks:
 
-1. Build Admin frontend workflow for teacher assignment management, or continue with the dedicated student available/eligible course-offering endpoint.
+1. Admin frontend teacher assignment management UI is runtime verified.
 2. Dedicated student available/eligible course-offering endpoint remains pending.
 3. Notice/notification frontend remains pending.
 4. Secure file upload frontend remains pending until the secure upload pipeline is ready.
@@ -5511,7 +5512,7 @@ Rendered values observed:
 
 ### Pending
 
-- [ ] Admin frontend UI for teacher assignment management is not implemented yet.
+- [x] Superseded note: Admin frontend UI for teacher assignment management was later implemented and runtime verified in the Admin Teacher Assignment Frontend Runtime Verification section.
 - [ ] More exhaustive cross-department direct-object negative testing may still be added later if not already covered by broader academic isolation tests.
 
 ### Runtime Verdict
@@ -5522,6 +5523,84 @@ Rendered values observed:
 - [x] Invalid `roleCode` and non-teacher assignment attempts were blocked.
 - [x] Teacher sees assigned offering after assign and no longer sees it after unassign.
 - [x] Assignment audit rows are present.
+
+## Admin Teacher Assignment Frontend Runtime Verification
+
+### Runtime Test Date
+
+- 2026-07-02
+
+### Related Commit
+
+- Commit: `838c9aa`
+- Message: `Add admin teacher assignment workflow`
+
+### Implementation Summary
+
+- [x] Added `AdminTeacherAssignmentsPanel` to the Admin dashboard on `/admin` after Course Offerings.
+- [x] Added teacher assignment management UI for selecting a course offering, listing assignments, assigning active teachers, and unassigning active assignment rows.
+- [x] Used managed users for the teacher dropdown instead of raw `teacherUserId` entry.
+- [x] Filtered teacher choices to active users with the `teacher` role.
+- [x] Kept the UI minimal and academic.
+
+Implementation files:
+
+- `apps/web/src/components/admin/admin-teacher-assignments-panel.tsx`
+- `apps/web/src/app/(dashboard)/admin/page.tsx`
+- `apps/web/src/lib/api-client.ts`
+
+### API Helpers Added
+
+- [x] `listTeacherAssignmentsForCourseOffering`
+- [x] `assignTeacherToCourseOffering`
+- [x] `unassignTeacherAssignment`
+
+### Browser Runtime Verification Checklist
+
+- [x] Admin `/admin` page showed the Teacher assignments panel.
+- [x] Course offering dropdown loaded.
+- [x] Selecting a course offering loaded teacher assignments.
+- [x] Active teacher dropdown loaded.
+- [x] `roleCode` defaulted to `primary_instructor`.
+- [x] Assign action succeeded and showed a success message.
+- [x] Assignment list refreshed and showed the active assignment row.
+- [x] Active assignment row showed the Unassign action.
+- [x] Unassign action showed a confirmation dialog.
+- [x] Confirming unassign changed the assignment to inactive/unassigned state.
+- [x] Existing inactive assignment rows remained visible as history.
+- [x] UI remained minimal and academic.
+
+### Server Validation Evidence
+
+- [x] Server fast-forwarded to `838c9aa`.
+- [x] `pnpm --filter @lexora/web typecheck` passed.
+- [x] `pnpm --filter @lexora/web build` passed.
+- [x] `/admin` route built successfully.
+
+### Security Posture Preserved
+
+- [x] No backend code changed.
+- [x] No `AuthGuard`, `PolicyGuard`, `RequirePolicy`, request context, or department-isolation code changed.
+- [x] No `localStorage` or `sessionStorage` token persistence was introduced.
+- [x] Access token remains memory-only through the existing `AuthProvider`.
+- [x] Refresh token remains httpOnly cookie-based.
+- [x] Backend remains the source of truth for assignment authorization.
+- [x] UI only calls protected API endpoints.
+- [x] No raw tokens, passwords, cookies, DB URLs, password hashes, or secrets are documented.
+
+### Current Limitations / Remaining Pending Work
+
+- [x] This verifies Admin frontend teacher assignment management UI.
+- [ ] Dedicated student available/eligible course-offering endpoint remains pending.
+- [ ] Notice/notification frontend remains pending.
+- [ ] Secure file upload frontend remains pending.
+
+### Runtime Verdict
+
+- [x] Admin Teacher Assignment frontend workflow is implemented and runtime verified.
+- [x] Admin can select a course offering, list teacher assignments, assign an active teacher, and unassign an active assignment through the UI.
+- [x] Assignment history remains visible after unassign.
+- [x] Existing backend authorization, token handling, and department-scoping architecture were preserved.
 
 ## Admin Academic Calendar Frontend Runtime Verification
 
