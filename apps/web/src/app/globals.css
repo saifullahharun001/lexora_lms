@@ -20,9 +20,9 @@ body {
   isolation: isolate;
   background-color: #0b1715;
   background-image:
-    radial-gradient(circle at 18% 12%, rgba(250, 204, 21, 0.14), transparent 28%),
-    radial-gradient(circle at 86% 8%, rgba(20, 184, 166, 0.14), transparent 32%),
-    linear-gradient(135deg, rgba(8, 17, 15, 0.72), rgba(15, 23, 42, 0.62) 52%, rgba(12, 10, 9, 0.76)),
+    radial-gradient(circle at 18% 12%, rgba(250, 204, 21, 0.13), transparent 28%),
+    radial-gradient(circle at 86% 8%, rgba(20, 184, 166, 0.13), transparent 32%),
+    linear-gradient(135deg, rgba(8, 17, 15, 0.7), rgba(15, 23, 42, 0.6) 52%, rgba(12, 10, 9, 0.74)),
     url("/images/Law_Faculty.jpg");
   background-attachment: fixed;
   background-position: center;
@@ -37,11 +37,141 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    linear-gradient(115deg, rgba(255, 255, 255, 0.09), transparent 24%, rgba(255, 255, 255, 0.035) 46%, transparent 70%),
-    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.1), transparent 36%);
+    linear-gradient(115deg, rgba(255, 255, 255, 0.08), transparent 24%, rgba(255, 255, 255, 0.032) 46%, transparent 70%),
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.09), transparent 36%);
   backdrop-filter: blur(4px) saturate(112%);
 }
 
 a {
   @apply transition-colors;
+}
+
+.lexora-glass-input {
+  display: block;
+  width: 100%;
+  margin-top: 0.5rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.12) !important;
+  padding: 0.625rem 0.75rem;
+  color: rgb(255, 247, 237);
+  caret-color: rgb(254, 240, 138);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  outline: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -18px 28px rgba(255, 255, 255, 0.03),
+    0 10px 24px rgba(0, 0, 0, 0.12);
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.lexora-glass-input::placeholder {
+  color: rgba(231, 229, 228, 0.72);
+}
+
+.lexora-glass-input:focus {
+  border-color: rgba(253, 230, 138, 0.9);
+  background: rgba(255, 255, 255, 0.17) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 0 0 3px rgba(253, 230, 138, 0.22),
+    0 14px 30px rgba(0, 0, 0, 0.16);
+}
+
+.lexora-glass-input:-webkit-autofill,
+.lexora-glass-input:-webkit-autofill:hover,
+.lexora-glass-input:-webkit-autofill:focus,
+.lexora-glass-input:-webkit-autofill:active {
+  border-color: rgba(253, 230, 138, 0.88);
+  -webkit-text-fill-color: rgb(255, 247, 237) !important;
+  caret-color: rgb(254, 240, 138);
+  box-shadow:
+    0 0 0 1000px rgba(255, 255, 255, 0.13) inset,
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 14px 30px rgba(0, 0, 0, 0.16) !important;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+.lexora-workspace-sidebar {
+  color: rgb(245, 245, 244);
+}
+
+.lexora-workspace-sidebar .text-slate-950,
+.lexora-workspace-sidebar .text-slate-900,
+.lexora-workspace-sidebar .text-slate-800 {
+  color: rgb(255, 251, 235) !important;
+}
+
+.lexora-workspace-sidebar .text-slate-700,
+.lexora-workspace-sidebar .text-slate-600,
+.lexora-workspace-sidebar .text-slate-500 {
+  color: rgb(214, 211, 209) !important;
+}
+
+.lexora-workspace-sidebar .border-slate-200,
+.lexora-workspace-sidebar .border-slate-100 {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.lexora-workspace-sidebar .bg-teal-50,
+.lexora-workspace-sidebar .bg-white,
+.lexora-workspace-sidebar .bg-slate-50 {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.lexora-glass-card {
+  color: rgb(245, 245, 244);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.07)),
+    rgba(12, 18, 22, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(18px) saturate(118%);
+}
+
+.lexora-glass-card h1,
+.lexora-glass-card h2,
+.lexora-glass-card h3,
+.lexora-glass-card h4,
+.lexora-glass-card .text-slate-950,
+.lexora-glass-card .text-slate-900,
+.lexora-glass-card .text-slate-800 {
+  color: rgb(255, 251, 235) !important;
+}
+
+.lexora-glass-card p,
+.lexora-glass-card label,
+.lexora-glass-card dt,
+.lexora-glass-card dd,
+.lexora-glass-card .text-slate-700,
+.lexora-glass-card .text-slate-600,
+.lexora-glass-card .text-slate-500 {
+  color: rgb(231, 229, 228) !important;
+}
+
+.lexora-glass-card .bg-white,
+.lexora-glass-card .bg-slate-50,
+.lexora-glass-card .bg-slate-100 {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.lexora-glass-card .border-slate-200,
+.lexora-glass-card .border-slate-100,
+.lexora-glass-card .border-slate-300 {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+.lexora-glass-card table {
+  color: rgb(245, 245, 244);
+}
+
+.lexora-glass-card th,
+.lexora-glass-card td {
+  color: inherit;
 }

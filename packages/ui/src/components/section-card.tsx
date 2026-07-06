@@ -16,9 +16,9 @@ export function SectionCard({
   className
 }: SectionCardProps) {
   return (
-    <section className={cn("min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm", className)}>
-      <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+    <section className={cn("lexora-glass-card min-w-0 rounded-2xl p-5", className)}>
+      <h2 className="text-lg font-semibold text-amber-50">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-stone-200">{description}</p>
       {children ? <div className="mt-4 min-w-0">{children}</div> : null}
     </section>
   );

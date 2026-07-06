@@ -14,8 +14,7 @@ const roleHomes = [
   { role: "student", path: "/student" }
 ] as const;
 
-const inputClassName =
-  "mt-2 block w-full rounded-lg border border-white/30 bg-white/14 px-3 py-2.5 text-sm text-stone-50 shadow-inner shadow-stone-950/10 outline-none transition placeholder:text-stone-300/70 focus:border-amber-200 focus:bg-white/18 focus:ring-2 focus:ring-amber-200/25 disabled:cursor-not-allowed disabled:opacity-60";
+const inputClassName = "lexora-glass-input disabled:cursor-not-allowed disabled:opacity-60";
 
 function getRoleHome(roles: string[]) {
   return roleHomes.find((home) => roles.includes(home.role))?.path;
@@ -153,7 +152,7 @@ export function SignInForm() {
         ) : null}
 
         <button
-          className="w-full rounded-lg bg-amber-300 px-4 py-2.5 text-sm font-bold text-stone-950 shadow-lg shadow-stone-950/15 transition hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-200 focus:ring-offset-2 focus:ring-offset-stone-950 disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-stone-300"
+          className="w-full rounded-lg border border-amber-100/45 bg-amber-300/92 px-4 py-2.5 text-sm font-bold text-stone-950 shadow-lg shadow-stone-950/18 backdrop-blur-sm transition hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-200 focus:ring-offset-2 focus:ring-offset-stone-950 disabled:cursor-not-allowed disabled:bg-white/18 disabled:text-stone-300"
           disabled={isSubmitting}
           type="submit"
         >
