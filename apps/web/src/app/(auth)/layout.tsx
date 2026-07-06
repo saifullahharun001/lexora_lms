@@ -8,8 +8,8 @@ interface AuthLayoutProps {
 export default function AuthLayout({ children }: AuthLayoutProps) {
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white/92 p-8 shadow-sm">
-        <div className="mb-8 flex gap-3 text-sm text-slate-500">
+      <div className="w-full max-w-md rounded-3xl border border-white/45 bg-white/82 p-8 shadow-2xl shadow-stone-950/25 backdrop-blur-2xl">
+        <div className="mb-8 flex gap-3 text-sm text-slate-600">
           <Link href="/sign-in" className="hover:text-teal-800">
             Sign in
           </Link>

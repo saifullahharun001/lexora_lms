@@ -10,24 +10,30 @@ export default function HomePage() {
       />
       <div
         aria-hidden="true"
-        className="absolute inset-0 bg-gradient-to-br from-stone-950/95 via-teal-950/82 to-stone-950/92"
+        className="absolute inset-0 bg-gradient-to-br from-stone-950/92 via-teal-950/72 to-stone-950/88"
       />
-      <div aria-hidden="true" className="absolute inset-0 bg-stone-950/18" />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-[radial-gradient(circle_at_50%_12%,rgba(255,255,255,0.18),transparent_30%),linear-gradient(115deg,rgba(255,255,255,0.12),transparent_24%,rgba(255,255,255,0.06)_45%,transparent_68%)]"
+      />
 
-      <section className="relative z-10 mx-auto flex w-full max-w-4xl flex-col items-center text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-amber-300 sm:text-sm">
+      <section className="relative z-10 mx-auto flex w-full max-w-4xl flex-col items-center rounded-[2rem] border border-white/15 bg-stone-950/24 px-6 py-10 text-center shadow-2xl shadow-stone-950/35 backdrop-blur-[3px] sm:px-10 sm:py-12">
+        <p className="text-xs font-semibold uppercase tracking-[0.32em] text-amber-200 sm:text-sm">
           Department of Law · University of Chittagong
         </p>
 
-        <h1 className="mt-6 font-[family-name:var(--font-heading)] text-6xl font-semibold tracking-normal text-white sm:text-7xl lg:text-8xl">
+        <h1
+          className="mt-6 font-[family-name:var(--font-heading)] text-7xl font-extrabold leading-none tracking-[0.035em] text-amber-50 sm:text-8xl lg:text-9xl"
+          style={{ textShadow: "0 3px 26px rgba(0, 0, 0, 0.55), 0 0 34px rgba(251, 191, 36, 0.18)" }}
+        >
           Lexora
         </h1>
 
-        <p className="mt-5 max-w-3xl text-xl font-medium leading-8 text-stone-100 sm:text-2xl">
-          Learn Law. Track Progress. Trust Every Record.
+        <p className="mt-6 max-w-3xl text-2xl font-semibold leading-8 text-stone-50 sm:text-3xl">
+          Where Law Meets Learning
         </p>
 
-        <div className="mt-7 max-w-3xl space-y-5 text-base leading-8 text-stone-200 sm:text-lg">
+        <div className="mt-7 max-w-3xl space-y-5 text-base leading-8 text-stone-100 sm:text-lg">
           <p>
             Lexora helps law students follow their courses, classes, attendance,
             assignments, quizzes, eligibility, results, GPA, and transcripts
@@ -43,7 +49,7 @@ export default function HomePage() {
         </div>
 
         <Link
-          className="mt-10 inline-flex rounded-full bg-amber-300 px-6 py-3 text-sm font-semibold text-stone-950 shadow-sm transition hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-200 focus:ring-offset-2 focus:ring-offset-stone-950"
+          className="mt-10 inline-flex rounded-full bg-amber-300 px-7 py-3 text-base font-bold text-stone-950 shadow-lg shadow-stone-950/20 transition hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-200 focus:ring-offset-2 focus:ring-offset-stone-950"
           href="/sign-in"
         >
           Enter Lexora
