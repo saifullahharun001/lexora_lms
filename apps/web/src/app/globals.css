@@ -203,3 +203,41 @@ a {
 .lexora-glass-card td {
   color: inherit;
 }
+.lexora-glass-card select,
+.lexora-workspace-sidebar select,
+.lexora-glass-input:is(select) {
+  color: rgb(255, 247, 237) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.08)),
+    rgba(12, 18, 22, 0.62) !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  color-scheme: dark;
+}
+
+.lexora-glass-card select:focus,
+.lexora-workspace-sidebar select:focus,
+.lexora-glass-input:is(select):focus {
+  border-color: rgba(253, 230, 138, 0.86) !important;
+  box-shadow: 0 0 0 3px rgba(253, 230, 138, 0.2) !important;
+}
+
+.lexora-glass-card select option,
+.lexora-workspace-sidebar select option,
+.lexora-glass-input:is(select) option {
+  background-color: rgb(28, 25, 23);
+  color: rgb(255, 247, 237);
+}
+
+.lexora-glass-card select option:checked,
+.lexora-workspace-sidebar select option:checked,
+.lexora-glass-input:is(select) option:checked {
+  background-color: rgb(20, 83, 75);
+  color: rgb(255, 251, 235);
+}
+
+.lexora-glass-card select option:disabled,
+.lexora-workspace-sidebar select option:disabled,
+.lexora-glass-input:is(select) option:disabled {
+  background-color: rgb(41, 37, 36);
+  color: rgba(214, 211, 209, 0.62);
+}
