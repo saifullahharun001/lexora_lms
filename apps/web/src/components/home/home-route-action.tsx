@@ -44,16 +44,16 @@ export function HomeRouteAction({
       disabled={isBootstrapping}
       onClick={() => {
         if (status === "anonymous") {
-          router.replace(href);
+          router.push(href);
           return;
         }
 
         if (isProtected) {
-          router.replace(href);
+          router.push(href);
           return;
         }
 
-        router.replace(getRoleHome(session?.user.roles ?? [], href));
+        router.push(getRoleHome(session?.user.roles ?? [], href));
       }}
       type="button"
     >
