@@ -4167,6 +4167,93 @@ Preserved:
 - Frontend typecheck/build: Passed
 - Local PC and Ubuntu server repositories: Clean after sync
 
+## Admin Workspace Glass Navigation Runtime Verification
+
+Runtime test date: 2026-07-08
+
+### Scope
+
+This frontend/browser verification covered the refreshed Lexora glass dashboard experience and the reorganized Admin workspace navigation.
+
+Verified scope:
+
+- Admin dashboard module navigation in the left sidebar.
+- `/admin` default Overview view.
+- Section-based Admin workspace URLs using `section` query state.
+- Main workspace rendering only the selected Admin module instead of stacking every Admin panel vertically.
+- Overview quick-link cards for Admin modules.
+- Glass dashboard readability after sidebar contrast fixes.
+- Native select/dropdown readability after scoped glass-theme CSS updates.
+
+This scope intentionally did **not** change backend APIs, authentication, authorization, policy guards, request context, department isolation, database schema, or production deployment behavior.
+
+### Related Commits
+
+| Commit | Message |
+|---|---|
+| `bf2071b` | `Make Lexora surfaces fully glass themed` |
+| `d3157d1` | `Improve Lexora sidebar glass contrast` |
+| `8afa7a8` | `Reorganize admin workspace navigation` |
+
+### Browser Runtime Verification
+
+Runtime browser base URL:
+
+- `http://192.168.197.129:3000`
+
+Verified Admin workspace URLs:
+
+- `http://192.168.197.129:3000/admin`
+- `http://192.168.197.129:3000/admin?section=programs`
+- `http://192.168.197.129:3000/admin?section=calendar`
+- `http://192.168.197.129:3000/admin?section=courses`
+- `http://192.168.197.129:3000/admin?section=offerings`
+- `http://192.168.197.129:3000/admin?section=assignments`
+- `http://192.168.197.129:3000/admin?section=users`
+
+Observed behavior:
+
+- [x] `/admin` opens the Overview view.
+- [x] Admin modules are visible in the left sidebar.
+- [x] Overview quick-link cards are visible in the main workspace.
+- [x] Clicking or opening each Admin section URL renders the selected module in the main workspace.
+- [x] Admin dashboard no longer requires scrolling through all Admin modules stacked vertically by default.
+- [x] Sidebar contrast is readable with the glass theme.
+- [x] Native select/dropdown option readability was checked in Chrome runtime and was acceptable after scoped CSS fixes.
+
+### Validation
+
+Local PC validation:
+
+- [x] `pnpm --filter @lexora/web typecheck` passed.
+- [x] `pnpm --filter @lexora/web build` passed.
+- [x] `apps/web/tsconfig.tsbuildinfo` build artifact restored before commit.
+- [x] Local PC repository clean after commit and push.
+
+Ubuntu server validation:
+
+- [x] Server synced to `8afa7a8`.
+- [x] `pnpm --filter @lexora/web typecheck` passed.
+- [x] `pnpm --filter @lexora/web build` passed.
+- [x] `/admin` now builds as a dynamic route because it uses `searchParams` for section-based rendering.
+- [x] `apps/web/tsconfig.tsbuildinfo` build artifact restored after validation.
+- [x] Server repository clean after validation.
+
+### Security / Boundary Notes
+
+- [x] `ProtectedRoute` remains in place for dashboard routes.
+- [x] No backend authorization or policy logic changed.
+- [x] No department-isolation behavior changed.
+- [x] No `localStorage` usage was introduced.
+- [x] No `sessionStorage` usage was introduced.
+- [x] Backend remains the source of truth for authorization.
+
+### Limitations
+
+- This is frontend/browser visual and navigation verification only.
+- Native select popup styling can still vary by browser/OS, but runtime Chrome behavior was checked and accepted.
+- This does not verify backend security behavior beyond confirming that this UI task did not change backend/auth/security code.
+
 ## Updated Next Test Steps After Web Visual Refresh
 
 1. Document the visual refresh and homepage workspace gate as complete.
