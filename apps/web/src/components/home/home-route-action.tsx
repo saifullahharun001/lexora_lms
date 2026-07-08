@@ -2,12 +2,17 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 
 import { useAuth } from "@/components/providers/auth-provider";
+import { getRoleHome } from "@/lib/navigation";
 
 interface HomeRouteActionProps {
   href: string;
   isProtected?: boolean;
+  children?: ReactNode;
+  className?: string;
+  routeAuthenticatedUser?: boolean;
 }
 
 const actionClassName =
@@ -15,15 +20,18 @@ const actionClassName =
 
 export function HomeRouteAction({
   href,
-  isProtected = false
+  isProtected = false,
+  children = "Open route",
+  className = actionClassName,
+  routeAuthenticatedUser = false
 }: HomeRouteActionProps) {
   const router = useRouter();
-  const { status } = useAuth();
+  const { session, status } = useAuth();
 
-  if (!isProtected) {
+  if (!isProtected && !routeAuthenticatedUser) {
     return (
-      <Link href={href} className={actionClassName}>
-        Open route
+      <Link href={href} className={className}>
+        {children}
       </Link>
     );
   }
@@ -32,14 +40,24 @@ export function HomeRouteAction({
 
   return (
     <button
-      className={`${actionClassName} disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400`}
+      className={`${className} disabled:cursor-wait disabled:opacity-70`}
       disabled={isBootstrapping}
       onClick={() => {
-        router.replace(status === "anonymous" ? "/sign-in" : href);
+        if (status === "anonymous") {
+          router.replace(href);
+          return;
+        }
+
+        if (isProtected) {
+          router.replace(href);
+          return;
+        }
+
+        router.replace(getRoleHome(session?.user.roles ?? [], href));
       }}
       type="button"
     >
-      {isBootstrapping ? "Checking session..." : "Open route"}
+      {isBootstrapping ? "Checking session..." : children}
     </button>
   );
 }

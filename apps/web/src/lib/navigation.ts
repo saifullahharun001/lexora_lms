@@ -18,3 +18,13 @@ export const dashboardNavigation = [
     description: "Own courses, progress, and academic records"
   }
 ] as const;
+
+const roleHomes = [
+  { role: "department_admin", path: "/admin" },
+  { role: "teacher", path: "/teacher" },
+  { role: "student", path: "/student" }
+] as const;
+
+export function getRoleHome(roles: string[], fallbackPath = "/") {
+  return roleHomes.find((home) => roles.includes(home.role))?.path ?? fallbackPath;
+}
