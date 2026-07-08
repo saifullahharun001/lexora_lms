@@ -2,7 +2,7 @@ import { TeacherAssignedCoursesPanel } from "@/components/teacher/teacher-assign
 
 export default function TeacherPage() {
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <TeacherAssignedCoursesPanel />
     </div>
   );

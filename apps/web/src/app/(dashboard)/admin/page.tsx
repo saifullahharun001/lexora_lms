@@ -63,12 +63,12 @@ function AdminOverview() {
       title="Admin workspace"
       description="Choose one department administration module from the sidebar or the quick links below. Only the selected module renders in this workspace."
     >
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid min-w-0 gap-3 lg:grid-cols-2 xl:grid-cols-3">
         {moduleSections.map((section) => (
           <Link
             key={section.slug}
             href={`/admin?section=${section.slug}`}
-            className="rounded-xl border border-white/18 bg-white/10 p-4 text-left transition hover:border-amber-200/50 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-amber-200/50"
+            className="min-w-0 rounded-xl border border-white/18 bg-white/10 p-4 text-left transition hover:border-amber-200/50 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-amber-200/50"
           >
             <span className="block text-sm font-semibold text-amber-50">
               {section.label}

@@ -47,9 +47,9 @@ export function DashboardShell({
       title={title}
       subtitle={subtitle}
       sidebar={
-        <div className="flex h-full flex-col justify-between gap-8">
-          <div className="space-y-6">
-            <nav aria-label="Dashboard workspace navigation" className="space-y-2">
+        <div className="flex min-h-0 flex-col gap-6 lg:h-full lg:justify-between lg:gap-8">
+          <div className="min-w-0 space-y-5 lg:space-y-6">
+            <nav aria-label="Dashboard workspace navigation" className="min-w-0 space-y-2">
               {navigationItems.map((item) => {
                 const isActive =
                   pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -60,14 +60,14 @@ export function DashboardShell({
                     href={item.href}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "block rounded-lg border px-3 py-2 transition",
+                      "block min-w-0 rounded-lg border px-3 py-2 transition",
                       isActive
                         ? "border-teal-200 bg-teal-50 text-teal-900 shadow-sm"
                         : "border-transparent text-slate-600 hover:border-teal-100 hover:bg-teal-50 hover:text-teal-800"
                     )}
                   >
-                    <span className="block text-sm font-semibold">{item.label}</span>
-                    <span className="mt-1 block text-xs leading-5 text-slate-500">
+                    <span className="block min-w-0 text-sm font-semibold">{item.label}</span>
+                    <span className="mt-1 block min-w-0 text-xs leading-5 text-slate-500">
                       {item.description}
                     </span>
                   </Link>
@@ -78,12 +78,12 @@ export function DashboardShell({
             {isAdminWorkspace ? (
               <nav
                 aria-label="Admin module navigation"
-                className="rounded-2xl border border-white/16 bg-white/8 p-3 shadow-inner shadow-stone-950/10"
+                className="min-w-0 rounded-2xl border border-white/16 bg-white/8 p-3 shadow-inner shadow-stone-950/10"
               >
                 <p className="px-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-100">
                   Admin modules
                 </p>
-                <div className="mt-3 space-y-1.5">
+                <div className="mt-3 max-h-72 min-w-0 space-y-1.5 overflow-y-auto pr-1 lg:max-h-none lg:overflow-visible lg:pr-0">
                   {adminWorkspaceSections.map((section) => {
                     const isActive = activeAdminSection === section.slug;
                     const href =
@@ -97,16 +97,16 @@ export function DashboardShell({
                         href={href}
                         aria-current={isActive ? "page" : undefined}
                         className={cn(
-                          "block rounded-xl border px-3 py-2.5 transition",
+                          "block min-w-0 rounded-xl border px-3 py-2.5 transition",
                           isActive
                             ? "border-amber-200/60 bg-amber-100/18 text-amber-50 shadow-sm"
                             : "border-transparent text-stone-200 hover:border-white/24 hover:bg-white/10 hover:text-amber-50"
                         )}
                       >
-                        <span className="block text-sm font-semibold">
+                        <span className="block min-w-0 text-sm font-semibold">
                           {section.label}
                         </span>
-                        <span className="mt-1 block text-xs leading-5 text-stone-300">
+                        <span className="mt-1 block min-w-0 text-xs leading-5 text-stone-300">
                           {section.description}
                         </span>
                       </Link>
@@ -118,7 +118,7 @@ export function DashboardShell({
           </div>
 
           {session ? (
-            <section className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <section className="shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-3">
               <p className="text-sm font-semibold text-slate-950">
                 {session.user.displayName}
               </p>

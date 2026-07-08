@@ -267,7 +267,7 @@ export function AdminTeacherAssignmentsPanel() {
               lab_instructor.
             </p>
           </div>
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(12rem,18rem)]">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(12rem,18rem)]">
             <label className="text-sm font-medium text-slate-700">
               Teacher
               <select

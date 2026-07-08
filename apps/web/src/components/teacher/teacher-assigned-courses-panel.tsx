@@ -69,7 +69,7 @@ export function TeacherAssignedCoursesPanel() {
 
       {assignedCoursesQuery.isSuccess && assignedCoursesQuery.data.length > 0 ? (
         <div className="overflow-x-auto rounded-lg border border-slate-200">
-          <table className="w-full text-left text-sm">
+          <table className="min-w-[760px] text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3 font-semibold">Course</th>

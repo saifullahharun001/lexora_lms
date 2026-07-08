@@ -284,7 +284,7 @@ export function AdminUsersPanel() {
             </button>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 lg:grid-cols-2">
             <label className="text-sm font-medium text-slate-700">
               Role
               <select
@@ -420,7 +420,7 @@ export function AdminUsersPanel() {
             </button>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 lg:grid-cols-2">
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
               <p className="text-xs font-medium text-slate-500">Display name</p>
               <p className="mt-1 text-sm font-semibold text-slate-950">

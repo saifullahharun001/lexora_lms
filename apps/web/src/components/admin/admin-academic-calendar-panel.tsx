@@ -427,7 +427,7 @@ export function AdminAcademicCalendarPanel() {
                   setYearFormError(null);
                 }}
               />
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3 lg:grid-cols-2">
                 <TextField
                   label="Code"
                   maxLength={50}
@@ -580,7 +580,7 @@ export function AdminAcademicCalendarPanel() {
                   setTermFormError(null);
                 }}
               />
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3 lg:grid-cols-2">
                 <label className="text-sm font-medium text-slate-700">
                   Academic year
                   <select

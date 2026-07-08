@@ -27,7 +27,7 @@ export default function StudentPage() {
   });
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <SectionCard
         title="My enrolled courses"
         description="Courses currently tied to your student enrollment record."
@@ -59,7 +59,7 @@ export default function StudentPage() {
         ) : null}
 
         {enrollmentsQuery.isSuccess && enrollmentsQuery.data.length > 0 ? (
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid min-w-0 gap-3 lg:grid-cols-2">
             {enrollmentsQuery.data.map((enrollment) => {
               const course = enrollment.courseOffering.course;
               const term = enrollment.academicTerm;
@@ -67,9 +67,9 @@ export default function StudentPage() {
               return (
                 <article
                   key={enrollment.id}
-                  className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+                  className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="text-xs font-semibold uppercase text-slate-500">
                         {course.code || "Course"}
