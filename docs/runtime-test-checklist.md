@@ -5546,6 +5546,160 @@ Recommended next runtime checks:
 - [ ] Future progression work should add proper student academic placement/profile metadata and enforce own program/year/semester eligibility directly from that source of truth.
 - [ ] Future student self-enrollment flow should reuse this department-scoped, backend-side visibility rule and add any additional approval/self-enrollment configuration checks without weakening existing authorization.
 
+
+## Landing Carousel and Dashboard Responsive Runtime Verification
+
+Runtime test date: 2026-07-22
+
+### Scope
+
+This runtime update verified two frontend visual/runtime improvements:
+
+- dashboard responsive layout fix for narrow browser widths
+- landing page background carousel using the existing Law faculty image plus additional optimized landing images
+
+This scope was intentionally frontend-only visual/runtime work. It did **not** add real LMS dashboard business metrics, backend APIs, database changes, or authorization changes.
+
+### Related Commits
+
+| Commit | Message |
+|---|---|
+| `97bc4d7` | `Improve dashboard responsive layout` |
+| `0265924` | `Add landing background carousel` |
+
+### Dashboard Responsive Layout Verification
+
+Implementation focus:
+
+- dashboard shell layout stacks safely on narrow widths
+- sidebar/main content use safer responsive sizing
+- admin module navigation remains reachable on small screens
+- logout/session block remains visible/reachable on narrow screens
+- admin quick links and form grids avoid switching to two columns too early
+- student enrolled-course cards wrap safely on narrow screens
+- teacher assigned-course table uses horizontal scrolling instead of squeezed/overlapping columns
+
+Runtime/browser result:
+
+- [x] Dashboard responsive layout was browser-verified by the user.
+- [x] Narrow browser width behavior was accepted.
+- [x] Logout remained visible/reachable.
+- [x] Admin dashboard no longer showed the previous cramped/overlap issue.
+- [x] Fullscreen dashboard layout remained acceptable.
+- [x] Sign-in/dashboard visual behavior remained acceptable after the responsive fix.
+
+### Landing Background Carousel Verification
+
+Implementation files:
+
+- `apps/web/src/app/page.tsx`
+- `apps/web/src/components/home/landing-background-carousel.tsx`
+
+Landing image assets added:
+
+- `apps/web/public/images/landing/law-faculty-01.jpg`
+- `apps/web/public/images/landing/law-faculty-02.jpg`
+- `apps/web/public/images/landing/law-faculty-03.jpg`
+
+Carousel images used:
+
+- `/images/Law_Faculty.jpg`
+- `/images/landing/law-faculty-01.jpg`
+- `/images/landing/law-faculty-02.jpg`
+- `/images/landing/law-faculty-03.jpg`
+
+Carousel behavior:
+
+- [x] Landing-only client component added.
+- [x] Smooth opacity crossfade used.
+- [x] Slide cycle is `4000ms`.
+- [x] Transition duration is `1000ms`.
+- [x] Each image remains visually stable for roughly 3 seconds before the fade transition.
+- [x] `prefers-reduced-motion` is respected by disabling rotation and showing the first image.
+- [x] Landing text, CU logo, HEAT logo, motto, institutional description, and Enter Lexora CTA were preserved.
+- [x] Carousel applies only to the public landing page.
+- [x] Sign-in and dashboard backgrounds remain unchanged.
+
+Runtime/browser result:
+
+- [x] Landing background carousel was browser-verified by the user.
+- [x] Image rotation worked correctly.
+- [x] Fade behavior was accepted.
+- [x] Text readability remained acceptable.
+- [x] Narrow/mobile-like landing layout remained acceptable.
+- [x] User final runtime confirmation: `সব ঠিক আছে।`
+
+### Local and Server Validation Evidence
+
+Local PC validation before commit:
+
+- [x] `pnpm --filter @lexora/web typecheck` passed.
+- [x] `pnpm --filter @lexora/web build` passed.
+- [x] `git diff --check` passed, with only expected Windows LF/CRLF warnings.
+- [x] `apps/web/tsconfig.tsbuildinfo` build artifact restored.
+- [x] No `localStorage` or `sessionStorage` usage was introduced.
+
+Server validation:
+
+- [x] Server fast-forwarded from `6c23ed8` to `0265924`.
+- [x] Server received the three landing image assets.
+- [x] Server received `apps/web/src/components/home/landing-background-carousel.tsx`.
+- [x] `pnpm --filter @lexora/web typecheck` passed on server.
+- [x] `pnpm --filter @lexora/web build` passed on server.
+- [x] Next.js production build included `/`, `/sign-in`, `/admin`, `/teacher`, `/student`, `/forgot-password`, and `/verify/[code]`.
+- [x] `/` route size after carousel was `7.92 kB`, which was accepted for this visual enhancement.
+- [x] Dev preview started with:
+  - `pnpm exec next dev --hostname 0.0.0.0 --port 3000`
+- [x] Dev server became ready.
+- [x] Browser runtime URL used:
+  - `http://192.168.197.129:3000/`
+
+### Security / Boundary Notes
+
+- [x] This work was frontend-only visual/runtime work.
+- [x] No backend API files were modified.
+- [x] No Prisma schema or migration was changed.
+- [x] No `AuthGuard` logic was changed.
+- [x] No `PolicyGuard` logic was changed.
+- [x] No `@RequirePolicy()` usage was changed.
+- [x] No request-context logic was changed.
+- [x] No department-isolation behavior was changed.
+- [x] No object-level authorization logic was changed.
+- [x] `ProtectedRoute` remains in place for dashboard routes.
+- [x] Homepage remains public.
+- [x] Enter Lexora remains auth-aware:
+  - anonymous users route to `/sign-in`
+  - `department_admin` users route to `/admin`
+  - `teacher` users route to `/teacher`
+  - `student` users route to `/student`
+- [x] Access token remains memory-only.
+- [x] Refresh token remains httpOnly cookie-based.
+- [x] No `localStorage` token persistence was introduced.
+- [x] No `sessionStorage` token persistence was introduced.
+- [x] Backend remains the source of truth for authorization and department scoping.
+- [x] No raw access tokens, refresh tokens, cookie values, passwords, password hashes, DB credentials, production secrets, or sensitive runtime tokens are documented here.
+
+### Limitations
+
+- This is frontend/browser visual and responsive runtime verification only.
+- This does not verify backend security behavior beyond confirming that this UI task did not change backend/auth/security code.
+- Landing image performance is acceptable for current optimized test assets, but should be revisited if many more or larger images are added later.
+- No real dashboard business metrics/widgets were added by this task.
+- Notice/notification frontend remains pending.
+- Secure file upload frontend remains pending until the secure upload pipeline is ready.
+
+### Updated Next Test Steps After Landing Carousel and Responsive Verification
+
+Recommended next runtime/frontend steps:
+
+1. Continue preserving homepage as public while keeping protected workspace actions gated.
+2. Continue preserving memory-only access token, httpOnly refresh cookie, and no `localStorage`/`sessionStorage` token persistence.
+3. Do not add real dashboard business widgets/metrics until role-specific dashboard scope is defined.
+4. Notice/notification frontend remains pending.
+5. Secure file upload frontend remains pending until the secure upload pipeline is ready.
+6. Future landing image additions should keep file sizes optimized and should not change global backgrounds for sign-in/dashboard pages.
+
+
 ## Teacher Assigned Courses Frontend Runtime Test
 
 ### Runtime Verification Status
