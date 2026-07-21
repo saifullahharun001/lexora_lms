@@ -1,15 +1,19 @@
 import Image from "next/image";
 
 import { HomeRouteAction } from "@/components/home/home-route-action";
+import { LandingBackgroundCarousel } from "@/components/home/landing-background-carousel";
+
+const landingBackgroundImages = [
+  "/images/Law_Faculty.jpg",
+  "/images/landing/law-faculty-01.jpg",
+  "/images/landing/law-faculty-02.jpg",
+  "/images/landing/law-faculty-03.jpg"
+];
 
 export default function HomePage() {
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-stone-950 text-stone-50">
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 bg-cover bg-center lg:bg-[center_right]"
-        style={{ backgroundImage: "url('/images/Law_Faculty.jpg')" }}
-      />
+      <LandingBackgroundCarousel images={landingBackgroundImages} />
       <div
         aria-hidden="true"
         className="absolute inset-0 bg-gradient-to-r from-stone-950 via-stone-950/84 to-stone-950/18"
