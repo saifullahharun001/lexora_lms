@@ -5401,7 +5401,7 @@ Latest Admin Academic frontend security smoke checks:
 - [x] Teacher assigned-course surface: read-only frontend runtime verified.
 - [x] Teacher Assignment HTTP API: runtime verified.
 - [x] Admin frontend teacher assignment management UI: runtime verified.
-- [ ] Dedicated student available/eligible course-offering endpoint.
+- [x] Dedicated student available/eligible course-offering endpoint: implemented and runtime verified as a safe MVP/foundation via `GET /api/v1/course-offerings/me`; full StudentProfile/progression-based eligibility remains pending.
 - [ ] Notice/notification frontend.
 - [ ] Secure file upload frontend.
 
@@ -5421,9 +5421,130 @@ Latest Admin Academic frontend security smoke checks:
 Recommended next runtime checks:
 
 1. Admin frontend teacher assignment management UI is runtime verified.
-2. Dedicated student available/eligible course-offering endpoint remains pending.
+2. Dedicated student available/eligible course-offering endpoint is implemented and runtime verified as a safe MVP/foundation via `GET /api/v1/course-offerings/me`; full StudentProfile/progression-based eligibility remains pending.
 3. Notice/notification frontend remains pending.
 4. Secure file upload frontend remains pending until the secure upload pipeline is ready.
+
+## Student Course Offering Visibility Endpoint Runtime Verification
+
+### Runtime Verification Status
+
+- [x] Feature status: implemented and runtime verified as a safe MVP/foundation.
+- [x] Implemented endpoint: `GET /api/v1/course-offerings/me`.
+- [x] Implementation commit verified on server:
+  - Commit: `34748b4`
+  - Message: `Add student course offering visibility endpoint`
+- [x] Server fast-forwarded from `97bc4d7` to `34748b4`.
+- [x] Backend validation passed on server:
+  - `pnpm --filter @lexora/api typecheck`
+  - `pnpm --filter @lexora/api build`
+- [x] API process restarted with `pm2 restart lexora-api --update-env`.
+- [x] Health endpoint returned `success: true` and `status: ok`.
+- [x] Final server working tree was clean after runtime verification.
+
+### Implementation Files
+
+- `apps/api/src/modules/academic/application/ports/academic.repository.port.ts`
+- `apps/api/src/modules/academic/application/services/academic.service.ts`
+- `apps/api/src/modules/academic/infrastructure/repositories/prisma-academic.repository.ts`
+- `apps/api/src/modules/academic/presentation/dto/list-my-course-offerings-query.dto.ts`
+- `apps/api/src/modules/academic/presentation/http/course-offerings.controller.ts`
+
+### Security and Authorization Behavior Verified
+
+- [x] `GET /api/v1/course-offerings/me` is declared before `GET /api/v1/course-offerings/:id`, so `me` is not captured as an object ID.
+- [x] Route uses the existing controller-level `AuthGuard` and `PolicyGuard`.
+- [x] Route is protected by `ACADEMIC_POLICY_NAMES.ENROLLMENT_SELF_REQUEST`.
+- [x] Student role was not granted broad `course-management.offering.read`.
+- [x] Service layer includes an explicit student-role semantic check.
+- [x] Admin and teacher are blocked from the student-only endpoint.
+- [x] Query DTO accepts only `academicTermId`.
+- [x] Client cannot provide `studentUserId`.
+- [x] Client cannot provide `departmentId`.
+- [x] `departmentId` comes from authenticated principal/request context.
+- [x] `studentUserId` comes from authenticated actor ID.
+- [x] Repository filtering uses own department and own approved enrollment-derived academic-term context.
+- [x] Endpoint does not expose other students' enrollments.
+- [x] Endpoint does not expose teacher assignments, teacher user details, raw credentials, tokens, or password hashes.
+- [x] Response normalizes the authenticated student's own enrollment metadata as `myEnrollment`.
+- [x] Raw `enrollments` array is removed from the endpoint response.
+
+### Student-Visible Rule Implemented
+
+- [x] Course offering must belong to the authenticated student's department.
+- [x] Course offering must not be archived.
+- [x] Course offering status must be `ENROLLMENT_OPEN` or `IN_PROGRESS`.
+- [x] Course must be `ACTIVE` and not archived.
+- [x] Academic term must belong to the same department and must not be archived.
+- [x] Academic-term visibility context is derived from the same student's own non-archived `APPROVED` enrollment.
+- [x] Optional `academicTermId` query acts only as an additional filter and cannot bypass the student's own enrollment-derived term context.
+- [x] `visibilityStartAt` and `visibilityEndAt` are respected.
+- [x] If no own enrollment-derived context exists, the endpoint safely returns an empty list.
+
+### Runtime Fixture
+
+- [x] Canonical student:
+  - Email: `student.law@cu.ac.bd`
+  - Department ID: `dept_law_test`
+  - Status: `ACTIVE`
+  - Role: `student`
+- [x] Canonical student had approved enrollments in `term_law_2025_2026_s1`.
+- [x] Positive visibility test used:
+  - Course offering ID: `offering_0421_1101_2025_2026_s1_a`
+  - Course code: `0421-1101`
+  - Academic term ID: `term_law_2025_2026_s1`
+  - Original offering status: `PLANNED`
+- [x] The selected offering was temporarily changed to `ENROLLMENT_OPEN` for the positive student visibility test.
+- [x] The selected offering was restored to `PLANNED` after testing.
+- [x] Final restore verification confirmed:
+  - `id`: `offering_0421_1101_2025_2026_s1_a`
+  - `status`: `PLANNED`
+  - `courseCode`: `0421-1101`
+  - `academicTermId`: `term_law_2025_2026_s1`
+
+### Runtime API Test Results
+
+- [x] Admin login returned `HTTP 201`.
+- [x] Teacher login returned `HTTP 201`.
+- [x] Student login returned `HTTP 201`.
+- [x] Unauthenticated `GET /api/v1/course-offerings/me` returned `HTTP 401`.
+- [x] Student broad `GET /api/v1/course-offerings` remained blocked with `HTTP 403`.
+- [x] Teacher `GET /api/v1/course-offerings/me` returned `HTTP 403`.
+- [x] Admin `GET /api/v1/course-offerings/me` returned `HTTP 403`.
+- [x] Student `GET /api/v1/course-offerings/me` returned `HTTP 200` with count `1`.
+- [x] Student `GET /api/v1/course-offerings/me?academicTermId=term_law_2025_2026_s1` returned `HTTP 200` with count `1`.
+- [x] Student `GET /api/v1/course-offerings/me?academicTermId=term_bus_2025_2026_s1` returned `HTTP 200` with count `0`.
+- [x] Response forbidden-field scan found no forbidden fields.
+- [x] Response included `myEnrollment`.
+- [x] Response did not include raw `enrollments`.
+- [x] Response did not include `teacherAssignments`.
+- [x] Runtime response confirmed:
+  - Offering ID: `offering_0421_1101_2025_2026_s1_a`
+  - Offering status during positive test: `ENROLLMENT_OPEN`
+  - Course code: `0421-1101`
+  - Academic term ID: `term_law_2025_2026_s1`
+  - `myEnrollment.status`: `APPROVED`
+  - `myEnrollment.eligibilityStatus`: `PENDING_REVIEW`
+- [x] `lexora-api` remained online in PM2.
+- [x] Health endpoint returned `success: true` and `status: ok`.
+
+### Runtime Verdict
+
+- [x] Dedicated student course-offering visibility endpoint is implemented.
+- [x] Dedicated student course-offering visibility endpoint is runtime verified as a safe MVP/foundation.
+- [x] Student broad course-offering route remains blocked.
+- [x] Student-only route blocks unauthenticated, teacher, and admin access.
+- [x] Student route enforces authenticated department and own approved enrollment-derived academic-term context.
+- [x] Cross-term direct query did not bypass scoping.
+- [x] Response shape avoided raw enrollment array, teacher assignments, teacher details, and other student data.
+
+### Remaining Limitation / Future Hardening
+
+- [ ] Full academic progression/profile-based course-offering eligibility remains pending.
+- [ ] Current Prisma schema does not yet include a dedicated `StudentProfile`, current semester, batch, program-placement, or progression model.
+- [ ] The current implementation intentionally derives student-visible academic-term context from the student's own approved enrollment records.
+- [ ] Future progression work should add proper student academic placement/profile metadata and enforce own program/year/semester eligibility directly from that source of truth.
+- [ ] Future student self-enrollment flow should reuse this department-scoped, backend-side visibility rule and add any additional approval/self-enrollment configuration checks without weakening existing authorization.
 
 ## Teacher Assigned Courses Frontend Runtime Test
 
