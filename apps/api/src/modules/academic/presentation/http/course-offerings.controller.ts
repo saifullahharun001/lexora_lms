@@ -8,6 +8,7 @@ import { ACADEMIC_POLICY_NAMES } from "../../domain/academic.policy-names";
 import { CreateCourseOfferingDto } from "../dto/create-course-offering.dto";
 import { CreateTeacherAssignmentDto } from "../dto/create-teacher-assignment.dto";
 import { ListCourseOfferingsQueryDto } from "../dto/list-course-offerings-query.dto";
+import { ListMyCourseOfferingsQueryDto } from "../dto/list-my-course-offerings-query.dto";
 import { ResourceIdParamDto } from "../dto/resource-id-param.dto";
 import { UpdateCourseOfferingDto } from "../dto/update-course-offering.dto";
 
@@ -29,6 +30,12 @@ export class CourseOfferingsController {
   @RequirePolicy(ACADEMIC_POLICY_NAMES.OFFERING_READ)
   list(@Query() query: ListCourseOfferingsQueryDto) {
     return this.academicService.listCourseOfferings(query);
+  }
+
+  @Get("me")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.ENROLLMENT_SELF_REQUEST)
+  listMine(@Query() query: ListMyCourseOfferingsQueryDto) {
+    return this.academicService.listMyCourseOfferings(query);
   }
 
   @Get(":id")

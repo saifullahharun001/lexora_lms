@@ -46,6 +46,13 @@ export interface CourseOfferingListFilters {
   teacherAssignmentStatus?: TeacherAssignmentStatus;
 }
 
+export interface StudentCourseOfferingListFilters {
+  departmentId: string;
+  studentUserId: string;
+  academicTermId?: string;
+  now?: Date;
+}
+
 export interface TeacherAssignmentListFilters {
   departmentId: string;
   courseOfferingId: string;
@@ -234,6 +241,9 @@ export interface AcademicRepositoryPort {
     input: UpdateCourseInput,
   ): Promise<unknown | null>;
   findCourseOfferings(filters: CourseOfferingListFilters): Promise<unknown[]>;
+  findStudentVisibleCourseOfferings(
+    filters: StudentCourseOfferingListFilters,
+  ): Promise<unknown[]>;
   findCourseOfferingById(
     departmentId: string,
     id: string,

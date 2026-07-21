@@ -1,4 +1,9 @@
 import { Injectable } from "@nestjs/common";
+import {
+  CourseOfferingStatus,
+  CourseStatus,
+  EnrollmentStatus,
+} from "@prisma/client";
 
 import { PrismaService } from "@/common/prisma/prisma.service";
 import type {
@@ -18,6 +23,7 @@ import type {
   UpdateAcademicTermInput,
   UpdateAcademicYearInput,
   ProgramListFilters,
+  StudentCourseOfferingListFilters,
   TeacherAssignmentListFilters,
   UpdateCourseInput,
   UpdateCourseOfferingInput,
@@ -389,6 +395,139 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
       orderBy: {
         createdAt: "desc",
       },
+    });
+  }
+
+  findStudentVisibleCourseOfferings(
+    filters: StudentCourseOfferingListFilters,
+  ) {
+    const now = filters.now ?? new Date();
+
+    return this.prisma.courseOffering.findMany({
+      where: {
+        departmentId: filters.departmentId,
+        archivedAt: null,
+        academicTermId: filters.academicTermId,
+        status: {
+          in: [
+            CourseOfferingStatus.ENROLLMENT_OPEN,
+            CourseOfferingStatus.IN_PROGRESS,
+          ],
+        },
+        AND: [
+          {
+            OR: [
+              {
+                visibilityStartAt: null,
+              },
+              {
+                visibilityStartAt: {
+                  lte: now,
+                },
+              },
+            ],
+          },
+          {
+            OR: [
+              {
+                visibilityEndAt: null,
+              },
+              {
+                visibilityEndAt: {
+                  gte: now,
+                },
+              },
+            ],
+          },
+        ],
+        course: {
+          departmentId: filters.departmentId,
+          status: CourseStatus.ACTIVE,
+          archivedAt: null,
+        },
+        academicTerm: {
+          departmentId: filters.departmentId,
+          archivedAt: null,
+          enrollments: {
+            some: {
+              departmentId: filters.departmentId,
+              studentUserId: filters.studentUserId,
+              status: EnrollmentStatus.APPROVED,
+              archivedAt: null,
+            },
+          },
+        },
+      },
+      select: {
+        id: true,
+        courseId: true,
+        academicTermId: true,
+        sectionCode: true,
+        capacity: true,
+        status: true,
+        visibilityStartAt: true,
+        visibilityEndAt: true,
+        createdAt: true,
+        updatedAt: true,
+        course: {
+          select: {
+            id: true,
+            code: true,
+            title: true,
+            creditHours: true,
+            lectureHours: true,
+            labHours: true,
+            status: true,
+            academicProgramId: true,
+          },
+        },
+        academicTerm: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            sequence: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            enrollmentStartAt: true,
+            enrollmentEndAt: true,
+            academicYearId: true,
+          },
+        },
+        enrollments: {
+          where: {
+            departmentId: filters.departmentId,
+            studentUserId: filters.studentUserId,
+            archivedAt: null,
+          },
+          select: {
+            id: true,
+            status: true,
+            eligibilityStatus: true,
+            enrolledAt: true,
+            droppedAt: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+          take: 1,
+        },
+      },
+      orderBy: [
+        {
+          academicTerm: {
+            startDate: "desc",
+          },
+        },
+        {
+          course: {
+            code: "asc",
+          },
+        },
+        {
+          sectionCode: "asc",
+        },
+      ],
     });
   }
 

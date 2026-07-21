@@ -33,6 +33,7 @@ import type {
   CreateProgramInput,
   CreateTeacherAssignmentInput,
   EnrollmentListFilters,
+  StudentCourseOfferingListFilters,
   UpdateAcademicTermInput,
   UpdateAcademicYearInput,
   ProgramListFilters,
@@ -446,6 +447,38 @@ export class AcademicService {
     return this.repository.findCourseOfferings({
       departmentId: this.getDepartmentId(),
       ...filters,
+    });
+  }
+
+  async listMyCourseOfferings(
+    query: Omit<
+      StudentCourseOfferingListFilters,
+      "departmentId" | "studentUserId" | "now"
+    >,
+  ) {
+    if (!this.hasRole("student")) {
+      throw new ForbiddenException(
+        "Only students can access student course offerings",
+      );
+    }
+
+    const offerings = await this.repository.findStudentVisibleCourseOfferings({
+      departmentId: this.getDepartmentId(),
+      studentUserId: this.getActorId(),
+      academicTermId: query.academicTermId,
+      now: new Date(),
+    });
+
+    return offerings.map((offering) => {
+      const { enrollments, ...safeOffering } = offering as {
+        enrollments?: unknown[];
+        [key: string]: unknown;
+      };
+
+      return {
+        ...safeOffering,
+        myEnrollment: enrollments?.[0] ?? null,
+      };
     });
   }
 
