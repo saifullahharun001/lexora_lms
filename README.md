@@ -110,7 +110,10 @@ The web app runs on `http://localhost:3000` and the API runs on `http://localhos
 - `pnpm db:push` pushes the current Prisma schema to the local database
 - `docker compose --profile mail up -d` enables MailPit
 - `docker compose --profile admin up -d` enables pgAdmin
-- MinIO is available at `http://localhost:9001` and the `lexora-local` bucket is created automatically by `minio-init`
+- The normal Docker Compose startup starts only the remaining local-development infrastructure; the root stack contains no object-storage service.
+- The isolated evaluation runtime is documented under `ops/object-storage/minio-evaluation/`.
+
+Real object-storage evaluation requires separate approval and is not production infrastructure.
 
 ## Architecture Overview
 

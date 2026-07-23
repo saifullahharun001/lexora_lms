@@ -1,0 +1,3 @@
+ops/object-storage/minio-evaluation/*.sh text eol=lf
+ops/object-storage/minio-evaluation/Dockerfile.minio text eol=lf
+ops/object-storage/minio-evaluation/*.yml text eol=lf

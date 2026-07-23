@@ -1,0 +1,104 @@
+name: lexora-minio-evaluation
+
+services:
+  minio:
+    image: lexora/minio-evaluation:RELEASE.2025-10-15T17-29-55Z
+    build:
+      context: .
+      dockerfile: Dockerfile.minio
+      target: minio-runtime
+      args:
+        MINIO_COMMIT: 9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a
+    restart: unless-stopped
+    init: true
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    environment:
+      MINIO_ROOT_USER_FILE: /run/secrets/minio_root_user
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/minio_root_password
+      HOME: /tmp
+    secrets: [minio_root_user, minio_root_password]
+    ports:
+      - "127.0.0.1:9000:9000"
+    expose: ["9001"]
+    volumes:
+      - minio_evaluation_data:/data
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777
+    networks: [minio_evaluation]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "-q",
+          "-O",
+          "/dev/null",
+          "http://127.0.0.1:9000/minio/health/ready",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    pids_limit: 256
+    mem_limit: 2g
+    cpus: 2.0
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: "3" }
+
+  minio-init:
+    image: lexora/minio-bootstrap-evaluation:RELEASE.2025-08-13T08-35-41Z
+    build:
+      context: .
+      dockerfile: Dockerfile.minio
+      target: bootstrap-runtime
+      args:
+        MC_COMMIT: 7394ce0dd2a80935aded936b09fa12cbb3cb8096
+    restart: "no"
+    init: true
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    environment:
+      LEXORA_S3_BUCKET: ${LEXORA_S3_BUCKET:?LEXORA_S3_BUCKET is required}
+      LEXORA_S3_POLICY_NAME: lexora-s3-evaluation
+      HOME: /tmp
+      MC_CONFIG_DIR: /tmp/mc
+    secrets:
+      - minio_root_user
+      - minio_root_password
+      - lexora_s3_access_key
+      - lexora_s3_secret_key
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=32m,mode=1777
+    networks: [minio_evaluation]
+    depends_on:
+      minio:
+        condition: service_healthy
+    pids_limit: 64
+    mem_limit: 256m
+    cpus: 0.5
+    logging:
+      driver: json-file
+      options: { max-size: 5m, max-file: "2" }
+
+secrets:
+  minio_root_user:
+    file: ${LEXORA_MINIO_SECRET_DIR:?LEXORA_MINIO_SECRET_DIR is required}/minio_root_user
+  minio_root_password:
+    file: ${LEXORA_MINIO_SECRET_DIR:?LEXORA_MINIO_SECRET_DIR is required}/minio_root_password
+  lexora_s3_access_key:
+    file: ${LEXORA_MINIO_SECRET_DIR:?LEXORA_MINIO_SECRET_DIR is required}/lexora_s3_access_key
+  lexora_s3_secret_key:
+    file: ${LEXORA_MINIO_SECRET_DIR:?LEXORA_MINIO_SECRET_DIR is required}/lexora_s3_secret_key
+
+volumes:
+  minio_evaluation_data:
+    name: lexora_minio_evaluation_data
+
+networks:
+  minio_evaluation:
+    name: lexora_minio_evaluation
+    internal: true

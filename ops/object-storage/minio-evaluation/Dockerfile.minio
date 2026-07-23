@@ -1,0 +1,48 @@
+# Evaluation-only source builds from immutable official upstream commits.
+ARG GO_IMAGE=golang:1.24.8-alpine3.22
+ARG RUNTIME_IMAGE=alpine:3.22.2
+
+FROM ${GO_IMAGE} AS minio-build
+ARG MINIO_COMMIT=9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a
+RUN apk add --no-cache ca-certificates git
+WORKDIR /src/minio
+RUN git clone https://github.com/minio/minio.git . \
+    && git checkout --detach "${MINIO_COMMIT}" \
+    && test "$(git rev-parse HEAD)" = "${MINIO_COMMIT}"
+RUN mkdir -p /out \
+    && CGO_ENABLED=0 go build -trimpath -tags kqueue \
+        -ldflags "$(go run buildscripts/gen-ldflags.go)" \
+        -o /out/minio .
+
+FROM ${GO_IMAGE} AS mc-build
+ARG MC_COMMIT=7394ce0dd2a80935aded936b09fa12cbb3cb8096
+RUN apk add --no-cache ca-certificates git
+WORKDIR /src/mc
+RUN git clone https://github.com/minio/mc.git . \
+    && git checkout --detach "${MC_COMMIT}" \
+    && test "$(git rev-parse HEAD)" = "${MC_COMMIT}"
+RUN mkdir -p /out \
+    && CGO_ENABLED=0 go build -trimpath -o /out/mc .
+
+FROM ${RUNTIME_IMAGE} AS minio-runtime
+RUN addgroup -S -g 10001 minio \
+    && adduser -S -D -H -u 10001 -G minio minio \
+    && mkdir -p /data \
+    && chown minio:minio /data
+COPY --from=minio-build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=minio-build /out/minio /usr/local/bin/minio
+USER 10001:10001
+VOLUME ["/data"]
+EXPOSE 9000 9001
+ENTRYPOINT ["/usr/local/bin/minio"]
+CMD ["server", "/data", "--address", ":9000", "--console-address", ":9001"]
+
+FROM ${RUNTIME_IMAGE} AS bootstrap-runtime
+RUN apk add --no-cache jq \
+    && addgroup -S -g 10002 bootstrap \
+    && adduser -S -D -H -u 10002 -G bootstrap bootstrap
+COPY --from=mc-build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=mc-build /out/mc /usr/local/bin/mc
+COPY --chmod=0555 bootstrap.sh /usr/local/bin/bootstrap
+USER 10002:10002
+ENTRYPOINT ["/usr/local/bin/bootstrap"]
