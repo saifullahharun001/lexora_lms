@@ -6300,3 +6300,242 @@ UI hardening evidence after commit `9fd2574` (`Refine admin users status editing
 - [x] Library Admin must not manage academic users, courses, results, attendance, transcripts, or system configuration.
 - [x] Activate this role only after Library module/schema/API/dashboard exists.
 - [x] No active `library_admin` role, policy mapping, API, schema, or dashboard behavior was implemented in this task.
+
+
+## Secure File Storage Core Foundation Server Deployment and Static Verification
+
+Runtime verification date: 2026-07-23
+
+### Implementation Commit
+
+- [x] Commit: `d58016c`
+- [x] Message: `Harden secure file storage core foundation`
+- [x] Commit was pushed to `origin/main`.
+- [x] Ubuntu runtime server fast-forwarded from `18a199d` to `d58016c`.
+
+### Scope and Implementation Status
+
+This phase implemented and hardened the internal Secure File Storage core foundation.
+
+Implemented foundation:
+
+- [x] Strongly typed file metadata, scan result, lifecycle, archive, and quarantine contracts.
+- [x] Internal File Storage application service.
+- [x] Department-scoped Prisma repository.
+- [x] Object-storage adapter port.
+- [x] Malware-scanner adapter port.
+- [x] File-content-inspector adapter port.
+- [x] File lifecycle transition policy.
+- [x] Safe File Storage audit-event constants.
+- [x] Dependency-free filename sanitization.
+- [x] Pending-file metadata validation.
+- [x] Safe diagnostic metadata normalization and hardening.
+- [x] Soft archive and delete lifecycle transitions.
+
+This phase intentionally did not add:
+
+- [ ] HTTP upload or download controller.
+- [ ] Public or authenticated File Storage route.
+- [ ] S3 or MinIO object-storage implementation.
+- [ ] Operational malware-scanner implementation.
+- [ ] Real content-signature or magic-number inspector.
+- [ ] Signed URL or controlled-proxy delivery.
+- [ ] Assignment, class-material, notice, discussion, or transcript attachment workflow.
+- [ ] Prisma schema change.
+- [ ] Prisma migration.
+- [ ] Frontend upload or download UI.
+- [ ] Docker or environment configuration change.
+- [ ] Authorization role-mapping change.
+
+### Security and Lifecycle Behavior
+
+Verified foundation behavior:
+
+- [x] Actor identity and active department are derived from authenticated request context.
+- [x] Client-provided department scope cannot replace the authenticated principal's active department.
+- [x] Repository reads and writes include department scope.
+- [x] Cross-department metadata lookup returns safe not-found behavior.
+- [x] Generic safe metadata excludes raw storage bucket and object key.
+- [x] The repository token remains internal to the File Storage module.
+- [x] Uploader identity alone is not treated as future download authorization.
+- [x] Scan results may be persisted only while a file is `PENDING_SCAN`.
+- [x] Trusted scan outcomes are restricted to:
+  - `CLEAN`
+  - `INFECTED`
+  - `ERROR`
+- [x] `PENDING` and `SKIPPED` are rejected by the trusted scan-recording boundary.
+- [x] A file can transition to `AVAILABLE` only when its latest persisted scan is `CLEAN`.
+- [x] Missing, `INFECTED`, or `ERROR` latest scan results cannot activate a file.
+- [x] `QUARANTINED`, `ARCHIVED`, and `DELETED` files cannot be reactivated.
+- [x] Archive and delete are soft lifecycle state changes; no hard-delete repository operation was added.
+- [x] Lifecycle and scan persistence use serializable Prisma transactions.
+- [x] Audit failures propagate and are not silently ignored.
+
+### Filename and Internal Metadata Hardening
+
+Verified validation behavior:
+
+- [x] Filename traversal and path components are removed.
+- [x] Control characters are removed.
+- [x] Bidi display controls are removed.
+- [x] Zero-width characters and BOM are removed.
+- [x] Unicode NFKC normalization is applied.
+- [x] Genuine বাংলা and accented Latin filename text is preserved.
+- [x] Filename length is bounded.
+- [x] SHA-256 must contain exactly 64 hexadecimal characters.
+- [x] SHA-256 is normalized to lowercase.
+- [x] File size must be a positive safe integer within the current PostgreSQL integer limit.
+- [x] Empty MIME, bucket, and object-key values are rejected.
+- [x] Leading slash, backslash, control characters, empty segments, `.` segments, and `..` segments are rejected in object keys.
+- [x] Object keys whose final segment is derived from the sanitized display filename are rejected.
+- [x] Valid opaque internal object keys remain accepted.
+
+### Diagnostic Metadata Hardening
+
+Verified diagnostic metadata behavior:
+
+- [x] Only JSON-safe values are accepted.
+- [x] Binary and custom object instances are rejected.
+- [x] Non-finite numbers are rejected.
+- [x] Serialized size is bounded.
+- [x] Nesting depth is bounded.
+- [x] Secret, credential, token, raw-content, payload, signed-URL, environment, and file-byte style keys are rejected.
+- [x] Prototype-pollution keys are recursively rejected:
+  - `__proto__`
+  - `prototype`
+  - `constructor`
+- [x] Root and nested prototype-pollution test cases passed without modifying `Object.prototype`.
+- [x] Absent diagnostic metadata is omitted from Prisma JSON create data rather than being written as an unsafe JavaScript `null`.
+
+### Local PC Verification
+
+Local validation before commit:
+
+| Validation | Result |
+|---|---|
+| API typecheck | Passed |
+| API build | Passed |
+| Focused File Storage tests | 60 passed, 0 failed, 0 skipped |
+| File Storage Prettier check | Passed |
+| Git diff integrity check | Passed |
+| Staged diff integrity check | Passed |
+| Commit and push | Passed |
+| Final local working tree | Clean |
+
+Focused tests used:
+
+- a fake File Storage repository;
+- pure validation and Prisma JSON helper tests.
+
+No real database or Prisma integration test was performed in this phase.
+
+### Ubuntu Server Deployment and Verification
+
+Server validation after fast-forwarding to `d58016c`:
+
+| Validation | Result |
+|---|---|
+| Server fast-forward from `18a199d` to `d58016c` | Passed |
+| Server API typecheck | Passed |
+| Server API build | Passed |
+| Focused File Storage tests | 60 passed, 0 failed, 0 skipped |
+| PM2 restart | Passed |
+| `lexora-api` PM2 status | Online |
+| API listener at `127.0.0.1:4000` | Verified |
+| Direct API health | Passed |
+| Nginx-proxied API health | Passed |
+| Nginx service status | Active |
+| Nginx boot enablement | Enabled |
+| Final server repository status | Clean |
+
+Verified direct health endpoint:
+
+- `http://127.0.0.1:4000/api/v1/health`
+
+Verified Nginx-proxied health endpoint:
+
+- `http://127.0.0.1/api/v1/health`
+
+Both endpoints returned a successful Lexora API health response.
+
+### PM2 Startup-Timing Observation
+
+- The first direct health check was executed immediately after the PM2 restart.
+- PM2 uptime was effectively zero at that moment.
+- The immediate check returned connection refused because the API listener had not completed startup.
+- A retry after startup completed passed on the first retry attempt.
+- Direct API health and Nginx-proxied health both passed.
+- The API was verified listening only on `127.0.0.1:4000`.
+- This matched the previously observed PM2/Nginx startup-timing behavior.
+- The initial connection refusal was not treated as a persistent API, Nginx, or File Storage defect.
+
+The PM2 cumulative error log displayed historical `NoticeService` dependency errors dated 2026-05-21. Those entries were not from the current startup. The current process logged `Nest application successfully started` and passed both health checks.
+
+### Security Boundaries Preserved
+
+This implementation did not weaken or change:
+
+- [x] `AuthGuard`
+- [x] `PolicyGuard`
+- [x] `@RequirePolicy()`
+- [x] request-context behavior
+- [x] principal department isolation
+- [x] object-level authorization rules
+- [x] teacher assigned-course checks
+- [x] student own-resource checks
+- [x] result publication and amendment controls
+- [x] transcript immutability and verification controls
+- [x] attendance security controls
+- [x] notification isolation
+- [x] existing sensitive-action audit behavior
+
+No raw token, password, cookie, database credential, production secret, object-storage credential, or private runtime object key was added to documentation.
+
+### Current Limitations and Pending Work
+
+The following remain pending:
+
+- [ ] S3-compatible or MinIO object-storage adapter.
+- [ ] Real quarantine byte storage.
+- [ ] Magic-number and content-signature inspection.
+- [ ] Extension allowlist and canonical MIME consistency pipeline.
+- [ ] Operational malware-scanner adapter.
+- [ ] Real scan orchestration over stored object bytes.
+- [ ] Permission-controlled signed URL or controlled backend proxy delivery.
+- [ ] Attachment-resource authorization for assignments, class materials, notices, discussions, and transcript artifacts.
+- [ ] Database-backed Prisma repository integration tests.
+- [ ] Database-backed concurrency and serializable-transaction tests.
+- [ ] Serializable transaction retry handling where required.
+- [ ] Storage quotas.
+- [ ] Audit and lifecycle mutation atomicity.
+- [ ] Secure upload and download frontend.
+- [ ] Full upload/download runtime verification.
+
+Audit writes and lifecycle mutations are currently sequential rather than atomic. Audit failures propagate, but a state mutation may already have succeeded before a later audit failure.
+
+### Runtime Verdict
+
+- [x] Secure File Storage core foundation is implemented.
+- [x] Security-focused source review passed.
+- [x] Commit and push passed.
+- [x] Server deployment passed.
+- [x] API boot verification passed.
+- [x] Sixty focused non-database tests passed locally and on the server.
+- [ ] Real object-storage operations are not implemented or runtime verified.
+- [ ] Full secure upload/download pipeline is not complete.
+- [ ] Production file upload must remain disabled.
+
+Correct status:
+
+> Secure File Storage core foundation is implemented, committed, server-deployed, boot-verified, and covered by 60 focused non-database tests. Real object-storage operations, content inspection, malware-scanner integration, permission-controlled delivery, domain attachment integration, database-backed concurrency testing, audit atomicity, and full upload/download runtime verification remain pending.
+
+### Next Safe File Storage Phase
+
+Recommended next focused phase:
+
+1. Implement an S3-compatible quarantine object-storage adapter.
+2. Implement the trusted file-content inspector.
+3. Implement the operational malware-scanner adapter.
+4. Add database-backed repository and concurrency tests.
+5. Preserve production upload as P0-blocked until the complete secure pipeline is runtime verified.
+6. Do not enable assignment, class-material, notice, discussion, or other attachment uploads before the secure pipeline is complete.
