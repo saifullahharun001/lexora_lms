@@ -6539,3 +6539,207 @@ Recommended next focused phase:
 4. Add database-backed repository and concurrency tests.
 5. Preserve production upload as P0-blocked until the complete secure pipeline is runtime verified.
 6. Do not enable assignment, class-material, notice, discussion, or other attachment uploads before the secure pipeline is complete.
+
+## S3-Compatible Quarantine Object-Storage Adapter Static Deployment Verification — 2026-07-23
+
+### Scope
+
+This section records implementation, source-review, local verification, server deployment, build, boot, and focused fake-client test evidence for the S3-compatible quarantine object-storage adapter.
+
+This evidence does not claim successful real MinIO or external S3 object operations.
+
+Verified implementation commit:
+
+| Purpose | Commit |
+|---|---|
+| Secure S3-compatible quarantine object-storage adapter | `06fc4c5` |
+
+Commit message:
+
+- `Add secure S3 quarantine storage adapter`
+
+### Implemented Adapter Foundation
+
+The adapter implements the existing internal `ObjectStoragePort` for:
+
+- quarantine object creation;
+- object streaming read;
+- object metadata lookup;
+- quarantine-to-available promotion;
+- object deletion;
+- short-lived signed read URL creation for available objects.
+
+Implemented storage commands include:
+
+- `PutObjectCommand`
+- `GetObjectCommand`
+- `HeadObjectCommand`
+- `CopyObjectCommand`
+- `DeleteObjectCommand`
+- AWS SDK v3 signed URL generation
+
+No upload controller, download controller, frontend upload UI, scanner, content inspector, attachment integration, or production upload enablement was added in this phase.
+
+### Security and Integrity Controls Verified
+
+- [x] The configured private bucket is enforced.
+- [x] Callers cannot select arbitrary buckets.
+- [x] Quarantine creation accepts only controlled `quarantine/` keys.
+- [x] Promotion accepts only deterministic matching `quarantine/` to `available/` keys.
+- [x] Available-object signed URLs reject quarantine keys.
+- [x] Leading slashes, backslashes, control characters, empty segments, dot segments, traversal segments, uncontrolled prefixes, and segment-edge whitespace are rejected.
+- [x] Object keys remain opaque and are not derived from display filenames.
+- [x] No public ACL is sent.
+- [x] ETags are not treated as SHA-256 checksums.
+- [x] Provider ETags are retained only as internal copy-concurrency tokens.
+- [x] Source mutation is guarded with `CopySourceIfMatch` when the provider supplies an ETag.
+- [x] Quarantine creation uses destination conditional-write protection.
+- [x] Promotion uses destination conditional-write protection.
+- [x] The custom copy middleware fails closed if mutable serialized request headers are unavailable.
+- [x] The real command middleware stack is tested to insert `if-none-match: *`.
+- [x] Existing destinations are not accepted through size-only comparison.
+- [x] Existing source-plus-destination cleanup requires matching size and trustworthy checksums.
+- [x] Missing checksums require reconciliation rather than automatic source deletion.
+- [x] Copy, precondition, verification, and conditional-conflict failures retain the quarantine source.
+- [x] Source deletion happens only after destination verification.
+- [x] Cleanup failure after a verified copy reports reconciliation-required state.
+- [x] Raw credentials, signed URLs, endpoint details, object content, and private object keys are not logged.
+- [x] Raw S3 client and signer providers remain internal to `FileStorageModule`.
+- [x] Adapter registration does not perform an object-storage network request during Nest startup.
+
+### Dependency and Lockfile Evidence
+
+The repository now tracks the root `pnpm-lock.yaml`.
+
+Verified packages:
+
+| Package | Version |
+|---|---|
+| `@aws-sdk/client-s3` | `3.1093.0` |
+| `@aws-sdk/s3-request-presigner` | `3.1093.0` |
+
+Server installation used:
+
+- `pnpm install --frozen-lockfile`
+- pnpm version `10.10.0`
+
+The frozen-lockfile installation passed.
+
+### Local Verification Evidence
+
+Local verification passed for:
+
+- [x] focused File Storage lint using the repository's existing legacy ESLint configuration;
+- [x] API TypeScript typecheck;
+- [x] API build;
+- [x] File Storage Prettier check;
+- [x] `git diff --check`;
+- [x] five compiled File Storage test files;
+- [x] 106 focused tests;
+- [x] 0 failures;
+- [x] 0 skipped tests.
+
+The ESLint legacy `.eslintrc` deprecation warning is a tooling-migration notice and did not represent a lint failure.
+
+### Server Deployment and Verification Evidence
+
+Server repository:
+
+- Path: `~/lexora_lms`
+- Previous commit: `12b1899`
+- Deployed commit: `06fc4c5`
+
+Verified server results:
+
+| Check | Result |
+|---|---|
+| Git fast-forward | Passed |
+| Server `HEAD` equals `origin/main` | Passed |
+| Frozen lockfile installation | Passed |
+| AWS SDK dependency verification | Passed |
+| API typecheck | Passed |
+| API build | Passed |
+| Compiled File Storage test files | 5 |
+| Focused File Storage tests | 106 passed |
+| Failed tests | 0 |
+| Skipped tests | 0 |
+| PM2 restart | Passed |
+| `lexora-api` PM2 status | Online |
+| Direct API health | Passed |
+| Nginx-proxied API health | Passed |
+| API listener | `127.0.0.1:4000` |
+| Final server repository status | Clean |
+
+Verified health endpoints:
+
+- Direct API: `http://127.0.0.1:4000/api/v1/health`
+- Nginx-proxied API: `http://127.0.0.1/api/v1/health`
+
+### PM2 Startup-Timing Observation
+
+- The first direct health request was executed immediately after PM2 restart.
+- That first request returned connection refused because the API listener had not completed startup.
+- The second health attempt passed.
+- Nginx-proxied health also passed.
+- The current process logged `Nest application successfully started`.
+- The API was verified listening only on `127.0.0.1:4000`.
+
+PM2 cumulative logs also displayed historical `NoticeService` dependency errors dated `2026-05-21`.
+
+Those errors were not generated by the current `2026-07-23` startup and were superseded by the successful current startup and health evidence.
+
+### Current Limitations and Pending Work
+
+The following remain pending:
+
+- [ ] Real MinIO or external S3 connectivity.
+- [ ] Real quarantine object byte upload.
+- [ ] Real `HeadObject`, `GetObject`, `CopyObject`, and `DeleteObject` operations.
+- [ ] Real destination conditional-write behavior against the selected object-storage provider.
+- [ ] Real signed URL creation and external-client delivery.
+- [ ] Safe MinIO or S3 infrastructure provisioning.
+- [ ] Private bucket policy runtime verification.
+- [ ] Persistent object-storage volume verification.
+- [ ] Magic-number and content-signature inspection.
+- [ ] Extension allowlist and canonical MIME consistency pipeline.
+- [ ] Operational malware-scanner adapter.
+- [ ] Real scan orchestration over stored object bytes.
+- [ ] Permission-controlled signed URL or controlled backend-proxy delivery.
+- [ ] Attachment-resource authorization for assignments, class materials, notices, discussions, and transcript artifacts.
+- [ ] Database-backed repository and concurrency tests.
+- [ ] Serializable transaction retry handling where required.
+- [ ] Storage quotas.
+- [ ] Audit and lifecycle mutation atomicity.
+- [ ] Secure upload and download frontend.
+- [ ] Full upload/download runtime verification.
+
+Production file upload must remain disabled.
+
+Assignment, class-material, notice, discussion, recorded-class, transcript-artifact, and other attachment uploads must not be enabled until the complete secure pipeline is implemented and runtime verified.
+
+### Runtime Verdict
+
+- [x] S3-compatible quarantine object-storage adapter is implemented.
+- [x] Security-focused source review passed.
+- [x] Independent local verification passed.
+- [x] Commit and push passed.
+- [x] Server deployment passed.
+- [x] Frozen lockfile dependency installation passed.
+- [x] API typecheck and build passed locally and on the server.
+- [x] API boot verification passed.
+- [x] 106 focused fake-client tests passed locally and on the server.
+- [ ] Real object-storage operations are not runtime verified.
+- [ ] Full secure upload/download pipeline is not complete.
+- [ ] Production file upload is not enabled.
+
+Correct status:
+
+> The S3-compatible quarantine object-storage adapter is implemented, source-reviewed, independently locally verified, committed, pushed, server-deployed, server-built, boot-verified, and covered by 106 focused fake-client tests locally and on the server. Real MinIO or S3 connectivity, real object operations, content inspection, malware scanning, permission-controlled delivery, attachment integration, and full upload/download runtime verification remain pending.
+
+### Supersession Note
+
+The earlier Secure File Storage core-foundation section listed the S3-compatible or MinIO object-storage adapter as pending.
+
+That specific adapter-implementation item is superseded by this section.
+
+The earlier limitations concerning real object-storage operations, content inspection, malware scanning, permission-controlled delivery, attachment integration, database-backed testing, quotas, audit atomicity, frontend upload/download, and full runtime verification remain valid.
