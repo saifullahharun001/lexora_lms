@@ -9,7 +9,6 @@ coverage
 .env.development.local
 .env.test.local
 .env.production.local
-pnpm-lock.yaml
 apps/api/dist
 apps/web/.next
 apps/api/node_modules
