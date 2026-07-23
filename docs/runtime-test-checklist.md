@@ -6743,3 +6743,384 @@ The earlier Secure File Storage core-foundation section listed the S3-compatible
 That specific adapter-implementation item is superseded by this section.
 
 The earlier limitations concerning real object-storage operations, content inspection, malware scanning, permission-controlled delivery, attachment integration, database-backed testing, quotas, audit atomicity, frontend upload/download, and full runtime verification remain valid.
+
+## Isolated MinIO Evaluation Runtime Source Deployment and Static Verification — 2026-07-23
+
+### Scope
+
+This checkpoint records the implementation, security review, commit, server synchronization, and static verification of an isolated MinIO evaluation runtime definition for the Lexora S3-compatible object-storage adapter.
+
+This is an evaluation-only source and infrastructure foundation.
+
+This checkpoint does not claim:
+
+- a successful MinIO image build;
+- container startup;
+- real MinIO connectivity;
+- successful IAM bootstrap execution;
+- real object-storage operations;
+- persistence verification;
+- production object-storage readiness;
+- production upload enablement.
+
+### Related Commit
+
+| Purpose | Commit |
+|---|---|
+| Isolated MinIO evaluation runtime source | `3c8f8a4` |
+
+Commit message:
+
+- `Add isolated MinIO evaluation runtime`
+
+Full verified commit:
+
+- `3c8f8a4514768ef11d5854de21be777ab170c016`
+
+### Implemented Files
+
+The evaluation runtime is isolated under:
+
+- `ops/object-storage/minio-evaluation/`
+
+Tracked files include:
+
+- `compose.yml`
+- `Dockerfile.minio`
+- `bootstrap.sh`
+- `validate.sh`
+- `README.md`
+
+Related repository changes include:
+
+- focused LF rules in `.gitattributes`;
+- removal of legacy MinIO services from the root `docker-compose.yml`;
+- safe example-environment updates;
+- repository documentation updates.
+
+### Evaluation Boundary
+
+The dedicated Compose definition contains only:
+
+- `minio`
+- `minio-init`
+
+It does not include or modify:
+
+- Lexora API;
+- Nginx;
+- PostgreSQL;
+- Redis;
+- pgAdmin;
+- MailPit;
+- ClamAV.
+
+The existing PM2 API, host PostgreSQL, and Nginx runtime remain separate and unchanged.
+
+### Source-Build Pinning
+
+The evaluation runtime uses immutable upstream source references.
+
+| Component | Reference |
+|---|---|
+| MinIO release label | `RELEASE.2025-10-15T17-29-55Z` |
+| MinIO source commit | `9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a` |
+| MinIO Client source commit | `7394ce0dd2a80935aded936b09fa12cbb3cb8096` |
+
+Verified source-build controls:
+
+- [x] No `latest` image is used.
+- [x] The old `RELEASE.2025-04-22T22-12-26Z` server image was removed from the root Compose stack.
+- [x] The old MinIO Client image was removed from the root Compose stack.
+- [x] MinIO and MinIO Client are designed to build from pinned official source commits.
+- [x] Detached commit checkout and exact `HEAD` verification are included.
+- [x] Both build stages create the required `/out` directory.
+- [x] No credentials are embedded in the Dockerfile or build arguments.
+
+The upstream open-source MinIO repository is archived. This runtime is therefore explicitly classified as evaluation-only and is not the final maintained production provider decision.
+
+### Network Exposure Controls
+
+Verified source configuration:
+
+- [x] S3 API host publication is restricted to `127.0.0.1:9000:9000`.
+- [x] Port `9001` is not published to the host.
+- [x] The MinIO console remains internal to the dedicated Compose network.
+- [x] No Nginx route was added.
+- [x] No LAN or public MinIO exposure was introduced.
+- [x] The dedicated Compose network is internal.
+- [x] The root Compose stack no longer contains MinIO host-port mappings.
+
+### Secret and Identity Controls
+
+The runtime requires an external directory through:
+
+- `LEXORA_MINIO_SECRET_DIR`
+
+Expected external secret files:
+
+- `minio_root_user`
+- `minio_root_password`
+- `lexora_s3_access_key`
+- `lexora_s3_secret_key`
+
+Verified controls:
+
+- [x] Secret values are not stored in tracked Compose, Dockerfile, scripts, README, or example environment files.
+- [x] Root credentials and Lexora application credentials are separate.
+- [x] Root and application identifiers must differ.
+- [x] Root and application secret values must differ.
+- [x] Missing, unreadable, empty, multiline, control-character, or whitespace-padded secret values are rejected.
+- [x] Credential values are not printed.
+- [x] The root identity is limited to startup and bootstrap administration.
+- [x] The Lexora API is intended to use a dedicated application identity rather than the root identity.
+
+### IAM and Bucket Policy Foundation
+
+The bootstrap definition is designed to:
+
+- wait for MinIO health;
+- authenticate using root bootstrap credentials;
+- create the configured bucket idempotently;
+- explicitly keep anonymous access private;
+- create or update the Lexora application policy;
+- inspect an existing application user before modification;
+- create or update the dedicated application user;
+- attach the expected policy;
+- verify the final policy and group state.
+
+The application policy is scoped to:
+
+- the configured Lexora bucket;
+- `quarantine/*`;
+- `available/*`.
+
+Permitted object operations:
+
+- `s3:GetObject`
+- `s3:PutObject`
+- `s3:DeleteObject`
+
+Permitted bucket operations:
+
+- `s3:GetBucketLocation`
+- prefix-conditioned `s3:ListBucket`
+
+The `s3:ListBucket` permission exists only to support missing-object semantics under:
+
+- `quarantine/*`
+- `available/*`
+
+It does not permit unrestricted bucket browsing or access to unrelated prefixes.
+
+Explicitly excluded:
+
+- `admin:*`
+- `s3:*`
+- `s3:ListAllMyBuckets`
+- console administration
+- public or anonymous access
+- unrelated buckets
+- unrelated object prefixes
+
+### Fail-Closed Application Identity State
+
+Verified source behavior:
+
+- [x] Only confirmed `XMinioAdminNoSuchUser` permits new-user creation.
+- [x] Authentication, network, malformed JSON, and ambiguous failures stop bootstrap.
+- [x] Existing direct policy must be empty or exactly the expected policy.
+- [x] Existing group membership must be empty.
+- [x] Final direct policy must equal exactly the expected policy.
+- [x] Final group membership must be empty.
+- [x] Final user state must be enabled.
+- [x] Unexpected policy or group state fails closed.
+- [x] No unknown policy is automatically detached.
+- [x] No user is automatically deleted.
+- [x] No group membership is automatically removed.
+- [x] No unrelated identity or policy is modified.
+
+### Container Hardening Foundation
+
+The evaluation source includes:
+
+- non-root runtime users;
+- all Linux capabilities dropped;
+- `no-new-privileges`;
+- read-only root filesystems;
+- bounded writable `tmpfs`;
+- PID limits;
+- CPU and memory limits;
+- init handling;
+- bounded log rotation;
+- a dedicated persistent named volume;
+- a health-aware `minio-init` dependency;
+- no fixed sleep as the sole readiness control.
+
+These settings are source-reviewed but remain runtime-unverified until containers are built and started.
+
+### Local Source Verification
+
+Local PC verification passed for:
+
+- [x] security-focused source review;
+- [x] shell syntax validation;
+- [x] evaluation static validator;
+- [x] YAML and Markdown formatting checks;
+- [x] `git diff --check`;
+- [x] CR-byte checks;
+- [x] focused Git LF attributes;
+- [x] exact changed-file review;
+- [x] focused commit and push;
+- [x] local `HEAD` matched `origin/main`;
+- [x] local repository was clean after commit.
+
+### Ubuntu Server Source Deployment and Static Verification
+
+Server repository:
+
+- Path: `~/lexora_lms`
+- Previous commit: `804e587`
+- Deployed commit: `3c8f8a4`
+
+Verified server results:
+
+| Check | Result |
+|---|---|
+| Git fetch and fast-forward | Passed |
+| Server `HEAD` equals expected commit | Passed |
+| Server `HEAD` equals `origin/main` | Passed |
+| Expected committed files present | Passed |
+| Runtime `.env` owner-only permissions | `600` |
+| Runtime `.env` files untracked | Passed |
+| Shell syntax validation | Passed |
+| Evaluation static validator | Passed |
+| CR-byte checks | Passed |
+| Git LF attributes | Passed |
+| Root Compose legacy MinIO removal | Passed |
+| Isolated Compose service count | 2 |
+| Isolated services | `minio`, `minio-init` |
+| Loopback-only S3 publication | Passed |
+| Host-published console absent | Passed |
+| Immutable source pins present | Passed |
+| External secret references present | Passed |
+| Direct API health | Passed |
+| Nginx-proxied API health | Passed |
+| MinIO listeners on `9000/9001` | Absent |
+| Container runtime installed | No |
+| Image built | No |
+| Container started | No |
+| Final server repository status | Clean |
+
+### Runtime Environment State at This Checkpoint
+
+The following container commands were not installed:
+
+- `docker`
+- `dockerd`
+- `containerd`
+- `podman`
+
+No process was listening on:
+
+- port `9000`
+- port `9001`
+
+The existing Lexora API remained healthy through:
+
+- `http://127.0.0.1:4000/api/v1/health`
+- `http://127.0.0.1/api/v1/health`
+
+No Docker installation, image build, container creation, secret generation, MinIO startup, IAM mutation, object upload, or object deletion occurred during this source-verification phase.
+
+### Security Boundary Preservation
+
+This phase did not:
+
+- add upload or download HTTP routes;
+- enable production uploads;
+- expose MinIO to LAN or public networks;
+- add an Nginx storage route;
+- modify department authorization;
+- modify object-level authorization;
+- modify the File Storage lifecycle policy;
+- weaken quarantine requirements;
+- weaken scan requirements;
+- enable assignment or class-material attachments;
+- expose credentials, signed URLs, tokens, object keys, or stored object bytes.
+
+Production upload remains disabled.
+
+### Pending Runtime Work
+
+The following remain pending:
+
+- [ ] Install a reviewed container runtime and Compose plugin.
+- [ ] Create the external owner-only secret directory.
+- [ ] Generate distinct root and Lexora application credentials.
+- [ ] Safely align the API S3 runtime credentials.
+- [ ] Validate the Compose model with the installed runtime.
+- [ ] Build the pinned MinIO and MinIO Client images.
+- [ ] Start the isolated MinIO service.
+- [ ] Execute the bootstrap container.
+- [ ] Runtime-verify private bucket configuration.
+- [ ] Runtime-verify exact application policy and zero group membership.
+- [ ] Runtime-test blocked unrelated bucket and prefix access.
+- [ ] Runtime-test `PutObject`.
+- [ ] Runtime-test `HeadObject`.
+- [ ] Runtime-test streaming `GetObject`.
+- [ ] Runtime-test conditional destination conflict behavior.
+- [ ] Runtime-test quarantine-to-available promotion.
+- [ ] Runtime-test source retention on failure.
+- [ ] Runtime-test `DeleteObject`.
+- [ ] Runtime-test signed URL generation.
+- [ ] Runtime-test persistence across container recreation.
+- [ ] Runtime-test recovery after server restart.
+- [ ] Select a maintained long-term production object-storage provider.
+- [ ] Implement trusted content inspection.
+- [ ] Implement operational malware scanning.
+- [ ] Implement permission-controlled delivery.
+- [ ] Implement attachment-resource authorization.
+- [ ] Complete full secure upload/download runtime verification.
+
+### Checkpoint Verdict
+
+- [x] Isolated MinIO evaluation runtime source is implemented.
+- [x] Security-focused source review is complete.
+- [x] Independent local static verification passed.
+- [x] Commit and push passed.
+- [x] Ubuntu server synchronization passed.
+- [x] Ubuntu server static verification passed.
+- [x] Existing Lexora API health remained intact.
+- [ ] MinIO image build is not verified.
+- [ ] MinIO container runtime is not verified.
+- [ ] IAM bootstrap is not runtime verified.
+- [ ] Real object-storage operations are not runtime verified.
+- [ ] Persistence is not runtime verified.
+- [ ] Production object storage is not selected.
+- [ ] Production file upload is not enabled.
+
+Correct status:
+
+> The isolated MinIO evaluation runtime source is implemented, security-reviewed, committed, pushed, server-synchronized, and statically verified on both the local PC and Ubuntu server. No image has been built and no container has been started. Real MinIO connectivity, IAM bootstrap behavior, object operations, conditional-write behavior, signed URL delivery, persistence, restart recovery, and production suitability remain unverified.
+
+### Supersession Note
+
+The earlier S3 adapter verification section listed safe MinIO or S3 infrastructure provisioning as fully pending.
+
+This section supersedes only the source-definition and server-static-verification portion of that item.
+
+Real container provisioning, MinIO startup, IAM bootstrap execution, object operations, persistence, and production-provider selection remain pending.
+
+### Resume Point After Break
+
+Resume from:
+
+1. Review and install the container runtime and Compose plugin using a safe, official installation method.
+2. Provision external owner-only secret files without printing or committing their values.
+3. Validate the isolated Compose model before starting containers.
+4. Build the pinned evaluation images.
+5. Start MinIO and run the bootstrap.
+6. Perform least-privilege IAM, real object-operation, conditional-write, signed URL, and persistence tests.
+
+Do not enable production upload or domain attachment features during these steps.
