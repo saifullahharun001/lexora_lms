@@ -1,6 +1,7 @@
 #!/bin/sh
 set -eu
 umask 077
+export LC_ALL=C
 
 secret_value() {
   secret_path="/run/secrets/$1"
@@ -35,19 +36,37 @@ secret_value() {
   printf '%s' "$value"
 }
 
-validate_identifier() {
-  identifier="$1"
-  identifier_length="$(printf '%s' "$identifier" | awk '{ print length }')"
+validate_access_key() {
+  access_key="$1"
+  access_key_length="${#access_key}"
 
-  case "$identifier" in
+  case "$access_key" in
     ""|[!a-zA-Z0-9]*|*[!a-zA-Z0-9_-]*)
-      echo "Credential identifier is invalid" >&2
+      echo "Credential access key is invalid" >&2
       exit 1
       ;;
   esac
 
-  if test "$identifier_length" -lt 3 || test "$identifier_length" -gt 64; then
-    echo "Credential identifier length is invalid" >&2
+  if test "$access_key_length" -lt 3 || test "$access_key_length" -gt 20; then
+    echo "Credential access key length is invalid" >&2
+    exit 1
+  fi
+}
+
+# Evaluation secret keys use unpadded base64url-compatible ASCII characters.
+validate_secret_key() {
+  secret_key="$1"
+  secret_key_length="${#secret_key}"
+
+  case "$secret_key" in
+    ""|*[!a-zA-Z0-9_-]*)
+      echo "Credential secret key is invalid" >&2
+      exit 1
+      ;;
+  esac
+
+  if test "$secret_key_length" -lt 8 || test "$secret_key_length" -gt 40; then
+    echo "Credential secret key length is invalid" >&2
     exit 1
   fi
 }
@@ -71,8 +90,10 @@ root_password="$(secret_value minio_root_password)"
 app_access_key="$(secret_value lexora_s3_access_key)"
 app_secret_key="$(secret_value lexora_s3_secret_key)"
 
-validate_identifier "$root_user"
-validate_identifier "$app_access_key"
+validate_access_key "$root_user"
+validate_access_key "$app_access_key"
+validate_secret_key "$root_password"
+validate_secret_key "$app_secret_key"
 
 test "$root_user" != "$app_access_key" || {
   echo "Root and application identities must be distinct" >&2

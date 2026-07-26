@@ -14,6 +14,8 @@ services:
     read_only: true
     security_opt: ["no-new-privileges:true"]
     cap_drop: ["ALL"]
+    group_add:
+      - ${LEXORA_MINIO_SECRET_GID:?LEXORA_MINIO_SECRET_GID is required}
     environment:
       MINIO_ROOT_USER_FILE: /run/secrets/minio_root_user
       MINIO_ROOT_PASSWORD_FILE: /run/secrets/minio_root_password
@@ -61,6 +63,8 @@ services:
     read_only: true
     security_opt: ["no-new-privileges:true"]
     cap_drop: ["ALL"]
+    group_add:
+      - ${LEXORA_MINIO_SECRET_GID:?LEXORA_MINIO_SECRET_GID is required}
     environment:
       LEXORA_S3_BUCKET: ${LEXORA_S3_BUCKET:?LEXORA_S3_BUCKET is required}
       LEXORA_S3_POLICY_NAME: lexora-s3-evaluation

@@ -42,22 +42,35 @@ recreation and a server restart remains a required runtime test.
 
 ## Secrets and identities
 
-LEXORA_MINIO_SECRET_DIR must point to an absolute, owner-only directory outside
-the repository containing four separately managed, non-empty files:
+LEXORA_MINIO_SECRET_DIR must point to an absolute directory outside the
+repository containing four separately managed, non-empty files:
 
 - minio_root_user
 - minio_root_password
 - lexora_s3_access_key
 - lexora_s3_secret_key
 
-Create empty files with restrictive permissions, then populate them through the
-approved secret-management process without placing values in shell history:
+File-backed Compose secrets are bind-mounted with their host ownership and
+mode. Secret-level uid, gid, or mode remapping must not be relied upon for
+file-backed sources. LEXORA_MINIO_SECRET_GID must be the numeric GID of a
+dedicated host group used only for this evaluation runtime. Both non-root
+containers receive that GID only as a supplementary group; their primary
+identities remain unchanged.
 
-    install -d -m 700 /secure/external/minio-evaluation
-    install -m 600 /dev/null /secure/external/minio-evaluation/minio_root_user
-    install -m 600 /dev/null /secure/external/minio-evaluation/minio_root_password
-    install -m 600 /dev/null /secure/external/minio-evaluation/lexora_s3_access_key
-    install -m 600 /dev/null /secure/external/minio-evaluation/lexora_s3_secret_key
+Recommended host metadata is:
+
+- Secret directory: `root:root`, mode `0700`.
+- Each secret file: `root:<dedicated-secret-group>`, mode
+  `0640`.
+
+Secret files must never be world-readable. Populate them through the approved
+secret-management process without printing values or placing values in shell
+history.
+
+Access keys must be 3–20 bytes and contain only ASCII letters, digits,
+underscore, or hyphen. Secret keys must be 8–40 bytes and use the same
+controlled, unpadded base64url-compatible character set. Existing incompatible
+credentials require controlled rotation before another startup attempt.
 
 Root credentials are mounted only for MinIO startup and bootstrap
 administration. Lexora API configuration must use the separate application
@@ -80,6 +93,25 @@ access.
 
 LEXORA_S3_BUCKET is a required non-secret Compose variable. API S3 credentials
 must match the external application secret files, never the root files.
+
+### Source-only credential rotation plan
+
+Before changing credentials, stop and remove only the evaluation containers.
+Confirm that the preserved evaluation volume is empty, or understand how
+credential state in a non-empty volume affects recovery. Through the approved
+secret-management process:
+
+1. Generate two distinct 20-character access keys and two distinct 40-character
+   secret keys without printing them.
+2. Write each value directly to its designated external secret file.
+3. Assign every secret file to
+   `root:<dedicated-secret-group>` and mode `0640`.
+4. Update only the application S3 credentials in untracked API environment
+   files so they match the rotated application files.
+5. Never place either root credential in API configuration.
+6. Validate credential lengths, ownership, permissions, and root/application
+   distinctness before startup.
+7. Keep production upload disabled.
 
 ## Bootstrap and readiness
 

@@ -8,6 +8,7 @@ bootstrap_file="$base_dir/bootstrap.sh"
 root_compose_file="$base_dir/../../../docker-compose.yml"
 evaluation_readme="$base_dir/README.md"
 attributes_file="$base_dir/../../../.gitattributes"
+env_example="$base_dir/../../../.env.example"
 
 fail() {
   echo "MinIO evaluation validation failed: $1" >&2
@@ -27,6 +28,33 @@ services="$(
 )"
 test "$services" = "minio minio-init " ||
   fail "compose must define only minio and minio-init"
+
+test "$(grep -Fc 'group_add:' "$compose_file")" -eq 2 ||
+  fail "both services must receive a supplementary secret-reader group"
+test "$(grep -Fc '${LEXORA_MINIO_SECRET_GID:?LEXORA_MINIO_SECRET_GID is required}' "$compose_file")" -eq 2 ||
+  fail "both services must require the same secret-reader GID"
+grep -Fq 'LEXORA_MINIO_SECRET_GID=' "$env_example" ||
+  fail "secret-reader GID must be documented as non-secret configuration"
+awk '
+  /^  minio:$/ { service="minio" }
+  /^  minio-init:$/ { service="minio-init" }
+  /^    group_add:$/ && service != "" { group_add[service]=1 }
+  END { exit !(group_add["minio"] && group_add["minio-init"]) }
+' "$compose_file" ||
+  fail "each evaluation service must declare group_add"
+grep -Fq 'USER 10001:10001' "$dockerfile" ||
+  fail "MinIO image must retain its non-root primary identity"
+grep -Fq 'USER 10002:10002' "$dockerfile" ||
+  fail "bootstrap image must retain its non-root primary identity"
+if grep -Eq '^[[:space:]]+user:' "$compose_file"; then
+  fail "compose must not override image primary identities"
+fi
+
+test "$(grep -Ec '^[[:space:]]+file: .*LEXORA_MINIO_SECRET_DIR' "$compose_file")" -eq 4 ||
+  fail "all four secrets must remain separate file-backed sources"
+if grep -Eq '^[[:space:]]+(uid|gid|mode):' "$compose_file"; then
+  fail "file-backed secrets must not rely on uid, gid, or mode remapping"
+fi
 
 mc_build_stage="$(
   awk '
@@ -139,6 +167,18 @@ grep -Fq 'Existing application identity has unexpected policy or group state' "$
   fail "unexpected existing privilege state must fail closed"
 grep -Fq '.userStatus == "enabled"' "$bootstrap_file" ||
   fail "final application user must be enabled"
+grep -Fq 'export LC_ALL=C' "$bootstrap_file" ||
+  fail "credential validation must use byte-oriented locale behavior"
+grep -Fq 'test "$access_key_length" -lt 3 || test "$access_key_length" -gt 20' "$bootstrap_file" ||
+  fail "access keys must be limited to 3 through 20 bytes"
+grep -Fq 'test "$secret_key_length" -lt 8 || test "$secret_key_length" -gt 40' "$bootstrap_file" ||
+  fail "secret keys must be limited to 8 through 40 bytes"
+test "$(grep -Fc 'validate_access_key "' "$bootstrap_file")" -eq 2 ||
+  fail "both root and application access keys must be validated"
+test "$(grep -Fc 'validate_secret_key "' "$bootstrap_file")" -eq 2 ||
+  fail "both root and application secret keys must be validated"
+test "$(grep -Fc '*[!a-zA-Z0-9_-]*' "$bootstrap_file")" -ge 2 ||
+  fail "credential allowlists must reject reserved and non-ASCII characters"
 
 if grep -Eq 'mc admin policy detach|mc admin user (remove|delete)|mc admin group (remove|delete)' "$bootstrap_file"; then
   fail "bootstrap must not automatically remove unknown privilege state"
@@ -151,6 +191,21 @@ grep -Fq 'available/*' "$evaluation_readme" ||
 if grep -Eq 'quarantine/_|available/_' "$evaluation_readme"; then
   fail "README contains incorrect wildcard notation"
 fi
+grep -Fq 'bind-mounted with their host ownership and' "$evaluation_readme" ||
+  fail "README must explain file-secret ownership preservation"
+grep -Fq 'remapping must not be relied upon' "$evaluation_readme" ||
+  fail "README must reject file-secret uid, gid, and mode remapping"
+grep -Fq 'root:<dedicated-secret-group>' "$evaluation_readme" ||
+  fail "README must require a dedicated secret-reader group"
+grep -Fq '0640' "$evaluation_readme" ||
+  fail "README must document group-readable, non-world-readable files"
+grep -Fq 'Access keys must be 3–20 bytes' "$evaluation_readme" ||
+  fail "README must document access-key bounds"
+grep -Fq 'Secret keys must be 8–40 bytes' "$evaluation_readme" ||
+  fail "README must document secret-key bounds"
+if grep -Eq 'mode .*0?6(44|66)|world-readable secret' "$evaluation_readme"; then
+  fail "README must not permit world-readable secret files"
+fi
 
 grep -Fxq 'ops/object-storage/minio-evaluation/*.sh text eol=lf' "$attributes_file" ||
   fail "shell scripts must be LF-enforced by Git attributes"
@@ -158,5 +213,14 @@ grep -Fxq 'ops/object-storage/minio-evaluation/Dockerfile.minio text eol=lf' "$a
   fail "evaluation Dockerfile must be LF-enforced by Git attributes"
 grep -Fxq 'ops/object-storage/minio-evaluation/*.yml text eol=lf' "$attributes_file" ||
   fail "evaluation YAML must be LF-enforced by Git attributes"
+
+test "$(grep -Fc 'read_only: true' "$compose_file")" -eq 2 ||
+  fail "both services must retain read-only root filesystems"
+test "$(grep -Fc 'security_opt: ["no-new-privileges:true"]' "$compose_file")" -eq 2 ||
+  fail "both services must retain no-new-privileges"
+test "$(grep -Fc 'cap_drop: ["ALL"]' "$compose_file")" -eq 2 ||
+  fail "both services must retain all-capability drop"
+test "$(grep -Fc 'pids_limit:' "$compose_file")" -eq 2 ||
+  fail "both services must retain PID limits"
 
 echo "MinIO evaluation static validation passed"
