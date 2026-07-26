@@ -22,6 +22,12 @@ detached commits, verifies HEAD, builds static binaries in Go builder stages,
 and copies only binaries and CA certificates into minimal Alpine stages. No
 unofficial MinIO server image is used.
 
+These source-built MinIO and mc binaries may report a
+`DEVELOPMENT.<timestamp>` version. The commit-derived timestamp and
+exact embedded Git commit are the audit evidence; `DEVELOPMENT.GOGET`
+is not acceptable for the evaluated image. Compose image tags are internal
+evaluation labels and are not evidence of official upstream release packaging.
+
 ## Isolation and persistence
 
 The Compose project contains only minio and minio-init. The S3 API is published

@@ -28,6 +28,31 @@ services="$(
 test "$services" = "minio minio-init " ||
   fail "compose must define only minio and minio-init"
 
+mc_build_stage="$(
+  awk '
+    /^FROM .* AS mc-build$/ { in_mc_build=1 }
+    in_mc_build && /^FROM .* AS / && $0 !~ / AS mc-build$/ { exit }
+    in_mc_build { print }
+  ' "$dockerfile"
+)"
+test -n "$mc_build_stage" ||
+  fail "mc source build stage is missing"
+printf '%s\n' "$mc_build_stage" |
+  grep -Fq 'buildscripts/gen-ldflags.go' ||
+  fail "mc build must generate upstream version metadata"
+printf '%s\n' "$mc_build_stage" |
+  grep -Fq -e '-tags kqueue' ||
+  fail "mc build must retain the upstream kqueue build tag"
+printf '%s\n' "$mc_build_stage" |
+  grep -Fq -e '-ldflags "$(go run buildscripts/gen-ldflags.go)"' ||
+  fail "mc build must pass generated ldflags as one argument"
+printf '%s\n' "$mc_build_stage" |
+  grep -Fq 'test "$(git rev-parse HEAD)" = "${MC_COMMIT}"' ||
+  fail "mc build must verify the exact checked-out commit"
+printf '%s\n' "$mc_build_stage" |
+  grep -Fq -e '-o /out/mc' ||
+  fail "mc build output path is invalid"
+
 test "$(grep -Fc 'RUN mkdir -p /out \' "$dockerfile")" -eq 2 ||
   fail "both source build stages must create /out"
 grep -Fq 'apk add --no-cache jq' "$dockerfile" ||

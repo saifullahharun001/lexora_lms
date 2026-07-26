@@ -22,7 +22,9 @@ RUN git clone https://github.com/minio/mc.git . \
     && git checkout --detach "${MC_COMMIT}" \
     && test "$(git rev-parse HEAD)" = "${MC_COMMIT}"
 RUN mkdir -p /out \
-    && CGO_ENABLED=0 go build -trimpath -o /out/mc .
+    && CGO_ENABLED=0 go build -trimpath -tags kqueue \
+        -ldflags "$(go run buildscripts/gen-ldflags.go)" \
+        -o /out/mc .
 
 FROM ${RUNTIME_IMAGE} AS minio-runtime
 RUN addgroup -S -g 10001 minio \
