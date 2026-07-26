@@ -21,14 +21,14 @@ services:
       MINIO_ROOT_PASSWORD_FILE: /run/secrets/minio_root_password
       HOME: /tmp
     secrets: [minio_root_user, minio_root_password]
-    ports:
-      - "127.0.0.1:9000:9000"
     expose: ["9001"]
     volumes:
       - minio_evaluation_data:/data
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777
-    networks: [minio_evaluation]
+    networks:
+      minio_evaluation:
+        ipv4_address: ${LEXORA_MINIO_IPV4:?LEXORA_MINIO_IPV4 is required}
     healthcheck:
       test:
         [
@@ -106,3 +106,7 @@ networks:
   minio_evaluation:
     name: lexora_minio_evaluation
     internal: true
+    ipam:
+      config:
+        - subnet: ${LEXORA_MINIO_SUBNET:?LEXORA_MINIO_SUBNET is required}
+          gateway: ${LEXORA_MINIO_GATEWAY:?LEXORA_MINIO_GATEWAY is required}

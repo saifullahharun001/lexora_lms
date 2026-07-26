@@ -7,8 +7,7 @@ selected its maintained long-term object-storage provider.
 
 No Lexora upload route is enabled here. Real object operations, persistence
 across recreation and server restart, and external signed URL delivery still
-require runtime verification. URLs containing 127.0.0.1 work only for software
-running on the server.
+require runtime verification.
 
 ## Pinned source builds
 
@@ -30,10 +29,21 @@ evaluation labels and are not evidence of official upstream release packaging.
 
 ## Isolation and persistence
 
-The Compose project contains only minio and minio-init. The S3 API is published
-only on 127.0.0.1 port 9000. The console is available only inside the dedicated
-internal Compose network and is not published to the host. No Nginx route is
-added.
+The Compose project contains only minio and minio-init. No MinIO port is
+published to the Docker host. The host-resident Lexora API reaches MinIO at its
+configured static internal bridge IPv4 address on port 9000. This address is
+only for host-local evaluation traffic; it is not a public or LAN endpoint.
+The console is available only inside the dedicated internal Compose network and
+is not published to the host. No Nginx route is added.
+
+LEXORA_MINIO_SUBNET, LEXORA_MINIO_GATEWAY, and LEXORA_MINIO_IPV4 are
+environment-specific, non-secret configuration. Select them only after checking
+host routes and existing Docker networks, and reject any overlapping subnet or
+address. The dynamically observed runtime address is not durable
+configuration. The internal network must not be removed merely to make host
+port publication work.
+
+Client-facing signed URLs or controlled backend delivery remain pending.
 
 Object data uses the named volume lexora_minio_evaluation_data. Ordinary
 shutdown must omit the volume-removal option. Removing Compose volumes destroys

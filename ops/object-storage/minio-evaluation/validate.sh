@@ -35,6 +35,12 @@ test "$(grep -Fc '${LEXORA_MINIO_SECRET_GID:?LEXORA_MINIO_SECRET_GID is required
   fail "both services must require the same secret-reader GID"
 grep -Fq 'LEXORA_MINIO_SECRET_GID=' "$env_example" ||
   fail "secret-reader GID must be documented as non-secret configuration"
+grep -Fq 'LEXORA_MINIO_SUBNET=' "$env_example" ||
+  fail "evaluation subnet configuration is missing"
+grep -Fq 'LEXORA_MINIO_GATEWAY=' "$env_example" ||
+  fail "evaluation gateway configuration is missing"
+grep -Fq 'LEXORA_MINIO_IPV4=' "$env_example" ||
+  fail "evaluation static IPv4 configuration is missing"
 awk '
   /^  minio:$/ { service="minio" }
   /^  minio-init:$/ { service="minio-init" }
@@ -85,12 +91,36 @@ test "$(grep -Fc 'RUN mkdir -p /out \' "$dockerfile")" -eq 2 ||
   fail "both source build stages must create /out"
 grep -Fq 'apk add --no-cache jq' "$dockerfile" ||
   fail "bootstrap image must include a structured JSON parser"
-grep -Fq '"127.0.0.1:9000:9000"' "$compose_file" ||
-  fail "S3 API must bind to loopback"
+if grep -Eq '^[[:space:]]+ports:' "$compose_file"; then
+  fail "evaluation services must not publish host ports"
+fi
+if grep -Eq '9000:9000|9001:9001' "$compose_file"; then
+  fail "MinIO API and console host mappings must be absent"
+fi
 grep -Fq 'expose: ["9001"]' "$compose_file" ||
   fail "console must remain internal-only"
 grep -Fq 'internal: true' "$compose_file" ||
   fail "evaluation network must be internal"
+grep -Fq 'subnet: ${LEXORA_MINIO_SUBNET:?LEXORA_MINIO_SUBNET is required}' "$compose_file" ||
+  fail "evaluation network must require a configured subnet"
+grep -Fq 'gateway: ${LEXORA_MINIO_GATEWAY:?LEXORA_MINIO_GATEWAY is required}' "$compose_file" ||
+  fail "evaluation network must require a configured gateway"
+test "$(grep -Fc 'ipv4_address: ${LEXORA_MINIO_IPV4:?LEXORA_MINIO_IPV4 is required}' "$compose_file")" -eq 1 ||
+  fail "MinIO must have exactly one required static IPv4 assignment"
+awk '
+  /^  minio:$/ { in_minio=1; next }
+  in_minio && /^  minio-init:$/ { in_minio=0 }
+  in_minio && /ipv4_address: .*LEXORA_MINIO_IPV4/ {
+    static_ip_count++
+  }
+  END { exit !(static_ip_count == 1) }
+' "$compose_file" ||
+  fail "static IPv4 assignment must belong to the MinIO service"
+grep -Fq 'networks: [minio_evaluation]' "$compose_file" ||
+  fail "bootstrap must remain on the internal evaluation network"
+if grep -Fq 'network_mode: host' "$compose_file"; then
+  fail "host networking must not be used"
+fi
 test "$(grep -Fc 'LEXORA_MINIO_SECRET_DIR:?' "$compose_file")" -eq 4 ||
   fail "external secret directory must be required"
 grep -Fq '9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a' "$dockerfile" ||
@@ -191,6 +221,14 @@ grep -Fq 'available/*' "$evaluation_readme" ||
 if grep -Eq 'quarantine/_|available/_' "$evaluation_readme"; then
   fail "README contains incorrect wildcard notation"
 fi
+if grep -Fq '127.0.0.1' "$evaluation_readme"; then
+  fail "README must not claim loopback host publication"
+fi
+grep -Fq 'No MinIO port is' "$evaluation_readme" &&
+  grep -Fq 'published to the Docker host' "$evaluation_readme" ||
+  fail "README must document that host ports are unpublished"
+grep -Fq 'static internal bridge IPv4 address' "$evaluation_readme" ||
+  fail "README must document host access through the static internal IP"
 grep -Fq 'bind-mounted with their host ownership and' "$evaluation_readme" ||
   fail "README must explain file-secret ownership preservation"
 grep -Fq 'remapping must not be relied upon' "$evaluation_readme" ||
