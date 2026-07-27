@@ -7988,3 +7988,180 @@ Earlier limitations remain valid for:
 - complete secure upload/download runtime verification.
 
 Production file upload remains disabled.
+
+## PM2 Activation of Corrected Conditional Streaming Build — 2026-07-27
+
+### Scope
+
+This checkpoint records activation of the corrected conditional streaming S3 promotion build through the existing production-style PM2 process contract.
+
+The corrected compiled adapter had already been independently reviewed, committed, server-built, focused-test verified, and directly runtime-tested against the isolated MinIO evaluation environment.
+
+This checkpoint verifies that the same corrected build successfully boots through the existing NestJS and PM2 application path.
+
+Production file upload remains disabled.
+
+### Related Commits
+
+| Item | Verified value |
+|---|---|
+| Repository commit at activation | `c3f73f6c62e0650ef095af6abf067bf7cbc97888` |
+| Corrected implementation commit | `ba02b1d910537592ae5f0e412bdbfad34cfce916` |
+| Documentation parent | `c3f73f6c62e0650ef095af6abf067bf7cbc97888` |
+
+### Compiled Build Verification
+
+The activated compiled adapter SHA-256 was:
+
+    63973ad7350719fbb012c2ac21fe247a8124d27f5bc5749d2cc4bf7c77715053
+
+Verified compiled behavior:
+
+- [x] `PutObjectCommand` present.
+- [x] `IfNoneMatch` present.
+- [x] `ContentLength` present.
+- [x] `IfMatch` present.
+- [x] incremental SHA-256 hashing present.
+- [x] explicit stream disposal present.
+- [x] `CopyObjectCommand` absent.
+- [x] `Buffer.concat` absent from the active adapter.
+- [x] AppModule and FileStorageModule provider graph remained unchanged.
+
+### PM2 Process Transition
+
+| Item | Before | After |
+|---|---:|---:|
+| PM2 application ID | `0` | `0` |
+| API PID | `1950` | `24486` |
+| Restart count | `0` | `1` |
+| Status | `online` | `online` |
+
+Preserved PM2 contract:
+
+| Item | Verified value |
+|---|---|
+| Working directory | `/home/sh002/lexora_lms` |
+| Executable | `/usr/bin/bash` |
+| Launch command | `node -r ./apps/api/register-paths.js apps/api/dist/src/main.js` |
+| Stored PM2 S3 configuration count | `0` |
+
+Verified:
+
+- [x] Exactly one PM2 restart occurred.
+- [x] A new API PID was created.
+- [x] The PM2 application ID remained unchanged.
+- [x] Repository-root working directory remained unchanged.
+- [x] The established register-path launch command remained unchanged.
+- [x] No S3 credential value was added to PM2 process metadata.
+- [x] PM2 status returned to `online`.
+
+The PM2 message:
+
+    Use --update-env to update environment variables
+
+was informational. This checkpoint intentionally did not update environment variables.
+
+### NestJS Boot Verification
+
+Current-start log isolation verified:
+
+- [x] `Nest application successfully started` was present.
+- [x] No `UnknownDependenciesException` was present.
+- [x] No unresolved Nest dependency pattern was present.
+- [x] No `Cannot find module` pattern was present.
+- [x] No `EADDRINUSE` pattern was present.
+- [x] No unhandled promise rejection pattern was present.
+- [x] No fatal `ReferenceError` or `TypeError` pattern was present.
+- [x] No configured sensitive runtime value appeared in current-start logs.
+
+The corrected build therefore completed NestJS dependency-injection boot through PM2.
+
+### API Startup and Health
+
+The first immediate direct health request received connection refused while the restarted process was still creating its listener.
+
+The second health attempt passed approximately two seconds later.
+
+Verified:
+
+- [x] Direct API health passed after startup.
+- [x] Nginx-proxied API health passed after startup.
+- [x] No second PM2 restart occurred.
+- [x] PM2 restart count remained exactly `1`.
+- [x] API remained bound exclusively to `127.0.0.1:4000`.
+- [x] No direct LAN or public NestJS listener was introduced.
+
+The first connection refusal was a startup-timing observation and not an API boot failure.
+
+### MinIO and Infrastructure Non-Regression
+
+| Item | Verified value |
+|---|---|
+| MinIO container short ID | `550f841b7043` |
+| MinIO status | `running` |
+| MinIO health | `healthy` |
+| MinIO internal IPv4 | `10.203.250.10` |
+
+Verified:
+
+- [x] MinIO container identity remained unchanged.
+- [x] MinIO remained running.
+- [x] MinIO remained healthy.
+- [x] MinIO remained on the verified internal IPv4.
+- [x] No host listener appeared on ports `9000` or `9001`.
+- [x] The named MinIO volume remained available.
+- [x] No MinIO restart was attempted.
+- [x] No PostgreSQL restart was attempted.
+- [x] No Nginx restart was attempted.
+- [x] No environment file was changed.
+- [x] No database record was changed.
+- [x] No object-storage object was created or changed.
+- [x] No public file-storage route was enabled.
+- [x] Repository refs remained unchanged.
+- [x] Repository remained clean.
+
+### Runtime Evidence
+
+Detailed server-side report:
+
+    /home/sh002/lexora-api-conditional-streaming-pm2-boot-20260727T084714Z.txt
+
+No credential value, private object key, token, payload, raw checksum, or database secret is recorded in this checklist.
+
+### Runtime Verdict
+
+- [x] PM2 activation of the corrected build is runtime verified.
+- [x] NestJS dependency-injection boot on the corrected build is runtime verified.
+- [x] The established repository-root PM2 launch contract is preserved.
+- [x] Current-start dependency and fatal-pattern scans passed.
+- [x] Current-start sensitive-value scan passed.
+- [x] Direct and Nginx-proxied API health passed.
+- [x] Localhost-only API binding is preserved.
+- [x] MinIO isolation and health are preserved.
+- [x] No infrastructure or repository regression occurred.
+- [ ] Database-backed persistence verification remains pending.
+- [ ] Magic-number and content-signature inspection remain pending.
+- [ ] Extension allowlist and canonical MIME consistency remain pending.
+- [ ] Operational malware scanning remains pending.
+- [ ] Attachment-resource authorization remains pending.
+- [ ] Permission-controlled signed delivery remains pending.
+- [ ] Database-backed concurrency and transaction verification remain pending.
+- [ ] Storage quotas remain pending.
+- [ ] Audit and lifecycle atomicity remain pending.
+- [ ] Secure upload/download frontend remains pending.
+- [ ] Complete secure upload/download runtime verification remains pending.
+- [ ] Production file upload remains disabled.
+
+Correct status:
+
+> The corrected conditional streaming S3 promotion build is implemented, independently reviewed, committed, pushed, server-built, directly runtime verified against the isolated MinIO evaluation environment, and now activated through the verified PM2 and NestJS dependency-injection boot path. Persistence, trusted content inspection, MIME consistency, malware scanning, attachment authorization, permission-controlled delivery, database concurrency, quotas, audit atomicity, frontend integration, and the complete secure upload/download pipeline remain pending. Production upload remains disabled.
+
+### Supersession Note
+
+This section supersedes only the earlier pending statement:
+
+- `PM2 process restart and DI boot on the correction commit remain pending.`
+
+That item is now runtime verified.
+
+All other pending secure file-storage controls and production-upload restrictions remain unchanged.
