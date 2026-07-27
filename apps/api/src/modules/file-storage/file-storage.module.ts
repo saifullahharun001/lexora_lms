@@ -10,9 +10,11 @@ import { FileStorageService } from "./application/services/file-storage.service"
 import {
   FILE_CONTENT_INSPECTOR_PORT,
   FILE_STORAGE_REPOSITORY,
+  MALWARE_SCANNER_PORT,
   OBJECT_STORAGE_PORT,
 } from "./domain/file-storage.constants";
 import { FileTypeContentInspectorAdapter } from "./infrastructure/content-inspection/file-type-content-inspector.adapter";
+import { ClamAvMalwareScannerAdapter } from "./infrastructure/malware-scanning/clamav-malware-scanner.adapter";
 import {
   buildS3ClientConfig,
   createS3CommandClient,
@@ -51,6 +53,7 @@ import { PrismaFileStorageRepository } from "./infrastructure/repositories/prism
     },
     S3ObjectStorageAdapter,
     FileTypeContentInspectorAdapter,
+    ClamAvMalwareScannerAdapter,
     {
       provide: OBJECT_STORAGE_PORT,
       useExisting: S3ObjectStorageAdapter,
@@ -58,6 +61,10 @@ import { PrismaFileStorageRepository } from "./infrastructure/repositories/prism
     {
       provide: FILE_CONTENT_INSPECTOR_PORT,
       useExisting: FileTypeContentInspectorAdapter,
+    },
+    {
+      provide: MALWARE_SCANNER_PORT,
+      useExisting: ClamAvMalwareScannerAdapter,
     },
   ],
   exports: [FileStorageService],
