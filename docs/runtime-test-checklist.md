@@ -7670,3 +7670,321 @@ Earlier pending statements remain valid for:
 - full secure upload/download runtime verification.
 
 Production file upload remains disabled.
+
+## Conditional Streaming S3 Promotion Correction and Real MinIO Runtime Verification — 2026-07-27
+
+### Scope
+
+This checkpoint records the provider-compatibility correction and real MinIO runtime verification of the Lexora S3-compatible quarantine-to-available promotion lifecycle.
+
+The corrected implementation replaces the earlier active `CopyObject` promotion path with a fail-closed conditional streaming flow based on:
+
+- trusted expected byte count;
+- trusted SHA-256 checksum;
+- streamed source verification;
+- provider-ETag-guarded second source read;
+- conditional destination `PutObject`;
+- streamed destination verification;
+- source deletion only after destination integrity is verified.
+
+This checkpoint covers the compiled adapter directly against the isolated MinIO evaluation runtime.
+
+It does not enable or expose a production upload route.
+
+Production file upload remains disabled.
+
+### Related Implementation Commit
+
+| Item | Verified value |
+|---|---|
+| Correction commit | `ba02b1d910537592ae5f0e412bdbfad34cfce916` |
+| Commit subject | `Use conditional streaming promotion for S3 storage` |
+| Parent commit | `138ddc694a8ed8ad301d8e83958cc3ad6b64749b` |
+
+The correction changed exactly:
+
+- `apps/api/src/modules/file-storage/application/ports/object-storage.port.ts`
+- `apps/api/src/modules/file-storage/infrastructure/object-storage/s3-object-storage.adapter.ts`
+- `apps/api/src/modules/file-storage/infrastructure/object-storage/s3-object-storage.adapter.test.ts`
+
+No dependency, IAM, MinIO, PM2, Nginx, database, frontend, route, controller, or environment configuration file was changed by this implementation commit.
+
+### Defect That Required the Correction
+
+An earlier real MinIO diagnostic proved that destination-side `If-None-Match: *` attached to `CopyObject` was present in the serialized request but was not enforced by this evaluation MinIO provider.
+
+During an injected destination race:
+
+- a competing destination object was created before the copy;
+- MinIO accepted the `CopyObject`;
+- the competing destination was overwritten;
+- the adapter treated the promotion as successful;
+- the quarantine source was deleted.
+
+That behavior was unsafe for file integrity.
+
+The earlier normal-path runtime evidence remains a factual record that the copy-verify-delete sequence completed without a race. However, its provider-side overwrite-protection conclusion is superseded by the later race diagnostic and by this corrected implementation.
+
+### Corrected Promotion Contract
+
+Promotion now requires a trusted expectation containing:
+
+- a positive safe-integer expected byte count;
+- an exact 64-character hexadecimal SHA-256 checksum.
+
+Verified behavior:
+
+- [x] Invalid trusted sizes are rejected before provider operations.
+- [x] Invalid trusted checksums are rejected before provider operations.
+- [x] Checksums are normalized internally.
+- [x] Provider ETag is not treated as SHA-256.
+- [x] Client filename, client MIME, and arbitrary stream metadata are not used as trusted promotion integrity data.
+
+### Corrected Streaming Algorithm
+
+The real compiled adapter uses the following promotion sequence:
+
+1. Resolve authoritative source and destination metadata.
+2. Verify an existing destination by streamed byte count and SHA-256 before accepting it.
+3. Stream-read the quarantine source and verify trusted size and SHA-256.
+4. Require the authoritative provider ETag for the source.
+5. Perform a second source `GetObject` using provider `IfMatch`.
+6. Pass the source response stream directly into destination `PutObject`.
+7. Set trusted `ContentLength`.
+8. Set destination `IfNoneMatch: "*"`.
+9. Perform authoritative destination metadata lookup.
+10. Stream-read and verify destination byte count and SHA-256.
+11. Delete the quarantine source only after destination integrity passes.
+
+The active compiled promotion path contains:
+
+- [x] `PutObjectCommand`
+- [x] `IfNoneMatch`
+- [x] `ContentLength`
+- [x] `IfMatch`
+- [x] incremental SHA-256 hashing
+- [x] explicit response-stream disposal
+
+The active compiled promotion path does not contain:
+
+- [x] no `CopyObjectCommand`
+- [x] no `Buffer.concat`
+- [x] no full-object buffering
+- [x] no uncertain automatic destination cleanup
+
+### Local and Server Static Verification
+
+Verified before real object operations:
+
+- [x] Independent source and patch review passed.
+- [x] Exact reviewed patch hash matched before commit.
+- [x] Exact staged patch hash matched before commit.
+- [x] API typecheck passed locally.
+- [x] API build passed locally.
+- [x] Sixty-four focused compiled adapter tests passed locally.
+- [x] Focused ESLint passed.
+- [x] Prettier passed.
+- [x] `git diff --check` passed.
+- [x] Focused implementation commit and normal push passed.
+- [x] Server fast-forward synchronization passed.
+- [x] API typecheck passed on the server.
+- [x] API build passed on the server.
+- [x] Sixty-four focused compiled adapter tests passed on the server.
+- [x] Server repository remained clean.
+
+### Runtime Environment
+
+| Item | Verified value |
+|---|---|
+| Repository commit | `ba02b1d910537592ae5f0e412bdbfad34cfce916` |
+| MinIO container short ID | `550f841b7043` |
+| MinIO internal IPv4 | `10.203.250.10` |
+| Configured bucket | `lexora-lms-evaluation` |
+| Secret-reader GID | `982` |
+| API PID at checkpoint start | `1950` |
+| API PID at checkpoint end | `1950` |
+
+Detailed server-side runtime report:
+
+    /home/sh002/lexora-s3-conditional-streaming-runtime-20260727T081334Z.txt
+
+No credential value, private runtime object key, payload content, or raw checksum is recorded in this checklist.
+
+### Real Normal Promotion
+
+The real compiled adapter completed a quarantine-to-available promotion against the evaluation MinIO runtime.
+
+Verified:
+
+- [x] Temporary source and destination were initially absent.
+- [x] A real quarantine object was created.
+- [x] Trusted expected size was supplied.
+- [x] Trusted SHA-256 was supplied.
+- [x] First-pass streamed source verification passed.
+- [x] Second-pass source read used provider `IfMatch`.
+- [x] Destination was created through `PutObject`.
+- [x] Destination `IfNoneMatch: "*"` was used.
+- [x] Trusted `ContentLength` was used.
+- [x] Destination metadata verification passed.
+- [x] Streamed destination SHA-256 verification passed.
+- [x] Source deletion occurred only after destination verification.
+- [x] Quarantine source was absent after successful promotion.
+- [x] Available destination retained exact expected content.
+
+### Authenticated Source-Missing Retry
+
+After the successful normal promotion, the adapter was called again with:
+
+- the quarantine source absent; and
+- the available destination present.
+
+The adapter did not accept destination existence or size alone.
+
+Verified:
+
+- [x] The destination was stream-read.
+- [x] Exact expected byte count was verified.
+- [x] Exact expected SHA-256 was verified.
+- [x] The retry returned the verified available destination safely.
+- [x] The quarantine source did not reappear.
+- [x] Destination integrity remained intact.
+
+### Existing Same-Size Wrong Destination
+
+A quarantine source and an independently created destination with the same byte count but different content were tested.
+
+Verified:
+
+- [x] The destination was not accepted based on size alone.
+- [x] Streamed SHA-256 comparison detected different content.
+- [x] Promotion returned `DESTINATION_CONFLICT`.
+- [x] The quarantine source remained present and intact.
+- [x] The existing destination remained present and intact.
+- [x] No source deletion occurred.
+
+### Injected Destination Race
+
+A competing destination was injected immediately before the adapter's conditional destination `PutObject`.
+
+Verified:
+
+- [x] Destination conditional creation was attempted with `IfNoneMatch: "*"`.
+- [x] The provider rejected replacement of the competing destination.
+- [x] The adapter returned sanitized `RECONCILIATION_REQUIRED`.
+- [x] The quarantine source remained present and intact.
+- [x] The competing destination remained present and intact.
+- [x] No unsafe overwrite occurred.
+- [x] No source deletion occurred.
+
+The AWS SDK emitted the diagnostic message:
+
+    An error was encountered in a non-retryable streaming request.
+
+This message occurred during the expected conditional destination race. It did not cause the checkpoint to fail. The adapter mapped the provider outcome to `RECONCILIATION_REQUIRED`, and subsequent integrity checks confirmed that both source and competing destination remained intact.
+
+### Stream and Resource Safety
+
+Verified through focused tests and compiled runtime behavior:
+
+- [x] Second-pass source response streams are disposed after destination write success or failure.
+- [x] Stream-disposal failures do not replace the original sanitized storage outcome.
+- [x] Oversized verification streams stop immediately after exceeding trusted size.
+- [x] Remaining oversized content is not unnecessarily consumed or hashed.
+- [x] No full-file buffering is used by the adapter.
+- [x] No uncertain destination is automatically deleted.
+- [x] Source deletion remains ordered after verified destination integrity.
+
+### Cleanup Verification
+
+- [x] Adapter cleanup of all exact temporary runtime objects passed.
+- [x] Repeated idempotent deletion passed.
+- [x] Independent administrative exact-object cleanup passed.
+- [x] All six exact temporary runtime locations were absent after cleanup.
+- [x] No temporary `minio-init` container remained.
+- [x] The named MinIO data volume remained preserved.
+- [x] No broad wildcard deletion was used as runtime evidence.
+
+### MinIO, API, and Repository Non-Regression
+
+- [x] MinIO remained running.
+- [x] MinIO remained healthy.
+- [x] MinIO retained the same container identity.
+- [x] No MinIO host listener appeared on ports `9000` or `9001`.
+- [x] Direct API health passed before and after the test.
+- [x] Nginx-proxied API health passed before and after the test.
+- [x] API PID remained `1950` throughout the checkpoint.
+- [x] No API restart was attempted.
+- [x] No MinIO restart was attempted.
+- [x] Repository refs remained at the verified correction commit.
+- [x] Repository remained clean.
+- [x] No database record was created or changed.
+- [x] No signed URL was generated.
+- [x] No public file-storage route was enabled.
+- [x] No documentation file was changed during the runtime harness.
+
+The unchanged PM2 PID proves API non-regression during this checkpoint. It does not prove that the PM2 process was restarted onto the new compiled adapter build. The corrected compiled adapter itself was invoked directly and runtime-verified against MinIO.
+
+### Runtime Verdict
+
+- [x] Conditional streaming normal promotion is runtime verified.
+- [x] Trusted size and streamed SHA-256 source verification are runtime verified.
+- [x] Provider-ETag-guarded second source read is runtime verified.
+- [x] Conditional destination `PutObject` behavior is runtime verified.
+- [x] Post-write streamed destination verification is runtime verified.
+- [x] Source deletion ordering is runtime verified.
+- [x] Authenticated source-missing retry is runtime verified.
+- [x] Same-size wrong destination conflict behavior is runtime verified.
+- [x] Source and destination retention during conflict are runtime verified.
+- [x] Injected destination-race reconciliation is runtime verified.
+- [x] Source and competing-destination retention during race are runtime verified.
+- [x] Exact cleanup and runtime non-regression are runtime verified.
+- [ ] PM2 process restart and DI boot on the correction commit remain pending.
+- [ ] Database-backed persistence verification remains pending.
+- [ ] Magic-number and content-signature inspection remain pending.
+- [ ] Extension allowlist and canonical MIME consistency remain pending.
+- [ ] Operational malware scanning remains pending.
+- [ ] Attachment-resource authorization remains pending.
+- [ ] Permission-controlled signed delivery remains pending.
+- [ ] Database-backed concurrency and transaction verification remain pending.
+- [ ] Storage quotas remain pending.
+- [ ] Audit and lifecycle atomicity remain pending.
+- [ ] Secure upload/download frontend remains pending.
+- [ ] Complete secure upload/download runtime verification remains pending.
+- [ ] Production file upload remains disabled.
+
+Correct status:
+
+> The corrected conditional streaming quarantine-to-available promotion lifecycle is implemented, independently reviewed, committed, pushed, server-synchronized, server-built, covered by sixty-four focused compiled tests locally and on the server, and runtime verified against the isolated MinIO evaluation environment for normal promotion, authenticated retry, same-size wrong-destination conflict, source retention, injected destination race, competing-destination retention, cleanup, and non-regression. PM2 activation of the corrected build, persistence, content inspection, MIME consistency, malware scanning, attachment authorization, signed delivery, database concurrency, quotas, audit atomicity, frontend integration, and the complete secure upload/download pipeline remain pending. Production upload remains disabled.
+
+### Supersession Note
+
+This section supersedes earlier claims or pending statements only for:
+
+- active `CopyObject` promotion as the intended secure promotion mechanism;
+- real normal promotion through the corrected conditional streaming path;
+- provider-ETag-guarded source mutation protection;
+- conditional destination creation through `PutObject`;
+- authenticated source-missing retry;
+- same-size wrong-destination detection;
+- real destination-race handling;
+- source retention during conflict and race;
+- competing-destination retention during race;
+- post-write streamed destination integrity verification.
+
+Historical evidence of the earlier normal `CopyObject` path is preserved, but that path is no longer the approved or active secure design because the real race diagnostic proved its destination precondition unsafe for this evaluation provider.
+
+Earlier limitations remain valid for:
+
+- PM2 activation of the corrected build;
+- persistence;
+- content-signature and MIME inspection;
+- malware scanning;
+- attachment-resource authorization;
+- permission-controlled signed delivery;
+- database concurrency and transaction retry;
+- storage quotas;
+- audit atomicity;
+- frontend upload/download;
+- complete secure upload/download runtime verification.
+
+Production file upload remains disabled.
