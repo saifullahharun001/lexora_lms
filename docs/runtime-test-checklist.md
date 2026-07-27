@@ -8405,3 +8405,365 @@ Earlier limitations remain valid for:
 - complete secure upload/download runtime verification.
 
 Production file upload remains disabled.
+
+
+## Fail-Closed ClamAV INSTREAM Adapter and PM2/DI Runtime Verification — 2026-07-27
+
+### Scope
+
+This checkpoint records implementation, independent source review, deterministic testing, Ubuntu server synchronization, server-side compilation, focused File Storage testing, and PM2/NestJS dependency-injection boot verification of the API-side ClamAV TCP INSTREAM adapter.
+
+This checkpoint verifies the adapter and its runtime registration only.
+
+It does not claim that a real ClamAV daemon, signature database, or complete stored-object malware-scanning workflow is operational.
+
+Production file upload remains disabled.
+
+### Related Commit
+
+- Commit: `6c999e78d1dfdeb7a14749ae74d7fb457ba61cff`
+- Message: `Add fail-closed ClamAV INSTREAM scanner adapter`
+
+Committed files:
+
+- `apps/api/src/modules/file-storage/file-storage.module.ts`
+- `apps/api/src/modules/file-storage/infrastructure/malware-scanning/clamav-malware-scanner.adapter.ts`
+- `apps/api/src/modules/file-storage/infrastructure/malware-scanning/clamav-malware-scanner.adapter.test.ts`
+
+### Implemented Adapter Behavior
+
+The adapter:
+
+- [x] Implements ClamAV TCP `zINSTREAM\0`.
+- [x] Streams source bytes without buffering the complete file.
+- [x] Does not send filesystem paths.
+- [x] Uses four-byte unsigned big-endian frame lengths.
+- [x] Splits source content into bounded 64 KiB frames.
+- [x] Sends the required zero-length terminal frame.
+- [x] Honors socket backpressure.
+- [x] Handles fragmented NUL-terminated scanner responses.
+- [x] Bounds the scanner response to 4 KiB.
+- [x] Bounds sanitized malware signatures to 255 characters.
+- [x] Uses single-settlement and deterministic resource cleanup.
+- [x] Registers through `MALWARE_SCANNER_PORT` using `useExisting`.
+
+Trusted outcomes remain restricted to:
+
+- `CLEAN`
+- `INFECTED`
+- `ERROR`
+
+The adapter fails closed for:
+
+- disabled scanner mode;
+- connection failure;
+- pre-connect socket close;
+- connected socket close;
+- timeout;
+- source stream failure;
+- transport or write failure;
+- malformed response;
+- oversized response;
+- scanner-reported error;
+- protocol-order violation;
+- premature `CLEAN`;
+- premature `INFECTED`.
+
+A trusted `CLEAN` or `INFECTED` result is accepted only after all source chunks have been consumed and the zero-length terminal frame has been queued successfully.
+
+Raw scanner responses, source bytes, provider errors, credentials, endpoints, and filesystem paths are not returned.
+
+### Independent Source Review
+
+The adapter was independently source-reviewed before commit.
+
+Review covered:
+
+- complete-source and terminal-frame ordering;
+- premature response rejection;
+- bounded framing;
+- backpressure and cancellation;
+- timeout settlement;
+- source-versus-transport error classification;
+- pre-connect and connected-close classification;
+- late-event handling;
+- listener cleanup;
+- DI registration;
+- raw-detail suppression.
+
+No unresolved Critical, High, Medium, or Low review finding remained before commit approval.
+
+### Ubuntu Server Synchronization
+
+The Ubuntu server repository was fast-forwarded from:
+
+- `5f669f65ea29ac5351641c5ba7c66eddd001951b`
+
+to:
+
+- `6c999e78d1dfdeb7a14749ae74d7fb457ba61cff`
+
+Post-synchronization checks confirmed:
+
+- [x] server `HEAD` matched the expected commit;
+- [x] local `origin/main` matched the expected commit;
+- [x] the commit subject matched;
+- [x] the working tree remained clean;
+- [x] only the three reviewed files arrived.
+
+The DHCP-provided DNS proxy was temporarily unable to resolve GitHub.
+
+A temporary per-link `1.1.1.1` resolver override was used only for verified synchronization and was reverted afterward.
+
+No persistent DNS or network configuration change was made.
+
+### Server Typecheck and Build
+
+The following passed on the Ubuntu server:
+
+- [x] `pnpm --filter @lexora/api typecheck`
+- [x] `pnpm --filter @lexora/api build`
+
+Compiled artifacts were verified for:
+
+- the ClamAV adapter;
+- the adapter test;
+- the File Storage module.
+
+### Adapter Test Evidence
+
+The compiled adapter suite passed:
+
+- Tests: `16`
+- Passed: `16`
+- Failed: `0`
+- Cancelled: `0`
+- Skipped: `0`
+- Todo: `0`
+
+Covered behavior included:
+
+- disabled-mode fail-closed behavior;
+- exact command, framing, and terminal marker;
+- bounded chunk splitting;
+- backpressure;
+- fragmented infected response;
+- signature sanitization;
+- timeout cleanup;
+- source stream failure;
+- connection and socket-close behavior;
+- malformed and oversized response handling;
+- premature clean and infected rejection;
+- complete-source acceptance;
+- cancellation during backpressure;
+- connected write failure;
+- late-event single settlement.
+
+Evidence report:
+
+    /tmp/lexora-clamav-adapter-server-retest-20260727-160621.txt
+
+### Focused File Storage Test Evidence
+
+The compiled File Storage inventory contained exactly eight test files.
+
+The focused inventory passed:
+
+- Tests: `181`
+- Passed: `181`
+- Failed: `0`
+- Cancelled: `0`
+- Skipped: `0`
+- Todo: `0`
+
+Evidence report:
+
+    /tmp/lexora-file-storage-server-retest-20260727-160621.txt
+
+### PM2 Activation and NestJS Boot
+
+The verified build was activated through the existing PM2 application:
+
+- Application: `lexora-api`
+
+Before restart:
+
+- PID: `1861`
+- Status: `online`
+- Restart count: `0`
+
+After restart:
+
+- PID: `16239`
+- Status: `online`
+- Restart count: `1`
+
+The established launch contract remained unchanged:
+
+- Working directory: `/home/sh002/lexora_lms`
+- Executable: `/usr/bin/bash`
+- Arguments: `["-c","node -r ./apps/api/register-paths.js apps/api/dist/src/main.js"]`
+
+The current-start log contained the NestJS successful-start marker.
+
+No unresolved dependency, `UnknownDependenciesException`, fatal exception-handler, address-in-use, missing-module, uncaught-exception, or unhandled-rejection pattern was detected.
+
+This verifies that the adapter registration and `MALWARE_SCANNER_PORT` dependency-injection path boot successfully through the established PM2 runtime.
+
+### Startup Timing and Health
+
+The first two immediate direct-health attempts occurred before the API listener completed startup.
+
+On attempt 3:
+
+- [x] direct API health passed;
+- [x] Nginx-proxied health passed;
+- [x] PM2 remained online;
+- [x] the NestJS successful-start marker was present.
+
+The first two connection refusals were startup-timing observations, not persistent API, Nginx, DI, or File Storage failures.
+
+### Network Boundary Verification
+
+Verified:
+
+- [x] API remained bound to `127.0.0.1:4000`.
+- [x] API port `4000` was not exposed on `0.0.0.0`, `[::]`, or `*`.
+- [x] Nginx remained active.
+- [x] Nginx remained enabled.
+- [x] No established TCP connection involving port `3310` was present.
+- [x] No real ClamAV daemon was contacted.
+
+PM2 evidence report:
+
+    /home/sh002/lexora-clamav-adapter-pm2-boot-20260727T160950Z.txt
+
+### Security Boundaries Preserved
+
+This checkpoint did not change or weaken:
+
+- authentication guards;
+- policy guards;
+- required-policy decorators;
+- request context;
+- principal department isolation;
+- object-level authorization;
+- teacher assigned-course checks;
+- student own-resource checks;
+- academic record locks;
+- transcript controls;
+- attendance controls;
+- notification isolation;
+- audit behavior;
+- File Storage quarantine rules;
+- CLEAN-only activation requirements.
+
+This checkpoint did not:
+
+- add an upload or download route;
+- modify Prisma schema or database records;
+- update runtime environment values;
+- modify Nginx configuration;
+- expose TCP port `3310`;
+- start ClamAV;
+- scan a real stored object;
+- persist a real scan result;
+- promote an object after a real malware scan;
+- enable production upload.
+
+### Current Limitations
+
+The following remain pending:
+
+- [ ] Isolated real ClamAV runtime.
+- [ ] Immutable ClamAV image or source pin.
+- [ ] Signature database initialization and readiness.
+- [ ] Real clean-file scan.
+- [ ] Protocol-safe EICAR detection.
+- [ ] Real scanner-down and timeout testing.
+- [ ] ClamAV restart and persistence verification.
+- [ ] Department-scoped MinIO stored-byte scan orchestration.
+- [ ] Persistence of real `CLEAN`, `INFECTED`, or `ERROR` results.
+- [ ] CLEAN-only promotion after a real scan.
+- [ ] Infected-content quarantine or rejection workflow.
+- [ ] Retry or worker processing.
+- [ ] Attachment-resource authorization.
+- [ ] Permission-controlled delivery.
+- [ ] Storage quotas.
+- [ ] Database-backed concurrency verification.
+- [ ] Audit and lifecycle atomicity.
+- [ ] Secure upload/download frontend.
+- [ ] Complete production upload/download runtime verification.
+- [ ] Production file upload enablement.
+
+Production file upload remains disabled.
+
+### Supersession Note
+
+This section supersedes earlier pending statements only for:
+
+- existence of the API-side ClamAV TCP INSTREAM adapter;
+- `MALWARE_SCANNER_PORT` DI registration;
+- deterministic adapter transport tests;
+- server synchronization;
+- server typecheck and build;
+- focused File Storage test verification;
+- PM2 activation of the adapter-containing build;
+- NestJS DI boot of the adapter registration.
+
+Earlier pending statements remain valid for:
+
+- a real isolated ClamAV runtime;
+- ClamAV signature lifecycle;
+- real clean, EICAR, scanner-down, and timeout tests;
+- stored-MinIO-byte scan orchestration;
+- real scan-result persistence;
+- CLEAN-only promotion orchestration;
+- infected-content lifecycle handling;
+- worker and retry behavior;
+- attachment authorization;
+- permission-controlled delivery;
+- quotas;
+- database concurrency;
+- audit atomicity;
+- complete secure upload/download runtime verification.
+
+### Runtime Verdict
+
+- [x] Adapter implementation completed.
+- [x] Independent source review completed.
+- [x] Commit and push completed.
+- [x] Ubuntu server synchronization completed.
+- [x] Server typecheck and build passed.
+- [x] Sixteen adapter tests passed.
+- [x] One hundred eighty-one focused File Storage tests passed.
+- [x] PM2 activation passed.
+- [x] NestJS DI boot passed.
+- [x] Direct and Nginx health passed.
+- [x] Localhost-only API binding remained enforced.
+- [x] Production upload remained disabled.
+- [ ] Real ClamAV daemon runtime is not verified.
+- [ ] Real malware scanning is not verified.
+- [ ] Stored-byte scan orchestration is not implemented.
+- [ ] The complete malware-scanning pipeline is not operational.
+- [ ] The complete secure upload/download pipeline is not complete.
+
+Correct status:
+
+> The fail-closed API-side ClamAV TCP INSTREAM adapter is implemented, independently reviewed, committed, pushed, synchronized to the Ubuntu server, server-built, covered by 16 adapter tests and 181 focused File Storage tests, and activated through the verified PM2/NestJS DI boot path. No real ClamAV daemon, signature lifecycle, clean-file scan, EICAR detection, scanner-down test, stored-byte scan orchestration, persisted real scan result, or CLEAN-only promotion has been runtime verified. Production file upload remains disabled.
+
+### Next Safe Steps
+
+Proceed in this order:
+
+1. Design and inspect an isolated ClamAV evaluation runtime.
+2. Select and immutably pin a reviewed ClamAV image or source build.
+3. Keep TCP port `3310` private and unavailable to LAN or public clients.
+4. Initialize and verify the signature database.
+5. Verify daemon readiness.
+6. Test a real clean input.
+7. Test protocol-safe EICAR detection.
+8. Test real scanner-down and timeout fail-closed behavior.
+9. Verify restart and persistence behavior.
+10. Document and commit the isolated runtime evidence.
+11. Only then implement department-scoped stored-MinIO-byte scan orchestration.
