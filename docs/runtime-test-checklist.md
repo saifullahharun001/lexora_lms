@@ -8165,3 +8165,243 @@ This section supersedes only the earlier pending statement:
 That item is now runtime verified.
 
 All other pending secure file-storage controls and production-upload restrictions remain unchanged.
+
+## Trusted Content Inspection and Real MinIO Runtime Verification — 2026-07-27
+
+### Scope and Classification
+
+This section records implementation, independent source review, local and Ubuntu-server static verification, PM2/NestJS activation, focused regression-test hardening, and real MinIO runtime verification of Lexora's trusted file-content inspection boundary.
+
+This checkpoint verifies server-owned content-signature detection and MIME/extension consistency for the currently approved academic-document content types:
+
+- PDF;
+- PNG;
+- JPEG.
+
+This checkpoint does not classify the complete secure upload/download pipeline as finished or production-ready.
+
+Production file upload remains disabled.
+
+### Related Commits
+
+| Purpose | Commit |
+|---|---|
+| Implement trusted content inspection | `8425f341f62ad9b6257d2fa565015eaecff67498` |
+| Add content-inspector stream regression tests | `2b01403017ebb2f22004466ace5cdcfb75e10a71` |
+
+The regression-test commit changed only:
+
+- `apps/api/src/modules/file-storage/infrastructure/content-inspection/file-type-content-inspector.adapter.test.ts`
+
+No production implementation, route, environment schema, database schema, deployment definition, or object-storage configuration changed in that test-only commit.
+
+### Implemented Content-Inspection Controls
+
+The trusted content inspector now provides:
+
+- server-side content-signature detection using stored object bytes;
+- canonical MIME identification;
+- detected extension identification;
+- approved MIME-to-extension pair enforcement;
+- filename-extension consistency enforcement;
+- specific client-claimed MIME consistency enforcement;
+- fail-closed handling for unrecognized or truncated content;
+- bounded inspection timeout;
+- abort handling;
+- Node `Readable` stream disposal on success and failure;
+- retryable ESM module loading;
+- no synchronous `require("file-type")`;
+- no full-stream `Buffer.concat` implementation in the production inspector.
+
+The approved MIME-extension policy verified in this checkpoint is:
+
+| Canonical MIME | Approved extension |
+|---|---|
+| `application/pdf` | `pdf` |
+| `image/png` | `png` |
+| `image/jpeg` | `jpg`, `jpeg` |
+
+### Static and Server Verification
+
+Verified implementation and build evidence:
+
+- [x] Trusted-content implementation received independent source review.
+- [x] Implementation commit and push passed.
+- [x] Ubuntu server fast-forward passed.
+- [x] Frozen dependency installation passed without changing the lockfile.
+- [x] API typecheck passed.
+- [x] API build passed.
+- [x] `file-type` version `21.3.4` resolved as an API dependency.
+- [x] `load-esm` version `1.0.3` resolved as an API dependency.
+- [x] Compiled inspector SHA-256 was verified as:
+
+      d59957d06ed968a7bdee66127f81794cf4210b920fe8178b455d0b70689c6a0d
+
+- [x] Required compiled timeout, abort, ESM-loading, Web-stream conversion, and disposal markers were present.
+- [x] Synchronous `require("file-type")` was absent.
+- [x] Production inspector `Buffer.concat` usage was absent.
+- [x] Exactly 165 focused compiled file-storage tests passed on the Ubuntu server.
+- [x] Focused-test failures were zero.
+- [x] Focused-test skipped cases were zero.
+- [x] Complete PNG Node-stream regression coverage passed.
+- [x] JPEG Node-stream regression coverage passed.
+- [x] Truncated-PNG Node-stream fail-closed coverage passed.
+- [x] The tests-only build did not change the compiled production inspector hash.
+- [x] PM2 was not restarted for the tests-only commit.
+
+### PM2 and NestJS Runtime Activation
+
+The implementation build was activated through the existing repository-root PM2 launch contract.
+
+Verified runtime behavior:
+
+- [x] PM2 PID changed from `24486` to `40377` during the intentional activation restart.
+- [x] PM2 restart count changed from `1` to `2`.
+- [x] PM2 launch path remained `/usr/bin/bash`.
+- [x] PM2 arguments remained the established repository-root launch command.
+- [x] PM2 working directory remained `/home/sh002/lexora_lms`.
+- [x] NestJS dependency-injection boot passed.
+- [x] Current-start fatal and unresolved-dependency scans passed.
+- [x] Direct API health passed.
+- [x] Nginx-proxied API health passed.
+- [x] API binding remained restricted to `127.0.0.1:4000`.
+- [x] No public file-storage route was enabled.
+
+### Real MinIO Runtime Verification
+
+A controlled test used isolated real MinIO quarantine objects and the activated production adapters.
+
+Verified positive cases:
+
+- [x] Complete PDF fixture passed buffer preflight.
+- [x] The same PDF bytes were stored in MinIO, streamed back, detected, and policy-approved.
+- [x] Complete PNG fixture passed buffer preflight.
+- [x] The same PNG bytes were stored in MinIO, streamed back, detected, and policy-approved.
+- [x] Complete JPEG fixture passed buffer preflight.
+- [x] The same JPEG bytes were stored in MinIO, streamed back, detected, and policy-approved.
+- [x] Canonical MIME values matched the approved policy.
+- [x] Detected extensions matched the approved policy.
+- [x] Authoritative stored sizes matched the uploaded byte sizes.
+- [x] Successful MinIO response streams were disposed.
+
+Verified negative and fail-closed cases:
+
+- [x] Inconsistent detected MIME-extension pairing was rejected.
+- [x] Filename/content mismatch was rejected.
+- [x] Specific client-claimed MIME mismatch was rejected.
+- [x] Unrecognized stored content failed closed with `CONTENT_UNRECOGNIZED`.
+- [x] Truncated stored PNG content failed closed with `CONTENT_UNRECOGNIZED`.
+- [x] Failed-inspection MinIO response streams were disposed.
+
+### PNG Fixture Diagnostic
+
+An earlier real-MinIO attempt used a 33-byte incomplete PNG fixture.
+
+The diagnostic proved:
+
+- MinIO preserved the 33-byte object byte-for-byte;
+- the buffer-signature path recognized the incomplete fixture;
+- the production-style stream parser rejected it as unrecognized;
+- a complete valid 68-byte PNG passed both buffer and fresh MinIO stream inspection;
+- there was no valid-PNG MinIO corruption or production stream-interoperability defect.
+
+The 33-byte fixture is therefore retained only as an intentional truncated-content fail-closed regression case.
+
+### Cleanup and Non-Regression
+
+- [x] Five final runtime objects were deleted.
+- [x] Absence of all five runtime objects was verified.
+- [x] Earlier diagnostic objects were also deleted and absence-verified.
+- [x] No credential value was printed or documented.
+- [x] No private runtime object key was documented.
+- [x] No database record was created or changed.
+- [x] No source or environment file was changed during runtime testing.
+- [x] PM2 PID and restart count remained unchanged during real-MinIO inspection.
+- [x] Direct and Nginx API health remained available.
+- [x] No MinIO host-port exposure was introduced.
+- [x] Repository refs remained aligned.
+- [x] Repository remained clean.
+- [x] Production upload remained disabled.
+
+### Runtime Evidence
+
+Server-side reports:
+
+    /home/sh002/lexora-trusted-content-server-static-20260727T104831Z.txt
+
+    /home/sh002/lexora-trusted-content-pm2-activation-20260727T105812Z.txt
+
+    /home/sh002/lexora-content-stream-tests-server-20260727T115245Z.txt
+
+    /home/sh002/lexora-png-stream-integrity-diagnostic-20260727T112832Z.txt
+
+    /home/sh002/lexora-final-real-content-inspection-20260727T115700Z.txt
+
+No raw credential, token, private object key, stored payload, password, database secret, or session value is recorded in this checklist.
+
+### Runtime Verdict
+
+- [x] Trusted content-inspection implementation is complete for the current PDF/PNG/JPEG policy.
+- [x] Independent source review passed.
+- [x] Implementation commit and push passed.
+- [x] Server synchronization passed.
+- [x] API typecheck and build passed locally and on the server.
+- [x] PM2/NestJS activation passed.
+- [x] Exactly 165 focused compiled tests passed on the server.
+- [x] Real MinIO PDF/PNG/JPEG content-signature detection passed.
+- [x] Canonical MIME and approved extension-pair enforcement passed.
+- [x] Filename/content consistency enforcement passed.
+- [x] Specific client-MIME consistency enforcement passed.
+- [x] Unrecognized and truncated content failed closed.
+- [x] Stream disposal and exact runtime-object cleanup passed.
+- [ ] Full PDF/image structural or semantic validity checking is not claimed.
+- [ ] Operational malware scanning remains pending.
+- [ ] Real scan orchestration over stored bytes remains pending.
+- [ ] Database-backed file-registration and lifecycle integration verification remains pending.
+- [ ] Attachment-resource authorization remains pending.
+- [ ] Permission-controlled signed delivery remains pending.
+- [ ] Database-backed concurrency and transaction verification remain pending.
+- [ ] Storage quotas remain pending.
+- [ ] Audit and lifecycle atomicity remain pending.
+- [ ] Secure upload/download frontend remains pending.
+- [ ] Complete secure upload/download runtime verification remains pending.
+- [ ] Production file upload remains disabled.
+
+Correct status:
+
+> Trusted content inspection for the current PDF, PNG, and JPEG policy is implemented, independently reviewed, committed, pushed, server-built, covered by 165 focused compiled tests, activated through PM2/NestJS, and runtime verified against real MinIO stored bytes for positive signature detection, MIME/extension consistency, filename consistency, client-MIME consistency, fail-closed rejection, stream disposal, cleanup, and API non-regression. Malware scanning, scan orchestration, database-backed registration and lifecycle integration, attachment authorization, permission-controlled delivery, concurrency testing, quotas, audit atomicity, frontend integration, and the complete secure upload/download pipeline remain pending. Production upload remains disabled.
+
+### Supersession Note
+
+This section supersedes earlier pending statements only for:
+
+- trusted content-inspector implementation;
+- magic-number and content-signature inspection for the current PDF/PNG/JPEG policy;
+- extension allowlist and canonical MIME consistency;
+- PDF/PNG/JPEG Node-stream regression coverage;
+- PM2/NestJS activation of the trusted content inspector;
+- real MinIO stored-byte inspection for the tested content types;
+- related fail-closed and cleanup behavior.
+
+Historical failed-attempt evidence is preserved because it identified:
+
+- an external test-harness module-resolution issue;
+- the API's root `.env` loading source;
+- an incomplete PNG fixture;
+- the distinction between truncated-content rejection and valid-PNG stream behavior.
+
+Earlier limitations remain valid for:
+
+- full structural or semantic document validation;
+- malware scanning;
+- real scan orchestration;
+- database-backed file registration and lifecycle integration;
+- attachment-resource authorization;
+- permission-controlled signed or proxy delivery;
+- database concurrency and transaction retry;
+- storage quotas;
+- audit and lifecycle atomicity;
+- frontend upload/download;
+- complete secure upload/download runtime verification.
+
+Production file upload remains disabled.
