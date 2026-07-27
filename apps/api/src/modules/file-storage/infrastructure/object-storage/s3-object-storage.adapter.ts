@@ -114,19 +114,31 @@ export class S3ObjectStorageAdapter implements ObjectStoragePort {
   async createQuarantineObject(
     location: ObjectLocation,
     content: Readable,
+    expectedSizeBytes: number,
   ): Promise<ObjectMetadata> {
     this.validateLocation(location, ["quarantine/"]);
+    if (
+      typeof expectedSizeBytes !== "number" ||
+      !Number.isSafeInteger(expectedSizeBytes) ||
+      expectedSizeBytes <= 0
+    ) {
+      throw new ObjectStorageInfrastructureError(
+        "INVALID_METADATA",
+        "Object upload metadata is invalid",
+      );
+    }
     try {
       await this.client.send(
         new PutObjectCommand({
           Bucket: this.config.bucket,
           Key: location.objectKey,
           Body: content,
+          ContentLength: expectedSizeBytes,
           IfNoneMatch: "*",
         }),
       );
       const metadata = await this.head(location);
-      if (metadata.publicMetadata.sizeBytes <= 0) {
+      if (metadata.publicMetadata.sizeBytes !== expectedSizeBytes) {
         throw new ObjectStorageInfrastructureError(
           "INVALID_METADATA",
           "Stored object metadata is invalid",

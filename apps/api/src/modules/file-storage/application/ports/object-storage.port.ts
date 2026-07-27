@@ -18,6 +18,8 @@ export interface ObjectStoragePort {
   createQuarantineObject(
     location: ObjectLocation,
     content: Readable,
+    // Trusted server-side byte count required for streaming object-storage writes.
+    expectedSizeBytes: number,
   ): Promise<ObjectMetadata>;
   readObject(location: ObjectLocation): Promise<Readable>;
   moveToAvailable(

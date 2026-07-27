@@ -158,14 +158,12 @@ for (const [name, objectKey] of [
 }
 
 test("quarantine upload sends put then head and returns authoritative metadata", async () => {
+  const content = Readable.from("content");
   const { adapter, client } = harness((command) => {
     if (command instanceof HeadObjectCommand) return head;
     return {};
   });
-  const result = await adapter.createQuarantineObject(
-    quarantine,
-    Readable.from("content"),
-  );
+  const result = await adapter.createQuarantineObject(quarantine, content, 42);
   assert.ok(client.calls[0] instanceof PutObjectCommand);
   assert.ok(client.calls[1] instanceof HeadObjectCommand);
   assert.equal(
@@ -175,9 +173,37 @@ test("quarantine upload sends put then head and returns authoritative metadata",
   assert.equal(result.sizeBytes, 42);
   assert.equal(result.contentType, "application/pdf");
   assert.equal(result.checksum, "trusted-checksum");
+  assert.equal((client.calls[0] as PutObjectCommand).input.Body, content);
+  assert.equal((client.calls[0] as PutObjectCommand).input.ContentLength, 42);
   assert.equal((client.calls[0] as PutObjectCommand).input.ACL, undefined);
   assert.equal((client.calls[0] as PutObjectCommand).input.IfNoneMatch, "*");
 });
+
+for (const invalidSize of [
+  0,
+  -1,
+  1.5,
+  Number.NaN,
+  Number.POSITIVE_INFINITY,
+  Number.MAX_SAFE_INTEGER + 1,
+]) {
+  test(
+    "quarantine upload rejects invalid expected size " + invalidSize,
+    async () => {
+      const { adapter, client } = harness();
+      await assertStorageError(
+        () =>
+          adapter.createQuarantineObject(
+            quarantine,
+            Readable.from("content"),
+            invalidSize,
+          ),
+        "INVALID_METADATA",
+      );
+      assert.equal(client.calls.length, 0);
+    },
+  );
+}
 
 test("conditional quarantine conflict is sanitized without cleanup or success", async () => {
   const { adapter, client } = harness((command) => {
@@ -185,7 +211,8 @@ test("conditional quarantine conflict is sanitized without cleanup or success", 
     return head;
   });
   await assertStorageError(
-    () => adapter.createQuarantineObject(quarantine, Readable.from("content")),
+    () =>
+      adapter.createQuarantineObject(quarantine, Readable.from("content"), 42),
     "DESTINATION_CONFLICT",
   );
   assert.equal(client.calls.length, 1);
@@ -195,7 +222,8 @@ test("conditional quarantine conflict is sanitized without cleanup or success", 
 test("quarantine upload rejects available keys", async () => {
   const { adapter } = harness();
   await assertStorageError(
-    () => adapter.createQuarantineObject(available, Readable.from("content")),
+    () =>
+      adapter.createQuarantineObject(available, Readable.from("content"), 42),
     "INVALID_LOCATION",
   );
 });
@@ -206,13 +234,33 @@ test("upload requires positive content length and does not clean up failed verif
     return {};
   });
   await assertStorageError(
-    () => adapter.createQuarantineObject(quarantine, Readable.from("content")),
+    () =>
+      adapter.createQuarantineObject(quarantine, Readable.from("content"), 42),
     "INVALID_METADATA",
   );
   assert.equal(
     client.calls.some((command) => command instanceof DeleteObjectCommand),
     false,
   );
+});
+
+test("quarantine upload rejects an authoritative size mismatch without cleanup", async () => {
+  const { adapter, client } = harness((command) => {
+    if (command instanceof HeadObjectCommand) {
+      return { ...head, ContentLength: 41 };
+    }
+    return {};
+  });
+  await assertStorageError(
+    () =>
+      adapter.createQuarantineObject(quarantine, Readable.from("content"), 42),
+    "INVALID_METADATA",
+  );
+  assert.deepEqual(
+    client.calls.map((command) => command?.constructor.name),
+    ["PutObjectCommand", "HeadObjectCommand"],
+  );
+  assertNoDelete(client.calls);
 });
 
 test("ETag is not treated as a checksum", async () => {
@@ -224,6 +272,7 @@ test("ETag is not treated as a checksum", async () => {
   const result = await adapter.createQuarantineObject(
     quarantine,
     Readable.from("content"),
+    42,
   );
   assert.equal(result.checksum, undefined);
 });
