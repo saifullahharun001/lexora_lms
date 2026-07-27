@@ -9,6 +9,10 @@ export interface ObjectMetadata extends ObjectLocation {
   contentType?: string;
   checksum?: string;
 }
+export interface ObjectPromotionExpectation {
+  expectedSizeBytes: number;
+  expectedChecksumSha256: string;
+}
 export interface SignedReadUrl {
   url: string;
   expiresAt: Date;
@@ -25,6 +29,7 @@ export interface ObjectStoragePort {
   moveToAvailable(
     source: ObjectLocation,
     destination: ObjectLocation,
+    expectation: ObjectPromotionExpectation,
   ): Promise<ObjectMetadata>;
   deleteObject(location: ObjectLocation): Promise<void>;
   createSignedReadUrl(

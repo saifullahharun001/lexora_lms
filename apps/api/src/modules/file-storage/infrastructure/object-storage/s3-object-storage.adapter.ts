@@ -1,8 +1,7 @@
+import { createHash } from "node:crypto";
 import { Readable } from "node:stream";
 
 import {
-  CopyObjectCommand,
-  type CopyObjectCommandInput,
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
@@ -18,6 +17,7 @@ import { storageConfig } from "../../../../common/config/loaders/storage.config"
 import type {
   ObjectLocation,
   ObjectMetadata,
+  ObjectPromotionExpectation,
   ObjectStoragePort,
   SignedReadUrl,
 } from "../../application/ports/object-storage.port";
@@ -53,9 +53,10 @@ interface GetResult {
   Body?: unknown;
 }
 
-type DestinationConditionalCopyInput = CopyObjectCommandInput & {
-  IfNoneMatch: "*";
-};
+interface NormalizedPromotionExpectation {
+  expectedSizeBytes: number;
+  expectedChecksumSha256: string;
+}
 
 export class ObjectStorageInfrastructureError extends Error {
   constructor(
@@ -196,18 +197,28 @@ export class S3ObjectStorageAdapter implements ObjectStoragePort {
   async moveToAvailable(
     source: ObjectLocation,
     destination: ObjectLocation,
+    expectation: ObjectPromotionExpectation,
   ): Promise<ObjectMetadata> {
     this.validateLocation(source, ["quarantine/"]);
     this.validateLocation(destination, ["available/"]);
     if (destination.objectKey !== this.expectedAvailableKey(source.objectKey)) {
       this.invalidLocation();
     }
+    const trusted = this.validatePromotionExpectation(expectation);
 
-    const sourceMetadata = await this.internalStatObject(source);
-    const destinationMetadata = await this.internalStatObject(destination);
+    const sourceMetadata = await this.promotionStatObject(source);
+    const destinationMetadata = await this.promotionStatObject(destination);
 
     if (!sourceMetadata) {
-      if (destinationMetadata) return destinationMetadata.publicMetadata;
+      if (destinationMetadata) {
+        await this.verifyStoredPromotionObject(
+          destination,
+          destinationMetadata,
+          trusted,
+          "DESTINATION_CONFLICT",
+        );
+        return destinationMetadata.publicMetadata;
+      }
       throw new ObjectStorageInfrastructureError(
         "NOT_FOUND",
         "Quarantine object was not found",
@@ -215,49 +226,74 @@ export class S3ObjectStorageAdapter implements ObjectStoragePort {
     }
 
     if (destinationMetadata) {
-      this.assertStrongRetryCompatibility(
-        sourceMetadata.publicMetadata,
-        destinationMetadata.publicMetadata,
+      await this.verifyStoredPromotionObject(
+        destination,
+        destinationMetadata,
+        trusted,
+        "DESTINATION_CONFLICT",
       );
       await this.deleteVerifiedSource(source);
       return destinationMetadata.publicMetadata;
     }
 
+    await this.verifyStoredPromotionObject(
+      source,
+      sourceMetadata,
+      trusted,
+      "RECONCILIATION_REQUIRED",
+    );
+    if (!sourceMetadata.providerEtag) {
+      throw new ObjectStorageInfrastructureError(
+        "RECONCILIATION_REQUIRED",
+        "Quarantine source requires reconciliation",
+      );
+    }
+
+    let sourceStream: Readable | undefined;
     try {
-      const copyInput: DestinationConditionalCopyInput = {
-        Bucket: this.config.bucket,
-        Key: destination.objectKey,
-        CopySource: encodeURIComponent(
-          `${this.config.bucket}/${source.objectKey}`,
-        ),
-        IfNoneMatch: "*",
-        ...(sourceMetadata.providerEtag
-          ? { CopySourceIfMatch: sourceMetadata.providerEtag }
-          : {}),
-      };
+      sourceStream = await this.getReadable(
+        source,
+        sourceMetadata.providerEtag,
+      );
       await this.client.send(
-        this.createDestinationConditionalCopyCommand(copyInput),
+        new PutObjectCommand({
+          Bucket: this.config.bucket,
+          Key: destination.objectKey,
+          Body: sourceStream,
+          ContentLength: trusted.expectedSizeBytes,
+          IfNoneMatch: "*",
+          ...(sourceMetadata.publicMetadata.contentType
+            ? { ContentType: sourceMetadata.publicMetadata.contentType }
+            : {}),
+        }),
       );
     } catch (error) {
       if (this.isConditionalConflict(error)) {
         throw new ObjectStorageInfrastructureError(
           "RECONCILIATION_REQUIRED",
-          "Destination changed during copy; quarantine source was retained",
+          "Promotion state changed; quarantine source was retained",
         );
       }
-      throw this.sanitizeFailure(error, "Object copy failed");
+      throw new ObjectStorageInfrastructureError(
+        "RECONCILIATION_REQUIRED",
+        "Promotion could not be completed; quarantine source was retained",
+      );
+    } finally {
+      this.disposeReadableQuietly(sourceStream);
     }
 
-    const verifiedDestination = await this.internalStatObject(destination);
+    const verifiedDestination = await this.promotionStatObject(destination);
     if (!verifiedDestination) {
       throw new ObjectStorageInfrastructureError(
         "RECONCILIATION_REQUIRED",
-        "Copied object could not be verified; quarantine source was retained",
+        "Promoted object could not be verified; quarantine source was retained",
       );
     }
-    this.assertNormalCopyCompatible(
-      sourceMetadata.publicMetadata,
-      verifiedDestination.publicMetadata,
+    await this.verifyStoredPromotionObject(
+      destination,
+      verifiedDestination,
+      trusted,
+      "RECONCILIATION_REQUIRED",
     );
     await this.deleteVerifiedSource(source);
     return verifiedDestination.publicMetadata;
@@ -398,58 +434,138 @@ export class S3ObjectStorageAdapter implements ObjectStoragePort {
     return `available/${sourceKey.slice("quarantine/".length)}`;
   }
 
-  private createDestinationConditionalCopyCommand(
-    input: DestinationConditionalCopyInput,
-  ): CopyObjectCommand {
-    const command = new CopyObjectCommand(input);
-    // CopyObject supports destination If-None-Match, but the installed SDK model
-    // does not yet serialize that field. Add the signed HTTP header explicitly.
-    command.middlewareStack.add(
-      (next) => async (args) => {
-        const request = args.request as {
-          headers?: Record<string, string | undefined>;
-        };
-        if (!request?.headers) {
-          throw new Error("Copy request headers are unavailable");
-        }
-        request.headers["if-none-match"] = "*";
-        return next(args);
-      },
-      {
-        name: "lexoraDestinationIfNoneMatch",
-        step: "build",
-      },
-    );
-    return command;
-  }
-
-  private assertNormalCopyCompatible(
-    source: ObjectMetadata,
-    destination: ObjectMetadata,
-  ): void {
+  private validatePromotionExpectation(
+    expectation: ObjectPromotionExpectation,
+  ): NormalizedPromotionExpectation {
     if (
-      source.sizeBytes !== destination.sizeBytes ||
-      (source.checksum &&
-        destination.checksum &&
-        source.checksum !== destination.checksum)
+      !expectation ||
+      !Number.isSafeInteger(expectation.expectedSizeBytes) ||
+      expectation.expectedSizeBytes <= 0 ||
+      typeof expectation.expectedChecksumSha256 !== "string" ||
+      !/^[a-fA-F0-9]{64}$/.test(expectation.expectedChecksumSha256)
     ) {
       throw new ObjectStorageInfrastructureError(
-        "DESTINATION_CONFLICT",
-        "Destination object conflicts with the quarantine object",
+        "INVALID_METADATA",
+        "Promotion metadata is invalid",
+      );
+    }
+    return {
+      expectedSizeBytes: expectation.expectedSizeBytes,
+      expectedChecksumSha256: expectation.expectedChecksumSha256.toLowerCase(),
+    };
+  }
+
+  private async promotionStatObject(
+    location: ObjectLocation,
+  ): Promise<InternalObjectMetadata | null> {
+    try {
+      return await this.head(location);
+    } catch (error) {
+      if (this.isNotFound(error)) return null;
+      throw new ObjectStorageInfrastructureError(
+        "RECONCILIATION_REQUIRED",
+        "Promotion metadata requires reconciliation",
       );
     }
   }
 
-  private assertStrongRetryCompatibility(
-    source: ObjectMetadata,
-    destination: ObjectMetadata,
-  ): void {
-    this.assertNormalCopyCompatible(source, destination);
-    if (!source.checksum || !destination.checksum) {
+  private async verifyStoredPromotionObject(
+    location: ObjectLocation,
+    metadata: InternalObjectMetadata,
+    expectation: NormalizedPromotionExpectation,
+    mismatchCode: "DESTINATION_CONFLICT" | "RECONCILIATION_REQUIRED",
+  ): Promise<void> {
+    if (metadata.publicMetadata.sizeBytes !== expectation.expectedSizeBytes) {
+      throw new ObjectStorageInfrastructureError(
+        mismatchCode,
+        "Stored object content does not match trusted metadata",
+      );
+    }
+    try {
+      const stream = await this.getReadable(location, metadata.providerEtag);
+      await this.verifyReadableContent(stream, expectation, mismatchCode);
+    } catch (error) {
+      if (error instanceof ObjectStorageInfrastructureError) throw error;
       throw new ObjectStorageInfrastructureError(
         "RECONCILIATION_REQUIRED",
-        "Existing destination requires checksum-based reconciliation",
+        "Stored object content could not be verified",
       );
+    }
+  }
+
+  private async getReadable(
+    location: ObjectLocation,
+    providerEtag?: string,
+  ): Promise<Readable> {
+    const result = (await this.client.send(
+      new GetObjectCommand({
+        Bucket: this.config.bucket,
+        Key: location.objectKey,
+        ...(providerEtag ? { IfMatch: providerEtag } : {}),
+      }),
+    )) as GetResult;
+    if (!(result.Body instanceof Readable)) {
+      throw new ObjectStorageInfrastructureError(
+        "RECONCILIATION_REQUIRED",
+        "Stored object content could not be verified",
+      );
+    }
+    return result.Body;
+  }
+
+  private async verifyReadableContent(
+    stream: Readable,
+    expectation: NormalizedPromotionExpectation,
+    mismatchCode: "DESTINATION_CONFLICT" | "RECONCILIATION_REQUIRED",
+  ): Promise<void> {
+    const hash = createHash("sha256");
+    let actualSizeBytes = 0;
+    try {
+      for await (const chunk of stream) {
+        const bytes =
+          typeof chunk === "string"
+            ? Buffer.from(chunk)
+            : Buffer.isBuffer(chunk)
+              ? chunk
+              : ArrayBuffer.isView(chunk)
+                ? Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength)
+                : null;
+        if (!bytes) throw new Error("Unsupported stream chunk");
+        actualSizeBytes += bytes.byteLength;
+        if (actualSizeBytes > expectation.expectedSizeBytes) {
+          this.disposeReadableQuietly(stream);
+          throw new ObjectStorageInfrastructureError(
+            mismatchCode,
+            "Stored object content does not match trusted metadata",
+          );
+        }
+        hash.update(bytes);
+      }
+    } catch (error) {
+      if (error instanceof ObjectStorageInfrastructureError) throw error;
+      throw new ObjectStorageInfrastructureError(
+        "RECONCILIATION_REQUIRED",
+        "Stored object content could not be verified",
+      );
+    }
+    const actualChecksumSha256 = hash.digest("hex");
+    if (
+      actualSizeBytes !== expectation.expectedSizeBytes ||
+      actualChecksumSha256 !== expectation.expectedChecksumSha256
+    ) {
+      throw new ObjectStorageInfrastructureError(
+        mismatchCode,
+        "Stored object content does not match trusted metadata",
+      );
+    }
+  }
+
+  private disposeReadableQuietly(stream: Readable | undefined): void {
+    if (!stream) return;
+    try {
+      stream.destroy();
+    } catch {
+      // Resource disposal must not replace the sanitized storage outcome.
     }
   }
 

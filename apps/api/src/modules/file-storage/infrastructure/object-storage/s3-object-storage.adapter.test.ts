@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { Readable } from "node:stream";
 import test from "node:test";
 
 import {
-  CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
@@ -47,6 +47,20 @@ const head = {
   ContentType: "application/pdf",
   ChecksumSHA256: "trusted-checksum",
   ETag: "not-a-sha256",
+};
+const promotionContent = Buffer.from("trusted promotion content");
+const wrongPromotionContent = Buffer.alloc(promotionContent.length, 0x78);
+const promotionChecksum = createHash("sha256")
+  .update(promotionContent)
+  .digest("hex");
+const promotionExpectation = {
+  expectedSizeBytes: promotionContent.length,
+  expectedChecksumSha256: promotionChecksum.toUpperCase(),
+};
+const promotionHead = {
+  ContentLength: promotionContent.length,
+  ContentType: "application/pdf",
+  ETag: "provider-concurrency-token",
 };
 const missing = () =>
   Object.assign(new Error("provider detail"), {
@@ -341,341 +355,537 @@ for (const failure of [
   });
 }
 
-test("move copies, verifies destination, then deletes source", async () => {
-  let destinationHeads = 0;
-  const { adapter, client } = harness((command) => {
-    if (command instanceof HeadObjectCommand) {
-      if (command.input.Key === sourceKey()) return head;
-      destinationHeads += 1;
-      if (destinationHeads === 1) throw missing();
-      return head;
-    }
-    return {};
-  });
-  assert.equal(
-    (await adapter.moveToAvailable(quarantine, available)).sizeBytes,
-    42,
-  );
-  assert.deepEqual(
-    client.calls.map((command) => command?.constructor.name),
-    [
-      "HeadObjectCommand",
-      "HeadObjectCommand",
-      "CopyObjectCommand",
-      "HeadObjectCommand",
-      "DeleteObjectCommand",
-    ],
-  );
-  const copy = client.calls[2] as CopyObjectCommand;
-  assert.equal(
-    copy.input.CopySource,
-    encodeURIComponent(`${config.bucket}/${quarantine.objectKey}`),
-  );
-  assert.equal(copy.input.CopySourceIfMatch, head.ETag);
-  assert.equal(
-    (
-      copy.input as typeof copy.input & {
-        IfNoneMatch?: string;
-      }
-    ).IfNoneMatch,
-    "*",
-  );
-});
+function promotionStream(content = promotionContent) {
+  return Readable.from([content]);
+}
 
-test("actual copy middleware inserts destination If-None-Match header", async () => {
-  let destinationHeads = 0;
-  let terminalRequest:
-    | { headers?: Record<string, string | undefined> }
-    | undefined;
-  const { adapter } = harness(async (command) => {
-    if (command instanceof HeadObjectCommand) {
-      if (command.input.Key === sourceKey()) return head;
-      destinationHeads += 1;
-      if (destinationHeads === 1) throw missing();
-      return head;
-    }
-    if (command instanceof CopyObjectCommand) {
-      const handler = command.middlewareStack.resolve(async (args) => {
-        terminalRequest = args.request as {
-          headers?: Record<string, string | undefined>;
-        };
-        return {
-          response: {},
-          output: { $metadata: {} },
-        };
-      }, {} as never);
-      await handler({
-        input: command.input,
-        request: { headers: {} },
-      } as never);
-      assert.equal(command.input.CopySourceIfMatch, head.ETag);
-    }
-    return {};
-  });
+class TrackingReadable extends Readable {
+  chunksConsumed = 0;
+  destroyCalls = 0;
+  completed = false;
 
-  await adapter.moveToAvailable(quarantine, available);
-  assert.equal(terminalRequest?.headers?.["if-none-match"], "*");
-});
+  constructor(
+    private readonly chunks: readonly Buffer[],
+    private readonly throwOnDestroy = false,
+  ) {
+    super({ highWaterMark: 1 });
+  }
 
-for (const [name, destination] of [
-  [
-    "mismatched opaque identity",
-    { ...available, objectKey: "available/department-a/different-id" },
-  ],
-  [
-    "mismatched department path",
-    { ...available, objectKey: "available/department-b/01JXYZ8J4H3K2M1N" },
-  ],
-] as const) {
-  test(`${name} is rejected before any storage request`, async () => {
+  override _read(): void {
+    const chunk = this.chunks[this.chunksConsumed];
+    if (!chunk) {
+      this.completed = true;
+      this.push(null);
+      return;
+    }
+    this.chunksConsumed += 1;
+    this.push(chunk);
+  }
+
+  override destroy(error?: Error): this {
+    this.destroyCalls += 1;
+    if (this.throwOnDestroy) {
+      throw new Error(`cleanup detail ${config.secretKey}`);
+    }
+    return super.destroy(error);
+  }
+}
+
+for (const invalidSize of [
+  0,
+  -1,
+  1.5,
+  Number.NaN,
+  Number.MAX_SAFE_INTEGER + 1,
+]) {
+  test("promotion rejects invalid trusted size " + invalidSize, async () => {
     const { adapter, client } = harness();
     await assertStorageError(
-      () => adapter.moveToAvailable(quarantine, destination),
+      () =>
+        adapter.moveToAvailable(quarantine, available, {
+          ...promotionExpectation,
+          expectedSizeBytes: invalidSize,
+        }),
+      "INVALID_METADATA",
+    );
+    assert.equal(client.calls.length, 0);
+  });
+}
+
+for (const invalidChecksum of ["", "f".repeat(63), "g".repeat(64)]) {
+  test("promotion rejects malformed trusted checksum", async () => {
+    const { adapter, client } = harness();
+    await assertStorageError(
+      () =>
+        adapter.moveToAvailable(quarantine, available, {
+          ...promotionExpectation,
+          expectedChecksumSha256: invalidChecksum,
+        }),
+      "INVALID_METADATA",
+    );
+    assert.equal(client.calls.length, 0);
+  });
+}
+
+for (const destination of [
+  { ...available, objectKey: "available/department-a/different-id" },
+  { ...available, objectKey: "available/department-b/01JXYZ8J4H3K2M1N" },
+]) {
+  test("promotion enforces deterministic destination mapping", async () => {
+    const { adapter, client } = harness();
+    await assertStorageError(
+      () =>
+        adapter.moveToAvailable(quarantine, destination, promotionExpectation),
       "INVALID_LOCATION",
     );
     assert.equal(client.calls.length, 0);
   });
 }
 
-test("source missing plus unrelated destination is not treated as moved", async () => {
-  const { adapter, client } = harness(() => head);
-  await assertStorageError(
-    () =>
-      adapter.moveToAvailable(quarantine, {
-        ...available,
-        objectKey: "available/department-a/unrelated-id",
-      }),
-    "INVALID_LOCATION",
-  );
-  assert.equal(client.calls.length, 0);
-});
-
-test("copy failure retains the quarantine source", async () => {
-  const { adapter, client } = harness((command) => {
-    if (command instanceof HeadObjectCommand) {
-      if (command.input.Key === sourceKey()) return head;
-      throw missing();
-    }
-    if (command instanceof CopyObjectCommand) throw new Error("copy failed");
-    return {};
+test("source and destination missing returns not found", async () => {
+  const { adapter, client } = harness(() => {
+    throw missing();
   });
   await assertStorageError(
-    () => adapter.moveToAvailable(quarantine, available),
-    "OPERATION_FAILED",
-  );
-  assertNoDelete(client.calls);
-});
-
-test("copy precondition failure is sanitized and retains the source", async () => {
-  const { adapter, client } = harness((command) => {
-    if (command instanceof HeadObjectCommand) {
-      if (command.input.Key === sourceKey()) return head;
-      throw missing();
-    }
-    if (command instanceof CopyObjectCommand) {
-      assert.equal(command.input.CopySourceIfMatch, head.ETag);
-      throw new Error(`precondition detail ${config.secretKey}`);
-    }
-    return {};
-  });
-  await assertStorageError(
-    () => adapter.moveToAvailable(quarantine, available),
-    "OPERATION_FAILED",
-  );
-  assertNoDelete(client.calls);
-});
-
-test("destination conditional copy conflict retains source and supports safe retry", async () => {
-  let destinationExists = false;
-  const { adapter, client } = harness((command) => {
-    if (command instanceof HeadObjectCommand) {
-      if (command.input.Key === sourceKey()) return head;
-      if (destinationExists) return head;
-      throw missing();
-    }
-    if (command instanceof CopyObjectCommand) {
-      assert.equal(
-        (
-          command.input as typeof command.input & {
-            IfNoneMatch?: string;
-          }
-        ).IfNoneMatch,
-        "*",
-      );
-      assert.equal(command.input.CopySourceIfMatch, head.ETag);
-      destinationExists = true;
-      throw conditionalConflict(409);
-    }
-    return {};
-  });
-
-  await assertStorageError(
-    () => adapter.moveToAvailable(quarantine, available),
-    "RECONCILIATION_REQUIRED",
-  );
-  assertNoDelete(client.calls);
-
-  const callCountBeforeRetry = client.calls.length;
-  const result = await adapter.moveToAvailable(quarantine, available);
-  assert.equal(result.checksum, head.ChecksumSHA256);
-  assert.ok(
-    client.calls
-      .slice(callCountBeforeRetry)
-      .some((command) => command instanceof DeleteObjectCommand),
-  );
-});
-
-test("copy middleware fails closed when serialized headers are unavailable", async () => {
-  const { adapter, client } = harness(async (command) => {
-    if (command instanceof HeadObjectCommand) {
-      if (command.input.Key === sourceKey()) return head;
-      throw missing();
-    }
-    if (command instanceof CopyObjectCommand) {
-      const handler = command.middlewareStack.resolve(
-        async () => ({
-          response: {},
-          output: { $metadata: {} },
-        }),
-        {} as never,
-      );
-      await handler({
-        input: command.input,
-        request: {},
-      } as never);
-    }
-    return {};
-  });
-
-  await assertStorageError(
-    () => adapter.moveToAvailable(quarantine, available),
-    "OPERATION_FAILED",
-  );
-  assertNoDelete(client.calls);
-});
-
-test("destination verification failure retains the quarantine source", async () => {
-  const { adapter, client } = harness((command) => {
-    if (command instanceof HeadObjectCommand) {
-      if (command.input.Key === sourceKey()) return head;
-      throw missing();
-    }
-    return {};
-  });
-  await assertStorageError(
-    () => adapter.moveToAvailable(quarantine, available),
-    "RECONCILIATION_REQUIRED",
-  );
-  assertNoDelete(client.calls);
-});
-
-for (const [name, incompatible] of [
-  ["size", { ...head, ContentLength: 41 }],
-  ["checksum", { ...head, ChecksumSHA256: "different" }],
-] as const) {
-  test(`${name} mismatch blocks source deletion`, async () => {
-    let destinationHeads = 0;
-    const { adapter, client } = harness((command) => {
-      if (command instanceof HeadObjectCommand) {
-        if (command.input.Key === sourceKey()) return head;
-        destinationHeads += 1;
-        if (destinationHeads === 1) throw missing();
-        return incompatible;
-      }
-      return {};
-    });
-    await assertStorageError(
-      () => adapter.moveToAvailable(quarantine, available),
-      "DESTINATION_CONFLICT",
-    );
-    assertNoDelete(client.calls);
-  });
-}
-
-test("already-moved retry returns the compatible destination", async () => {
-  const { adapter, client } = harness((command) => {
-    if (command instanceof HeadObjectCommand) {
-      if (command.input.Key === sourceKey()) throw missing();
-      return head;
-    }
-    return {};
-  });
-  assert.equal(
-    (await adapter.moveToAvailable(quarantine, available)).sizeBytes,
-    42,
+    () => adapter.moveToAvailable(quarantine, available, promotionExpectation),
+    "NOT_FOUND",
   );
   assert.equal(client.calls.length, 2);
 });
 
-test("compatible source-plus-destination retry deletes source without copying", async () => {
+test("source missing retry authenticates matching destination by streamed SHA-256", async () => {
   const { adapter, client } = harness((command) => {
-    if (command instanceof HeadObjectCommand) return head;
+    if (command instanceof HeadObjectCommand) {
+      if (command.input.Key === quarantine.objectKey) throw missing();
+      return promotionHead;
+    }
+    if (command instanceof GetObjectCommand) {
+      assert.equal(command.input.Key, available.objectKey);
+      assert.equal(command.input.IfMatch, promotionHead.ETag);
+      return { Body: promotionStream() };
+    }
     return {};
   });
-  await adapter.moveToAvailable(quarantine, available);
-  assert.equal(
-    client.calls.some((command) => command instanceof CopyObjectCommand),
-    false,
+  const result = await adapter.moveToAvailable(
+    quarantine,
+    available,
+    promotionExpectation,
   );
-  assert.ok(client.calls.at(-1) instanceof DeleteObjectCommand);
+  assert.equal(result.sizeBytes, promotionContent.length);
+  assert.equal(client.calls.length, 3);
+  assertNoDelete(client.calls);
 });
 
-test("same-size existing destination without checksums requires reconciliation", async () => {
-  const metadataWithoutChecksums = {
-    ContentLength: 42,
-    ETag: "provider-concurrency-token",
-  };
+test("source missing same-size wrong destination is a conflict", async () => {
   const { adapter, client } = harness((command) => {
-    if (command instanceof HeadObjectCommand) return metadataWithoutChecksums;
+    if (command instanceof HeadObjectCommand) {
+      if (command.input.Key === quarantine.objectKey) throw missing();
+      return promotionHead;
+    }
+    if (command instanceof GetObjectCommand) {
+      return { Body: promotionStream(wrongPromotionContent) };
+    }
     return {};
   });
   await assertStorageError(
-    () => adapter.moveToAvailable(quarantine, available),
+    () => adapter.moveToAvailable(quarantine, available, promotionExpectation),
+    "DESTINATION_CONFLICT",
+  );
+  assertNoDelete(client.calls);
+});
+
+test("different-size existing destination conflicts and retains source", async () => {
+  const { adapter, client } = harness((command) => {
+    if (command instanceof HeadObjectCommand) {
+      return command.input.Key === quarantine.objectKey
+        ? promotionHead
+        : { ...promotionHead, ContentLength: promotionContent.length + 1 };
+    }
+    return {};
+  });
+  await assertStorageError(
+    () => adapter.moveToAvailable(quarantine, available, promotionExpectation),
+    "DESTINATION_CONFLICT",
+  );
+  assertNoDelete(client.calls);
+});
+
+test("same-size wrong existing destination conflicts and retains source", async () => {
+  const { adapter, client } = harness((command) => {
+    if (command instanceof HeadObjectCommand) return promotionHead;
+    if (command instanceof GetObjectCommand) {
+      assert.equal(command.input.Key, available.objectKey);
+      return { Body: promotionStream(wrongPromotionContent) };
+    }
+    return {};
+  });
+  await assertStorageError(
+    () => adapter.moveToAvailable(quarantine, available, promotionExpectation),
+    "DESTINATION_CONFLICT",
+  );
+  assertNoDelete(client.calls);
+});
+
+test("matching existing destination permits guarded source deletion", async () => {
+  const destinationStream = new TrackingReadable([promotionContent]);
+  const { adapter, client } = harness((command) => {
+    if (command instanceof HeadObjectCommand) return promotionHead;
+    if (command instanceof GetObjectCommand) {
+      assert.equal(command.input.Key, available.objectKey);
+      return { Body: destinationStream };
+    }
+    if (command instanceof DeleteObjectCommand) {
+      assert.equal(destinationStream.completed, true);
+      assert.equal(command.input.Key, quarantine.objectKey);
+      assert.notEqual(command.input.Key, available.objectKey);
+    }
+    return {};
+  });
+  const result = await adapter.moveToAvailable(
+    quarantine,
+    available,
+    promotionExpectation,
+  );
+  assert.equal(result.sizeBytes, promotionContent.length);
+  const deletes = client.calls.filter(
+    (command) => command instanceof DeleteObjectCommand,
+  ) as DeleteObjectCommand[];
+  assert.equal(deletes.length, 1);
+  assert.equal(deletes[0]!.input.Key, quarantine.objectKey);
+});
+
+test("normal promotion streams two source passes into conditional Put then verifies", async () => {
+  let destinationHeadCount = 0;
+  let sourceGetCount = 0;
+  const secondPassStream = new TrackingReadable([promotionContent]);
+  const { adapter, client } = harness((command) => {
+    if (command instanceof HeadObjectCommand) {
+      if (command.input.Key === quarantine.objectKey) return promotionHead;
+      destinationHeadCount += 1;
+      if (destinationHeadCount === 1) throw missing();
+      return promotionHead;
+    }
+    if (command instanceof GetObjectCommand) {
+      if (command.input.Key === quarantine.objectKey) {
+        sourceGetCount += 1;
+        assert.equal(command.input.IfMatch, promotionHead.ETag);
+        return {
+          Body: sourceGetCount === 1 ? promotionStream() : secondPassStream,
+        };
+      }
+      return { Body: promotionStream() };
+    }
+    if (command instanceof PutObjectCommand) {
+      assert.equal(command.input.Key, available.objectKey);
+      assert.equal(command.input.Body, secondPassStream);
+      assert.equal(command.input.IfNoneMatch, "*");
+      assert.equal(command.input.ContentLength, promotionContent.length);
+      assert.equal(command.input.ContentType, promotionHead.ContentType);
+    }
+    return {};
+  });
+
+  const result = await adapter.moveToAvailable(
+    quarantine,
+    available,
+    promotionExpectation,
+  );
+  assert.equal(result.sizeBytes, promotionContent.length);
+  assert.equal(sourceGetCount, 2);
+  assert.ok(secondPassStream.destroyCalls >= 1);
+  assert.deepEqual(
+    client.calls.map((command) => command?.constructor.name),
+    [
+      "HeadObjectCommand",
+      "HeadObjectCommand",
+      "GetObjectCommand",
+      "GetObjectCommand",
+      "PutObjectCommand",
+      "HeadObjectCommand",
+      "GetObjectCommand",
+      "DeleteObjectCommand",
+    ],
+  );
+  assert.equal(
+    client.calls.some(
+      (command) => command?.constructor.name === "CopyObjectCommand",
+    ),
+    false,
+  );
+});
+
+for (const status of [409, 412] as const) {
+  test(
+    "conditional destination Put conflict retains source " + status,
+    async () => {
+      let sourceGets = 0;
+      const secondPassStream = new TrackingReadable([promotionContent]);
+      const { adapter, client } = harness((command) => {
+        if (command instanceof HeadObjectCommand) {
+          if (command.input.Key === quarantine.objectKey) return promotionHead;
+          throw missing();
+        }
+        if (command instanceof GetObjectCommand) {
+          sourceGets += 1;
+          return {
+            Body: sourceGets === 1 ? promotionStream() : secondPassStream,
+          };
+        }
+        if (command instanceof PutObjectCommand) {
+          throw conditionalConflict(status);
+        }
+        return {};
+      });
+      await assertStorageError(
+        () =>
+          adapter.moveToAvailable(quarantine, available, promotionExpectation),
+        "RECONCILIATION_REQUIRED",
+      );
+      assert.equal(sourceGets, 2);
+      assert.ok(secondPassStream.destroyCalls >= 1);
+      assertNoDelete(client.calls);
+      assert.equal(
+        client.calls.some(
+          (command) =>
+            command instanceof DeleteObjectCommand &&
+            command.input.Key === available.objectKey,
+        ),
+        false,
+      );
+    },
+  );
+}
+
+test("generic destination Put failure disposes the second source stream", async () => {
+  let sourceGets = 0;
+  const secondPassStream = new TrackingReadable([promotionContent]);
+  const { adapter, client } = harness((command) => {
+    if (command instanceof HeadObjectCommand) {
+      if (command.input.Key === quarantine.objectKey) return promotionHead;
+      throw missing();
+    }
+    if (command instanceof GetObjectCommand) {
+      sourceGets += 1;
+      return { Body: sourceGets === 1 ? promotionStream() : secondPassStream };
+    }
+    if (command instanceof PutObjectCommand) {
+      throw new Error(`provider detail ${config.secretKey}`);
+    }
+    return {};
+  });
+  await assertStorageError(
+    () => adapter.moveToAvailable(quarantine, available, promotionExpectation),
+    "RECONCILIATION_REQUIRED",
+  );
+  assert.ok(secondPassStream.destroyCalls >= 1);
+  assertNoDelete(client.calls);
+});
+
+test("stream cleanup failure preserves the sanitized destination Put outcome", async () => {
+  let sourceGets = 0;
+  const secondPassStream = new TrackingReadable([promotionContent], true);
+  const { adapter, client } = harness((command) => {
+    if (command instanceof HeadObjectCommand) {
+      if (command.input.Key === quarantine.objectKey) return promotionHead;
+      throw missing();
+    }
+    if (command instanceof GetObjectCommand) {
+      sourceGets += 1;
+      return { Body: sourceGets === 1 ? promotionStream() : secondPassStream };
+    }
+    if (command instanceof PutObjectCommand) throw conditionalConflict(409);
+    return {};
+  });
+  await assertStorageError(
+    () => adapter.moveToAvailable(quarantine, available, promotionExpectation),
+    "RECONCILIATION_REQUIRED",
+  );
+  assert.equal(secondPassStream.destroyCalls, 1);
+  assertNoDelete(client.calls);
+});
+
+test("oversized source verification stops before consuming remaining chunks", async () => {
+  const oversized = new TrackingReadable([
+    promotionContent,
+    Buffer.from("overflow"),
+    Buffer.from("must-not-be-consumed"),
+  ]);
+  const { adapter, client } = harness((command) => {
+    if (command instanceof HeadObjectCommand) {
+      if (command.input.Key === quarantine.objectKey) return promotionHead;
+      throw missing();
+    }
+    if (command instanceof GetObjectCommand) return { Body: oversized };
+    return {};
+  });
+  await assertStorageError(
+    () => adapter.moveToAvailable(quarantine, available, promotionExpectation),
+    "RECONCILIATION_REQUIRED",
+  );
+  assert.ok(oversized.destroyCalls >= 1);
+  assert.ok(oversized.chunksConsumed < 3);
+  assert.equal(
+    client.calls.some((command) => command instanceof PutObjectCommand),
+    false,
+  );
+  assertNoDelete(client.calls);
+});
+
+test("oversized destination verification stops before consuming remaining chunks", async () => {
+  const oversized = new TrackingReadable([
+    promotionContent,
+    Buffer.from("overflow"),
+    Buffer.from("must-not-be-consumed"),
+  ]);
+  const { adapter, client } = harness((command) => {
+    if (command instanceof HeadObjectCommand) return promotionHead;
+    if (command instanceof GetObjectCommand) return { Body: oversized };
+    return {};
+  });
+  await assertStorageError(
+    () => adapter.moveToAvailable(quarantine, available, promotionExpectation),
+    "DESTINATION_CONFLICT",
+  );
+  assert.ok(oversized.destroyCalls >= 1);
+  assert.ok(oversized.chunksConsumed < 3);
+  assertNoDelete(client.calls);
+});
+
+test("source second-pass IfMatch failure retains source", async () => {
+  let sourceGets = 0;
+  const { adapter, client } = harness((command) => {
+    if (command instanceof HeadObjectCommand) {
+      if (command.input.Key === quarantine.objectKey) return promotionHead;
+      throw missing();
+    }
+    if (command instanceof GetObjectCommand) {
+      sourceGets += 1;
+      assert.equal(command.input.IfMatch, promotionHead.ETag);
+      if (sourceGets === 2) throw conditionalConflict(412);
+      return { Body: promotionStream() };
+    }
+    return {};
+  });
+  await assertStorageError(
+    () => adapter.moveToAvailable(quarantine, available, promotionExpectation),
+    "RECONCILIATION_REQUIRED",
+  );
+  assert.equal(
+    client.calls.some((command) => command instanceof PutObjectCommand),
+    false,
+  );
+  assertNoDelete(client.calls);
+});
+
+test("missing source provider ETag fails before destination creation", async () => {
+  const withoutEtag = { ...promotionHead, ETag: undefined };
+  const { adapter, client } = harness((command) => {
+    if (command instanceof HeadObjectCommand) {
+      if (command.input.Key === quarantine.objectKey) return withoutEtag;
+      throw missing();
+    }
+    if (command instanceof GetObjectCommand) {
+      return { Body: promotionStream() };
+    }
+    return {};
+  });
+  await assertStorageError(
+    () => adapter.moveToAvailable(quarantine, available, promotionExpectation),
+    "RECONCILIATION_REQUIRED",
+  );
+  assert.equal(
+    client.calls.some((command) => command instanceof PutObjectCommand),
+    false,
+  );
+  assertNoDelete(client.calls);
+});
+
+test("trusted source checksum mismatch prevents destination creation", async () => {
+  const { adapter, client } = harness((command) => {
+    if (command instanceof HeadObjectCommand) {
+      if (command.input.Key === quarantine.objectKey) return promotionHead;
+      throw missing();
+    }
+    if (command instanceof GetObjectCommand) {
+      return { Body: promotionStream(wrongPromotionContent) };
+    }
+    return {};
+  });
+  await assertStorageError(
+    () => adapter.moveToAvailable(quarantine, available, promotionExpectation),
+    "RECONCILIATION_REQUIRED",
+  );
+  assert.equal(
+    client.calls.some((command) => command instanceof PutObjectCommand),
+    false,
+  );
+  assertNoDelete(client.calls);
+});
+
+test("post-write destination checksum mismatch retains source", async () => {
+  let destinationHeads = 0;
+  let sourceGets = 0;
+  const { adapter, client } = harness((command) => {
+    if (command instanceof HeadObjectCommand) {
+      if (command.input.Key === quarantine.objectKey) return promotionHead;
+      destinationHeads += 1;
+      if (destinationHeads === 1) throw missing();
+      return promotionHead;
+    }
+    if (command instanceof GetObjectCommand) {
+      if (command.input.Key === quarantine.objectKey) {
+        sourceGets += 1;
+        return { Body: promotionStream() };
+      }
+      return { Body: promotionStream(wrongPromotionContent) };
+    }
+    return {};
+  });
+  await assertStorageError(
+    () => adapter.moveToAvailable(quarantine, available, promotionExpectation),
+    "RECONCILIATION_REQUIRED",
+  );
+  assert.equal(sourceGets, 2);
+  assertNoDelete(client.calls);
+});
+
+test("destination verification provider failure is sanitized as reconciliation", async () => {
+  let destinationHeads = 0;
+  const { adapter, client } = harness((command) => {
+    if (command instanceof HeadObjectCommand) {
+      if (command.input.Key === quarantine.objectKey) return promotionHead;
+      destinationHeads += 1;
+      if (destinationHeads === 1) throw missing();
+      return promotionHead;
+    }
+    if (command instanceof GetObjectCommand) {
+      if (command.input.Key === available.objectKey) {
+        throw new Error("provider verification detail");
+      }
+      return { Body: promotionStream() };
+    }
+    return {};
+  });
+  await assertStorageError(
+    () => adapter.moveToAvailable(quarantine, available, promotionExpectation),
     "RECONCILIATION_REQUIRED",
   );
   assertNoDelete(client.calls);
 });
 
-test("incompatible existing destination is rejected and source retained", async () => {
-  const { adapter, client } = harness((command) => {
-    if (command instanceof HeadObjectCommand) {
-      return command.input.Key === sourceKey()
-        ? head
-        : { ...head, ContentLength: 100 };
-    }
-    return {};
-  });
-  await assertStorageError(
-    () => adapter.moveToAvailable(quarantine, available),
-    "DESTINATION_CONFLICT",
-  );
-  assertNoDelete(client.calls);
-});
-
-test("existing destination with unequal trustworthy checksum is rejected", async () => {
-  const { adapter, client } = harness((command) => {
-    if (command instanceof HeadObjectCommand) {
-      return command.input.Key === sourceKey()
-        ? head
-        : { ...head, ChecksumSHA256: "different-trustworthy-checksum" };
-    }
-    return {};
-  });
-  await assertStorageError(
-    () => adapter.moveToAvailable(quarantine, available),
-    "DESTINATION_CONFLICT",
-  );
-  assertNoDelete(client.calls);
-});
-
-test("delete failure after verified copy reports reconciliation required", async () => {
+test("source deletion failure after verified destination requires reconciliation", async () => {
   const { adapter } = harness((command) => {
-    if (command instanceof HeadObjectCommand) return head;
-    if (command instanceof DeleteObjectCommand) throw new Error("denied");
+    if (command instanceof HeadObjectCommand) return promotionHead;
+    if (command instanceof GetObjectCommand) {
+      return { Body: promotionStream() };
+    }
+    if (command instanceof DeleteObjectCommand) {
+      throw new Error("provider deletion detail");
+    }
     return {};
   });
   await assertStorageError(
-    () => adapter.moveToAvailable(quarantine, available),
+    () => adapter.moveToAvailable(quarantine, available, promotionExpectation),
     "RECONCILIATION_REQUIRED",
   );
 });
@@ -729,10 +939,6 @@ test("signer failures are sanitized", async () => {
     "OPERATION_FAILED",
   );
 });
-
-function sourceKey() {
-  return quarantine.objectKey;
-}
 
 function assertNoDelete(calls: unknown[]) {
   assert.equal(
