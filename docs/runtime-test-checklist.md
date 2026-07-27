@@ -7512,3 +7512,161 @@ Earlier pending statements concerning the following remain valid:
 - full secure upload/download runtime verification.
 
 Production file upload remains disabled.
+
+## Real Quarantine-to-Available Promotion Runtime Verification — 2026-07-27
+
+### Scope
+
+This checkpoint records real MinIO-backed runtime verification of the compiled Lexora S3 adapter's normal quarantine-to-available promotion path.
+
+It covers:
+
+- creation of a real quarantine source object;
+- deterministic promotion to the corresponding available location;
+- destination verification;
+- quarantine source deletion after verification;
+- streaming content-integrity verification;
+- already-moved retry behavior;
+- exact cleanup and runtime non-regression.
+
+It does not cover destination-conflict handling, uncertain-copy reconciliation, signed delivery, persistence, content inspection, malware scanning, attachment authorization, or the complete upload/download workflow.
+
+Production file upload remains disabled.
+
+### Repository and Runtime Context
+
+| Item | Verified value |
+|---|---|
+| Repository commit | `6a657ecf7f13921461a231b5a609d8f2e601c260` |
+| Adapter implementation commit | `6656ad735ac176cb49e5b6d4e1e80dfef4f595be` |
+| MinIO container short ID | `550f841b7043` |
+| MinIO internal IPv4 | `10.203.250.10` |
+| Configured bucket | `lexora-lms-evaluation` |
+| Secret-reader GID | `982` |
+| Temporary payload size | `12321 bytes` |
+| API PID at checkpoint start | `1950` |
+| API PID at checkpoint end | `1950` |
+
+The documentation-only commit did not alter the previously verified adapter implementation.
+
+### Runtime Evidence Report
+
+Detailed server-side report:
+
+    /home/sh002/lexora-s3-real-promotion-20260727T061622Z.txt
+
+No credential value, private runtime object key, payload content, or raw content hash is recorded in this checklist.
+
+### Real Promotion Behavior
+
+The actual compiled adapter completed the following sequence against the evaluation MinIO runtime:
+
+- [x] Confirmed the temporary quarantine and available locations were initially absent.
+- [x] Created a real quarantine object through `createQuarantineObject`.
+- [x] Passed the trusted payload size as explicit `ContentLength`.
+- [x] Promoted the object through `moveToAvailable`.
+- [x] Used the deterministic matching available location.
+- [x] Completed real provider-side copy behavior.
+- [x] Verified destination metadata after copy.
+- [x] Verified destination size matched the source payload size.
+- [x] Streamed the available object through `readObject`.
+- [x] Verified exact SHA-256 content equality.
+- [x] Deleted the quarantine source only after destination verification.
+- [x] Confirmed the quarantine source was absent after successful promotion.
+- [x] Confirmed the available object remained present and intact.
+
+### Already-Moved Retry
+
+The adapter was called again after:
+
+- the quarantine source was already absent; and
+- the verified available destination already existed.
+
+Verified result:
+
+- [x] The retry returned the existing available object safely.
+- [x] The available object retained the expected size.
+- [x] Streaming content integrity still passed.
+- [x] The quarantine source did not reappear.
+- [x] No second source object was created.
+
+This verifies the already-moved retry path for a completed normal promotion.
+
+### Cleanup Verification
+
+- [x] Adapter deletion of the temporary available object passed.
+- [x] Repeated idempotent deletion passed.
+- [x] Source cleanup remained safe and idempotent.
+- [x] A separate administrative cleanup check confirmed both exact temporary locations were absent.
+- [x] No temporary `minio-init` container remained.
+- [x] The named MinIO volume remained preserved.
+
+No broad wildcard deletion was used as runtime evidence.
+
+### MinIO and API Non-Regression
+
+- [x] MinIO remained running.
+- [x] MinIO remained healthy.
+- [x] MinIO retained the same container identity during the checkpoint.
+- [x] No host listener appeared for ports `9000` or `9001`.
+- [x] The API remained healthy through the direct localhost endpoint.
+- [x] The API remained healthy through Nginx.
+- [x] The API PID remained `1950` throughout this checkpoint.
+- [x] No API restart was attempted.
+- [x] No MinIO restart was attempted.
+- [x] The repository remained clean.
+- [x] No database record was created or changed.
+- [x] No signed URL was generated.
+- [x] No public file-storage route was enabled.
+
+An earlier PM2/NestJS DI-boot checkpoint recorded API PID `18422`. This promotion checkpoint began and ended with PID `1950`. The intervening PID change was not investigated by this test, so this section makes no claim about its cause. The verified fact is that the API process did not change during this promotion checkpoint.
+
+### Runtime Verdict
+
+- [x] Real normal quarantine-to-available promotion is runtime verified.
+- [x] Real copy, destination verification, and source deletion ordering are runtime verified.
+- [x] Available-object streaming integrity is runtime verified.
+- [x] Already-moved retry behavior is runtime verified.
+- [x] Exact adapter and administrative cleanup are runtime verified.
+- [ ] Destination-conflict behavior against real MinIO remains pending.
+- [ ] Source-retention behavior during a conflicting destination remains pending.
+- [ ] Conditional-copy race reconciliation remains pending.
+- [ ] Partial or uncertain promotion reconciliation remains pending.
+- [ ] Signed URL generation and delivery remain pending.
+- [ ] Persistence verification remains pending.
+- [ ] The complete secure upload/download pipeline remains incomplete.
+- [ ] Production file upload remains disabled.
+
+Correct status:
+
+> The real normal quarantine-to-available copy-verify-delete lifecycle and already-moved retry path are runtime verified against the isolated MinIO evaluation environment. Destination conflict, source retention under conflict, race and partial-operation reconciliation, signed delivery, persistence, content inspection, malware scanning, attachment authorization, and the complete secure upload/download workflow remain pending. Production file upload remains disabled.
+
+### Supersession Note
+
+This section supersedes earlier pending statements only for:
+
+- real normal quarantine-to-available promotion;
+- deterministic available-location mapping;
+- real provider-side copy in the normal path;
+- post-copy destination verification;
+- source deletion after verified destination;
+- already-moved retry behavior.
+
+Earlier pending statements remain valid for:
+
+- incompatible existing-destination conflict;
+- source retention during conflict;
+- conditional-copy race handling;
+- uncertain or partial promotion reconciliation;
+- signed URL generation and external delivery;
+- persistence;
+- content-signature and MIME inspection;
+- malware scanning;
+- attachment authorization;
+- database concurrency;
+- quotas;
+- audit atomicity;
+- frontend upload/download;
+- full secure upload/download runtime verification.
+
+Production file upload remains disabled.
