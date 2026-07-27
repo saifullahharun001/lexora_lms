@@ -4,13 +4,15 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from "@nestjs/common";
 import {
-  Prisma,
   type FileObjectStatus,
   type FileVisibility,
+  Prisma,
 } from "@prisma/client";
+
 import { PrismaService } from "../../../../common/prisma/prisma.service";
 import { RequestContextService } from "../../../../common/request-context/request-context.service";
 import type {
@@ -21,22 +23,36 @@ import type {
   MalwareScanResultRecord,
   TrustedMalwareScanStatus,
 } from "../../contracts/file-storage.contracts";
-import { FILE_STORAGE_AUDIT_EVENTS } from "../../domain/file-storage.audit-events";
-import { FILE_STORAGE_REPOSITORY } from "../../domain/file-storage.constants";
 import { assertFileLifecycleTransition } from "../../domain/file-lifecycle.policy";
+import { FILE_STORAGE_AUDIT_EVENTS } from "../../domain/file-storage.audit-events";
+import {
+  FILE_CONTENT_INSPECTOR_PORT,
+  FILE_STORAGE_REPOSITORY,
+  OBJECT_STORAGE_PORT,
+} from "../../domain/file-storage.constants";
 import {
   FileStorageValidationError,
   normalizeSafeDiagnosticMetadata,
   validatePendingMetadata,
   validateTrustedScanInput,
 } from "../../domain/file-storage-validation";
+import {
+  ACADEMIC_DOCUMENT_CONTENT_POLICY,
+  enforceTrustedFileContentPolicy,
+  FileContentPolicyError,
+} from "../../domain/trusted-file-content.policy";
+import {
+  ContentInspectionError,
+  type FileContentInspectorPort,
+} from "../ports/file-content-inspector.port";
 import type { FileStorageRepository } from "../ports/file-storage.repository";
+import type { ObjectStoragePort } from "../ports/object-storage.port";
 
 export interface RegisterPendingFileServiceInput {
   bucket: string;
   objectKey: string;
   originalFilename: string;
-  canonicalMimeType: string;
+  clientClaimedMimeType?: string;
   sizeBytes: number;
   checksumSha256: string;
   visibility?: FileVisibility;
@@ -56,6 +72,10 @@ export class FileStorageService {
   constructor(
     @Inject(FILE_STORAGE_REPOSITORY)
     private readonly repository: FileStorageRepository,
+    @Inject(OBJECT_STORAGE_PORT)
+    private readonly objectStorage: ObjectStoragePort,
+    @Inject(FILE_CONTENT_INSPECTOR_PORT)
+    private readonly contentInspector: FileContentInspectorPort,
     private readonly prisma: PrismaService,
     private readonly requestContextService: RequestContextService,
   ) {}
@@ -64,9 +84,54 @@ export class FileStorageService {
     input: RegisterPendingFileServiceInput,
   ): Promise<FileObjectMetadata> {
     const { actorId, departmentId } = this.requireActorContext();
+    const requiredPrefix = `quarantine/${departmentId}/`;
+    if (!input.objectKey.startsWith(requiredPrefix))
+      throw new NotFoundException("Quarantine object was not found");
     let metadata: ReturnType<typeof validatePendingMetadata>;
     try {
-      metadata = validatePendingMetadata(input);
+      metadata = validatePendingMetadata({
+        ...input,
+        canonicalMimeType: "application/octet-stream",
+      });
+    } catch (error) {
+      this.rethrowValidation(error);
+    }
+    const location = { bucket: metadata.bucket, objectKey: metadata.objectKey };
+    const authoritative = await this.objectStorage.statObject(location);
+    if (!authoritative)
+      throw new NotFoundException("Quarantine object was not found");
+    if (authoritative.sizeBytes !== metadata.sizeBytes)
+      throw new BadRequestException("Quarantine object size does not match");
+    const stream = await this.objectStorage.readObject(location);
+    let detected: Awaited<ReturnType<FileContentInspectorPort["inspect"]>>;
+    try {
+      detected = await this.contentInspector.inspect(stream);
+    } catch (error) {
+      if (!(error instanceof ContentInspectionError)) throw error;
+      if (error.code === "CONTENT_UNRECOGNIZED")
+        throw new BadRequestException("File content is not recognized");
+      throw new ServiceUnavailableException(
+        "File content inspection is temporarily unavailable",
+      );
+    }
+    let accepted: ReturnType<typeof enforceTrustedFileContentPolicy>;
+    try {
+      accepted = enforceTrustedFileContentPolicy({
+        filename: metadata.originalFilename,
+        claimedMimeType: input.clientClaimedMimeType,
+        detectedCanonicalMimeType: detected.canonicalMimeType,
+        detectedExtension: detected.recognizedExtension,
+        policy: ACADEMIC_DOCUMENT_CONTENT_POLICY,
+      });
+    } catch (error) {
+      if (!(error instanceof FileContentPolicyError)) throw error;
+      throw new BadRequestException("File content is not accepted");
+    }
+    try {
+      metadata = validatePendingMetadata({
+        ...metadata,
+        canonicalMimeType: accepted.canonicalMimeType,
+      });
     } catch (error) {
       this.rethrowValidation(error);
     }
@@ -84,6 +149,11 @@ export class FileStorageService {
     await this.writeAudit(
       FILE_STORAGE_AUDIT_EVENTS.REGISTERED_PENDING_SCAN,
       file,
+      {
+        contentPolicyId: accepted.policyId,
+        canonicalMime: accepted.canonicalMimeType,
+        recognizedExtension: accepted.recognizedExtension,
+      },
     );
     return this.toSafeMetadata(file);
   }
@@ -256,6 +326,8 @@ export class FileStorageService {
     file: FileObjectPersistenceRecord,
   ): FileObjectMetadata {
     const { bucket: _bucket, objectKey: _objectKey, ...safe } = file;
+    void _bucket;
+    void _objectKey;
     return safe;
   }
   private rethrowValidation(error: unknown): never {

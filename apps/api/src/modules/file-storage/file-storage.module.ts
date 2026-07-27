@@ -8,9 +8,11 @@ import { RequestContextModule } from "@/common/request-context/request-context.m
 
 import { FileStorageService } from "./application/services/file-storage.service";
 import {
+  FILE_CONTENT_INSPECTOR_PORT,
   FILE_STORAGE_REPOSITORY,
   OBJECT_STORAGE_PORT,
 } from "./domain/file-storage.constants";
+import { FileTypeContentInspectorAdapter } from "./infrastructure/content-inspection/file-type-content-inspector.adapter";
 import {
   buildS3ClientConfig,
   createS3CommandClient,
@@ -48,9 +50,14 @@ import { PrismaFileStorageRepository } from "./infrastructure/repositories/prism
       useFactory: createS3UrlSigner,
     },
     S3ObjectStorageAdapter,
+    FileTypeContentInspectorAdapter,
     {
       provide: OBJECT_STORAGE_PORT,
       useExisting: S3ObjectStorageAdapter,
+    },
+    {
+      provide: FILE_CONTENT_INSPECTOR_PORT,
+      useExisting: FileTypeContentInspectorAdapter,
     },
   ],
   exports: [FileStorageService],

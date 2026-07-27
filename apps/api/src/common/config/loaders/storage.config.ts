@@ -13,6 +13,7 @@ export const storageConfig = registerAs("storage", () => {
     secretKey: env.S3_SECRET_KEY,
     forcePathStyle: env.S3_FORCE_PATH_STYLE,
     publicBaseUrl: env.S3_PUBLIC_BASE_URL,
+    contentInspectionTimeoutMs: env.FILE_CONTENT_INSPECTION_TIMEOUT_MS,
     malwareScanning: {
       mode: env.MALWARE_SCANNER_MODE,
       host: env.MALWARE_SCANNER_HOST,

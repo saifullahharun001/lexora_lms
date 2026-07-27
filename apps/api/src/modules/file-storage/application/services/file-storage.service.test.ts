@@ -1,14 +1,17 @@
 import assert from "node:assert/strict";
+import { Readable } from "node:stream";
 import test from "node:test";
+
+import type { RequestContext } from "@lexora/types";
 import {
   BadRequestException,
   ConflictException,
   NotFoundException,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from "@nestjs/common";
 import type { FileObjectStatus } from "@prisma/client";
-import type { RequestContext } from "@lexora/types";
-import type { FileStorageRepository } from "../ports/file-storage.repository";
+
 import type {
   FileLifecycleTransitionInput,
   FileObjectPersistenceRecord,
@@ -17,6 +20,8 @@ import type {
   RecordScanResultInput,
   RegisterPendingFileInput,
 } from "../../contracts/file-storage.contracts";
+import { ContentInspectionError } from "../ports/file-content-inspector.port";
+import type { FileStorageRepository } from "../ports/file-storage.repository";
 import { FileStorageService } from "./file-storage.service";
 
 const context = (
@@ -150,21 +155,39 @@ function harness(requestContext = context()) {
       },
     },
   };
+  const objectStorage = {
+    statObject: async () => ({
+      bucket: "private",
+      objectKey: "quarantine/department-a/id-123",
+      sizeBytes: 42,
+    }),
+    readObject: async () => Readable.from([Buffer.from("content")]),
+  };
+  const contentInspector = {
+    inspect: async () => ({
+      canonicalMimeType: "application/pdf",
+      recognizedExtension: "pdf",
+    }),
+  };
   return {
     service: new FileStorageService(
       repository,
+      objectStorage as never,
+      contentInspector,
       prisma as never,
       { get: () => requestContext } as never,
     ),
     repository,
     audits,
+    objectStorage,
+    contentInspector,
   };
 }
 const registration = {
   bucket: "private",
-  objectKey: "opaque/id-123",
+  objectKey: "quarantine/department-a/id-123",
   originalFilename: "../report.pdf",
-  canonicalMimeType: "application/pdf",
+  clientClaimedMimeType: "application/pdf",
   sizeBytes: 42,
   checksumSha256: "A".repeat(64),
 };
@@ -188,6 +211,113 @@ test("registration uses principal scope, normalizes checksum, and audits", async
   assert.equal(audits.length, 1);
   assert.ok(!("bucket" in result));
   assert.ok(!("objectKey" in result));
+});
+test("registration persists detected MIME and keeps audit context safe", async () => {
+  const { service, repository, audits } = harness();
+  await service.registerPending({
+    ...registration,
+    clientClaimedMimeType: "application/octet-stream",
+  });
+  assert.equal(repository.lastCreate?.mimeType, "application/pdf");
+  const serializedAudit = JSON.stringify(audits);
+  assert.equal(serializedAudit.includes(registration.objectKey), false);
+  assert.equal(serializedAudit.includes(registration.bucket), false);
+  assert.equal(serializedAudit.includes("application/octet-stream"), false);
+  assert.equal(serializedAudit.includes("academic-documents-v1"), true);
+});
+for (const objectKey of [
+  "quarantine/department-b/id-123",
+  "available/department-a/id-123",
+]) {
+  test("registration rejects objects outside the active department quarantine", async () => {
+    const { service, repository, audits } = harness();
+    await assert.rejects(
+      () => service.registerPending({ ...registration, objectKey }),
+      NotFoundException,
+    );
+    assert.equal(repository.lastCreate, undefined);
+    assert.equal(audits.length, 0);
+  });
+}
+test("authoritative size mismatch prevents persistence and audit", async () => {
+  const { service, repository, audits, objectStorage } = harness();
+  objectStorage.statObject = async () => ({
+    bucket: "private",
+    objectKey: registration.objectKey,
+    sizeBytes: 41,
+  });
+  await assert.rejects(
+    () => service.registerPending(registration),
+    BadRequestException,
+  );
+  assert.equal(repository.lastCreate, undefined);
+  assert.equal(audits.length, 0);
+});
+test("content-policy failure prevents persistence and audit", async () => {
+  const { service, repository, audits, contentInspector } = harness();
+  contentInspector.inspect = async () => ({
+    canonicalMimeType: "image/png",
+    recognizedExtension: "png",
+  });
+  await assert.rejects(
+    () => service.registerPending(registration),
+    BadRequestException,
+  );
+  assert.equal(repository.lastCreate, undefined);
+  assert.equal(audits.length, 0);
+});
+for (const [code, expected] of [
+  ["CONTENT_UNRECOGNIZED", BadRequestException],
+  ["CONTENT_INSPECTION_TIMEOUT", ServiceUnavailableException],
+  ["CONTENT_INSPECTION_FAILED", ServiceUnavailableException],
+] as const) {
+  test(`classifies inspection failure ${code}`, async () => {
+    const { service, repository, audits, contentInspector } = harness();
+    contentInspector.inspect = async () => {
+      throw new ContentInspectionError(code);
+    };
+    await assert.rejects(() => service.registerPending(registration), expected);
+    assert.equal(repository.lastCreate, undefined);
+    assert.equal(audits.length, 0);
+  });
+}
+test("preserves object-storage and unexpected programmer errors", async () => {
+  for (const source of ["stat", "read"] as const) {
+    const { service, repository, audits, objectStorage } = harness();
+    const infrastructureFailure = new Error(`sanitized ${source} failure`);
+    objectStorage[source === "stat" ? "statObject" : "readObject"] =
+      async () => {
+        throw infrastructureFailure;
+      };
+    await assert.rejects(
+      () => service.registerPending(registration),
+      (error: unknown) => error === infrastructureFailure,
+    );
+    assert.equal(repository.lastCreate, undefined);
+    assert.equal(audits.length, 0);
+  }
+  const { service, contentInspector } = harness();
+  const programmerFailure = new Error("programmer failure");
+  contentInspector.inspect = async () => {
+    throw programmerFailure;
+  };
+  await assert.rejects(
+    () => service.registerPending(registration),
+    (error: unknown) => error === programmerFailure,
+  );
+});
+test("specific client MIME mismatch prevents persistence", async () => {
+  const { service, repository, audits } = harness();
+  await assert.rejects(
+    () =>
+      service.registerPending({
+        ...registration,
+        clientClaimedMimeType: "image/png",
+      }),
+    BadRequestException,
+  );
+  assert.equal(repository.lastCreate, undefined);
+  assert.equal(audits.length, 0);
 });
 test("generic metadata excludes bucket and object key", async () => {
   const result = await harness().service.getMetadata("file-1");

@@ -47,6 +47,7 @@ export const envSchema = z.object({
   S3_SECRET_KEY: z.string().min(8),
   S3_FORCE_PATH_STYLE: z.enum(["true", "false"]).transform((value) => value === "true"),
   S3_PUBLIC_BASE_URL: z.string().url(),
+  FILE_CONTENT_INSPECTION_TIMEOUT_MS: z.coerce.number().int().min(500).max(30_000).default(5_000),
   MALWARE_SCANNER_MODE: z.enum(["disabled", "clamav"]).default("disabled"),
   MALWARE_SCANNER_HOST: z.string().min(1),
   MALWARE_SCANNER_PORT: z.coerce.number().int().positive(),
