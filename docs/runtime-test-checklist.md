@@ -7124,3 +7124,391 @@ Resume from:
 6. Perform least-privilege IAM, real object-operation, conditional-write, signed URL, and persistence tests.
 
 Do not enable production upload or domain attachment features during these steps.
+
+## MinIO IAM, Real S3 Adapter, and API DI Runtime Verification — 2026-07-27
+
+### Scope and Classification
+
+This section records the latest runtime evidence for the isolated MinIO evaluation environment, least-privilege IAM bootstrap, Lexora S3-compatible object-storage adapter, real quarantine object operations, and PM2/NestJS dependency-injection boot.
+
+The MinIO deployment remains evaluation-only. It is not classified as the final institutional production object-storage provider.
+
+Specific quarantine object-storage operations are now runtime verified. The complete secure upload/download pipeline remains incomplete, and production file upload remains disabled.
+
+### Related Commits
+
+| Purpose | Commit |
+|---|---|
+| Secure S3 quarantine adapter | `06fc4c5` |
+| Isolated MinIO evaluation runtime | `3c8f8a4` |
+| MinIO client build-provenance hardening | `8268d62` |
+| MinIO runtime secret-delivery hardening | `4bcf94b` |
+| Static internal MinIO topology | `7b7a755` |
+| Required quarantine upload content length | `6656ad7` |
+
+Final verified implementation commit:
+
+- Full commit: `6656ad735ac176cb49e5b6d4e1e80dfef4f595be`
+- Subject: `Require content length for S3 quarantine uploads`
+
+### MinIO Runtime and Internal Topology
+
+Verified evaluation runtime:
+
+| Item | Verified value |
+|---|---|
+| Compose project | `lexora-minio-evaluation` |
+| MinIO container short ID | `550f841b7043` |
+| Internal MinIO IPv4 | `10.203.250.10` |
+| Internal endpoint | `http://10.203.250.10:9000` |
+| Internal subnet | `10.203.250.0/24` |
+| Internal gateway | `10.203.250.1` |
+| Bucket | `lexora-lms-evaluation` |
+| Named volume | `lexora_minio_evaluation_data` |
+
+Runtime evidence:
+
+- [x] MinIO remained running and healthy.
+- [x] API-to-MinIO access worked through the static internal Docker bridge address.
+- [x] No Docker host port was published for ports `9000` or `9001`.
+- [x] No Nginx storage route was added.
+- [x] No LAN or public MinIO publication was configured.
+- [x] The MinIO console was not host-published.
+- [x] The named evaluation volume remained preserved.
+
+The absence of published host ports does not mean the Docker host itself cannot route to the internal container address. The verified boundary is that no host-port, Nginx, LAN, or public publication was configured.
+
+### Runtime Images and Secret Boundary
+
+Pinned image identities:
+
+| Component | Image ID |
+|---|---|
+| MinIO evaluation server | `sha256:d09592223139e1b7e6b2bf45193cd1f5cbd33045e28f6567d6d8c80b3cae5b72` |
+| MinIO bootstrap client | `sha256:c9b92b1025620a2ba59676132b4c36055ad301cdf0234a23279c2c72ad40df32` |
+
+Verified secret-delivery boundary:
+
+- Dedicated secret-reader group GID: `982`
+- External secret directory: `/secure/external/minio-evaluation`
+- The secret directory remained root-owned and restricted.
+- Secret files remained regular, non-symlink, nonempty, and restricted.
+- Root and application credentials were confirmed to be distinct.
+- The unprivileged deployment user could not traverse the secret directory directly.
+- No credential value was printed, documented, rotated, or committed.
+
+No raw access key, secret key, MinIO root credential, token, password, cookie, or database credential is recorded here.
+
+### Least-Privilege IAM Runtime Evidence
+
+The following behavior is runtime verified:
+
+- [x] The configured bucket exists and is private.
+- [x] The Lexora application user is enabled.
+- [x] The exact expected direct application policy is attached.
+- [x] Application group membership is empty.
+- [x] Controlled `quarantine/` prefix listing is allowed.
+- [x] Controlled `available/` prefix listing is allowed.
+- [x] Configured-bucket root listing is blocked.
+- [x] Unrelated-prefix listing is blocked.
+- [x] Access to a temporary unrelated canary bucket is blocked.
+- [x] No unauthorized bucket name was exposed.
+- [x] Initial bootstrap execution passed.
+- [x] Repeated bootstrap execution was idempotent.
+- [x] The temporary canary bucket was removed.
+
+The application policy was not broadened with:
+
+- `s3:ListAllMyBuckets`;
+- unrestricted bucket-root `s3:ListBucket`;
+- `s3:*`;
+- `admin:*`.
+
+### IAM Diagnostic False Negatives
+
+Two earlier IAM diagnostics failed because of checker assumptions rather than authorization weaknesses.
+
+1. One checker treated a successful alias-root `mc ls` exit status as proof of unrestricted discovery. The corrected inspection checked the returned entries and confirmed that no unrelated bucket was exposed.
+
+2. Another checker used application `mc stat` against the bare bucket. That operation requires bucket-root listing permission, while the Lexora policy intentionally permits listing only under controlled prefixes.
+
+These diagnostic failures do not indicate privilege escalation or an IAM policy vulnerability.
+
+### Streaming Transport Diagnosis
+
+A real low-level transport matrix established:
+
+- [x] Buffer upload passed.
+- [x] Unknown-length Node `Readable` failed during `PutObject`.
+- [x] The safe failure classification was `ERR_HTTP_INVALID_HEADER_VALUE`.
+- [x] The same `Readable` succeeded with explicit `ContentLength`.
+- [x] Explicit-length streaming passed with SDK-default checksum behavior.
+- [x] Explicit-length streaming passed with checksum calculation limited to when required.
+- [x] IAM, network, bucket, and credentials were not the root cause.
+- [x] No SDK checksum-configuration change was required.
+
+Diagnosis:
+
+> The original adapter supplied a Node `Readable` without a trusted explicit byte length. The S3 transport required `ContentLength` for this streaming request path.
+
+### Content-Length Contract Correction
+
+The object-storage contract is now:
+
+    createQuarantineObject(
+      location: ObjectLocation,
+      content: Readable,
+      expectedSizeBytes: number,
+    ): Promise<ObjectMetadata>;
+
+Verified behavior:
+
+- [x] `expectedSizeBytes` is mandatory.
+- [x] The expected size must be a positive safe integer.
+- [x] Invalid size is rejected before any provider request.
+- [x] Invalid size maps to sanitized `INVALID_METADATA`.
+- [x] `PutObjectCommand.ContentLength` receives the trusted size.
+- [x] The original Node `Readable` remains unbuffered.
+- [x] `IfNoneMatch: "*"` remains intact.
+- [x] No public ACL is added.
+- [x] Authoritative post-upload `HeadObject` size must equal the expected size.
+- [x] A size mismatch fails closed.
+- [x] A verification mismatch does not trigger uncertain automatic deletion.
+- [x] Conditional duplicate creation still maps to `DESTINATION_CONFLICT`.
+
+The trusted byte count must eventually originate from a validated server-controlled upload boundary. It must not be inferred from a filename, MIME declaration, arbitrary stream property, or unvalidated client header.
+
+### Static and Focused Test Evidence
+
+Verification completed locally and on the Ubuntu server:
+
+- [x] API typecheck passed.
+- [x] API build passed.
+- [x] `git diff --check` passed.
+- [x] Focused compiled S3 adapter tests: `53`
+- [x] Passed: `53`
+- [x] Failed: `0`
+- [x] Skipped: `0`
+
+These `53` tests are the focused compiled adapter suite after the content-length correction. They are separate from earlier broader Secure File Storage test counts and must not be combined with them.
+
+### Real MinIO-Backed Adapter Operations
+
+The corrected compiled Lexora adapter completed the following operations against the evaluation MinIO runtime:
+
+- [x] Invalid trusted size was rejected before object creation.
+- [x] A real Node `Readable` quarantine upload succeeded with explicit `ContentLength`.
+- [x] The successful temporary payload size was `8228 bytes`.
+- [x] Authoritative post-upload metadata verification passed.
+- [x] `statObject` returned the expected metadata.
+- [x] A duplicate conditional creation was rejected as `DESTINATION_CONFLICT`.
+- [x] The conflicting request did not replace the original object.
+- [x] Streaming `readObject` passed.
+- [x] Exact SHA-256 content-integrity comparison passed.
+- [x] Adapter deletion passed.
+- [x] Repeated idempotent deletion passed.
+- [x] A separate administrative check independently confirmed the object was absent.
+- [x] No temporary runtime object remained.
+- [x] No temporary bootstrap container remained.
+
+The AWS SDK emitted a non-retryable streaming-request warning during the intentional duplicate-write test. The adapter mapped the provider response to `DESTINATION_CONFLICT`, the original object remained intact, and the complete runtime harness passed.
+
+The real operations verified in this phase are:
+
+- quarantine `PutObject`;
+- authoritative `HeadObject`;
+- `statObject`;
+- streaming `GetObject`;
+- conditional duplicate protection;
+- `DeleteObject`;
+- repeated idempotent deletion.
+
+Real quarantine-to-available promotion is not included in this verified set.
+
+### FileStorageModule and Provider Wiring
+
+Verified source and compiled registration:
+
+- [x] `AppModule` imports `FileStorageModule`.
+- [x] `modules/index.ts` exports `FileStorageModule`.
+- [x] The compiled `AppModule` graph reaches `FileStorageModule`.
+- [x] `FileStorageService` is registered.
+- [x] The Prisma repository provider is registered.
+- [x] `RAW_S3_CLIENT` is registered.
+- [x] `S3_COMMAND_CLIENT` is registered.
+- [x] `S3_URL_SIGNER` is registered.
+- [x] `S3ObjectStorageAdapter` is registered.
+- [x] `OBJECT_STORAGE_PORT` uses the existing `S3ObjectStorageAdapter`.
+
+### Module-Registration Checker False Negative
+
+An earlier checker searched only the following path selection:
+
+    apps/api/src/**/*.module.ts
+
+That selection missed the root-level application module:
+
+    apps/api/src/app.module.ts
+
+Direct source inspection, historical inspection, compiled metadata inspection, and graph traversal confirmed that `FileStorageModule` remained registered. No module-registration regression occurred.
+
+### PM2 and NestJS DI Boot
+
+Verified PM2 transition:
+
+| Item | Verified value |
+|---|---|
+| PM2 application ID | `0` |
+| Old API PID | `1917` |
+| New API PID | `18422` |
+| Restart count | `0 → 1` |
+| PM2 cwd | `/home/sh002/lexora_lms` |
+| Executable | `/usr/bin/bash` |
+| Launch command | `node -r ./apps/api/register-paths.js apps/api/dist/src/main.js` |
+| Stored aligned S3 key count | `0` |
+
+Runtime results:
+
+- [x] The API restarted exactly once.
+- [x] A new PID was created.
+- [x] The repository-root PM2 launch contract was preserved.
+- [x] NestJS booted with the corrected adapter artifact.
+- [x] Current-start logs contained `Nest application successfully started`.
+- [x] Current-start dependency-resolution and fatal-pattern scans passed.
+- [x] The S3 credential log-leak scan passed.
+- [x] Direct API health passed.
+- [x] Nginx-proxied API health passed.
+- [x] The API remained bound only to `127.0.0.1:4000`.
+- [x] MinIO remained running and healthy during the API restart.
+
+The first immediate health request received connection refused while the new listener was still starting. The second health attempt passed with the same new PID and without an additional restart. This was a startup-timing observation, not an API boot failure.
+
+`Stored aligned S3 key count: 0` means no conflicting S3 value was stored in PM2 process metadata. It does not mean PM2 stores or manages the application S3 credentials.
+
+### PM2 Checker False Negative
+
+A previous checker expected the PM2 cwd to be:
+
+    /home/sh002/lexora_lms/apps/api
+
+The verified deployment contract deliberately launches from:
+
+    /home/sh002/lexora_lms
+
+The register-path and compiled-main command depends on this repository-root cwd. The earlier cwd failure was a checker false negative, not a deployment defect.
+
+### Runtime Evidence Reports
+
+Server-side evidence reports:
+
+    /home/sh002/lexora-minio-corrected-iam-authorization-20260727T022320Z.txt
+    /home/sh002/lexora-s3-adapter-runtime-harness-inspection-20260727T023247Z.txt
+    /home/sh002/lexora-s3-adapter-quarantine-runtime-20260727T024313Z.txt
+    /home/sh002/lexora-s3-stream-transport-diagnostic-20260727T025150Z.txt
+    /home/sh002/lexora-s3-content-length-server-runtime-20260727T031554Z.txt
+    /home/sh002/lexora-file-storage-module-registration-inspection-20260727T033204Z.txt
+    /home/sh002/lexora-api-root-cwd-s3-di-boot-20260727T034450Z.txt
+
+The earlier failed quarantine runtime report captured the unknown-length stream defect and verified safe cleanup. It is superseded for corrected adapter behavior by the later successful content-length runtime report.
+
+### Security Boundaries Preserved
+
+This phase did not:
+
+- add a public file-storage HTTP controller or route;
+- enable production upload or download;
+- enable assignment, class-material, notice, discussion, recorded-class, or transcript-artifact uploads;
+- weaken `AuthGuard`, `PolicyGuard`, or `@RequirePolicy()`;
+- weaken request context or principal department isolation;
+- weaken object-level authorization;
+- weaken teacher assigned-course or student own-resource checks;
+- expose MinIO through Nginx, LAN, or public host publication;
+- expose credentials, tokens, signed URLs, private object keys, or file bytes;
+- modify result publication or amendment controls;
+- modify transcript immutability or verification controls;
+- modify attendance or notification security controls;
+- change database records during infrastructure verification.
+
+Production upload remains disabled.
+
+### Pending Secure File Storage Work
+
+The following remain pending:
+
+- [ ] Real quarantine-to-available `CopyObject` promotion.
+- [ ] Destination conflict and source-retention behavior during real promotion.
+- [ ] Reconciliation paths after partial or uncertain promotion.
+- [ ] Real signed URL generation.
+- [ ] External-client signed URL delivery.
+- [ ] Object persistence across container recreation without deleting the named volume.
+- [ ] Persistence and recovery across server reboot.
+- [ ] Selection of a maintained long-term production object-storage provider.
+- [ ] Magic-number and content-signature inspection.
+- [ ] Canonical MIME and extension consistency.
+- [ ] Operational malware-scanner adapter.
+- [ ] Scan orchestration over stored quarantine bytes.
+- [ ] Permission-controlled delivery.
+- [ ] Attachment-resource authorization.
+- [ ] Database-backed repository and concurrency tests.
+- [ ] Serializable transaction retry handling.
+- [ ] Storage quotas.
+- [ ] Audit and lifecycle mutation atomicity.
+- [ ] Secure upload/download frontend.
+- [ ] Full secure upload/download runtime verification.
+
+Real attachment uploads must not be enabled until the complete secure pipeline is implemented and runtime verified.
+
+### Runtime Verdict
+
+- [x] Isolated MinIO evaluation runtime is implemented and runtime verified.
+- [x] Least-privilege IAM bootstrap and authorization behavior are runtime verified.
+- [x] Corrected S3 quarantine adapter is implemented and server deployed.
+- [x] Real quarantine upload/read/stat/delete lifecycle is runtime verified.
+- [x] Conditional quarantine duplicate protection is runtime verified.
+- [x] PM2/NestJS `FileStorageModule` and S3-provider DI boot are runtime verified.
+- [ ] Real promotion is not runtime verified.
+- [ ] Signed delivery is not runtime verified.
+- [ ] Persistence is not runtime verified.
+- [ ] The complete secure upload/download pipeline is not complete.
+- [ ] Production file upload is not enabled.
+
+Correct status:
+
+> The isolated MinIO evaluation runtime, least-privilege IAM bootstrap, corrected S3 quarantine adapter, real quarantine upload/read/stat/delete lifecycle, conditional duplicate protection, and PM2/NestJS FileStorageModule DI boot are implemented, server-deployed, and runtime verified. The environment remains evaluation-only. Real promotion, signed delivery, persistence, content inspection, malware scanning, attachment authorization, database concurrency, quotas, audit atomicity, and the full secure upload/download workflow remain pending. Production file upload remains disabled.
+
+### Supersession Note
+
+This section supersedes only earlier pending statements concerning:
+
+- MinIO evaluation image and runtime startup;
+- external secret delivery;
+- IAM bootstrap;
+- private bucket verification;
+- controlled-prefix authorization;
+- real quarantine `PutObject`;
+- authoritative `HeadObject`;
+- streaming `GetObject`;
+- `statObject`;
+- `DeleteObject`;
+- conditional quarantine duplicate protection;
+- corrected API build;
+- `FileStorageModule` and S3-provider DI boot.
+
+Earlier pending statements concerning the following remain valid:
+
+- quarantine-to-available promotion;
+- destination conflict and reconciliation during promotion;
+- signed URL delivery;
+- persistence;
+- content-signature inspection;
+- canonical MIME consistency;
+- operational malware scanning;
+- attachment integration and authorization;
+- database-backed repository and concurrency tests;
+- serializable transaction retry handling;
+- quotas;
+- audit atomicity;
+- secure frontend work;
+- full secure upload/download runtime verification.
+
+Production file upload remains disabled.
