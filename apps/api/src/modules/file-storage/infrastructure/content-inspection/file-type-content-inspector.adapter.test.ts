@@ -10,9 +10,13 @@ import {
 
 const config = { contentInspectionTimeoutMs: 500 } as never;
 const pdf = Buffer.from("%PDF-1.7\n1 0 obj\n<<>>\nendobj\n");
-const png = Buffer.from(
+const truncatedPng = Buffer.from(
   "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489",
   "hex",
+);
+const completePng = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+  "base64",
 );
 const jpeg = Buffer.from("ffd8ffe000104a46494600010100000100010000ffd9", "hex");
 
@@ -22,7 +26,7 @@ test("detects real PDF, PNG, and JPEG signatures", async () => {
     canonicalMimeType: "application/pdf",
     recognizedExtension: "pdf",
   });
-  assert.deepEqual(await inspector.inspect(png), {
+  assert.deepEqual(await inspector.inspect(truncatedPng), {
     canonicalMimeType: "image/png",
     recognizedExtension: "png",
   });
@@ -40,6 +44,40 @@ test("accepts Uint8Array and Node Readable and disposes the stream", async () =>
   );
   const stream = Readable.from([pdf]);
   assert.equal((await inspector.inspect(stream)).recognizedExtension, "pdf");
+  assert.equal(stream.destroyed, true);
+});
+
+test("detects a complete PNG from Node Readable and disposes the stream", async () => {
+  const stream = Readable.from([completePng]);
+  const inspector = new FileTypeContentInspectorAdapter(config);
+  assert.deepEqual(await inspector.inspect(stream), {
+    canonicalMimeType: "image/png",
+    recognizedExtension: "png",
+  });
+  assert.equal(stream.destroyed, true);
+});
+
+test("detects JPEG from Node Readable and disposes the stream", async () => {
+  const stream = Readable.from([jpeg]);
+  const inspector = new FileTypeContentInspectorAdapter(config);
+  assert.deepEqual(await inspector.inspect(stream), {
+    canonicalMimeType: "image/jpeg",
+    recognizedExtension: "jpg",
+  });
+  assert.equal(stream.destroyed, true);
+});
+
+test("truncated PNG stream fails closed and is disposed", async () => {
+  const stream = Readable.from([truncatedPng]);
+  const inspector = new FileTypeContentInspectorAdapter(config);
+  await assert.rejects(
+    () => inspector.inspect(stream),
+    (error: unknown) => {
+      assert.ok(error instanceof ContentInspectionError);
+      assert.equal(error.code, "CONTENT_UNRECOGNIZED");
+      return true;
+    },
+  );
   assert.equal(stream.destroyed, true);
 });
 
