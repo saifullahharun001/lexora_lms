@@ -8767,3 +8767,363 @@ Proceed in this order:
 9. Verify restart and persistence behavior.
 10. Document and commit the isolated runtime evidence.
 11. Only then implement department-scoped stored-MinIO-byte scan orchestration.
+
+## Isolated ClamAV Runtime, Signature Initialization, and Scanner Create-Only Verification — 2026-07-30
+
+### Classification and checkpoint scope
+
+This checkpoint records the isolated ClamAV evaluation-runtime source implementation, immutable upstream image selection, corrected derived-image build, runtime discovery and correction of the numeric account identity, controlled one-shot signature initialization, scanner container create-only verification, preserved runtime isolation and evidence, and the exact stopping point before daemon startup.
+
+This runtime is evaluation-only and partially runtime verified. It is not a production malware-scanning service and is not a complete secure upload pipeline. Production file upload remains disabled.
+
+### Source history and boundary
+
+The reviewed source history is:
+
+| Purpose                                | Commit                                     |
+| -------------------------------------- | ------------------------------------------ |
+| Add isolated ClamAV evaluation runtime | `7541787f3fb98b37ab7b50301e01026bc59d1b22` |
+| Fix ClamAV validator user parsing      | `ce049cb7b7991d65740fe3e23ca47babbccb502c` |
+| Use ClamAV base image manifest         | `d8a19b3fcd77f4a9d6e99b6301ca39776e0e081e` |
+| Fix ClamAV runtime account identity    | `7daeda06ca0000aa6d05e9c1b5f3596edf19522f` |
+
+The committed runtime source directory is `ops/malware-scanning/clamav-evaluation/`. Its source contract comprises the repository-root `.gitattributes` rules and these committed files:
+
+- `Dockerfile.clamav`
+- `README.md`
+- `clamd.conf`
+- `compose.yml`
+- `freshclam.conf`
+- `freshclam-update.conf`
+- `validate.sh`
+
+The numeric identity correction changed exactly `Dockerfile.clamav`, `README.md`, `compose.yml`, and `validate.sh`.
+
+Correction patch evidence:
+
+- Verified Windows patch: `F:\lexora\lexora-clamav-u100g101-fix-20260729-231912.patch`
+- SHA-256: `bf32fa7916d28b838bd3917afa258bbbce048ca796371d782f1244e05646e9d7`
+- The patch was detached-applied and statically validated locally and on the Ubuntu server.
+- The committed diff matched the verified patch byte-for-byte.
+- The Windows patch file is evidence outside Git and is not represented as a tracked repository file.
+
+### Immutable upstream and derived images
+
+Approved upstream contract:
+
+- ClamAV version: `1.5.3`
+- Upstream variant: `1.5.3_base`
+- Platform: `linux/amd64`
+- Immutable upstream digest: `sha256:70bbc4014906f34865929733073feb1097601aa6aa5f06a062939c0ca52a2928`
+
+Superseded incorrect local derived image:
+
+- Tag: `lexora/clamav-evaluation:1.5.3-base-70bbc4014906`
+- Image ID: `sha256:9576fb212fb4b8318fa47f029e66d89bdee3174bf5fcdd053d73c46b292bacb3`
+- Incorrect assumed default user: `1000:1000`
+- The image remains preserved for evidence but must not be used for continued evaluation.
+
+Corrected derived image:
+
+- Tag: `lexora/clamav-evaluation:1.5.3-base-70bbc4014906-u100g101`
+- Image ID: `sha256:19080f2f3d1aa57c8cf41617773340f21d16d793d6cbd9ffa4d21e243742a7fb`
+- Runtime identity: `100:101`
+- Entrypoint: `/usr/sbin/clamd --foreground`
+- `io.lexora.runtime.status` label: `evaluation-only`
+- Size reported by image inspection: `43,844,757` bytes
+- Docker image-list display size: approximately `168 MB`
+
+The byte size and image-list display size come from different Docker reporting fields and are not treated as contradictory.
+
+The corrected image was built with `--no-cache`, RUN-network access disabled through `--network=none`, and automatic base pulling disabled through `--pull=false`, from the exact pinned base digest. Build-time assertions confirmed:
+
+- exactly one `clamav` passwd entry;
+- UID `100`;
+- primary GID `101`;
+- named `clamav` group GID `101`;
+- expected ClamAV and FreshClam versions;
+- expected reviewed configuration; and
+- an empty image-layer signature directory.
+
+### Numeric identity failure and correction
+
+Original failed updater container:
+
+- Container ID: `d25b10fd3444f1e3da5f7dd70c24c1080e3b5346000d920bd3287c94ce3fe87f`
+- State: `Exited`
+- Exit code: `2`
+- Restart count: `0`
+- OOM killed: `false`
+
+`freshclam` could not open `/var/log/clamav/freshclam.log`; the error was `Permission denied`. The committed runtime assumed `1000:1000`, while the pinned base image defines the named `clamav` account as UID `100`, primary GID `101`, and named group GID `101`.
+
+This was a source-level numeric-identity mismatch. It occurred before any signature database download, the signature volume remained empty, the scanner had not been created or started, and TCP `3310` remained closed. It was not a ClamAV mirror or network failure.
+
+Preserved failure evidence:
+
+- Path: `/home/sh002/lexora-clamav-updater-failure-evidence-20260729T162250Z.txt`
+- Mode: `0600`
+- SHA-256: `9b390f2641832d89ee320774b7b5d2f9c717780f9f1dcf81c041d7f6f3cdfd92`
+
+The failed container was removed only after its evidence was preserved and hash-verified. The signature volume, updater network, superseded image, and corrected image were not deleted.
+
+### Corrected updater create-only contract
+
+Corrected updater container:
+
+- Container ID: `dc98ff6a54805c135fe56e7caaf2a97d4ea56710a47c5a7b6304e7efe23d3c7e`
+- Image tag: `lexora/clamav-evaluation:1.5.3-base-70bbc4014906-u100g101`
+- Image ID: `sha256:19080f2f3d1aa57c8cf41617773340f21d16d793d6cbd9ffa4d21e243742a7fb`
+- Initial state: `Created`
+- Initial running state: `false`
+- Initial PID: `0`
+- Initial `StartedAt`: `0001-01-01T00:00:00Z`
+
+The exact updater command was:
+
+```sh
+chown 100:101 /var/lib/clamav /var/log/clamav
+exec freshclam --stdout --config-file=/etc/clamav/freshclam-update.conf
+```
+
+The updater starts as `0:0` only to prepare mount-point ownership. It adds exactly `CHOWN`, `SETUID`, and `SETGID`, drops all other capabilities, uses a read-only root filesystem and `no-new-privileges`, has restart disabled, joins only the updater egress network, publishes no port, mounts the signature volume writable, retains bounded resource limits, and uses a log tmpfs owned by UID `100`, GID `101`.
+
+`DatabaseOwner clamav` remains unchanged and is correct because `freshclam` drops to the named account.
+
+### Signature initialization runtime verification
+
+The corrected updater was started exactly once and completed successfully.
+
+Updater result:
+
+- Status: `exited`
+- Running: `false`
+- PID: `0`
+- Exit code: `0`
+- OOM killed: `false`
+- Runtime error: empty
+- Restart count: `0`
+- Started: `2026-07-29T17:46:13.848030691Z`
+- Finished: `2026-07-29T17:46:50.999633292Z`
+
+Official database initialization results:
+
+| Database | Runtime version | Signature count reported by FreshClam |
+| -------- | --------------: | ------------------------------------: |
+| Daily    |         `28076` |                              `355575` |
+| Main     |            `63` |                             `3287027` |
+| Bytecode |           `339` |                                  `80` |
+
+Each downloaded database passed ClamAV's database test before activation.
+
+Verified signature-volume summary:
+
+- Regular files: `7`
+- Zero-length files: `0`
+- Symbolic links: `0`
+- Special files: `0`
+- Wrong UID/GID entries: `0`
+- Group/other-writable entries: `0`
+- Set-ID/sticky entries: `0`
+- Total regular-file bytes: `112803354`
+- All files are owned by UID `100`, GID `101`.
+- File mode: `0644`
+
+Safe signature metadata only:
+
+| File                    |      Bytes |
+| ----------------------- | ---------: |
+| `bytecode-339.cvd.sign` |     `9078` |
+| `bytecode.cvd`          |   `281702` |
+| `daily-28076.cvd.sign`  |     `9078` |
+| `daily.cvd`             | `23421751` |
+| `freshclam.dat`         |       `90` |
+| `main-63.cvd.sign`      |     `9078` |
+| `main.cvd`              | `89072577` |
+
+No signature database contents are recorded.
+
+Preserved success evidence:
+
+- Path: `/home/sh002/lexora-clamav-signature-init-evidence-20260729T174651Z.txt`
+- Mode: `0600`
+- SHA-256: `cd082ceded80b4b0a3c4fcb10c04177bd4c0255f2e9691e12482304007a44a3b`
+
+### Scanner create-only verification
+
+Scanner container:
+
+- Container ID: `4cdd2c3d1d8018eb2c4913889ccf8420d35f423953441912a455c078d8d73213`
+- State: `Created`
+- Running: `false`
+- PID: `0`
+- `StartedAt`: `0001-01-01T00:00:00Z`
+- The scanner has never been started.
+
+Verified scanner create-only contract:
+
+- Image: corrected `lexora/clamav-evaluation:1.5.3-base-70bbc4014906-u100g101` image
+- User: `100:101`
+- Direct entrypoint: `/usr/sbin/clamd --foreground`
+- Read-only root filesystem
+- All capabilities dropped and no capabilities added
+- `no-new-privileges`
+- Restart policy: `unless-stopped`
+- Signature volume mounted read-only
+- Bounded tmpfs mounts only for `/tmp` and `/var/log/clamav`
+- Scanner log tmpfs owned by UID `100`, GID `101`
+- Health command: `clamdcheck.sh`
+- Health interval: `10 seconds`
+- Health timeout: `5 seconds`
+- Health retries: `12`
+- Start period: `15 minutes`
+- Resource limits remain bounded
+- Host port publication configured only as `127.0.0.1:3310`
+
+Internal scanner network:
+
+- Name: `lexora_clamav_scanner_internal`
+- Network ID: `408c60962985374aa3d06649f289697c3d83818bda02d4d4c89b2879dac04f07`
+- Driver: `bridge`
+- Internal: `true`
+- IPv6: disabled
+- The updater is not assigned to this network.
+
+Docker pre-start behavior is recorded precisely: container network assignment exists in scanner configuration and the network object exists, while the live `Containers` endpoint map is empty because the scanner has never started. This is expected create-only Docker behavior. Live scanner attachment must be verified after the first start.
+
+TCP `3310` had no listening socket at this stopping point.
+
+### Inspection-script findings
+
+Two non-source mistakes occurred in ad-hoc inspection assertions:
+
+1. An inspection check searched for `exec freshclam --config-file=...` and initially missed the valid committed command because that command includes `--stdout`.
+2. A pre-start network check incorrectly required the never-started scanner to appear in the network's live `Containers` map.
+
+Both were ad-hoc verification assertion errors, not source or runtime-contract defects. Neither required source modification, container recreation, or network recreation. The later incomplete scanner-readiness command is intentionally not described because it was not executed.
+
+### Security and isolation controls preserved
+
+The following were verified through source, resolved Compose model, image inspection, and create-only/runtime checks:
+
+- The scanner has no updater-network attachment.
+- The updater is the only service with outbound-capable networking.
+- The scanner network is internal and has IPv6 disabled.
+- Scanner port publication is configured for loopback only; no LAN or public ClamAV exposure exists.
+- No Nginx route was added.
+- The scanner drops all capabilities and adds none.
+- The updater has only the three required temporary capabilities.
+- The scanner signature mount is read-only; the updater signature mount is writable.
+- Both service root filesystems are read-only.
+- Tmpfs paths and sizes are bounded.
+- No secret, credential, token, signature database, or test-malware payload is embedded in the image.
+- API, PM2, Nginx, PostgreSQL, Prisma, application environment, and production routes were not changed by these evaluation-runtime operations.
+- Production upload remained disabled.
+
+### Repository and runtime state at the stopping point
+
+- Local and remote source commit: `7daeda06ca0000aa6d05e9c1b5f3596edf19522f`
+- Ubuntu server source commit: `7daeda06ca0000aa6d05e9c1b5f3596edf19522f`
+- Repositories were clean.
+- The updater container remains successfully exited with code `0`.
+- The scanner container exists in `Created` state and has never started.
+- The scanner internal network exists but has no live endpoint.
+- The signature database volume is initialized.
+- TCP `3310` is not listening.
+- Both superseded and corrected derived images remain preserved.
+- No production upload was enabled.
+
+### Runtime verdict
+
+Verified:
+
+- [x] Isolated ClamAV evaluation-runtime source implemented and committed.
+- [x] Immutable `_base` upstream digest verified.
+- [x] Evaluation-only derived image built.
+- [x] Base-image numeric account identity discovered through runtime evidence.
+- [x] Incorrect `1000:1000` assumption corrected to `100:101`.
+- [x] Corrected source committed and synchronized.
+- [x] Corrected image build and image contract verified.
+- [x] Original updater failure preserved with evidence and hash.
+- [x] Corrected updater create-only contract verified.
+- [x] Official signature initialization completed successfully.
+- [x] Main, daily, and bytecode databases are present and non-empty.
+- [x] Signature ownership and safe metadata checks passed.
+- [x] Scanner create-only container contract verified.
+- [x] Internal scanner-network source/configuration contract verified.
+- [x] Updater/scanner separation preserved.
+- [x] Loopback-only scanner publication remains configured.
+- [x] Production upload remained disabled.
+
+Pending:
+
+- [ ] Scanner daemon has not been started.
+- [ ] Docker health/readiness has not been verified.
+- [ ] Protocol-level `PONG` has not been verified.
+- [ ] Live scanner-network endpoint attachment has not been verified.
+- [ ] Loopback listener behavior after startup has not been verified.
+- [ ] Non-loopback connection rejection after startup has not been verified.
+- [ ] Runtime process UID/GID and zero-capability state after startup have not been verified.
+- [ ] Real clean-file scanning has not been verified.
+- [ ] Protocol-safe EICAR detection has not been verified.
+- [ ] Real API-adapter-to-daemon scanning has not been verified.
+- [ ] Scanner-down and timeout fail-closed behavior has not been runtime verified against the real daemon.
+- [ ] Graceful stop and restart behavior remain pending.
+- [ ] Signature persistence across scanner restart remains pending.
+- [ ] Host reboot persistence remains pending.
+- [ ] Stored-MinIO-byte scan orchestration is not implemented.
+- [ ] Persisted real CLEAN/INFECTED/ERROR result flow is not implemented.
+- [ ] CLEAN-only guarded promotion is not implemented.
+- [ ] Quarantine rejection and reconciliation flow are not operational end-to-end.
+- [ ] Complete secure upload/download workflow is not complete.
+- [ ] Production upload is not enabled.
+
+> The isolated ClamAV evaluation runtime is implemented, source-reviewed, committed, synchronized, and partially runtime verified. The corrected `100:101` image contract, controlled updater execution, official signature initialization, signature-volume integrity, scanner create-only contract, internal-network configuration, and loopback-only publication configuration are verified. The scanner daemon has not yet been started, and daemon readiness, protocol PONG, live network attachment, real clean/EICAR scanning, scanner-down behavior, restart/persistence, API-to-daemon integration, stored-MinIO-byte orchestration, persisted real scan outcomes, and CLEAN-only activation remain pending. Production file upload remains disabled.
+
+### Narrow supersession note
+
+This section supersedes earlier pending wording only for:
+
+- isolated ClamAV evaluation-runtime source;
+- immutable upstream image selection;
+- derived image build;
+- correct runtime account identity;
+- official signature initialization; and
+- scanner create-only configuration.
+
+It does not supersede pending statements concerning:
+
+- daemon readiness;
+- real clean/EICAR scanning;
+- scanner-down behavior;
+- restart/persistence;
+- stored-byte orchestration;
+- persisted scan results;
+- activation/promotion;
+- attachment integration;
+- signed delivery;
+- complete secure upload/download verification; or
+- production upload enablement.
+
+### Next safe checkpoint
+
+1. Start only the existing scanner container for the first time.
+2. Use a bounded readiness window.
+3. Verify:
+   - healthy state;
+   - no restart;
+   - no OOM/runtime error;
+   - exact process identity;
+   - zero effective, permitted, and ambient capabilities;
+   - direct clamd PID 1;
+   - read-only signature mount;
+   - live scanner-only internal-network attachment;
+   - loopback-only TCP `3310` listener;
+   - rejection through non-loopback host addresses;
+   - protocol-level `PONG`; and
+   - unchanged signature hashes.
+4. Preserve readiness evidence with a hash.
+5. On any failure, stop only the scanner and preserve all Docker objects for diagnosis.
+6. Do not run clean-file or EICAR tests in the same checkpoint.
+7. Do not implement stored-byte orchestration yet.
+8. Keep production upload disabled.
