@@ -9198,6 +9198,38 @@ Pending after the source correction:
 - [ ] The secure upload pipeline remains incomplete.
 - [ ] Production upload remains disabled.
 
-### Next safe runtime checkpoint
+### SUPERSEDED - DO NOT EXECUTE: former TCP "Next safe runtime checkpoint"
+
+This section is retained only as historical runtime evidence. Its TCP recreation instructions are superseded by the later networkless Unix-socket foundation and must not be executed.
 
 Under separate explicit approval, first capture and preserve a complete host TCP-listener inventory, identifying `0.0.0.0`, `::`, non-loopback, and Docker bridge bindings. Then rebuild the corrected image without cache or an automatic base pull, recreate only the evaluation scanner/network objects needed by the committed source, and use a bounded readiness window. Verify the Lexora healthcheck, exact process identity and zero capabilities, direct clamd PID 1, read-only signatures, live scanner-only internal-network attachment, exact host-loopback listener, non-loopback listener absence, scanner LAN/external denial, explicit `PONG`, and unchanged signature hashes. Test scanner reachability to the Docker host bridge address and specifically verify that the Lexora API, PostgreSQL, administrative interfaces, container-management endpoints, and all other sensitive host listeners are inaccessible or explicitly reviewed and accepted. Any unexpected host-service access must fail the checkpoint and roll back only the corrected scanner/network objects. Preserve and hash the listener inventory, reachability evidence, review decisions, and rollback result. Do not combine that checkpoint with clean-file or EICAR testing.
+## ClamAV networkless Unix-socket source foundation checkpoint
+
+This source-only checkpoint supersedes the internal-bridge loopback publication design. Runtime evidence showed that the scanner could become healthy while Docker retained the requested `127.0.0.1:3310` binding only in `HostConfig`; the running port mapping was null and no host TCP listener activated.
+
+Implemented source contract:
+
+- [x] API configuration requires an explicit `unix` or `tcp` transport and rejects mixed or missing ClamAV endpoints.
+- [x] Evaluation configuration selects only `/run/lexora-clamav/clamd.sock`; it has no localhost fallback.
+- [x] Scanner uses `network_mode: none`, no networks, no ports, and no expose declaration.
+- [x] `clamd` has no active TCP directive and creates the exact local socket with mode `0660`.
+- [x] Scanner bind mount is limited to `/run/lexora-clamav`; updater does not receive it.
+- [x] Scanner UID and socket GID are mandatory externally supplied high numeric values; root, system-range, UID 100, and GID 101 are rejected.
+- [x] Signature storage remains read-only in the scanner, and the existing read-only root, tmpfs, capability, resource, and updater-egress boundaries remain.
+- [x] Health source uses the statically verified bounded `clamdscan --ping=3:1` Unix-socket probe and no TCP endpoint.
+
+Pending, under a separate explicitly approved root-managed/runtime checkpoint:
+
+- [ ] Collision-check and provision a dedicated high scanner UID and high shared socket GID.
+- [ ] Provision `/run/lexora-clamav` via audited tmpfiles/system management as scanner-UID:socket-GID mode `2750`.
+- [ ] Add only the API identity to the shared socket group and prove it can connect but cannot unlink or replace the socket.
+- [ ] Rebuild and inspect the corrected image; no corrected image has been built in this checkpoint.
+- [ ] Cross-check the immutable image ID, `Config.User`, scanner UID label, socket GID label, and collision-checked host UID/GID before runtime acceptance.
+- [ ] Verify live socket type, owner, group, mode, readiness, and absence of TCP listeners.
+- [ ] Verify authorized API access and unauthorized-user/process denial.
+- [ ] Verify graceful restart, forced stop, stale-socket recovery, and host reboot lifecycle.
+- [ ] Run clean-file and EICAR behavior against the real daemon.
+- [ ] Verify API-to-real-daemon integration and scanner-down/timeout fail-closed behavior.
+- [ ] Integrate and verify scanning of bytes freshly read from MinIO.
+
+No Unix-socket runtime behavior is claimed here. Production upload remains disabled.

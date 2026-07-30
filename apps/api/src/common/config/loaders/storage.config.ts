@@ -2,8 +2,22 @@ import { registerAs } from "@nestjs/config";
 
 import { getValidatedEnv } from "../env.schema";
 
+export type ClamAvEndpoint =
+  | { kind: "unix"; path: string }
+  | { kind: "tcp"; host: string; port: number };
+
 export const storageConfig = registerAs("storage", () => {
   const env = getValidatedEnv();
+  const endpoint: ClamAvEndpoint | null =
+    env.MALWARE_SCANNER_MODE !== "clamav"
+      ? null
+      : env.MALWARE_SCANNER_TRANSPORT === "unix"
+        ? { kind: "unix", path: env.MALWARE_SCANNER_SOCKET_PATH! }
+        : {
+            kind: "tcp",
+            host: env.MALWARE_SCANNER_HOST!,
+            port: env.MALWARE_SCANNER_PORT!,
+          };
 
   return {
     endpoint: env.S3_ENDPOINT,
@@ -16,10 +30,8 @@ export const storageConfig = registerAs("storage", () => {
     contentInspectionTimeoutMs: env.FILE_CONTENT_INSPECTION_TIMEOUT_MS,
     malwareScanning: {
       mode: env.MALWARE_SCANNER_MODE,
-      host: env.MALWARE_SCANNER_HOST,
-      port: env.MALWARE_SCANNER_PORT,
-      timeoutMs: env.MALWARE_SCANNER_TIMEOUT_MS
-    }
+      endpoint,
+      timeoutMs: env.MALWARE_SCANNER_TIMEOUT_MS,
+    },
   };
 });
-
