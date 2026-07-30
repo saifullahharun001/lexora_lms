@@ -9218,18 +9218,148 @@ Implemented source contract:
 - [x] Signature storage remains read-only in the scanner, and the existing read-only root, tmpfs, capability, resource, and updater-egress boundaries remain.
 - [x] Health source uses the statically verified bounded `clamdscan --ping=3:1` Unix-socket probe and no TCP endpoint.
 
-Pending, under a separate explicitly approved root-managed/runtime checkpoint:
+Follow-up root-managed/runtime checkpoint status:
 
-- [ ] Collision-check and provision a dedicated high scanner UID and high shared socket GID.
-- [ ] Provision `/run/lexora-clamav` via audited tmpfiles/system management as scanner-UID:socket-GID mode `2750`.
-- [ ] Add only the API identity to the shared socket group and prove it can connect but cannot unlink or replace the socket.
-- [ ] Rebuild and inspect the corrected image; no corrected image has been built in this checkpoint.
-- [ ] Cross-check the immutable image ID, `Config.User`, scanner UID label, socket GID label, and collision-checked host UID/GID before runtime acceptance.
-- [ ] Verify live socket type, owner, group, mode, readiness, and absence of TCP listeners.
+- [x] Collision-checked and provisioned dedicated scanner UID `20000` and shared socket GID `20001`.
+- [x] Provisioned `/run/lexora-clamav` through `/etc/tmpfiles.d/lexora-clamav.conf` as `20000:20001` mode `2750`.
+- [x] Added the current PM2 service account `sh002` to `lexora-clamav-socket`; no PM2 restart was performed, so the existing live API process has not yet inherited the new supplementary group.
+- [ ] After a controlled API restart, verify socket connection and prove that the API identity cannot unlink or replace the socket.
+- [x] Rebuilt and inspected the corrected Unix-socket image with the collision-checked UID/GID.
+- [x] Cross-checked image ID, `Config.User`, UID/GID labels, entrypoint, and collision-checked host identities.
+- [x] Verified live Unix-socket type, owner, group, mode, readiness, and absence of host/container TCP `3310` listeners.
 - [ ] Verify authorized API access and unauthorized-user/process denial.
 - [ ] Verify graceful restart, forced stop, stale-socket recovery, and host reboot lifecycle.
 - [ ] Run clean-file and EICAR behavior against the real daemon.
 - [ ] Verify API-to-real-daemon integration and scanner-down/timeout fail-closed behavior.
 - [ ] Integrate and verify scanning of bytes freshly read from MinIO.
 
-No Unix-socket runtime behavior is claimed here. Production upload remains disabled.
+This source-foundation subsection is retained as the implementation boundary; the following section records the later host provisioning and runtime-readiness evidence. Production upload remains disabled.
+
+## ClamAV networkless Unix-socket host provisioning and readiness runtime verification
+
+Runtime verification date: 2026-07-30
+
+Tested source:
+
+- Commit: `f5fef8d1d09bd93fdac09d40e72c66a4df42b91c`
+- Message: `Add networkless ClamAV Unix socket foundation`
+- Server repository was fast-forwarded to the tested commit.
+- Server static source validation passed.
+- Server resolved Docker Compose-model validation passed.
+- The Lexora API was not rebuilt or restarted during this scanner checkpoint.
+
+Host identity and runtime-directory provisioning:
+
+- [x] UID `20000` was unused and did not collide with subordinate UID ranges.
+- [x] GID `20001` was unused and did not collide with subordinate GID ranges.
+- [x] Runtime user created:
+  - Name: `lexora-clamav`
+  - UID: `20000`
+  - Primary GID: `20001`
+  - Shell: `/usr/sbin/nologin`
+  - Home: `/nonexistent`
+- [x] Shared socket group created:
+  - Name: `lexora-clamav-socket`
+  - GID: `20001`
+- [x] Current PM2 service account `sh002` was added to the shared socket group.
+- [x] Root-managed tmpfiles rule created:
+  - File: `/etc/tmpfiles.d/lexora-clamav.conf`
+  - Rule: `d /run/lexora-clamav 2750 lexora-clamav lexora-clamav-socket - -`
+- [x] Runtime directory verified:
+  - Path: `/run/lexora-clamav`
+  - Owner: `lexora-clamav:lexora-clamav-socket`
+  - UID/GID: `20000:20001`
+  - Mode: `2750`
+
+Corrected image build and inspection:
+
+- [x] Image built without starting the scanner:
+  - Tag: `lexora/clamav-evaluation:1.5.3-base-70bbc4014906-unix-socket`
+  - Image ID: `sha256:ead16d5b2e78e6bbf56b0ac4c8561a63d5165ff15b3ae533c91e57a01576bc2c`
+- [x] Image runtime identity:
+  - `Config.User`: `20000:20001`
+  - Scanner UID label: `20000`
+  - Socket GID label: `20001`
+- [x] Entrypoint:
+  - `/usr/sbin/clamd`
+  - `--foreground`
+
+Create-only verification:
+
+- [x] Previous stopped scanner container was replaced without starting the new container.
+- [x] Current scanner container ID:
+  - `240dc6fa8bc98a503add2eb65225132d8efbc4df8026ee7377c7843368447a32`
+- [x] Before startup, the recreated container was:
+  - Status: `created`
+  - Running: `false`
+  - Network mode: `none`
+  - Read-only root filesystem: `true`
+  - Port bindings: none
+- [x] Mount contract:
+  - Signature volume mounted read-only at `/var/lib/clamav`
+  - Single writable bind mounted from `/run/lexora-clamav` to `/run/lexora-clamav`
+- [x] The Unix socket was absent before scanner startup.
+
+Scanner readiness runtime verification:
+
+- [x] Scanner became healthy during the bounded readiness window.
+- [x] Readiness reached `healthy` on attempt 4.
+- [x] Runtime state:
+  - Status: `running`
+  - Health: `healthy`
+  - Restart count: `0`
+  - OOM-killed: `false`
+  - Process: `/usr/sbin/clamd --foreground`
+- [x] Process identity:
+  - UID: `20000`
+  - GID: `20001`
+- [x] Runtime hardening:
+  - Root filesystem read-only
+  - `CapDrop: ALL`
+  - Inheritable, permitted, effective, bounding, and ambient capabilities all zero
+  - `NoNewPrivs: 1`
+  - Seccomp mode: `2`
+  - Docker network mode: `none`
+- [x] Unix-socket contract:
+  - Path: `/run/lexora-clamav/clamd.sock`
+  - Type: Unix socket
+  - Owner: `lexora-clamav:lexora-clamav-socket`
+  - UID/GID: `20000:20001`
+  - Mode: `0660`
+- [x] The bounded Lexora ClamAV readiness script returned:
+  - `ClamAV readiness passed`
+- [x] Host TCP port `3310` was closed.
+- [x] Container TCP port `3310` was absent.
+
+Live Lexora API containment:
+
+- [x] PM2 process `lexora-api` remained online.
+- [x] PM2 restart count remained `0`.
+- [x] PM2 watch/reload remained disabled.
+- [x] Direct API health through `127.0.0.1:4000` passed.
+- [x] API health through Nginx passed.
+- [x] No API build, PM2 restart, database change, Prisma operation, Nginx change, or production deployment was performed.
+
+Still pending:
+
+- [ ] Recompare the live signature manifest against the preserved pre-recreation baseline.
+- [ ] Verify authorized socket access using the effective API runtime identity after a controlled PM2 restart.
+- [ ] Verify unauthorized user/process connection denial.
+- [ ] Verify that the API identity cannot unlink or replace the socket.
+- [ ] Verify graceful restart, forced stop, stale-socket recovery, and host reboot lifecycle.
+- [ ] Run protocol-level clean-file behavior against the real daemon.
+- [ ] Run protocol-safe EICAR behavior against the real daemon.
+- [ ] Verify API-to-real-daemon scanning and scanner-down/timeout fail-closed behavior.
+- [ ] Integrate and verify scanning of bytes freshly read from MinIO.
+- [ ] Persist and verify real scan outcomes through the secure file lifecycle.
+- [ ] Complete and runtime-verify the secure upload/download pipeline.
+- [ ] Enable production upload.
+
+Runtime verdict:
+
+- Networkless Unix-socket ClamAV host provisioning: verified.
+- Corrected scanner image identity and configuration: verified.
+- Scanner startup and readiness: verified.
+- TCP scanner exposure: absent.
+- API integration and malware behavior: not yet verified.
+- Production upload remains disabled.
