@@ -9127,3 +9127,77 @@ It does not supersede pending statements concerning:
 6. Do not run clean-file or EICAR tests in the same checkpoint.
 7. Do not implement stored-byte orchestration yet.
 8. Keep production upload disabled.
+
+## Isolated ClamAV Scanner Startup Defect Evidence and Source Correction — 2026-07-30
+
+### Scope and runtime evidence
+
+This later checkpoint supersedes the prior create-only stopping point only for first scanner startup, internal IPv4 protocol reachability, inherited healthcheck behavior, host-loopback publication behavior, and controlled SIGTERM. It preserves all earlier image, signature-initialization, failure, create-only, identity, isolation, and evidence records.
+
+Runtime verification established:
+
+- ClamAV `1.5.3` loaded `3,627,981` official signatures.
+- `clamd` bound to container IPv4 `0.0.0.0:3310`.
+- An explicit container request to `127.0.0.1:3310` returned exactly `PONG`.
+- The inherited `/usr/local/bin/clamdcheck.sh` used `nc localhost 3310`.
+- `localhost` resolved first to IPv6 `::1`, while clamd listened on IPv4, so the inherited healthcheck failed despite successful explicit IPv4 PING/PONG.
+- Scanner configuration retained host publication `127.0.0.1:3310`, but runtime container inspection reported the port mapping as `None` and the host had no TCP `3310` listener.
+- The scanner network combined `internal: true` with `gateway_mode_ipv4: isolated`; isolated gateway mode prevented the host bridge/NAT path needed for loopback publication.
+- Controlled explicit SIGTERM stopped clamd immediately with exit code `0`.
+
+No clean-file, EICAR, API-integration, reload, or restart-persistence test was run. Production upload remained disabled.
+
+### Root causes and source correction
+
+Two runtime-confirmed defects were isolated:
+
+1. The inherited healthcheck used ambiguous `localhost` resolution and selected IPv6 `::1`, which did not match the IPv4 clamd listener.
+2. Isolated IPv4 gateway mode made the internal scanner bridge non-host-addressable, so Docker could not activate the configured host-loopback publication.
+
+The source correction adds the Lexora-owned `lexora-clamd-healthcheck.sh`. It uses bounded BusyBox-compatible `nc` options, explicit `127.0.0.1:3310`, sends `PING`, requires exactly `PONG`, suppresses provider diagnostics, and fails closed with sanitized output. The derived image copies it as root-owned mode `0555`, and Compose invokes it directly.
+
+The network correction removes only `gateway_mode_ipv4: isolated`. The scanner network remains `internal: true` with IPv6 disabled, the scanner remains detached from the updater network, and host publication remains exactly `127.0.0.1:3310`. Removing isolated gateway mode assigns the internal bridge a host-side address and makes the scanner network host-addressable in both directions: the host can reach the scanner network, and the scanner can potentially reach host services bound to the bridge address or wildcard host addresses. This is an expanded scanner-to-host trust path. It does not by itself expose TCP `3310` to LAN or public interfaces because publication remains bound to `127.0.0.1`, but `internal: true` does not isolate the scanner from host listeners. Scanner-to-host isolation is not verified.
+
+A proxy/forwarder was rejected because it adds another process or container, image lifecycle, network policy, and attack surface. Host networking and a non-internal scanner bridge were rejected because they weaken isolation more broadly.
+
+### Corrected-source status and pending verification
+
+The corrected source is statically reviewed only. It has not been built or runtime verified, and no Docker runtime object was changed by this source checkpoint.
+
+Verified before the source correction:
+
+- [x] Signature initialization completed successfully.
+- [x] clamd startup and official-signature loading completed.
+- [x] Explicit internal IPv4 PING/PONG passed.
+- [x] Inherited healthcheck failure root cause was identified.
+- [x] Host-loopback publication failure root cause was identified.
+- [x] Controlled SIGTERM passed once with exit code `0`.
+- [x] Production upload remained disabled.
+
+Pending after the source correction:
+
+- [ ] Corrected image has not been built.
+- [ ] Lexora-owned healthcheck has not been runtime verified.
+- [ ] Docker healthy state has not been verified with the corrected image.
+- [ ] Host `127.0.0.1:3310` listener has not been verified.
+- [ ] Absence of non-loopback/LAN/public listeners has not been verified.
+- [ ] Scanner external and LAN connection rejection has not been verified.
+- [ ] All host TCP listeners must be captured before scanner-network recreation.
+- [ ] Listeners bound to `0.0.0.0`, `::`, non-loopback addresses, and Docker bridge addresses must be identified.
+- [ ] Scanner reachability to the Docker host bridge address must be tested.
+- [ ] The Lexora API, PostgreSQL, administrative interfaces, container-management endpoints, and every other sensitive host listener must be confirmed inaccessible or explicitly reviewed and accepted.
+- [ ] Unexpected host-service access must fail the checkpoint and roll back only the corrected scanner/network objects.
+- [ ] The host-listener inventory, reachability results, acceptance decisions, and rollback outcome must be preserved as hashed evidence.
+- [ ] Scanner-only live internal-network attachment must be reverified.
+- [ ] Runtime UID/GID and zero effective/permitted/ambient capabilities must be reverified.
+- [ ] Signature hashes after corrected startup must be verified unchanged.
+- [ ] API-to-real-daemon scanning remains pending.
+- [ ] Clean-file and protocol-safe EICAR tests remain pending.
+- [ ] Scanner-down, reload, restart, and persistence tests remain pending.
+- [ ] Stored-MinIO-byte orchestration and persisted real scan outcomes remain pending.
+- [ ] The secure upload pipeline remains incomplete.
+- [ ] Production upload remains disabled.
+
+### Next safe runtime checkpoint
+
+Under separate explicit approval, first capture and preserve a complete host TCP-listener inventory, identifying `0.0.0.0`, `::`, non-loopback, and Docker bridge bindings. Then rebuild the corrected image without cache or an automatic base pull, recreate only the evaluation scanner/network objects needed by the committed source, and use a bounded readiness window. Verify the Lexora healthcheck, exact process identity and zero capabilities, direct clamd PID 1, read-only signatures, live scanner-only internal-network attachment, exact host-loopback listener, non-loopback listener absence, scanner LAN/external denial, explicit `PONG`, and unchanged signature hashes. Test scanner reachability to the Docker host bridge address and specifically verify that the Lexora API, PostgreSQL, administrative interfaces, container-management endpoints, and all other sensitive host listeners are inaccessible or explicitly reviewed and accepted. Any unexpected host-service access must fail the checkpoint and roll back only the corrected scanner/network objects. Preserve and hash the listener inventory, reachability evidence, review decisions, and rollback result. Do not combine that checkpoint with clean-file or EICAR testing.
