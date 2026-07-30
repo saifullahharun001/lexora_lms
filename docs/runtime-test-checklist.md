@@ -9363,3 +9363,355 @@ Runtime verdict:
 - TCP scanner exposure: absent.
 - API integration and malware behavior: not yet verified.
 - Production upload remains disabled.
+
+## ClamAV Unix Runtime, API Activation, and Real Adapter Verification — 2026-07-30
+
+### Scope and classification
+
+This section consolidates the latest reviewed runtime evidence for the
+networkless ClamAV Unix-socket evaluation runtime, signature and socket
+security, lifecycle recovery, host reboot persistence, Lexora API activation,
+and real compiled malware-scanner adapter behavior.
+
+This section supersedes earlier pending wording only for the exact ClamAV
+items explicitly marked as verified below. Historical implementation,
+failed-attempt, correction, and runtime evidence remains preserved in earlier
+sections.
+
+The ClamAV deployment remains an evaluation runtime. It is not yet a complete
+production file-upload pipeline. Production file upload remains disabled.
+
+### Repository and source boundary
+
+| Item                                    | Verified value                                                            |
+| --------------------------------------- | ------------------------------------------------------------------------- |
+| Documentation base commit               | `f66b70736d773d52797f880ebc846a27450a2220`                                |
+| Documentation base subject              | `Document ClamAV Unix socket runtime readiness`                           |
+| Unix-socket source foundation commit    | `f5fef8d1d09bd93fdac09d40e72c66a4df42b91c`                                |
+| Unix-socket source message              | `Add networkless ClamAV Unix socket foundation`                           |
+| Scanner image                           | `sha256:ead16d5b2e78e6bbf56b0ac4c8561a63d5165ff15b3ae533c91e57a01576bc2c` |
+| Scanner container at documentation time | `240dc6fa8bc98a503add2eb65225132d8efbc4df8026ee7377c7843368447a32`        |
+| API PID at documentation time           | `24274`                                                                   |
+| API restart count at documentation time | `15`                                                                      |
+
+The committed Unix-socket foundation preserves:
+
+- [x] explicit `unix` or `tcp` scanner transport selection;
+- [x] exact Unix socket allowlisting;
+- [x] no implicit Unix/TCP fallback;
+- [x] startup rejection of mixed, missing, or unsupported endpoints;
+- [x] existing bounded ClamAV INSTREAM framing and response parsing;
+- [x] timeout, cancellation, cleanup, and single-settlement behavior;
+- [x] sanitized `CLEAN`, `INFECTED`, and `ERROR` adapter outcomes;
+- [x] networkless evaluation scanner configuration;
+- [x] no scanner TCP listener, Docker port publication, or Nginx exposure.
+
+Previously verified source checks included focused configuration and adapter
+tests, the complete focused File Storage test inventory, focused lint,
+API typecheck and build, shell syntax, static validation, resolved Compose
+validation, and `git diff --check`.
+
+### Host identity, runtime directory, and daemon containment
+
+The following host/runtime controls are runtime verified:
+
+- [x] dedicated scanner user `lexora-clamav`;
+- [x] scanner UID `20000`;
+- [x] shared socket group `lexora-clamav-socket`;
+- [x] shared socket GID `20001`;
+- [x] PM2 service account `sh002` is a member of the socket group;
+- [x] root-managed tmpfiles rule provisions `/run/lexora-clamav`;
+- [x] runtime directory owner/mode is `20000:20001:2750`;
+- [x] socket owner/mode is `20000:20001:0660`;
+- [x] scanner runs with `network_mode: none`;
+- [x] scanner root filesystem is read-only;
+- [x] signature storage is mounted read-only in the scanner;
+- [x] scanner runtime capabilities are zero;
+- [x] `NoNewPrivs` and seccomp containment remain active;
+- [x] host and container TCP port `3310` remain absent;
+- [x] scanner health is successful through its bounded Unix-socket probe.
+
+The scanner socket is:
+
+`/run/lexora-clamav/clamd.sock`
+
+The scanner must not be exposed through TCP, LAN, Nginx, or the public
+internet.
+
+### Signature integrity and socket access control
+
+Runtime verification established:
+
+- [x] the preserved signature baseline manifest remained intact;
+- [x] seven regular signature files were present;
+- [x] no zero-length signature file was present;
+- [x] no signature symlink or special file was present;
+- [x] signature ownership and modes remained within the reviewed contract;
+- [x] authorized Unix-socket `PING/PONG` succeeded as the intended service
+      identity;
+- [x] unauthorized connection as `nobody` was denied;
+- [x] the API service identity could not unlink the scanner socket;
+- [x] the API service identity could not replace, rename over, or create an
+      entry over the scanner socket path;
+- [x] the socket remained present and healthy after the negative tests.
+
+No signature content was printed, copied into documentation, or committed.
+
+### Protocol-level daemon behavior
+
+The real daemon completed the separately controlled protocol checkpoints:
+
+- [x] clean input returned the exact clean response;
+- [x] protocol-safe runtime-generated EICAR input was detected;
+- [x] no literal EICAR payload was printed, persisted, or committed;
+- [x] timeout behavior failed closed;
+- [x] scanner-down behavior failed closed;
+- [x] no scanner failure was accepted as a trusted clean result.
+
+These protocol tests were independent of the later compiled Lexora adapter
+tests.
+
+### Scanner lifecycle and recovery
+
+The existing scanner runtime passed:
+
+- [x] graceful stop and restart;
+- [x] clean socket removal during graceful shutdown;
+- [x] socket recreation with the exact owner and mode;
+- [x] signature persistence across graceful recovery;
+- [x] forced `SIGKILL` recovery;
+- [x] stale-socket recovery after forced termination;
+- [x] preserved scanner container and image identity;
+- [x] preserved updater state;
+- [x] no OOM kill;
+- [x] no TCP listener introduced during recovery.
+
+### Host reboot persistence
+
+The host reboot checkpoint verified recovery of:
+
+- [x] Docker;
+- [x] the networkless ClamAV scanner;
+- [x] the root-managed tmpfiles runtime directory;
+- [x] the Unix socket;
+- [x] signature data;
+- [x] scanner health;
+- [x] the shared socket group available to the API process;
+- [x] PM2 process resurrection;
+- [x] direct API health;
+- [x] Nginx-proxied API health;
+- [x] loopback-only API binding.
+
+The reboot checkpoint did not enable production upload or expose ClamAV over
+TCP.
+
+### Server API build and Unix configuration activation
+
+Server-side verification passed for:
+
+- [x] `pnpm --filter @lexora/api typecheck`;
+- [x] `pnpm --filter @lexora/api build`;
+- [x] compiled Unix endpoint configuration;
+- [x] existing PM2 application launch contract;
+- [x] NestJS dependency-injection boot;
+- [x] direct API health;
+- [x] Nginx-proxied API health;
+- [x] API binding only to `127.0.0.1:4000`.
+
+The active scanner configuration is now aligned in both runtime environment
+files:
+
+- `/.env` relative to the repository root;
+- `/apps/api/.env` relative to the repository root.
+
+Both contain only the reviewed Unix scanner endpoint:
+
+- `MALWARE_SCANNER_MODE=clamav`;
+- `MALWARE_SCANNER_TRANSPORT=unix`;
+- `MALWARE_SCANNER_SOCKET_PATH=/run/lexora-clamav/clamd.sock`;
+- `MALWARE_SCANNER_TIMEOUT_MS=10000`.
+
+`MALWARE_SCANNER_HOST` and `MALWARE_SCANNER_PORT` are absent from both files.
+
+No environment secret or unrelated environment value is recorded in this
+checklist.
+
+### Activation incident and correction
+
+The first controlled activation exposed an environment-consistency defect:
+
+1. the root environment was changed to the valid Unix endpoint;
+2. a legacy secondary API environment still supplied TCP host and port values;
+3. NestJS configuration validation therefore received a mixed Unix/TCP
+   configuration;
+4. the fail-closed schema correctly rejected startup;
+5. the attempted legacy rollback was also incompatible with the new schema
+   because ClamAV mode now requires an explicit transport.
+
+Read-only probes confirmed:
+
+- the root environment parsed as valid Unix configuration;
+- the compiled `validateEnv()` accepted the root environment by itself;
+- PM2 daemon and systemd service environments did not contain stale scanner
+  variables;
+- immediately before NestJS validation, the process environment still
+  contained the legacy TCP values matching the secondary API environment.
+
+The focused correction synchronized the scanner-only block in both runtime
+environment files to the same Unix configuration. Non-scanner environment
+content remained unchanged.
+
+After synchronization:
+
+- [x] PM2 `lexora-api` returned online;
+- [x] direct and Nginx health passed;
+- [x] API process inherited supplementary GID `20001`;
+- [x] the API listener remained `127.0.0.1:4000`;
+- [x] TCP port `3310` remained closed;
+- [x] the scanner remained healthy and networkless;
+- [x] the PM2 process list was saved.
+
+Operational lesson:
+
+> All environment files that may contribute to NestJS startup must preserve
+> one identical scanner transport contract. A legacy TCP endpoint must never
+> coexist with the Unix endpoint.
+
+### Real compiled Lexora adapter clean scan
+
+The actual compiled Lexora
+`ClamAvMalwareScannerAdapter` was instantiated through the real compiled
+storage configuration and connected to the live daemon through the reviewed
+Unix socket.
+
+Runtime result:
+
+- [x] implementation was the compiled Lexora adapter;
+- [x] endpoint kind was `unix`;
+- [x] socket path was the allowlisted runtime path;
+- [x] scanner identifier was `clamav`;
+- [x] clean input returned `CLEAN`;
+- [x] no malware signature was attached to the clean result;
+- [x] no error diagnostics were attached to the clean result;
+- [x] PM2 PID and restart count remained unchanged;
+- [x] API and scanner remained healthy;
+- [x] no TCP listener appeared.
+
+### Real compiled Lexora adapter EICAR detection
+
+A separate runtime checkpoint generated the standard EICAR test input only in
+memory from numeric character codes.
+
+The checkpoint:
+
+- [x] verified the runtime-generated payload hash before scanning;
+- [x] did not print the literal test payload;
+- [x] did not write the payload to disk;
+- [x] cleared the in-memory payload buffer after scanning;
+- [x] used the actual compiled Lexora adapter;
+- [x] used the real Unix-socket daemon;
+- [x] returned `INFECTED`;
+- [x] returned a non-empty bounded sanitized signature;
+- [x] classified the signature as EICAR;
+- [x] did not map infection as a scanner error;
+- [x] left API PID, restart count, health, scanner state, and containment
+      unchanged.
+
+### Runtime non-regression
+
+At the consolidated documentation checkpoint:
+
+- PM2 status: `online`;
+- API PID: `24274`;
+- API restart count: `15`;
+- direct API health: passed;
+- Nginx API health: passed;
+- API listener: `127.0.0.1:4000`;
+- API supplementary socket GID: present;
+- scanner state: running and healthy;
+- scanner restart count: `0`;
+- scanner network mode: `none`;
+- scanner root filesystem: read-only;
+- Unix socket contract: `20000:20001:0660`;
+- host TCP `3310`: closed;
+- PM2 dump: contains the `lexora-api` record;
+- repository: clean before documentation.
+
+The runtime tests did not add an upload controller, download controller,
+public scanner route, database mutation, Prisma migration, attachment
+integration, or frontend upload surface.
+
+Production file upload remains disabled.
+
+### Supersession note
+
+Earlier pending statements are superseded only for:
+
+- real isolated ClamAV daemon startup and readiness;
+- signature initialization and integrity;
+- Unix-socket access control;
+- clean protocol behavior;
+- protocol-safe EICAR detection;
+- scanner-down and timeout fail-closed behavior;
+- graceful lifecycle recovery;
+- forced-stop and stale-socket recovery;
+- host reboot and tmpfiles/socket/signature persistence;
+- server API build on the Unix-capable source;
+- controlled Unix environment activation;
+- PM2/NestJS API boot using the Unix configuration;
+- real compiled Lexora adapter clean scan;
+- real compiled Lexora adapter EICAR detection.
+
+Earlier pending statements remain valid for:
+
+- department-scoped scanning of bytes freshly read from MinIO quarantine;
+- persistence of real `CLEAN`, `INFECTED`, and `ERROR` outcomes;
+- latest-persisted-CLEAN enforcement in the integrated workflow;
+- CLEAN-only guarded promotion in the integrated workflow;
+- infected/error quarantine and rejection lifecycle;
+- retry, worker, and reconciliation behavior;
+- database-backed repository and concurrency verification;
+- serializable transaction retry handling;
+- audit and lifecycle mutation atomicity;
+- attachment-resource authorization;
+- permission-controlled signed or proxy delivery;
+- storage quotas;
+- secure upload/download frontend;
+- complete production upload/download runtime verification;
+- production file upload enablement.
+
+Earlier MinIO, conditional promotion, content-integrity, and trusted content
+inspection evidence remains preserved in its existing sections and is not
+replaced by this ClamAV section.
+
+### Current accurate status
+
+> The networkless ClamAV Unix-socket foundation is implemented, reviewed,
+> committed, synchronized, built, and runtime verified for daemon readiness,
+> signature integrity, Unix-socket access control, clean and EICAR protocol
+> behavior, scanner-down and timeout failure handling, graceful and forced
+> recovery, host reboot persistence, Unix API activation, and real compiled
+> Lexora adapter clean/EICAR behavior. The API and scanner are healthy, the API
+> remains loopback-only, and ClamAV has no TCP exposure. Stored-MinIO-byte scan
+> orchestration, persisted real scan outcomes, integrated CLEAN-only
+> promotion, infected/error lifecycle handling, attachment authorization,
+> permission-controlled delivery, quotas, frontend integration, and complete
+> secure upload/download runtime verification remain pending. Production file
+> upload remains disabled.
+
+### Next safe File Storage checkpoint
+
+Implement one focused department-scoped stored-byte scan orchestration phase:
+
+1. resolve a department-scoped `PENDING_SCAN` file record;
+2. open a fresh quarantine-object stream from MinIO;
+3. perform trusted content inspection;
+4. scan the trusted stored bytes through the malware-scanner port;
+5. persist a sanitized `CLEAN`, `INFECTED`, or `ERROR` outcome;
+6. allow guarded promotion only after the latest persisted result is `CLEAN`;
+7. retain infected/error objects in quarantine;
+8. preserve audit behavior and reconciliation information;
+9. verify allowed and blocked department/object cases;
+10. keep all production upload and attachment routes disabled.
+
+Do not add a public upload route in the same implementation checkpoint.
