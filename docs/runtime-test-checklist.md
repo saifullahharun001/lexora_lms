@@ -9715,3 +9715,289 @@ Implement one focused department-scoped stored-byte scan orchestration phase:
 10. keep all production upload and attachment routes disabled.
 
 Do not add a public upload route in the same implementation checkpoint.
+
+## Stored-MinIO-Byte Scan Orchestration Runtime Verification — 2026-08-03
+
+### Classification and scope
+
+This checkpoint records implementation activation and real integrated runtime verification of the department-scoped stored-object malware-scan orchestration introduced by:
+
+- Commit: `69e7093712812906faf6c5cebb93945b23f74929`
+- Message: `Add stored-byte malware scan orchestration`
+
+The tested orchestration:
+
+1. resolves an authenticated department-scoped `PENDING_SCAN` file record;
+2. validates the exact quarantine storage boundary;
+3. reads authoritative object metadata from MinIO;
+4. opens fresh object streams for trusted content inspection and malware scanning;
+5. verifies streamed byte count and SHA-256;
+6. persists a sanitized `CLEAN`, `INFECTED`, or operational `ERROR` result;
+7. permits promotion only after the latest persisted result is `CLEAN`;
+8. performs object promotion before a guarded serializable database transition;
+9. retains infected and error outcomes in quarantine;
+10. writes department-scoped audit evidence without exposing private storage locations.
+
+This checkpoint does not enable a public upload route or production file upload.
+
+### Static implementation verification
+
+Verified before runtime activation:
+
+- [x] API typecheck passed.
+- [x] API build passed.
+- [x] Nine compiled File Storage test files passed.
+- [x] Two hundred twenty-two focused File Storage tests passed.
+- [x] No test failed or was skipped.
+- [x] Formatting, lint-oriented checks and `git diff --check` passed.
+- [x] Local, server and `origin/main` aligned at the implementation commit.
+- [x] Production upload remained disabled.
+
+### PM2 activation and runtime containment
+
+The reviewed build was loaded through one controlled PM2 restart.
+
+Verified:
+
+- [x] PM2 process `lexora-api` remained online.
+- [x] Activated API PID was `29742`.
+- [x] PM2 restart count became `1`.
+- [x] Direct API health passed.
+- [x] Nginx-proxied API health passed.
+- [x] API remained bound only to `127.0.0.1:4000`.
+- [x] The API process inherited supplementary ClamAV socket GID `20001`.
+- [x] The API identity successfully received `PONG` through the Unix socket.
+- [x] The live scanner remained healthy.
+- [x] The live scanner remained networkless with Docker network mode `none`.
+- [x] The scanner had no routable IP or gateway.
+- [x] The scanner had no published port.
+- [x] Host TCP port `3310` remained absent.
+- [x] Scanner restart count remained `0`.
+- [x] Scanner root filesystem remained read-only.
+- [x] No database or MinIO mutation occurred during activation.
+- [x] Nginx configuration was not changed.
+- [x] Production upload remained disabled.
+
+The Docker `none` bookkeeping network record was present, but it had no container IP, gateway, global IPv6 address or published port. This is the expected non-routable Docker representation for network mode `none`.
+
+### Real clean stored-byte orchestration
+
+A controlled clean PDF was created in memory and uploaded to the real MinIO quarantine boundary.
+
+Runtime evidence:
+
+- Request ID: `runtime-file-clean-db32edf0-6c6c-498c-97d5-1dc44db2aad1`
+- Temporary file-object ID: `cmsdew45o00012ihfgeu9totb`
+- Report: `/home/sh002/lexora-stored-byte-clean-runtime-20260803T155627Z.txt`
+
+Verified:
+
+- [x] The canonical active Law-department admin identity was used.
+- [x] The request context was principal-scoped to `dept_law_test`.
+- [x] A real quarantine object was streamed into MinIO.
+- [x] Authoritative object size was verified.
+- [x] Registration persisted a department-scoped `PENDING_SCAN` file.
+- [x] Trusted content inspection identified the object as PDF.
+- [x] The real live ClamAV Unix-socket scanner returned `CLEAN`.
+- [x] Fresh streams were used for inspection and scanning.
+- [x] Streamed byte count matched persisted size.
+- [x] Streamed SHA-256 matched persisted checksum.
+- [x] The CLEAN result was persisted with scanner identity and scan timestamp.
+- [x] The object was promoted from quarantine to the deterministic available boundary.
+- [x] The quarantine source was absent after successful promotion.
+- [x] The available object retained the exact byte count and SHA-256.
+- [x] PostgreSQL status changed to `AVAILABLE`.
+- [x] PostgreSQL object key changed atomically to the available key.
+- [x] Three successful audit events were written: registration, scan and availability.
+- [x] Safe service results did not expose bucket names or private object keys.
+- [x] Audit context did not expose private storage keys.
+- [x] Temporary MinIO objects were removed after verification.
+- [x] Temporary file and scan rows were removed after verification.
+- [x] Three audit evidence rows were retained.
+- [x] PM2 PID and restart count remained unchanged.
+- [x] Scanner and MinIO container states remained unchanged.
+- [x] Direct and Nginx health remained passed.
+- [x] Production upload remained disabled.
+
+Decisive result:
+
+- `REAL_CLEAN_STORED_BYTE_ORCHESTRATION=PASSED`
+
+### Initial official-signature infected-fixture observation
+
+An initial attempt embedded the standard antivirus test-vector bytes inside an accepted PDF fixture.
+
+The stored object was inspected as PDF, but the official ClamAV database returned `CLEAN`. The orchestration therefore correctly executed the CLEAN path and produced an availability audit.
+
+Diagnostic evidence:
+
+- Request ID: `runtime-file-infected-792f3fa5-7d8b-49ed-b83a-3c4344e0f659`
+- Recorded scan status: `CLEAN`
+- Availability audit: present
+- Temporary file rows remaining after cleanup: `0`
+- Temporary scan rows remaining after cleanup: `0`
+
+This was a test-fixture limitation, not an orchestration defect.
+
+A second in-memory PDF embedded-file fixture was also accepted by the content inspector but returned `CLEAN` from the official signature database.
+
+These attempts must not be described as official-signature infected-path verification.
+
+The literal antivirus test payload was not printed, documented or written to the host filesystem.
+
+### Isolated harmless custom-signature evaluation
+
+To verify the infected lifecycle without weakening the live official scanner:
+
+- a temporary random harmless marker was generated;
+- a temporary ClamAV custom signature matched only that marker;
+- the temporary signature content and marker bytes were not printed;
+- the marker payload was never written as a host file;
+- a separate temporary ClamAV daemon used the same reviewed scanner image;
+- the temporary daemon used a separate Unix socket and signature directory;
+- Docker network mode was `none`;
+- the root filesystem was read-only;
+- all Linux capabilities were dropped;
+- no TCP port was exposed;
+- the live official scanner and its signature volume were not changed;
+- the production socket allowlist was not changed.
+
+The actual compiled Lexora content inspector accepted the controlled PDF fixture.
+
+The actual compiled Lexora ClamAV adapter returned `INFECTED` with a bounded custom signature.
+
+This evidence is a custom-signature evaluation. It is not an official ClamAV signature-detection claim.
+
+### Real infected stored-byte orchestration
+
+The custom-signature fixture was then exercised through the real orchestration using:
+
+- real PostgreSQL;
+- real MinIO stored bytes;
+- the actual compiled Lexora content inspector;
+- the actual compiled ClamAV adapter;
+- an isolated temporary networkless ClamAV daemon;
+- an authenticated Law-department request context.
+
+Runtime evidence:
+
+- Request ID: `runtime-file-infected-custom-828b69a5-52f4-4815-915d-6856d6a13725`
+- Temporary file-object ID: `cmsdgoiko00012imayri0ztwp`
+- Report: `/home/sh002/lexora-infected-orchestration-custom-20260803T164631Z-60209.txt`
+
+Verified:
+
+- [x] A real controlled object was uploaded to the MinIO quarantine boundary.
+- [x] Trusted inspection identified the object as PDF.
+- [x] Fresh MinIO streams were read by the orchestration.
+- [x] The actual compiled ClamAV adapter returned `INFECTED`.
+- [x] The bounded custom signature was persisted.
+- [x] The persisted result included a real scan timestamp.
+- [x] Scanner-error diagnostics were absent.
+- [x] The file remained `PENDING_SCAN`.
+- [x] The database object key remained in the quarantine boundary.
+- [x] The quarantine object remained present during verification.
+- [x] The quarantine object retained the expected size and SHA-256.
+- [x] No available destination object was created.
+- [x] The infected object was not promoted.
+- [x] A direct availability attempt was blocked by the latest-persisted-CLEAN guard.
+- [x] The blocked attempt did not change lifecycle status or storage key.
+- [x] No availability audit was written.
+- [x] Registration and infected-scan audit events were written successfully.
+- [x] Audit actor, department and target identity matched the controlled runtime context.
+- [x] Service results and audit context did not expose private bucket or object keys.
+- [x] Temporary MinIO objects were removed after verification.
+- [x] Temporary file and scan rows were removed after verification.
+- [x] Two audit evidence rows were retained.
+- [x] The in-memory marker and payload buffers were cleared.
+- [x] The temporary scanner, signature and socket directory were removed.
+- [x] The live official scanner was unchanged.
+- [x] The live official signature volume was unchanged.
+- [x] PM2 process state was unchanged.
+- [x] MinIO container state was unchanged.
+- [x] Direct and Nginx API health remained passed.
+- [x] Source and environment remained unchanged.
+- [x] Production upload remained disabled.
+
+Decisive result:
+
+- `CUSTOM_SIGNATURE_INFECTED_ORCHESTRATION=PASSED`
+
+### Supersession note
+
+This section supersedes earlier pending wording only for:
+
+- implementation of department-scoped stored-MinIO-byte scan orchestration;
+- activation of the orchestration-containing build;
+- real stored-byte trusted inspection;
+- real persisted `CLEAN` scan results;
+- real CLEAN-only promotion;
+- guarded PostgreSQL status and storage-key transition;
+- real integrated clean-path MinIO, PostgreSQL and ClamAV verification;
+- real persisted `INFECTED` behavior under isolated custom-signature evaluation;
+- infected-object quarantine retention;
+- infected-object no-promotion behavior;
+- latest-persisted-CLEAN enforcement;
+- real scan timestamps;
+- safe result and audit metadata boundaries;
+- cleanup and API/container non-regression for the tested paths.
+
+Earlier pending wording remains valid for:
+
+- a real stored-byte infected result produced by the official ClamAV signature database;
+- stored-byte operational `ERROR` persistence using a real scanner failure;
+- scanner-down and timeout behavior through the full stored-byte orchestration;
+- automatic infected-to-`QUARANTINED` or rejected lifecycle transition;
+- retry or worker processing;
+- cross-system object-storage/database reconciliation automation;
+- attachment-resource authorization;
+- permission-controlled signed or proxy delivery;
+- database-backed concurrency and serializable retry verification;
+- storage quotas;
+- audit and lifecycle mutation atomicity;
+- secure upload/download controllers and frontend;
+- complete production upload/download runtime verification;
+- production upload enablement.
+
+### Current accurate status
+
+Implemented and runtime verified:
+
+- [x] Department-scoped stored-byte orchestration.
+- [x] Real MinIO quarantine reads.
+- [x] Trusted PDF content inspection in the tested paths.
+- [x] Real integrated CLEAN persistence.
+- [x] CLEAN-only object promotion.
+- [x] Guarded `AVAILABLE` status and object-key transition.
+- [x] Real integrated custom-signature `INFECTED` persistence.
+- [x] Infected object remains in quarantine.
+- [x] Infected object is not promoted.
+- [x] Latest persisted CLEAN is required before availability.
+- [x] Audit actor and department scoping in the tested paths.
+- [x] Safe result and audit-storage-location boundaries.
+- [x] Runtime cleanup and API/container non-regression.
+
+Partial or evaluation-only:
+
+- [~] The integrated infected-path evidence uses an isolated harmless custom signature, not the live official signature database.
+- [~] Infected files remain `PENDING_SCAN` in quarantine; automatic infected lifecycle classification is not implemented.
+- [~] Cross-system recovery information exists, but an automated reconciliation worker is not implemented.
+
+Pending:
+
+- [ ] Real stored-byte operational `ERROR` runtime verification.
+- [ ] Full orchestration scanner-down and timeout verification.
+- [ ] Automatic infected lifecycle transition or reviewed rejection workflow.
+- [ ] Retry and worker processing.
+- [ ] Attachment-resource authorization.
+- [ ] Permission-controlled delivery.
+- [ ] Storage quotas.
+- [ ] Database-backed concurrency and serializable-retry runtime verification.
+- [ ] Audit/lifecycle atomicity hardening.
+- [ ] Secure upload/download routes and frontend.
+- [ ] Complete production upload/download runtime verification.
+- [ ] Production upload enablement.
+
+Correct current statement:
+
+> Department-scoped stored-MinIO-byte scan orchestration is implemented, reviewed, committed, server-built, covered by 222 focused File Storage tests, activated through PM2, and runtime verified for a real clean object using the live official ClamAV scanner and for a real persisted infected outcome using an isolated networkless harmless custom signature. CLEAN-only promotion, guarded status/key transition, quarantine retention, no-promotion and latest-persisted-CLEAN enforcement are runtime verified for the tested paths. Official-signature stored-byte infection, full stored-byte scanner-error behavior, automatic infected lifecycle classification, reconciliation workers, attachment authorization, permission-controlled delivery, quotas, frontend integration and the complete production upload/download pipeline remain pending. Production file upload remains disabled.
