@@ -74,6 +74,10 @@ export interface FileLifecycleTransitionInput {
   targetStatus: FileObjectStatus;
   lifecycleTimestamp?: Date;
   requireLatestCleanScan?: boolean;
+  promotionLocation?: {
+    expectedQuarantineObjectKey: string;
+    availableObjectKey: string;
+  };
 }
 export interface FileArchiveRequest {
   fileId: string;

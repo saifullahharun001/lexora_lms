@@ -1,9 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import {
-  Prisma,
   type FileObject,
   type MalwareScanResult,
+  Prisma,
 } from "@prisma/client";
+
 import { PrismaService } from "../../../../common/prisma/prisma.service";
 import type { FileStorageRepository } from "../../application/ports/file-storage.repository";
 import type {
@@ -102,9 +103,24 @@ export class PrismaFileStorageRepository implements FileStorageRepository {
       async (tx) => {
         const file = await tx.fileObject.findFirst({
           where: { id: input.fileId, departmentId: input.departmentId },
-          select: { id: true, status: true },
+          select: { id: true, status: true, objectKey: true },
         });
         if (!file || !input.expectedStatuses.includes(file.status)) return null;
+        let availableObjectKey: string | undefined;
+        if (input.targetStatus === "AVAILABLE") {
+          const promotion = input.promotionLocation;
+          const requiredPrefix = `quarantine/${input.departmentId}/`;
+          if (
+            !promotion ||
+            file.status !== "PENDING_SCAN" ||
+            file.objectKey !== promotion.expectedQuarantineObjectKey ||
+            !file.objectKey.startsWith(requiredPrefix) ||
+            promotion.availableObjectKey !==
+              `available/${file.objectKey.slice("quarantine/".length)}`
+          )
+            return null;
+          availableObjectKey = promotion.availableObjectKey;
+        }
         if (
           input.targetStatus === "AVAILABLE" ||
           input.requireLatestCleanScan
@@ -121,10 +137,20 @@ export class PrismaFileStorageRepository implements FileStorageRepository {
           where: {
             id: input.fileId,
             departmentId: input.departmentId,
-            status: { in: input.expectedStatuses },
+            status:
+              input.targetStatus === "AVAILABLE"
+                ? "PENDING_SCAN"
+                : { in: input.expectedStatuses },
+            ...(input.targetStatus === "AVAILABLE" && input.promotionLocation
+              ? {
+                  objectKey:
+                    input.promotionLocation.expectedQuarantineObjectKey,
+                }
+              : {}),
           },
           data: {
             status: input.targetStatus,
+            ...(availableObjectKey ? { objectKey: availableObjectKey } : {}),
             ...(input.targetStatus === "ARCHIVED"
               ? { archivedAt: timestamp }
               : {}),
