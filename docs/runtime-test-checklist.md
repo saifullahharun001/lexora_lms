@@ -10140,3 +10140,180 @@ Pending:
 Correct current statement:
 
 > Department-scoped stored-MinIO-byte scan orchestration is runtime verified for CLEAN, isolated custom-signature INFECTED, and scanner-unavailable ERROR outcomes. Scanner-unavailable failures persist a sanitized `connection_failed` classification with a real scan timestamp while retaining the object in quarantine and preventing availability. Raw socket paths and provider error details are not exposed through service results, persisted diagnostics or audit context. Stored-byte timeout behavior, retry processing, automatic infected or operational-error lifecycle transitions, authorization-controlled delivery and the complete production upload/download pipeline remain pending. Production file upload remains disabled.
+
+## Stored-Byte Scanner Timeout Runtime Verification — 2026-08-05
+
+### Classification and scope
+
+This checkpoint records real integrated runtime verification of the stored-byte malware-scanner timeout path.
+
+The runtime test occurred at:
+
+- UTC timestamp: `2026-08-04T20:02:13Z`
+- Dhaka local date: `2026-08-05`
+
+The test used:
+
+- real PostgreSQL;
+- real MinIO quarantine storage;
+- the actual compiled Lexora content inspector;
+- the actual compiled ClamAV adapter;
+- an authenticated Law-department request context;
+- a private controlled Unix-socket peer that accepted and consumed the scanner request but intentionally returned no ClamAV response;
+- a bounded scanner timeout of `750` milliseconds.
+
+The live official ClamAV scanner was not stopped, delayed, restarted, reconfigured or replaced.
+
+This evidence verifies the actual compiled adapter and full stored-byte orchestration against a controlled non-responsive transport peer. It does not claim that the live official ClamAV daemon timed out.
+
+The production scanner socket allowlist and runtime environment were not changed.
+
+### Runtime evidence
+
+- Request ID: `runtime-file-error-timeout-6b31a3c7-89f7-4b11-a066-6b94908f848f`
+- Temporary file-object ID: `cmsf342mz00012i5g32rbuved`
+- Configured scanner timeout: `750 ms`
+- Observed orchestration scan duration: `813 ms`
+- Report: `/home/sh002/lexora-stored-byte-scanner-timeout-20260804T200213Z-15637.txt`
+
+### Verified behavior
+
+- [x] The repository remained on `main` at commit `f6fd083292707609953dff7b29207bb263952965`.
+- [x] The working tree was clean before the test.
+- [x] PM2 process `lexora-api` remained online.
+- [x] PM2 PID remained `1769` throughout the checkpoint.
+- [x] PM2 restart count remained `0` throughout the checkpoint.
+- [x] Direct API health passed before and after the test.
+- [x] Nginx-proxied API health passed before and after the test.
+- [x] The live official ClamAV scanner remained running and healthy.
+- [x] The live scanner restart count remained `0`.
+- [x] The live scanner remained networkless.
+- [x] The live scanner root filesystem remained read-only.
+- [x] The live scanner did not report an OOM event.
+- [x] Evaluation MinIO remained running and healthy.
+- [x] MinIO host ports `9000` and `9001` remained absent.
+- [x] A private temporary Unix-socket peer was created.
+- [x] The controlled peer accepted the actual compiled scanner-adapter connection.
+- [x] The controlled peer received the scanner request bytes.
+- [x] The controlled peer intentionally returned no ClamAV response.
+- [x] The configured adapter timeout was `750` milliseconds.
+- [x] The scan settled after approximately `813` milliseconds.
+- [x] The timeout did not settle materially before the configured boundary.
+- [x] The timeout remained within the bounded verification window.
+- [x] The actual compiled scanner adapter closed the timed-out connection.
+- [x] A real controlled PDF was uploaded to the MinIO quarantine boundary.
+- [x] Authoritative quarantine object size was verified.
+- [x] Registration persisted a department-scoped `PENDING_SCAN` file.
+- [x] Trusted content inspection identified the stored object as PDF.
+- [x] The scanner result was returned and persisted as `ERROR`.
+- [x] The safe diagnostic classification was exactly `timeout`.
+- [x] The safe diagnostic metadata contained only the bounded classification.
+- [x] No malware signature was recorded for the timeout.
+- [x] A real scan timestamp was persisted.
+- [x] The file remained `PENDING_SCAN`.
+- [x] The database object key remained within the quarantine boundary.
+- [x] The quarantine object remained present during verification.
+- [x] The quarantine object retained the expected byte count and SHA-256.
+- [x] No available destination object was created.
+- [x] The timeout object was not promoted.
+- [x] A direct availability attempt was blocked by the latest-persisted-CLEAN guard.
+- [x] The blocked attempt did not change lifecycle status or object key.
+- [x] No availability audit was written.
+- [x] Registration and scan-recorded audit events were written successfully.
+- [x] The scan audit recorded status `ERROR`.
+- [x] Audit actor, department and target identity matched the controlled request context.
+- [x] Service results did not expose bucket names or private object keys.
+- [x] Service results did not expose the temporary socket path.
+- [x] Service results did not expose raw transport or provider errors.
+- [x] Persisted diagnostics did not expose the socket path or provider details.
+- [x] Audit context did not expose private storage or transport details.
+- [x] Temporary MinIO objects were removed after verification.
+- [x] Temporary file and scan rows were removed after verification.
+- [x] Two audit evidence rows were retained.
+- [x] The in-memory test payload was cleared.
+- [x] The controlled timeout peer and temporary socket directory were removed.
+- [x] PM2 state remained unchanged during the checkpoint.
+- [x] Live official scanner state remained unchanged.
+- [x] Live official scanner signature storage remained unchanged.
+- [x] MinIO container state remained unchanged.
+- [x] Source and environment remained unchanged.
+- [x] Production file upload remained disabled.
+
+Decisive results:
+
+- `SCANNER_TIMEOUT_ORCHESTRATION=PASSED`
+- `PERSISTED_SCAN_STATUS=ERROR`
+- `SAFE_ERROR_CLASSIFICATION=timeout`
+- `SCANNER_ADAPTER_CLOSED_TIMED_OUT_CONNECTION=YES`
+- `RAW_PROVIDER_ERROR_EXPOSED=NO`
+
+### Evidence boundary
+
+This checkpoint supports the following claim:
+
+> The actual compiled Lexora ClamAV adapter and real stored-MinIO-byte orchestration correctly fail closed when a connected Unix-socket peer accepts the scanner request but does not return a response before the configured timeout.
+
+This checkpoint does not support the following claim:
+
+> The live official ClamAV daemon was observed hanging or timing out.
+
+The live official scanner remained healthy and unchanged throughout the test.
+
+### Supersession note
+
+This checkpoint supersedes earlier pending wording only for:
+
+- real stored-byte scanner transport-timeout behavior;
+- persisted `ERROR` status for a scanner timeout;
+- sanitized `timeout` diagnostic persistence;
+- timed-out connection disposal by the compiled adapter;
+- real stored-byte timeout quarantine retention;
+- timeout-path no-promotion behavior;
+- latest-persisted-CLEAN enforcement after timeout;
+- timeout-path audit evidence and safe metadata boundaries;
+- cleanup and live-runtime non-regression for the controlled timeout scenario.
+
+Earlier pending wording remains valid for:
+
+- malformed scanner responses through the full stored-byte orchestration;
+- oversized scanner responses through the full stored-byte orchestration;
+- scanner stream interruption through the full stored-byte orchestration;
+- object-storage read interruption and integrity failure;
+- retry and worker processing;
+- automatic infected or operational-error lifecycle transitions;
+- reconciliation automation;
+- attachment-resource authorization;
+- permission-controlled file delivery;
+- storage quotas;
+- database-backed concurrency and serializable-retry verification;
+- secure upload and download routes;
+- frontend integration;
+- production upload enablement.
+
+### Current accurate status addition
+
+Implemented and runtime verified:
+
+- [x] Stored-byte CLEAN behavior.
+- [x] Stored-byte isolated custom-signature `INFECTED` behavior.
+- [x] Stored-byte scanner-unavailable `connection_failed` behavior.
+- [x] Stored-byte non-responsive-peer `timeout` behavior.
+- [x] Operational scanner failures persist as `ERROR`.
+- [x] Operational error diagnostics remain sanitized and bounded.
+- [x] Operational-error objects remain in quarantine.
+- [x] Operational-error objects are not promoted.
+- [x] Latest persisted CLEAN remains mandatory for availability.
+- [x] Error-path audit evidence remains department-scoped and storage-location-safe.
+
+Pending:
+
+- [ ] Full-orchestration malformed scanner-response verification.
+- [ ] Full-orchestration oversized scanner-response verification.
+- [ ] Full-orchestration scanner stream-failure verification.
+- [ ] Retry and worker processing.
+- [ ] Automatic infected or operational-error lifecycle transition.
+- [ ] Complete production upload/download pipeline verification.
+
+Correct current statement:
+
+> Department-scoped stored-MinIO-byte scan orchestration is runtime verified for CLEAN, isolated custom-signature INFECTED, scanner-unavailable `connection_failed`, and controlled non-responsive-peer `timeout` outcomes. Scanner timeout persists a sanitized `ERROR` result with classification `timeout`, retains the object in quarantine, prevents availability, closes the timed-out connection and does not expose raw transport details. This is controlled transport-timeout evidence and is not a claim that the live official ClamAV daemon timed out. Malformed or oversized scanner-response behavior, stream interruption, retry processing, automatic infected or operational-error lifecycle transitions, authorization-controlled delivery and the complete production upload/download pipeline remain pending. Production file upload remains disabled.
