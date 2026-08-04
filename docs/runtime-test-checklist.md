@@ -10001,3 +10001,142 @@ Pending:
 Correct current statement:
 
 > Department-scoped stored-MinIO-byte scan orchestration is implemented, reviewed, committed, server-built, covered by 222 focused File Storage tests, activated through PM2, and runtime verified for a real clean object using the live official ClamAV scanner and for a real persisted infected outcome using an isolated networkless harmless custom signature. CLEAN-only promotion, guarded status/key transition, quarantine retention, no-promotion and latest-persisted-CLEAN enforcement are runtime verified for the tested paths. Official-signature stored-byte infection, full stored-byte scanner-error behavior, automatic infected lifecycle classification, reconciliation workers, attachment authorization, permission-controlled delivery, quotas, frontend integration and the complete production upload/download pipeline remain pending. Production file upload remains disabled.
+
+## Stored-Byte Scanner-Unavailable ERROR Runtime Verification — 2026-08-03
+
+### Classification and scope
+
+This checkpoint records real integrated runtime verification of the stored-byte scanner-unavailable fail-closed path.
+
+The test used:
+
+- real PostgreSQL;
+- real MinIO quarantine storage;
+- the actual compiled Lexora content inspector;
+- the actual compiled ClamAV adapter;
+- an authenticated Law-department request context;
+- a deliberately absent and unique Unix socket path.
+
+The live official scanner was not stopped, restarted, reconfigured or replaced.
+
+The production scanner socket allowlist and environment were not changed.
+
+### Runtime evidence
+
+- Request ID: `runtime-file-error-unavailable-c704eb0b-c097-496c-b8e8-e2a469d06218`
+- Temporary file-object ID: `cmsdiqe7j00012i7odhlyys7q`
+- Report: `/home/sh002/lexora-stored-byte-scanner-unavailable-20260803T174358Z-76651.txt`
+
+### Verified behavior
+
+- [x] The repository remained on `main` at commit `90d926813019595ecfe9b89a116fb73627b2897d`.
+- [x] The working tree was clean before the test.
+- [x] PM2 process `lexora-api` remained online.
+- [x] The API PID remained `29742`.
+- [x] The PM2 restart count remained `1`.
+- [x] Direct API health passed before and after the test.
+- [x] Nginx-proxied API health passed before and after the test.
+- [x] The live official ClamAV scanner remained running and healthy.
+- [x] The live scanner restart count remained `0`.
+- [x] The live scanner remained networkless.
+- [x] The live scanner root filesystem remained read-only.
+- [x] The live scanner did not report an OOM event.
+- [x] Evaluation MinIO remained running and healthy.
+- [x] MinIO host ports `9000` and `9001` remained absent.
+- [x] The selected unavailable scanner socket path did not exist.
+- [x] A real controlled PDF was uploaded to the MinIO quarantine boundary.
+- [x] Authoritative quarantine object size was verified.
+- [x] Registration persisted a department-scoped `PENDING_SCAN` file.
+- [x] Trusted content inspection identified the stored object as PDF.
+- [x] The actual compiled ClamAV adapter attempted the unavailable Unix-socket connection.
+- [x] The scanner result was sanitized and returned as `ERROR`.
+- [x] The safe diagnostic classification was `connection_failed`.
+- [x] The diagnostic metadata contained only the bounded classification.
+- [x] No signature name was recorded for the operational error.
+- [x] The `ERROR` result was persisted in PostgreSQL.
+- [x] A real scan timestamp was persisted.
+- [x] The file remained `PENDING_SCAN`.
+- [x] The database object key remained within the quarantine boundary.
+- [x] The quarantine object remained present during verification.
+- [x] The quarantine object retained the expected byte count and SHA-256.
+- [x] No available destination object was created.
+- [x] The error object was not promoted.
+- [x] A direct availability attempt was blocked by the latest-persisted-CLEAN guard.
+- [x] The blocked attempt did not change lifecycle status or object key.
+- [x] No availability audit was written.
+- [x] Registration and scan-recorded audit events were written successfully.
+- [x] The scan audit recorded status `ERROR`.
+- [x] Audit actor, department and target identity matched the controlled request context.
+- [x] Service results did not expose bucket names or private object keys.
+- [x] Service results did not expose the unavailable socket path.
+- [x] Service results did not expose `ENOENT` or provider error details.
+- [x] Persisted diagnostics did not expose socket paths or provider errors.
+- [x] Audit context did not expose private storage locations, socket paths or provider details.
+- [x] Temporary MinIO objects were removed after verification.
+- [x] Temporary file and scan rows were removed after verification.
+- [x] Two audit evidence rows were retained.
+- [x] The in-memory test payload was cleared.
+- [x] PM2 state remained unchanged.
+- [x] Live official scanner state remained unchanged.
+- [x] MinIO container state remained unchanged.
+- [x] Source and environment remained unchanged.
+- [x] Production file upload remained disabled.
+
+Decisive results:
+
+- `SCANNER_UNAVAILABLE_ORCHESTRATION=PASSED`
+- `PERSISTED_SCAN_STATUS=ERROR`
+- `SAFE_ERROR_CLASSIFICATION=connection_failed`
+- `RAW_PROVIDER_ERROR_EXPOSED=NO`
+
+### Supersession note
+
+This checkpoint supersedes earlier pending wording only for:
+
+- real stored-byte operational `ERROR` persistence caused by an unavailable scanner connection;
+- sanitized `connection_failed` diagnostic persistence;
+- real stored-byte scanner-unavailable quarantine retention;
+- scanner-error no-promotion behavior;
+- latest-persisted-CLEAN enforcement after scanner unavailability;
+- scanner-error audit evidence and safe metadata boundaries;
+- cleanup and live-runtime non-regression for the unavailable-connection scenario.
+
+Earlier pending wording remains valid for:
+
+- real stored-byte scanner timeout behavior;
+- malformed or oversized scanner-response behavior through the full orchestration;
+- scanner stream interruption through the full orchestration;
+- retry and worker processing;
+- automatic infected or operational-error lifecycle transitions;
+- reconciliation automation;
+- attachment-resource authorization;
+- permission-controlled file delivery;
+- storage quotas;
+- database-backed concurrency and serializable-retry verification;
+- secure upload and download routes;
+- frontend integration;
+- production upload enablement.
+
+### Current accurate status addition
+
+Implemented and runtime verified:
+
+- [x] Stored-byte scanner-unavailable connection failures persist as `ERROR`.
+- [x] Scanner-unavailable diagnostics are sanitized to `connection_failed`.
+- [x] Raw socket and provider errors are not exposed.
+- [x] Scanner-error objects remain in quarantine.
+- [x] Scanner-error objects are not promoted.
+- [x] Latest persisted CLEAN remains mandatory for availability.
+- [x] Scanner-error audit evidence is department-scoped and storage-location-safe.
+
+Pending:
+
+- [ ] Stored-byte scanner timeout runtime verification.
+- [ ] Full-orchestration malformed-response and stream-failure verification.
+- [ ] Retry and worker processing.
+- [ ] Automatic operational-error lifecycle transition.
+- [ ] Complete production upload/download pipeline verification.
+
+Correct current statement:
+
+> Department-scoped stored-MinIO-byte scan orchestration is runtime verified for CLEAN, isolated custom-signature INFECTED, and scanner-unavailable ERROR outcomes. Scanner-unavailable failures persist a sanitized `connection_failed` classification with a real scan timestamp while retaining the object in quarantine and preventing availability. Raw socket paths and provider error details are not exposed through service results, persisted diagnostics or audit context. Stored-byte timeout behavior, retry processing, automatic infected or operational-error lifecycle transitions, authorization-controlled delivery and the complete production upload/download pipeline remain pending. Production file upload remains disabled.
