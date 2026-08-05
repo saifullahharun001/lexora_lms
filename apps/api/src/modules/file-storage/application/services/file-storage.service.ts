@@ -57,6 +57,8 @@ import type {
 import type { ObjectStoragePort } from "../ports/object-storage.port";
 
 const ORCHESTRATOR_SCANNER = "file-storage-orchestrator";
+const INFECTED_QUARANTINE_REASON =
+  "Trusted malware scan reported an infected file";
 type OrchestrationErrorClassification =
   | "object_not_found"
   | "object_metadata_failed"
@@ -382,6 +384,10 @@ export class FileStorageService {
       safeDiagnosticMetadata: scannerResult.safeDiagnosticMetadata,
       scannedAt: new Date(),
     });
+    if (scan.status === "INFECTED") {
+      const quarantined = await this.quarantineInfected(current);
+      return { file: quarantined, scan, promotionCompleted: false };
+    }
     if (scan.status !== "CLEAN")
       return {
         file: this.toSafeMetadata(current),
@@ -569,6 +575,52 @@ export class FileStorageService {
       scan,
       promotionCompleted: false,
     };
+  }
+  private async quarantineInfected(
+    file: FileObjectPersistenceRecord,
+  ): Promise<FileObjectMetadata> {
+    const { departmentId } = this.requireActorContext();
+    assertFileLifecycleTransition(file.status, "QUARANTINED");
+    let updated: FileObjectPersistenceRecord | null;
+    try {
+      updated = await this.repository.transitionStatus({
+        fileId: file.id,
+        departmentId,
+        expectedStatuses: ["PENDING_SCAN"],
+        targetStatus: "QUARANTINED",
+      });
+    } catch {
+      return this.failInfectedQuarantineReconciliation(file);
+    }
+    if (
+      !updated ||
+      updated.status !== "QUARANTINED" ||
+      updated.departmentId !== file.departmentId ||
+      updated.bucket !== file.bucket ||
+      updated.objectKey !== file.objectKey
+    )
+      return this.failInfectedQuarantineReconciliation(file);
+    await this.writeAudit(FILE_STORAGE_AUDIT_EVENTS.QUARANTINED, updated, {
+      reason: INFECTED_QUARANTINE_REASON,
+    });
+    return this.toSafeMetadata(updated);
+  }
+  private async failInfectedQuarantineReconciliation(
+    file: FileObjectPersistenceRecord,
+  ): Promise<never> {
+    try {
+      await this.writeAudit(
+        FILE_STORAGE_AUDIT_EVENTS.INFECTED_QUARANTINE_RECONCILIATION_REQUIRED,
+        file,
+        { lifecycleStatus: file.status },
+        "FAILURE",
+      );
+    } catch {
+      // Reconciliation audit failure must not expose internal persistence details.
+    }
+    throw new ServiceUnavailableException(
+      "Infected file lifecycle requires reconciliation",
+    );
   }
   private orchestratorError(
     classification: OrchestrationErrorClassification,

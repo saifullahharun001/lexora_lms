@@ -633,28 +633,202 @@ for (const detected of [
   });
 }
 
-for (const outcome of ["INFECTED", "ERROR"] as const) {
-  test(`stored-byte scanner ${outcome} remains quarantined`, async () => {
+test("stored-byte INFECTED scan transitions metadata to quarantined without promotion", async () => {
+  const h = harness();
+  const boundedSignature = "E".repeat(255);
+  h.malwareScanner.scan = async (stream) => {
+    for await (const _chunk of stream) void _chunk;
+    return {
+      scanner: "clamav",
+      status: "INFECTED",
+      signatureName: boundedSignature,
+    };
+  };
+  const result = await h.service.scanPendingStoredFile("file-1");
+  assert.equal(result.scan.status, "INFECTED");
+  assert.equal(result.scan.signatureName, boundedSignature);
+  assert.equal(result.scan.signatureName.length, 255);
+  assert.equal(h.repository.scans.at(-1)?.status, "INFECTED");
+  assert.equal(h.repository.scans.at(-1)?.signatureName, boundedSignature);
+  assert.equal(result.file.status, "QUARANTINED");
+  assert.equal(h.repository.record.status, "QUARANTINED");
+  assert.equal(h.repository.record.departmentId, "department-a");
+  assert.equal(h.repository.record.bucket, "private");
+  assert.equal(h.repository.record.objectKey, "quarantine/department-a/id-123");
+  assert.deepEqual(h.repository.transitioned, {
+    fileId: "file-1",
+    departmentId: "department-a",
+    expectedStatuses: ["PENDING_SCAN"],
+    targetStatus: "QUARANTINED",
+  });
+  assert.equal(result.promotionCompleted, false);
+  assert.equal(h.storageCalls.moves.length, 0);
+  const serialized = JSON.stringify({ result, audits: h.audits });
+  assert.equal(serialized.includes("file-storage.file.scan-recorded"), true);
+  assert.equal(serialized.includes("file-storage.file.quarantined"), true);
+  assert.equal(
+    serialized.includes("Trusted malware scan reported an infected file"),
+    true,
+  );
+  assert.equal(serialized.includes("quarantine/"), false);
+  assert.equal(serialized.includes('"bucket"'), false);
+});
+
+test("stored-byte ERROR remains pending and eligible for controlled retry", async () => {
+  const h = harness();
+  h.malwareScanner.scan = async (stream) => {
+    for await (const _chunk of stream) void _chunk;
+    return {
+      scanner: "clamav",
+      status: "ERROR",
+      safeDiagnosticMetadata: { classification: "scanner_error" },
+    };
+  };
+  const result = await h.service.scanPendingStoredFile("file-1");
+  assert.equal(result.scan.status, "ERROR");
+  assert.deepEqual(result.scan.safeDiagnosticMetadata, {
+    classification: "scanner_error",
+  });
+  assert.equal(result.file.status, "PENDING_SCAN");
+  assert.equal(h.repository.record.status, "PENDING_SCAN");
+  assert.equal(result.promotionCompleted, false);
+  assert.equal(h.repository.transitioned, undefined);
+  assert.equal(h.storageCalls.moves.length, 0);
+});
+
+test("infected quarantine transition conflict is sanitized and requires reconciliation", async () => {
+  const h = harness();
+  h.malwareScanner.scan = async (stream) => {
+    for await (const _chunk of stream) void _chunk;
+    return {
+      scanner: "clamav",
+      status: "INFECTED",
+      signatureName: "Provider-Signature-Secret",
+    };
+  };
+  h.repository.transitionStatus = async (input) => {
+    h.repository.transitioned = input;
+    return null;
+  };
+  await assert.rejects(
+    () => h.service.scanPendingStoredFile("file-1"),
+    (error: unknown) =>
+      error instanceof ServiceUnavailableException &&
+      error.message === "Infected file lifecycle requires reconciliation",
+  );
+  assert.equal(h.repository.scans.at(-1)?.status, "INFECTED");
+  assert.equal(
+    h.repository.scans.at(-1)?.signatureName,
+    "Provider-Signature-Secret",
+  );
+  assert.equal(h.repository.record.status, "PENDING_SCAN");
+  assert.equal(h.storageCalls.moves.length, 0);
+  const failureAudit = h.audits.at(-1) as {
+    data: { action: string; outcome: string };
+  };
+  assert.equal(
+    failureAudit.data.action,
+    "file-storage.file.infected-quarantine-reconciliation-required",
+  );
+  assert.equal(failureAudit.data.outcome, "FAILURE");
+  const serializedAudit = JSON.stringify(failureAudit);
+  assert.equal(serializedAudit.includes("Provider-Signature-Secret"), false);
+  assert.equal(serializedAudit.includes("quarantine/"), false);
+  assert.equal(serializedAudit.includes('"bucket"'), false);
+});
+
+test("infected quarantine transition exception remains sanitized", async () => {
+  const h = harness();
+  h.malwareScanner.scan = async (stream) => {
+    for await (const _chunk of stream) void _chunk;
+    return { scanner: "clamav", status: "INFECTED" };
+  };
+  h.repository.transitionStatus = async () => {
+    throw new Error("raw database transition detail");
+  };
+  await assert.rejects(
+    () => h.service.scanPendingStoredFile("file-1"),
+    (error: unknown) =>
+      error instanceof ServiceUnavailableException &&
+      error.message === "Infected file lifecycle requires reconciliation",
+  );
+  assert.equal(h.repository.scans.at(-1)?.status, "INFECTED");
+  assert.equal(h.storageCalls.moves.length, 0);
+  assert.equal(
+    JSON.stringify(h.audits).includes("raw database transition detail"),
+    false,
+  );
+});
+
+test("infected reconciliation audit failure cannot replace the sanitized exception", async () => {
+  const h = harness();
+  h.malwareScanner.scan = async (stream) => {
+    for await (const _chunk of stream) void _chunk;
+    return { scanner: "clamav", status: "INFECTED" };
+  };
+  h.repository.transitionStatus = async () => null;
+  (h.service as unknown as { prisma: unknown }).prisma = {
+    auditLog: {
+      create: async (entry: { data: { action: string } }) => {
+        if (
+          entry.data.action ===
+          "file-storage.file.infected-quarantine-reconciliation-required"
+        )
+          throw new Error("unique internal reconciliation audit failure");
+        h.audits.push(entry);
+        return entry;
+      },
+    },
+  };
+  let caught: unknown;
+  try {
+    await h.service.scanPendingStoredFile("file-1");
+  } catch (error) {
+    caught = error;
+  }
+  assert.equal(caught instanceof ServiceUnavailableException, true);
+  assert.equal(
+    (caught as Error).message,
+    "Infected file lifecycle requires reconciliation",
+  );
+  assert.equal(
+    (caught as Error).message.includes(
+      "unique internal reconciliation audit failure",
+    ),
+    false,
+  );
+  assert.equal(h.repository.scans.at(-1)?.status, "INFECTED");
+  assert.equal(h.storageCalls.moves.length, 0);
+});
+
+for (const [identity, changes] of [
+  ["object key", { objectKey: "quarantine/department-a/changed" }],
+  ["bucket", { bucket: "changed-private-bucket" }],
+  ["department", { departmentId: "department-b" }],
+] as const) {
+  test(`infected quarantine rejects changed ${identity}`, async () => {
     const h = harness();
     h.malwareScanner.scan = async (stream) => {
       for await (const _chunk of stream) void _chunk;
-      return outcome === "INFECTED"
-        ? { scanner: "clamav", status: outcome, signatureName: "Eicar-Test" }
-        : {
-            scanner: "clamav",
-            status: outcome,
-            safeDiagnosticMetadata: { classification: "scanner_error" },
-          };
+      return { scanner: "clamav", status: "INFECTED" };
     };
-    const result = await h.service.scanPendingStoredFile("file-1");
-    assert.equal(result.scan.status, outcome);
-    assert.equal(
-      result.scan.signatureName,
-      outcome === "INFECTED" ? "Eicar-Test" : null,
+    h.repository.transitionStatus = async () => ({
+      ...h.repository.record,
+      status: "QUARANTINED",
+      ...changes,
+    });
+    await assert.rejects(
+      () => h.service.scanPendingStoredFile("file-1"),
+      (error: unknown) =>
+        error instanceof ServiceUnavailableException &&
+        error.message === "Infected file lifecycle requires reconciliation",
     );
-    assert.equal(result.promotionCompleted, false);
+    assert.equal(h.repository.scans.at(-1)?.status, "INFECTED");
     assert.equal(h.storageCalls.moves.length, 0);
-    assert.equal(h.repository.transitioned, undefined);
+    const serializedAudit = JSON.stringify(h.audits.at(-1));
+    assert.equal(serializedAudit.includes("changed-private-bucket"), false);
+    assert.equal(serializedAudit.includes("department-b"), false);
+    assert.equal(serializedAudit.includes("/changed"), false);
   });
 }
 

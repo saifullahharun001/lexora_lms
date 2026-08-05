@@ -4,6 +4,8 @@ export const FILE_STORAGE_AUDIT_EVENTS = {
   AVAILABLE: "file-storage.file.available",
   PROMOTION_RECONCILIATION_REQUIRED:
     "file-storage.file.promotion-reconciliation-required",
+  INFECTED_QUARANTINE_RECONCILIATION_REQUIRED:
+    "file-storage.file.infected-quarantine-reconciliation-required",
   QUARANTINED: "file-storage.file.quarantined",
   REJECTED: "file-storage.file.rejected",
   ARCHIVED: "file-storage.file.archived",
