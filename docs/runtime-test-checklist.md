@@ -11209,3 +11209,194 @@ Proceed with a focused operational worker execution layer:
 10. preservation of all current claim, lease and claim-token protections.
 
 Do not combine the operational worker layer with public upload or download implementation.
+
+## Live Malware-Scan Job Ledger Migration and API Boot Verification — 2026-08-05
+
+### Classification and scope
+
+This checkpoint records deployment of the additive malware-scan job-ledger migration to the ordinary Lexora PostgreSQL database, verification of the resulting live catalog and invariants, server compilation, controlled PM2 restart and API health verification.
+
+This checkpoint does not enable:
+
+- a continuous malware-scan worker daemon;
+- a public upload route;
+- a public or permission-controlled download route;
+- frontend file upload or download;
+- production file upload.
+
+Production file upload remains disabled.
+
+### Source and deployment boundary
+
+| Item | Verified value |
+|---|---|
+| Source commit | `fe520b3643d9b5db112d5900bf943c9725d77217` |
+| Commit message | `Add retryable malware scan worker foundation` |
+| Branch | `main` |
+| Live database | `lexora_lms` |
+| PostgreSQL target | Localhost port `5432` |
+| PostgreSQL server | `18.4 (Ubuntu 18.4-0ubuntu0.26.04.1)` |
+| Prisma Client | `6.19.3` |
+| Target migration | `20260805_add_file_malware_scan_job_ledger` |
+
+The repository was clean and local `HEAD` matched `origin/main` before and after deployment.
+
+Database credentials and the complete database URL were not printed or documented.
+
+### Pre-migration backup
+
+A private pre-migration PostgreSQL custom-format backup was created and validated before migration deployment.
+
+| Item | Verified value |
+|---|---|
+| Backup filename | `lexora_lms-before-20260805_add_file_malware_scan_job_ledger-20260805T125253Z.dump` |
+| Size | `339346` bytes |
+| SHA-256 | `f77ca997c70096f07d5d67f3a90f51a783423bf221a6742dc4e54d44733c98f5` |
+| Archive validation | Passed with `pg_restore --list` |
+| Backup file permission | `0600` |
+| Hash file permission | `0600` |
+
+The backup is private but not encrypted. No automatic restore was performed or required.
+
+### Pre-deployment runtime state
+
+Before migration:
+
+- PM2 process `lexora-api` was online;
+- PM2 PID was `1666`;
+- PM2 restart count was `0`;
+- direct API health returned HTTP `200`;
+- Nginx-proxied API health returned HTTP `200`;
+- the migration record was absent;
+- the job-ledger table was absent;
+- the job-status enum was absent;
+- Prisma reported the target migration as pending.
+
+### Server validation and compilation
+
+The following passed before migration deployment:
+
+- Prisma schema validation;
+- Prisma Client generation with version `6.19.3`;
+- API TypeScript typecheck;
+- API NestJS build.
+
+The Prisma `7.9.1` availability notice was informational only. No Prisma major-version upgrade was performed.
+
+### Migration deployment
+
+The following production-style command path succeeded:
+
+- Prisma found two repository migrations;
+- migration `20260805_add_file_malware_scan_job_ledger` was applied;
+- Prisma reported that all migrations were successfully applied;
+- subsequent Prisma migration status reported the database schema as up to date;
+- the target migration has one completed, non-rolled-back migration record.
+
+The migration was applied once. No manual SQL correction was required on the live database.
+
+### Live catalog verification
+
+The live PostgreSQL catalog matched the reviewed migration and Prisma datamodel:
+
+- enum count: `1`;
+- enum labels:
+  `PENDING,PROCESSING,RETRY_SCHEDULED,COMPLETED,DEAD_LETTER`;
+- table count: `1`;
+- columns: `15`;
+- expected column defaults: `5`;
+- total indexes: `7`;
+- expected named indexes: `7`;
+- foreign keys: `2`;
+- composite file/department foreign key: present;
+- department foreign key: present;
+- check constraints: `3`;
+- expected named check constraints: `3`;
+- `TIMESTAMP(3)` columns: `7`;
+- completed migration record: `1`.
+
+The composite foreign key remained:
+
+`file_malware_scan_jobs_file_object_id_department_id_fkey`
+
+and preserved department/file consistency with cascade behavior on the composite file relation.
+
+### Live database invariants
+
+Post-migration invariant queries returned zero for every unsafe state:
+
+- duplicate job rows for one file: `0`;
+- cross-department job/file relations: `0`;
+- processing rows without claim ownership: `0`;
+- terminal rows retaining claim ownership: `0`;
+- attempt counts over maximum: `0`;
+- claimable dead-letter rows: `0`;
+- unsafe diagnostic rows containing credential, storage-identity or claim-token terminology: `0`.
+
+### Controlled PM2 restart and API boot
+
+The API was restarted once using PM2 with environment refresh.
+
+| Item | Before | After |
+|---|---:|---:|
+| PID | `1666` | `119492` |
+| PM2 restart count | `0` | `1` |
+| PM2 status | `online` | `online` |
+
+Runtime verification:
+
+- direct API health returned HTTP `200`;
+- Nginx-proxied API health returned HTTP `200`;
+- health succeeded on retry attempt `3`;
+- API listener remained `127.0.0.1:4000`;
+- no wildcard `0.0.0.0:4000` listener was present;
+- no IPv6 wildcard listener was present;
+- Nginx remained active;
+- PostgreSQL remained active.
+
+The short startup delay before successful health was consistent with previously documented PM2/Nginx restart timing behavior and did not represent a persistent runtime failure.
+
+### Runtime verdict
+
+- [x] Private pre-migration backup created and validated.
+- [x] Prisma validation passed.
+- [x] Prisma Client generation passed.
+- [x] API typecheck passed.
+- [x] API build passed.
+- [x] Additive migration applied once.
+- [x] Prisma migration status is up to date.
+- [x] Live catalog matches the reviewed schema.
+- [x] Live database invariants passed.
+- [x] Controlled PM2 restart passed.
+- [x] Direct API health passed.
+- [x] Nginx-proxied API health passed.
+- [x] Loopback-only API binding remained enforced.
+- [x] Repository remained clean.
+- [ ] Continuous worker daemon is not enabled.
+- [ ] Operational scheduler and worker monitoring remain pending.
+- [ ] Public upload and permission-controlled delivery remain pending.
+- [ ] Production file upload remains disabled.
+
+Correct current statement:
+
+> The department-scoped malware-scan job ledger and retryable process-one worker foundation are implemented, committed, deployed to the Ubuntu server and backed by a successfully applied live PostgreSQL migration. The live catalog and database invariants match the reviewed schema, the server API typecheck/build passed, and the controlled PM2 restart restored healthy direct and Nginx-proxied service with loopback-only API exposure. The operational scheduler or continuous worker daemon, full job/lifecycle/audit atomicity, broader reconciliation, secure upload/download authorization and production enablement remain pending. Production file upload remains disabled.
+
+### Supersession note
+
+This section supersedes the earlier statement that deployment to the ordinary Lexora database and post-migration API boot verification were pending.
+
+It does not supersede pending work for:
+
+- continuous worker scheduling;
+- worker health, readiness, monitoring and shutdown;
+- cancellation of already-running external scans;
+- serializable retry where required;
+- job, lifecycle and audit atomicity;
+- storage and lifecycle reconciliation;
+- secure upload API;
+- attachment-resource authorization;
+- permission-controlled delivery;
+- quotas, retention and orphan cleanup;
+- frontend integration;
+- complete production end-to-end verification;
+- production file-upload enablement.
