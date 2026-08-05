@@ -10317,3 +10317,188 @@ Pending:
 Correct current statement:
 
 > Department-scoped stored-MinIO-byte scan orchestration is runtime verified for CLEAN, isolated custom-signature INFECTED, scanner-unavailable `connection_failed`, and controlled non-responsive-peer `timeout` outcomes. Scanner timeout persists a sanitized `ERROR` result with classification `timeout`, retains the object in quarantine, prevents availability, closes the timed-out connection and does not expose raw transport details. This is controlled transport-timeout evidence and is not a claim that the live official ClamAV daemon timed out. Malformed or oversized scanner-response behavior, stream interruption, retry processing, automatic infected or operational-error lifecycle transitions, authorization-controlled delivery and the complete production upload/download pipeline remain pending. Production file upload remains disabled.
+
+## Stored-Byte Malformed Scanner-Response Runtime Verification — 2026-08-05
+
+### Classification and scope
+
+This checkpoint records real integrated runtime verification of the stored-byte malformed scanner-response fail-closed path.
+
+The test used:
+
+- real PostgreSQL;
+- real MinIO quarantine storage;
+- the actual compiled Lexora content inspector;
+- the actual compiled ClamAV adapter;
+- an authenticated Law-department request context;
+- a private controlled Unix-socket peer;
+- exact ClamAV `INSTREAM` request parsing by the controlled peer;
+- a deliberately invalid NUL-terminated scanner response sent only after the complete stored object and zero-length terminal frame were received.
+
+The live official ClamAV scanner was not stopped, restarted, reconfigured, replaced or used to produce the malformed response.
+
+This evidence verifies the actual compiled adapter and full stored-byte orchestration against a controlled malformed protocol peer. It does not claim that the live official ClamAV daemon produced malformed output.
+
+The production scanner socket allowlist and runtime environment were not changed.
+
+### Runtime evidence
+
+- Request ID: `runtime-file-error-malformed-0c868176-541f-45de-a6a6-fe8fda3a4584`
+- Temporary file-object ID: `cmsfm0d7400012ivrshqg83kd`
+- Observed scan duration: `88 ms`
+- Report: `/home/sh002/lexora-stored-byte-malformed-response-20260805T045113Z-14007.txt`
+
+### Verified protocol behavior
+
+- [x] A private temporary Unix-socket peer was created.
+- [x] The controlled peer accepted the actual compiled scanner-adapter connection.
+- [x] The exact `zINSTREAM` command including its NUL terminator was received.
+- [x] All scanner request frames were parsed successfully.
+- [x] No incoming frame exceeded the reviewed `64 KiB` frame boundary.
+- [x] The complete stored object was received by the controlled peer.
+- [x] The received payload byte count matched the stored object size.
+- [x] The zero-length terminal frame was received.
+- [x] No bytes followed the terminal frame.
+- [x] The malformed response was sent only after the complete request was received.
+- [x] The controlled peer observed no scanner-request protocol failure.
+- [x] The result settled before the configured scanner timeout.
+- [x] The result therefore came from malformed-response parsing rather than timeout handling.
+- [x] The actual compiled adapter closed the malformed-response connection.
+
+### Verified stored-byte orchestration behavior
+
+- [x] The repository remained on `main` at commit `8a1e8a41849d049d143776549e39dd12aba42e3b`.
+- [x] The working tree was clean before the test.
+- [x] PM2 process `lexora-api` remained online.
+- [x] PM2 PID remained `1669` throughout the checkpoint.
+- [x] PM2 restart count remained `0` throughout the checkpoint.
+- [x] Direct API health passed before and after the test.
+- [x] Nginx-proxied API health passed before and after the test.
+- [x] The live official ClamAV scanner remained running and healthy.
+- [x] The live scanner restart count remained `0`.
+- [x] The live scanner remained networkless.
+- [x] The live scanner root filesystem remained read-only.
+- [x] The live scanner did not report an OOM event.
+- [x] Evaluation MinIO remained running and healthy.
+- [x] MinIO host ports `9000` and `9001` remained absent.
+- [x] A real controlled PDF was uploaded to the MinIO quarantine boundary.
+- [x] Authoritative quarantine object size was verified.
+- [x] Registration persisted a department-scoped `PENDING_SCAN` file.
+- [x] Trusted content inspection identified the stored object as PDF.
+- [x] The actual compiled scanner adapter returned `ERROR`.
+- [x] The safe diagnostic classification was exactly `protocol_error`.
+- [x] The diagnostic metadata contained only the bounded classification.
+- [x] No signature name was recorded.
+- [x] The raw malformed response was not returned.
+- [x] The `ERROR` result was persisted in PostgreSQL.
+- [x] A real scan timestamp was persisted.
+- [x] The file remained `PENDING_SCAN`.
+- [x] The database object key remained within the quarantine boundary.
+- [x] The quarantine object remained present during verification.
+- [x] The quarantine object retained the expected byte count and SHA-256.
+- [x] No available destination object was created.
+- [x] The malformed-response object was not promoted.
+- [x] A direct availability attempt was blocked by the latest-persisted-CLEAN guard.
+- [x] The blocked attempt did not change lifecycle status or object key.
+- [x] No availability audit was written.
+- [x] Registration and scan-recorded audit events were written successfully.
+- [x] The scan audit recorded status `ERROR`.
+- [x] Audit actor, department and target identity matched the controlled request context.
+- [x] Service results did not expose bucket names or private object keys.
+- [x] Service results did not expose the temporary socket path.
+- [x] Service results did not expose the raw malformed response.
+- [x] Persisted diagnostics did not expose the socket path or raw provider output.
+- [x] Audit context did not expose private storage, socket or raw provider details.
+- [x] Temporary MinIO objects were removed after verification.
+- [x] Temporary file and scan rows were removed after verification.
+- [x] Two audit evidence rows were retained.
+- [x] The in-memory test payload was cleared.
+- [x] The controlled malformed-response peer and temporary socket directory were removed.
+- [x] PM2 state remained unchanged during the checkpoint.
+- [x] Live official scanner state remained unchanged.
+- [x] Live official scanner signature storage remained unchanged.
+- [x] MinIO container state remained unchanged.
+- [x] Source and environment remained unchanged.
+- [x] Production file upload remained disabled.
+
+Decisive results:
+
+- `MALFORMED_RESPONSE_ORCHESTRATION=PASSED`
+- `PERSISTED_SCAN_STATUS=ERROR`
+- `SAFE_ERROR_CLASSIFICATION=protocol_error`
+- `MALFORMED_RESPONSE_SENT_AFTER_COMPLETE_REQUEST=YES`
+- `RAW_MALFORMED_RESPONSE_EXPOSED=NO`
+
+### Evidence boundary
+
+This checkpoint supports the following claim:
+
+> The actual compiled Lexora ClamAV adapter and real stored-MinIO-byte orchestration correctly fail closed when a connected Unix-socket peer receives the complete valid `INSTREAM` request and then returns an unrecognized NUL-terminated scanner response.
+
+This checkpoint does not support the following claim:
+
+> The live official ClamAV daemon was observed returning malformed output.
+
+The live official scanner remained healthy and unchanged throughout the test.
+
+### Supersession note
+
+This checkpoint supersedes earlier pending wording only for:
+
+- malformed scanner responses through the full stored-byte orchestration;
+- persisted `ERROR` status for a malformed scanner response;
+- sanitized `protocol_error` diagnostic persistence;
+- malformed-response connection disposal by the compiled adapter;
+- real stored-byte malformed-response quarantine retention;
+- malformed-response no-promotion behavior;
+- latest-persisted-CLEAN enforcement after malformed output;
+- malformed-response audit evidence and safe metadata boundaries;
+- cleanup and live-runtime non-regression for the controlled malformed-response scenario.
+
+Earlier pending wording remains valid for:
+
+- oversized scanner responses through the full stored-byte orchestration;
+- premature valid-looking scanner responses through the full stored-byte orchestration;
+- scanner source-stream interruption through the full stored-byte orchestration;
+- scanner socket interruption during request streaming or backpressure;
+- object-storage read interruption and integrity failure;
+- retry and worker processing;
+- automatic infected or operational-error lifecycle transitions;
+- reconciliation automation;
+- attachment-resource authorization;
+- permission-controlled file delivery;
+- storage quotas;
+- database-backed concurrency and serializable-retry verification;
+- secure upload and download routes;
+- frontend integration;
+- production upload enablement.
+
+### Current accurate status addition
+
+Implemented and runtime verified:
+
+- [x] Stored-byte CLEAN behavior.
+- [x] Stored-byte isolated custom-signature `INFECTED` behavior.
+- [x] Stored-byte scanner-unavailable `connection_failed` behavior.
+- [x] Stored-byte controlled non-responsive-peer `timeout` behavior.
+- [x] Stored-byte complete-request malformed-response `protocol_error` behavior.
+- [x] Operational scanner failures persist as `ERROR`.
+- [x] Operational error diagnostics remain sanitized and bounded.
+- [x] Operational-error objects remain in quarantine.
+- [x] Operational-error objects are not promoted.
+- [x] Latest persisted CLEAN remains mandatory for availability.
+- [x] Error-path audit evidence remains department-scoped and storage-location-safe.
+
+Pending:
+
+- [ ] Full-orchestration oversized scanner-response verification.
+- [ ] Full-orchestration premature valid-looking response verification.
+- [ ] Full-orchestration scanner source-stream failure verification.
+- [ ] Full-orchestration scanner socket interruption verification.
+- [ ] Retry and worker processing.
+- [ ] Automatic infected or operational-error lifecycle transition.
+- [ ] Complete production upload/download pipeline verification.
+
+Correct current statement:
+
+> Department-scoped stored-MinIO-byte scan orchestration is runtime verified for CLEAN, isolated custom-signature INFECTED, scanner-unavailable `connection_failed`, controlled non-responsive-peer `timeout`, and controlled complete-request malformed-response `protocol_error` outcomes. Malformed scanner output persists a sanitized `ERROR` result, retains the object in quarantine, prevents availability, closes the connection and does not expose raw provider output. This is controlled protocol-peer evidence and is not a claim that the live official ClamAV daemon returned malformed output. Oversized or premature responses, scanner stream interruption, retry processing, automatic infected or operational-error lifecycle transitions, authorization-controlled delivery and the complete production upload/download pipeline remain pending. Production file upload remains disabled.
