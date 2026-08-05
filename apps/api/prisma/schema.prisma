@@ -106,6 +106,14 @@ enum MalwareScanStatus {
   SKIPPED
 }
 
+enum FileMalwareScanJobStatus {
+  PENDING
+  PROCESSING
+  RETRY_SCHEDULED
+  COMPLETED
+  DEAD_LETTER
+}
+
 enum AcademicProgramStatus {
   ACTIVE
   INACTIVE
@@ -457,6 +465,7 @@ model Department {
   auditLogs         AuditLog[]
   overrideActions   OverrideAction[]
   fileObjects       FileObject[]
+  fileMalwareScanJobs FileMalwareScanJob[]
 
   @@map("departments")
 }
@@ -2069,9 +2078,37 @@ model FileObject {
   uploadedByUser    User?             @relation("FileUploadedBy", fields: [uploadedByUserId], references: [id])
   submissionFiles   SubmissionFile[]
   malwareScanResults MalwareScanResult[]
+  malwareScanJob     FileMalwareScanJob?
 
+  @@unique([id, departmentId])
   @@index([departmentId])
   @@map("file_objects")
+}
+
+model FileMalwareScanJob {
+  id                String                   @id @default(cuid())
+  departmentId      String                   @map("department_id")
+  fileObjectId      String                   @unique @map("file_object_id")
+  status            FileMalwareScanJobStatus @default(PENDING)
+  attemptCount      Int                      @default(0) @map("attempt_count")
+  maxAttempts       Int                      @default(5) @map("max_attempts")
+  nextAttemptAt     DateTime                 @default(now()) @map("next_attempt_at")
+  claimToken        String?                  @unique @map("claim_token")
+  leaseExpiresAt    DateTime?                @map("lease_expires_at")
+  lastErrorCategory String?                  @db.VarChar(64) @map("last_error_category")
+  lastAttemptAt     DateTime?                @map("last_attempt_at")
+  completedAt       DateTime?                @map("completed_at")
+  deadLetteredAt    DateTime?                @map("dead_lettered_at")
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+  department        Department               @relation(fields: [departmentId], references: [id])
+  fileObject        FileObject               @relation(fields: [fileObjectId, departmentId], references: [id, departmentId], onDelete: Cascade)
+
+  @@unique([fileObjectId, departmentId])
+  @@index([departmentId, status, nextAttemptAt])
+  @@index([status, leaseExpiresAt])
+  @@index([departmentId, fileObjectId])
+  @@map("file_malware_scan_jobs")
 }
 
 model MalwareScanResult {

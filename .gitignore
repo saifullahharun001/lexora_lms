@@ -16,6 +16,10 @@ apps/web/node_modules
 packages/*/dist
 packages/*/node_modules
 apps/api/prisma/migrations
+!apps/api/prisma/migrations/
+apps/api/prisma/migrations/*
+!apps/api/prisma/migrations/20260805_add_file_malware_scan_job_ledger/
+!apps/api/prisma/migrations/20260805_add_file_malware_scan_job_ledger/migration.sql
 *.log
 
 

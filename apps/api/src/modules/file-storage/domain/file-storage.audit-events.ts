@@ -9,5 +9,10 @@ export const FILE_STORAGE_AUDIT_EVENTS = {
   QUARANTINED: "file-storage.file.quarantined",
   REJECTED: "file-storage.file.rejected",
   ARCHIVED: "file-storage.file.archived",
+  SCAN_JOB_ENQUEUED: "file-storage.scan-job.enqueued",
+  SCAN_JOB_RETRY_SCHEDULED: "file-storage.scan-job.retry-scheduled",
+  SCAN_JOB_DEAD_LETTERED: "file-storage.scan-job.dead-lettered",
+  SCAN_JOB_EXPIRED_CLAIM_RECOVERED:
+    "file-storage.scan-job.expired-claim-recovered",
   DELETED: "file-storage.file.deleted",
 } as const;

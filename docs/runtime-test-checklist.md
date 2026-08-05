@@ -10980,3 +10980,232 @@ Proceed with a focused retryable malware-scan worker foundation:
 8. define controlled dead-letter or manual-review handling;
 9. preserve safe diagnostics and audit records;
 10. verify database-backed concurrency before enabling any upload route.
+
+
+## Retryable Malware-Scan Worker Foundation and PostgreSQL Concurrency Verification — 2026-08-05
+
+### Scope and classification
+
+The internal department-scoped retryable malware-scan worker foundation is implemented and database-runtime verified.
+
+This checkpoint adds no public upload route, continuous scheduler, deployed worker daemon or production-upload enablement.
+
+Production file upload remains disabled.
+
+### Implemented foundation
+
+The PostgreSQL-backed malware-scan job ledger provides:
+
+- permanent one-row-per-file idempotency;
+- department-scoped file/job consistency;
+- statuses `PENDING`, `PROCESSING`, `RETRY_SCHEDULED`, `COMPLETED` and `DEAD_LETTER`;
+- bounded attempt count and retry backoff;
+- atomic PostgreSQL claim using `FOR UPDATE SKIP LOCKED`;
+- claim-token ownership fencing;
+- lease expiry and guarded renewal;
+- expired-lease reclaim;
+- stale-token mutation rejection;
+- wrong-department claim and finalization rejection;
+- controlled dead-letter behavior;
+- sanitized diagnostic categories and audit context.
+
+The composite database relation is:
+
+- `(file_object_id, department_id)`;
+- referencing `file_objects(id, department_id)`;
+- constraint `file_malware_scan_jobs_file_object_id_department_id_fkey`;
+- `ON DELETE CASCADE`;
+- `ON UPDATE CASCADE`.
+
+This database relation prevents a job from referencing a file object belonging to another department.
+
+### Lease and heartbeat behavior
+
+Verified policy:
+
+- lease duration: five minutes;
+- heartbeat interval: thirty seconds;
+- renewal is guarded by job ID, department, `PROCESSING` status and claim token;
+- renewal updates only lease expiry and update timestamp;
+- renewal does not change status, token or attempt count;
+- heartbeat renewal calls do not overlap;
+- timer cleanup occurs in `finally`;
+- renewal failure causes explicit ownership-loss handling;
+- stale workers cannot complete, retry or dead-letter a reclaimed job.
+
+This is not classified as a perfect distributed lock. Event-loop starvation or database unavailability can still cause ownership loss.
+
+### Processing and lifecycle convergence
+
+The worker reuses the existing stored-byte malware-scan orchestration and preserves:
+
+- authoritative quarantine-object metadata;
+- complete streamed-byte count;
+- SHA-256 verification;
+- content inspection before trust;
+- latest persisted CLEAN requirement;
+- CLEAN-only promotion;
+- automatic trusted `INFECTED → QUARANTINED`;
+- department-scoped audit;
+- private storage identity protection.
+
+After a lifecycle conflict:
+
+- an active claimant can converge an already `AVAILABLE` file as CLEAN;
+- an active claimant can converge an already `QUARANTINED` file as INFECTED;
+- missing, pending, cross-department or inconsistent states fail closed;
+- stale claimants return sanitized ownership-loss results without finalizing the job;
+- exhausted jobs enter controlled dead letter without another scan.
+
+### Enqueue and audit behavior
+
+The enqueue operation distinguishes actual creation from idempotent reuse.
+
+`SCAN_JOB_ENQUEUED` is emitted only when a new job row is created. Repeated or concurrent reuse does not create a misleading duplicate enqueue audit.
+
+Job mutations, file lifecycle mutations and audit writes remain sequential rather than fully atomic.
+
+### Isolated PostgreSQL migration verification
+
+The migration was verified against a disposable loopback-only PostgreSQL 16 Alpine container initialized from the baseline Prisma schema.
+
+Verified catalog evidence:
+
+- enum count: 1;
+- exact ordered enum labels: `PENDING,PROCESSING,RETRY_SCHEDULED,COMPLETED,DEAD_LETTER`;
+- table count: 1;
+- columns: 15;
+- expected defaults: 5;
+- indexes: 7;
+- expected named indexes: 7;
+- foreign keys: 2;
+- composite file/department foreign key with cascade: passed;
+- department foreign key with restrict: passed;
+- check constraints: 3;
+- expected named check constraints: 3;
+- `TIMESTAMP(3)` columns: 7;
+- first migration application: passed;
+- second migration application: failed safely;
+- strict Prisma database-to-datamodel drift policy: passed.
+
+### Real PostgreSQL test evidence
+
+Five real PostgreSQL tests executed:
+
+- concurrent enqueue created exactly one ledger row;
+- concurrent claim granted exactly one lease;
+- active, exact-boundary and expired lease predicates behaved correctly;
+- renewal, stale-token and cross-department finalization guards failed closed;
+- maximum-attempt reclaim preserved attempt semantics without an off-by-one increment.
+
+Results:
+
+- tests: 5;
+- passed: 5;
+- failed: 0;
+- skipped: 0.
+
+### Complete File Storage test evidence
+
+The complete compiled File Storage inventory passed:
+
+- tests: 255;
+- passed: 255;
+- failed: 0;
+- skipped: 0;
+- cancelled: 0;
+- todo: 0.
+
+Additional verification passed:
+
+- Prisma validation;
+- Prisma Client generation with version 6.19.3;
+- API typecheck;
+- API build;
+- changed-file ESLint;
+- changed-file Prettier;
+- `git diff --check`.
+
+### Post-test database invariants
+
+Post-test invariant queries confirmed:
+
+- no duplicate job row per file;
+- no cross-department job/file relation;
+- no `PROCESSING` row without claim ownership and lease;
+- no terminal row retaining claim ownership;
+- no attempt count over maximum;
+- dead-letter rows are not claimable;
+- no unsafe diagnostic row contains credentials, object keys, buckets or claim tokens.
+
+### Runtime non-disruption
+
+Verification used a detached temporary worktree and disposable PostgreSQL container.
+
+Confirmed:
+
+- disposable container and database were removed;
+- temporary worktree was removed;
+- live server repository remained unchanged and clean;
+- host PostgreSQL was not used or migrated;
+- PM2 was not restarted;
+- Nginx was not restarted;
+- MinIO was not changed;
+- ClamAV was not changed;
+- no environment file was changed;
+- no public route was added;
+- production upload remained disabled.
+
+### Supersession note
+
+This section supersedes earlier pending wording only for:
+
+- durable department-scoped malware-scan job ledger;
+- idempotent enqueue;
+- bounded retry and backoff foundation;
+- duplicate/concurrent claim protection;
+- atomic PostgreSQL claim;
+- lease renewal and expired-lease reclaim;
+- stale-token fencing;
+- cross-department claim/finalization rejection;
+- controlled dead-letter behavior;
+- database-backed concurrency and guarded-predicate verification.
+
+The following remain pending:
+
+- continuous scheduler or worker daemon;
+- operational startup, shutdown, health and monitoring;
+- cancellation of an already-running external scan;
+- serializable transaction retry where required;
+- job, lifecycle and audit atomicity;
+- lifecycle and storage reconciliation;
+- secure permission-controlled upload API;
+- attachment-resource authorization;
+- permission-controlled delivery;
+- quotas and abuse controls;
+- retention and orphan cleanup;
+- frontend integration;
+- production monitoring and disaster recovery;
+- complete production end-to-end verification;
+- production upload enablement.
+
+### Current accurate File Storage status
+
+> The department-scoped retryable malware-scan worker foundation is implemented and database-runtime verified. It provides a durable PostgreSQL job ledger, idempotent enqueue, bounded retries and backoff, atomic concurrent claims, token-fenced lease ownership, expired-lease recovery, controlled dead letter and safe CLEAN/INFECTED lifecycle convergence. Five real PostgreSQL concurrency and isolation tests and the complete 255-test File Storage inventory passed with no failures or skips. This remains an internal process-one foundation only; no scheduler, continuous worker daemon, public upload route or production enablement was added. Job/lifecycle/audit atomicity, serializable retry, broader reconciliation, secure upload/download authorization and final production verification remain pending. Production upload remains disabled.
+
+### Next safe File Storage checkpoint
+
+Proceed with a focused operational worker execution layer:
+
+1. controlled scheduler or process loop;
+2. graceful startup and shutdown;
+3. one-job-at-a-time or explicitly bounded concurrency;
+4. authenticated service-principal department scope;
+5. health and readiness behavior;
+6. backpressure;
+7. sanitized monitoring and metrics;
+8. crash and restart verification;
+9. no public route exposure;
+10. preservation of all current claim, lease and claim-token protections.
+
+Do not combine the operational worker layer with public upload or download implementation.
