@@ -10699,3 +10699,284 @@ Pending:
 Correct current statement:
 
 > Department-scoped stored-MinIO-byte scan orchestration is runtime verified for CLEAN, isolated custom-signature INFECTED, scanner-unavailable `connection_failed`, controlled non-responsive-peer `timeout`, complete-request malformed-response `protocol_error`, and complete-request oversized-response `protocol_error` outcomes. Responses exceeding the reviewed `4096`-byte boundary persist a sanitized `ERROR` result, retain the object in quarantine, prevent availability, close the connection and do not expose raw provider output. This is controlled protocol-peer evidence and is not a claim that the live official ClamAV daemon returned oversized output. Premature responses, scanner source-stream interruption, scanner socket interruption, retry processing, automatic lifecycle transitions, authorization-controlled delivery and the complete production upload/download pipeline remain pending. Production file upload remains disabled.
+
+## Automatic Infected-File Quarantine Lifecycle Verification — 2026-08-05
+
+### Classification and scope
+
+This checkpoint records implementation, independent source review, corrective hardening, deterministic testing, Ubuntu-server synchronization, server-side compilation and real integrated runtime verification of automatic infected-file quarantine.
+
+The verified lifecycle is:
+
+> A trusted stored-byte malware scan result of `INFECTED` transitions the department-scoped file from `PENDING_SCAN` to `QUARANTINED` while retaining the original quarantine storage identity and preventing availability.
+
+This checkpoint does not introduce or enable:
+
+- a public upload route;
+- a public or permission-controlled download route;
+- a background scan worker;
+- automatic retry processing;
+- frontend file upload or download;
+- production upload enablement.
+
+Production file upload remains disabled.
+
+### Related implementation
+
+| Item | Verified value |
+|---|---|
+| Implementation commit | `c6174917e673fc38b5f81df649c0812aed550cf5` |
+| Commit message | `Quarantine infected stored files automatically` |
+| Implementation parent | `8bfd095dd7ee32ac79a5569920d9d1497ff3d51f` |
+
+Implementation changed only:
+
+- `apps/api/src/modules/file-storage/application/services/file-storage.service.ts`;
+- `apps/api/src/modules/file-storage/application/services/file-storage.service.test.ts`;
+- `apps/api/src/modules/file-storage/domain/file-storage.audit-events.ts`.
+
+No Prisma migration, controller, route, environment, deployment or production-upload setting changed.
+
+### Implemented lifecycle behavior
+
+Verified implementation behavior:
+
+- [x] A trusted stored-byte `INFECTED` result is persisted.
+- [x] The file transitions from `PENDING_SCAN` to `QUARANTINED`.
+- [x] The department ID must remain unchanged.
+- [x] The private storage bucket must remain unchanged.
+- [x] The quarantine object key must remain unchanged.
+- [x] No quarantine-to-available object move occurs.
+- [x] `promotionCompleted` remains `false`.
+- [x] Returned safe metadata reports `QUARANTINED`.
+- [x] The quarantine lifecycle audit uses the fixed sanitized reason:
+  `Trusted malware scan reported an infected file`.
+- [x] Scanner signature details are not copied into the quarantine lifecycle audit.
+- [x] Operational `ERROR` outcomes remain `PENDING_SCAN` and retry-eligible.
+- [x] Existing latest-CLEAN guarded promotion behavior remains unchanged.
+
+### Fail-closed reconciliation hardening
+
+Independent review identified and corrected two defensive gaps before commit:
+
+1. reconciliation-audit failure could otherwise replace the fixed sanitized lifecycle exception;
+2. a returned `QUARANTINED` record required explicit verification that department and private storage identity remained unchanged.
+
+The corrected implementation now verifies:
+
+- `status === QUARANTINED`;
+- unchanged `departmentId`;
+- unchanged `bucket`;
+- unchanged `objectKey`.
+
+Repository exceptions, null or invalid transition results and storage-identity mismatches all follow the same fail-closed path.
+
+The caller receives only:
+
+> `Infected file lifecycle requires reconciliation`
+
+Reconciliation-audit persistence failures are contained and cannot expose internal audit, Prisma, database, provider, scanner, socket, bucket or object-key details.
+
+No object promotion or movement occurs on these failure paths.
+
+### Deterministic verification
+
+The completed focused File Storage test inventory reported:
+
+| Verification | Result |
+|---|---|
+| Focused compiled tests | 228 passed |
+| Failed | 0 |
+| Skipped | 0 |
+| API typecheck | Passed |
+| API build | Passed |
+| `git diff --check` | Passed |
+
+The deterministic tests cover:
+
+- successful `INFECTED → QUARANTINED`;
+- preserved quarantine storage identity;
+- no infected-object promotion;
+- sanitized quarantine audit reason;
+- operational `ERROR` retention as `PENDING_SCAN`;
+- unchanged CLEAN promotion behavior;
+- transition repository exceptions;
+- null or invalid transition results;
+- department mismatch;
+- bucket mismatch;
+- object-key mismatch;
+- reconciliation-audit failure containment;
+- safe reconciliation exception behavior;
+- department isolation and existing availability guards.
+
+These tests used fakes and unit harnesses. Real PostgreSQL, MinIO and scanner integration are recorded separately below.
+
+### Real integrated runtime evidence
+
+The runtime checkpoint used:
+
+- the real PostgreSQL runtime database;
+- real isolated MinIO quarantine storage;
+- the actual compiled Lexora content inspector;
+- the actual compiled ClamAV adapter;
+- an authenticated Department of Law request context;
+- a private controlled Unix-socket protocol peer;
+- a complete valid ClamAV `INSTREAM` request;
+- a controlled infected response sent only after receipt of the complete stored object and zero-length terminal frame.
+
+Runtime evidence:
+
+| Item | Verified value |
+|---|---|
+| Runtime request ID | `runtime-file-infected-quarantine-6953221b-5659-4b37-901b-7f69367a43cf` |
+| Temporary file-object ID | `cmsfsmc9f00012iflck5arlnx` |
+| Observed scan duration | `46 ms` |
+| Runtime report | `/home/sh002/lexora-infected-quarantine-runtime-20260805T075616Z-22481.txt` |
+
+Verified runtime behavior:
+
+- [x] The controlled peer accepted the actual compiled adapter connection.
+- [x] The exact `zINSTREAM` command including its NUL terminator was received.
+- [x] The complete stored object was received.
+- [x] The received byte count matched the authoritative stored-object size.
+- [x] The zero-length terminal frame was received.
+- [x] The controlled infected response was sent only after the complete request.
+- [x] The actual compiled content inspector passed.
+- [x] The actual compiled ClamAV adapter returned `INFECTED`.
+- [x] PostgreSQL persisted exactly one `INFECTED` scan result.
+- [x] The file lifecycle changed from `PENDING_SCAN` to `QUARANTINED`.
+- [x] Department, bucket and quarantine object key remained unchanged.
+- [x] The quarantine object remained present with matching size and SHA-256.
+- [x] No available destination object was created.
+- [x] `markAvailable()` was blocked for the quarantined infected file.
+- [x] No availability audit was written.
+- [x] Three expected department-scoped audit rows were retained:
+  - pending-scan registration;
+  - scan recorded;
+  - file quarantined.
+- [x] The quarantine audit contained the fixed sanitized reason.
+- [x] The quarantine lifecycle audit did not contain the scanner signature.
+- [x] Safe service output exposed no bucket, object key, socket path or private prefix.
+- [x] Temporary MinIO objects were cleaned.
+- [x] Temporary file and scan rows were cleaned.
+- [x] Runtime audit evidence was retained.
+- [x] The controlled socket peer and temporary directory were removed.
+- [x] The in-memory test payload was cleared.
+
+### Evidence boundary
+
+This is integrated evidence for the actual compiled Lexora adapter and lifecycle orchestration against a controlled infected protocol peer.
+
+It is not a claim that the live official ClamAV daemon produced the infected response in this checkpoint.
+
+The live official scanner was not stopped, restarted, replaced or reconfigured. Its container identity, healthy state, restart count, network isolation, read-only root filesystem and non-OOM state remained unchanged.
+
+MinIO container identity and health remained unchanged.
+
+The PM2 `lexora-api` process identity, restart count and online status remained unchanged.
+
+Direct API health and Nginx-proxied API health passed after the checkpoint.
+
+### Security boundaries preserved
+
+This implementation and runtime checkpoint did not weaken or change:
+
+- [x] `AuthGuard`;
+- [x] `PolicyGuard`;
+- [x] `@RequirePolicy()`;
+- [x] request context;
+- [x] authenticated principal department isolation;
+- [x] object-level authorization;
+- [x] safe not-found behavior;
+- [x] latest persisted CLEAN requirement;
+- [x] quarantine-before-trust behavior;
+- [x] no activation on scanner error;
+- [x] no activation of infected files;
+- [x] minimal safe result boundaries;
+- [x] department-scoped audit behavior;
+- [x] private object-storage location protection.
+
+No raw token, password, password hash, cookie, database credential, production secret, object-storage credential, raw scanner response or private runtime object key was added to this documentation.
+
+### Known limitation
+
+Malware scan persistence, lifecycle mutation and audit writes remain sequential rather than fully atomic.
+
+A database lifecycle transition may succeed before a later success-audit write fails. The implementation contains and sanitizes reconciliation-audit failures, but this does not replace future transaction and reconciliation hardening.
+
+Database-backed concurrency, serializable retry and lifecycle/audit atomicity remain pending.
+
+### Remaining File Storage work
+
+The following remain pending:
+
+- [ ] background pending-scan worker or job ledger;
+- [ ] bounded retry and backoff for retryable operational scanner errors;
+- [ ] duplicate-worker and concurrent-claim protection;
+- [ ] worker crash recovery;
+- [ ] dead-letter or controlled manual-review state;
+- [ ] infected/error lifecycle administration and retry semantics;
+- [ ] database-backed concurrency and serializable-transaction verification;
+- [ ] lifecycle and audit atomicity hardening;
+- [ ] object-storage/database reconciliation;
+- [ ] secure permission-controlled upload API;
+- [ ] module-specific attachment-resource authorization;
+- [ ] permission-controlled signed URL or backend-proxy download;
+- [ ] quotas and abuse controls;
+- [ ] broader file-type and archive policy;
+- [ ] retention, deletion and orphan cleanup;
+- [ ] secure upload/download frontend;
+- [ ] production operational monitoring and disaster-recovery validation;
+- [ ] complete production upload/download end-to-end security verification;
+- [ ] production file upload enablement.
+
+### Supersession note
+
+This section narrowly supersedes earlier pending or limitation wording only for:
+
+- automatic infected-file lifecycle transition;
+- persisted `INFECTED → QUARANTINED` behavior;
+- retention of the existing quarantine storage identity;
+- prevention of infected-file availability;
+- sanitized quarantine lifecycle audit behavior;
+- fail-closed infected-lifecycle reconciliation handling;
+- real PostgreSQL and MinIO verification of the automatic infected lifecycle.
+
+Earlier controlled custom-signature infected evidence remains historically valid, but that earlier checkpoint left the file lifecycle at `PENDING_SCAN`.
+
+The current verified behavior is now:
+
+> A trusted stored-byte `INFECTED` result is persisted and automatically transitions the department-scoped file from `PENDING_SCAN` to `QUARANTINED`, preserves the original quarantine storage identity, prevents promotion and availability, writes a sanitized lifecycle audit and returns only safe metadata.
+
+Earlier pending statements remain valid for:
+
+- operational-error retry processing;
+- background workers;
+- database concurrency and transaction retry;
+- lifecycle/audit atomicity;
+- upload and download authorization;
+- attachment-resource integration;
+- quotas;
+- frontend integration;
+- complete production upload/download verification.
+
+Production file upload remains disabled.
+
+### Current accurate File Storage status
+
+> Department-scoped stored-byte malware-scan orchestration is implemented and runtime verified for CLEAN promotion, controlled infected detection, scanner-unavailable `connection_failed`, controlled nonresponsive-peer `timeout`, malformed-response `protocol_error`, oversized-response `protocol_error`, and automatic infected-file quarantine. A trusted `INFECTED` result now transitions `PENDING_SCAN → QUARANTINED`, retains the original quarantine storage identity, prevents availability and records a sanitized audit trail. Background retry orchestration, operational-error lifecycle processing, concurrency and transaction hardening, reconciliation, permission-controlled upload/download, attachment authorization, quotas, frontend integration and complete production end-to-end verification remain pending. Production file upload remains disabled.
+
+### Next safe implementation checkpoint
+
+Proceed with a focused retryable malware-scan worker foundation:
+
+1. define a department-scoped pending-scan job or claim ledger;
+2. distinguish retryable operational errors from terminal infected outcomes;
+3. implement bounded retries and backoff;
+4. prevent duplicate or concurrent worker claims;
+5. preserve idempotency across worker crashes and restarts;
+6. retain CLEAN-only guarded promotion;
+7. retain automatic `INFECTED → QUARANTINED`;
+8. define controlled dead-letter or manual-review handling;
+9. preserve safe diagnostics and audit records;
+10. verify database-backed concurrency before enabling any upload route.
