@@ -11400,3 +11400,194 @@ It does not supersede pending work for:
 - frontend integration;
 - complete production end-to-end verification;
 - production file-upload enablement.
+
+## Operational Malware-Scan Worker Idle Runtime Verification — 2026-08-05
+
+### Classification and scope
+
+This checkpoint records implementation deployment and controlled runtime verification of the internal malware-scan worker execution layer.
+
+The worker remains disabled by default and remains persistently disabled in the ordinary PM2 API process.
+
+This checkpoint does not enable:
+
+- public file upload;
+- public or permission-controlled download;
+- production file processing;
+- persistent malware-scan worker execution;
+- frontend file integration.
+
+Production file upload remains disabled.
+
+### Source and implementation
+
+| Item | Verified value |
+|---|---|
+| Implementation commit | `dc5c09a8b85662fe1b5e21dcbbe749528fcf55a1` |
+| Commit message | `Add operational malware scan worker` |
+| Branch | `main` |
+| Worker default | Disabled |
+| Poll interval default | `5000 ms` |
+| Idle delay default | `15000 ms` |
+| Graceful shutdown timeout default | `330000 ms` |
+| PM2 kill timeout | `360000 ms` |
+
+The operational layer provides:
+
+- bounded polling;
+- sequential department processing;
+- one active processor call at a time;
+- database-derived department scope;
+- stable keyset pagination capped at 100 departments;
+- shared claim/discovery eligibility rules;
+- no overlapping cycles;
+- sanitized health state;
+- contained provider and processor failures;
+- idempotent startup;
+- graceful NestJS module destruction;
+- worker drain before Prisma disconnection;
+- fail-closed shutdown timeout behavior.
+
+No public route, Prisma migration or production upload setting was added by this checkpoint.
+
+### Static verification
+
+The implementation checkpoint reported:
+
+- focused File Storage tests: `267`;
+- passed: `262`;
+- failed: `0`;
+- skipped: `5`;
+- API typecheck: passed;
+- API build: passed;
+- `git diff --check`: passed.
+
+The five skipped tests were the existing opt-in PostgreSQL concurrency tests.
+
+### Server deployment and disabled-worker boot
+
+The Ubuntu server repository was fast-forwarded to the implementation commit.
+
+Server verification passed:
+
+- API typecheck;
+- API build;
+- clean repository state;
+- `HEAD` aligned with `origin/main`;
+- PM2 controlled restart;
+- direct API health returned HTTP `200`;
+- Nginx-proxied API health returned HTTP `200`;
+- API remained bound to `127.0.0.1:4000`;
+- worker remained disabled;
+- production upload remained disabled.
+
+The persistent PM2 shutdown budget was changed from unset/default behavior to `360000 ms`, exceeding the worker's `330000 ms` graceful shutdown budget.
+
+The PM2 launch shape remained:
+
+- executable: `/usr/bin/bash`;
+- working directory: `/home/sh002/lexora_lms`;
+- command:
+  `node -r ./apps/api/register-paths.js apps/api/dist/src/main.js`;
+- fork mode;
+- automatic restart enabled;
+- file watching disabled.
+
+The updated PM2 process list was saved successfully for resurrection.
+
+### Read-only runtime readiness
+
+Runtime readiness inspection verified:
+
+- Nginx active;
+- PostgreSQL active;
+- PM2 API online;
+- database configuration present;
+- scanner mode `clamav`;
+- scanner transport `unix`;
+- scanner socket `/run/lexora-clamav/clamd.sock`;
+- scanner timeout `10000 ms`;
+- ClamAV socket owner UID `20000`;
+- ClamAV socket group GID `20001`;
+- ClamAV socket mode `0660`;
+- ClamAV evaluation container healthy.
+
+At inspection time:
+
+- actionable malware-scan jobs: `0`;
+- actionable active departments: `0`.
+
+The readiness inspection did not modify database rows, environment configuration or PM2 state.
+
+### Isolated real PostgreSQL idle-worker probe
+
+A temporary, non-persistent NestJS application context was started with the worker enabled only for the probe process.
+
+Probe configuration:
+
+- worker enabled: `true`;
+- poll interval: `1000 ms`;
+- idle delay: `1000 ms`;
+- shutdown timeout: `5000 ms`.
+
+Runtime evidence:
+
+- worker lifecycle reached `RUNNING`;
+- worker cycle returned to `IDLE`;
+- at least one successful idle cycle completed;
+- no controlled failure category was recorded;
+- PostgreSQL job-row count was unchanged;
+- ordinary PM2 API PID was unchanged;
+- direct API health remained HTTP `200`;
+- Nginx-proxied API health remained HTTP `200`;
+- application close completed;
+- worker lifecycle reached `STOPPED`;
+- worker cycle remained `IDLE`;
+- graceful shutdown state reached `COMPLETE`;
+- the temporary probe file was removed;
+- persistent environment remained unchanged;
+- persistent worker remained disabled.
+
+### Runtime verdict
+
+- [x] Operational worker implementation committed and deployed.
+- [x] API typecheck passed.
+- [x] API build passed.
+- [x] Disabled-worker PM2 boot passed.
+- [x] Direct API health passed.
+- [x] Nginx-proxied API health passed.
+- [x] Loopback-only API binding preserved.
+- [x] Persistent PM2 shutdown budget configured and saved.
+- [x] ClamAV Unix-socket readiness passed.
+- [x] Real PostgreSQL idle worker cycle passed.
+- [x] Graceful isolated application shutdown passed.
+- [x] Job-row count remained unchanged during the idle probe.
+- [x] Persistent worker remained disabled.
+- [ ] Persistent worker enablement remains pending.
+- [ ] Real actionable job claiming and processing remain pending.
+- [ ] Real clean-file promotion through the worker remains pending.
+- [ ] Real infected-file quarantine through the worker remains pending.
+- [ ] PM2/process-signal shutdown during an active scanner or storage operation remains pending.
+- [ ] Production upload remains disabled.
+
+Correct current statement:
+
+> The internal malware-scan worker execution layer is implemented, committed and deployed. Its default-disabled API boot, PM2 shutdown budget, ClamAV readiness, real PostgreSQL idle polling cycle and graceful isolated NestJS shutdown have been runtime verified. Persistent worker enablement, real actionable job processing, active-operation signal shutdown, production file delivery and production upload enablement remain pending.
+
+### Remaining limitations
+
+The following remain outside this checkpoint:
+
+- persistent worker enablement;
+- real clean and infected file-processing fixtures;
+- active ClamAV and object-storage processing under PM2 shutdown signals;
+- worker health integration into operational health endpoints;
+- metrics and alerting;
+- complete job, lifecycle and audit atomicity;
+- broader reconciliation;
+- secure upload API;
+- attachment-resource authorization;
+- permission-controlled delivery;
+- retention, quotas and orphan cleanup;
+- frontend integration;
+- production file-upload enablement.
