@@ -95,6 +95,28 @@ export const envSchema = z
     MALWARE_SCANNER_HOST: optionalNonEmptyString,
     MALWARE_SCANNER_PORT: optionalPositivePort,
     MALWARE_SCANNER_TIMEOUT_MS: z.coerce.number().int().positive(),
+    FILE_MALWARE_SCAN_WORKER_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
+    FILE_MALWARE_SCAN_WORKER_POLL_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(60_000)
+      .default(5_000),
+    FILE_MALWARE_SCAN_WORKER_IDLE_DELAY_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(300_000)
+      .default(15_000),
+    FILE_MALWARE_SCAN_WORKER_SHUTDOWN_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(600_000)
+      .default(330_000),
     SENTRY_DSN: z.string().optional().default(""),
     SENTRY_ENVIRONMENT: z.string().min(1),
     SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1),

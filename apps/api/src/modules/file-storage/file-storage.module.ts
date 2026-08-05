@@ -2,16 +2,20 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 
+import { malwareScanWorkerConfig } from "@/common/config/loaders/malware-scan-worker.config";
 import { storageConfig } from "@/common/config/loaders/storage.config";
 import { PrismaModule } from "@/common/prisma/prisma.module";
 import { RequestContextModule } from "@/common/request-context/request-context.module";
 
 import { FileMalwareScanJobProcessor } from "./application/services/file-malware-scan-job.processor";
 import { FileMalwareScanJobRuntime } from "./application/services/file-malware-scan-job.runtime";
+import { FileMalwareScanWorkerHealth } from "./application/services/file-malware-scan-worker.health";
+import { FileMalwareScanWorkerRunner } from "./application/services/file-malware-scan-worker.runner";
 import { FileStorageService } from "./application/services/file-storage.service";
 import {
   FILE_CONTENT_INSPECTOR_PORT,
   FILE_MALWARE_SCAN_JOB_REPOSITORY,
+  FILE_MALWARE_SCAN_WORKER_DEPARTMENT_SCOPE_PROVIDER,
   FILE_STORAGE_REPOSITORY,
   MALWARE_SCANNER_PORT,
   OBJECT_STORAGE_PORT,
@@ -28,6 +32,7 @@ import {
   S3ObjectStorageAdapter,
 } from "./infrastructure/object-storage/s3-object-storage.adapter";
 import { PrismaFileMalwareScanJobRepository } from "./infrastructure/repositories/prisma-file-malware-scan-job.repository";
+import { PrismaFileMalwareScanWorkerDepartmentScopeProvider } from "./infrastructure/repositories/prisma-file-malware-scan-worker-department-scope.provider";
 import { PrismaFileStorageRepository } from "./infrastructure/repositories/prisma-file-storage.repository";
 
 @Module({
@@ -35,14 +40,21 @@ import { PrismaFileStorageRepository } from "./infrastructure/repositories/prism
     PrismaModule,
     RequestContextModule,
     ConfigModule.forFeature(storageConfig),
+    ConfigModule.forFeature(malwareScanWorkerConfig),
   ],
   providers: [
     FileStorageService,
     FileMalwareScanJobProcessor,
     FileMalwareScanJobRuntime,
+    FileMalwareScanWorkerHealth,
+    FileMalwareScanWorkerRunner,
     {
       provide: FILE_MALWARE_SCAN_JOB_REPOSITORY,
       useClass: PrismaFileMalwareScanJobRepository,
+    },
+    {
+      provide: FILE_MALWARE_SCAN_WORKER_DEPARTMENT_SCOPE_PROVIDER,
+      useClass: PrismaFileMalwareScanWorkerDepartmentScopeProvider,
     },
     { provide: FILE_STORAGE_REPOSITORY, useClass: PrismaFileStorageRepository },
     {
@@ -77,6 +89,6 @@ import { PrismaFileStorageRepository } from "./infrastructure/repositories/prism
       useExisting: ClamAvMalwareScannerAdapter,
     },
   ],
-  exports: [FileStorageService],
+  exports: [FileStorageService, FileMalwareScanWorkerHealth],
 })
 export class FileStorageModule {}

@@ -13,14 +13,14 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     cors: {
       origin: env.ALLOWED_ORIGINS.split(",").map((value) => value.trim()),
-      credentials: true
-    }
+      credentials: true,
+    },
   });
 
   app.setGlobalPrefix("api");
   app.enableVersioning({
     type: VersioningType.URI,
-    defaultVersion: "1"
+    defaultVersion: "1",
   });
   app.use(helmet());
   app.use(cookieParser());
@@ -30,11 +30,12 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
-      transform: true
-    })
+      transform: true,
+    }),
   );
+  app.enableShutdownHooks();
 
-  await app.listen(env.PORT, '127.0.0.1');
+  await app.listen(env.PORT, "127.0.0.1");
 }
 
 bootstrap();
