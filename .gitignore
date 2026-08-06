@@ -20,6 +20,8 @@ apps/api/prisma/migrations
 apps/api/prisma/migrations/*
 !apps/api/prisma/migrations/20260805_add_file_malware_scan_job_ledger/
 !apps/api/prisma/migrations/20260805_add_file_malware_scan_job_ledger/migration.sql
+!apps/api/prisma/migrations/202608060001_add_curriculum_assessment_foundation/
+!apps/api/prisma/migrations/202608060001_add_curriculum_assessment_foundation/migration.sql
 *.log
 
 
