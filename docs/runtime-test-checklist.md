@@ -11852,3 +11852,230 @@ The current `CourseOffering` uniqueness constraint requires a later focused revi
 8. Run a read-only collision and dependency audit before canonical backfill.
 9. Preserve existing Course IDs and archived legacy evidence.
 10. Enforce department consistency in repository/service logic before exposing curriculum write APIs.
+
+## Live Versioned Curriculum and Assessment Template Schema Foundation Migration — 2026-08-06
+
+### Supersession and classification
+
+This checkpoint supersedes only the earlier statement that the curriculum-foundation migration had not been applied to the ordinary Lexora runtime database.
+
+The earlier implementation review, static validation and disposable PostgreSQL verification remain valid historical evidence.
+
+Current verified classification:
+
+- schema implementation committed and pushed;
+- migration applied to the ordinary `lexora_lms` PostgreSQL database;
+- completed Prisma migration record verified;
+- live PostgreSQL catalog verified;
+- Prisma database-to-datamodel drift check passed;
+- API typecheck and build passed on the server;
+- controlled PM2 restart completed;
+- direct API and Nginx health checks passed;
+- no canonical curriculum or assessment-template business rows inserted;
+- selected existing academic business-table counts remained unchanged;
+- no curriculum API, UI, student assignment or syllabus workflow implemented by this migration.
+
+### Source and deployment boundary
+
+| Item | Verified value |
+|---|---|
+| Branch | `main` |
+| Server source commit | `29eb1ddc1b22b2f4dfe23fdf78ce0a77798d0c59` |
+| Implementation commit | `a8dac018c5077d197c14316f5ccf546f71b74fff` |
+| Target migration | `202608060001_add_curriculum_assessment_foundation` |
+| Runtime database | `lexora_lms` |
+| Repository changed during deployment | No |
+| Automatic database restore | No |
+
+The repository was clean and `HEAD` remained unchanged throughout deployment verification.
+
+Database credentials and the full database URL were not printed or documented.
+
+### Validated pre-migration backup
+
+A private PostgreSQL custom-format backup was created and validated before migration deployment.
+
+| Item | Verified value |
+|---|---|
+| Backup path | `/home/sh002/lexora-private-backups/lexora_lms-before-202608060001_add_curriculum_assessment_foundation-20260806T103154Z.dump` |
+| SHA-256 | `36e38f2479a11628766d94e4a01a5aa6144cf9472e31724e53c29d19e7036ffd` |
+| Archive validation | Passed |
+| Backup file permission | `0600` |
+| Backup directory permission | `0700` |
+| Backup encryption | No |
+| Backup retained | Yes |
+| Automatic restore performed | No |
+
+Runtime evidence report:
+
+`/home/sh002/lexora-runtime-evidence/live-202608060001_add_curriculum_assessment_foundation-20260806T103615Z.txt`
+
+The backup and runtime report remain private server artifacts and are not committed to Git.
+
+### Server static validation
+
+Before live migration deployment, the server passed:
+
+- Prisma schema validation;
+- Prisma Client generation;
+- API TypeScript typecheck;
+- API NestJS build.
+
+No Prisma major-version upgrade, Node module-system migration or ESM migration was performed.
+
+### Live migration deployment
+
+Prisma migration deployment completed successfully for:
+
+`202608060001_add_curriculum_assessment_foundation`
+
+Verified migration-history result:
+
+- completed migration record: `1`;
+- rolled-back migration record: `0`;
+- incomplete migration record: `0`;
+- Prisma migration status: up to date.
+
+### Live PostgreSQL catalog verification
+
+The ordinary runtime PostgreSQL catalog contains:
+
+| Object | Verified value |
+|---|---:|
+| `AcademicVersionStatus` enum | 1 |
+| New tables | 4 |
+| Foreign keys | 10 |
+| Delete-restrict foreign keys | 10 |
+| Check constraints | 14 |
+| Exact mapped non-primary indexes | 16 |
+| Identifier truncation | None |
+| `curriculum_courses.academic_term_id` | Absent |
+| Prisma database-to-datamodel drift | None |
+
+Verified enum labels:
+
+- `DRAFT`;
+- `APPROVED`;
+- `ACTIVE`;
+- `RETIRED`;
+- `ARCHIVED`.
+
+Verified tables:
+
+- `curriculum_versions`;
+- `course_assessment_templates`;
+- `assessment_template_components`;
+- `curriculum_courses`.
+
+All ten new foreign keys use restrictive deletion behavior. No cascade deletion was introduced by this migration.
+
+### Data preservation verification
+
+The four new curriculum-foundation tables remained empty immediately after migration:
+
+- `curriculum_versions`: no business rows;
+- `course_assessment_templates`: no business rows;
+- `assessment_template_components`: no business rows;
+- `curriculum_courses`: no business rows.
+
+Selected existing business-table row counts were captured before and after migration for:
+
+- `courses`;
+- `course_offerings`;
+- `enrollments`;
+- `result_records`;
+- `transcript_records`.
+
+The selected counts were unchanged.
+
+This migration did not:
+
+- update or delete existing courses;
+- modify existing course offerings;
+- alter enrollments;
+- change result records;
+- change transcript records;
+- add canonical LL.B. curriculum data;
+- add assessment-template component data.
+
+### Runtime non-disruption verification
+
+After controlled restart:
+
+- PM2 process `lexora-api` returned online;
+- PM2 restart count increased as expected;
+- direct API health returned HTTP `200`;
+- Nginx-proxied API health returned HTTP `200`;
+- PostgreSQL remained active;
+- Nginx remained active;
+- repository remained clean;
+- server `HEAD` remained `29eb1ddc1b22b2f4dfe23fdf78ce0a77798d0c59`.
+
+### Security and department-isolation boundary
+
+The migration introduced department-scoped schema foundations only.
+
+It did not alter or weaken:
+
+- AuthGuard;
+- PolicyGuard;
+- `@RequirePolicy()`;
+- request context;
+- department isolation;
+- object-level authorization;
+- teacher assigned-course checks;
+- student own-resource checks;
+- result publication locks;
+- GPA/CGPA controls;
+- transcript immutable snapshots;
+- audit behavior.
+
+Database-level composite tenant equality is not yet present across all new related records.
+
+Before canonical backfill or curriculum write APIs, repository and service logic must enforce same-department consistency across:
+
+- curriculum version;
+- academic programme;
+- course;
+- assessment template;
+- assessment component.
+
+### Current accurate status
+
+> The versioned curriculum and assessment-template Prisma/PostgreSQL schema foundation is implemented, committed, deployed to the ordinary Lexora runtime database and runtime verified. The live catalog contains one lifecycle enum, four department-scoped tables, fourteen row-local checks, ten restrictive foreign keys and sixteen explicitly mapped PostgreSQL-safe indexes, with no Prisma drift or identifier truncation. The new tables remain empty, selected existing academic business-table counts were unchanged, and API/Nginx health remained available after a controlled PM2 restart.
+
+This does not mean curriculum functionality is complete.
+
+### Explicitly pending
+
+The following remain pending:
+
+- canonical LL.B. `CurriculumVersion` record;
+- canonical 58-course `CurriculumCourse` backfill;
+- standard assessment-template records;
+- Capstone-specific assessment-template records;
+- correction of identified course-title and placement mismatches;
+- `CourseOffering` to `CurriculumCourse` binding;
+- immutable student curriculum-version assignment;
+- enrollment curriculum binding;
+- `SyllabusVersion`;
+- curriculum repository and service layer;
+- department-scoped DTO/controller/policy endpoints;
+- Admin curriculum-management UI;
+- Teacher Course Workspace;
+- result or transcript recalculation integration.
+
+The existing `CourseOffering` uniqueness rule still requires focused review before old and new curricula are offered simultaneously for irregular, failed or retaking students.
+
+### Next safe steps
+
+Proceed in this order:
+
+1. Commit and push this live migration evidence checkpoint.
+2. Prepare the canonical LL.B. curriculum and assessment-template dataset as a reviewed, reproducible repository artifact.
+3. Run a read-only collision, dependency and title/placement audit before backfill.
+4. Preserve all existing Course IDs and archived legacy evidence.
+5. Add department-consistency enforcement in repository/service logic before exposing curriculum write APIs.
+6. Test canonical backfill first against a disposable PostgreSQL copy.
+7. Create and validate a new private backup before ordinary-runtime backfill.
+8. Apply canonical backfill through an auditable, idempotent and transaction-safe workflow.
