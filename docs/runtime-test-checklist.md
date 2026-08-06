@@ -12079,3 +12079,219 @@ Proceed in this order:
 6. Test canonical backfill first against a disposable PostgreSQL copy.
 7. Create and validate a new private backup before ordinary-runtime backfill.
 8. Apply canonical backfill through an auditable, idempotent and transaction-safe workflow.
+
+## Canonical LL.B. Curriculum and Assessment-Template Dataset — 2026-08-06
+
+### Classification
+
+This checkpoint records the reviewed, deterministic canonical LL.B. curriculum and assessment-template dataset artifact.
+
+Current verified classification:
+
+- authoritative Academic Ordinance committed;
+- authoritative Outcome-Based Education Curriculum committed;
+- canonical typed dataset implemented;
+- 58-course snapshot independently statically verified;
+- assessment-template definitions independently statically verified;
+- focused automated tests passed;
+- API typecheck and build passed;
+- dataset committed and pushed;
+- database backfill not implemented;
+- canonical rows not inserted into the ordinary runtime database;
+- dataset runtime verification pending.
+
+### Related commits
+
+| Purpose | Commit |
+|---|---|
+| Authoritative OBE curriculum source | `d55a923a9c1cdc47963b1fe0d0f30c0adfd7514a` |
+| Authoritative Academic Ordinance source | `c1790249518d9d20ac67ec17ac35c0ed51fcd281` |
+| Canonical curriculum and assessment dataset | `2cfec6fb107514b7bfc3a6b84343fc95feca4a9f` |
+
+Dataset commit message:
+
+`Add canonical LLB curriculum dataset`
+
+### Authoritative academic sources
+
+| Source | Repository path | SHA-256 |
+|---|---|---|
+| Academic Ordinance | `docs/academic-sources/llb/Academic_Ordinance_LLB.pdf` | `283ac34518c9a23364ddc1a9ccb12e882a4026605418c9cc254ebab295d158f0` |
+| OBE Curriculum | `docs/academic-sources/llb/Outcome-Based_Education_Curriculum_LLB.pdf` | `61872ba54cd39a3b8452fa20f3457f6749a834a41d6a786fb93e88f07063779c` |
+
+The Academic Ordinance governs programme-wide academic rules.
+
+The approved OBE curriculum governs the exact course catalogue, course placement, credits, marks, categories and Capstone identity.
+
+### Dataset files
+
+- `apps/api/prisma/data/llb-2025-2026-curriculum.definition.ts`
+- `apps/api/prisma/data/llb-2025-2026-curriculum.definition.test.ts`
+
+The definition is:
+
+- readonly and strongly typed;
+- independent of PostgreSQL connectivity;
+- free of live database-generated IDs;
+- reusable by a future controlled backfill workflow;
+- intended initially for `DRAFT` curriculum status.
+
+### Canonical programme totals
+
+| Item | Verified value |
+|---|---:|
+| Academic years | 4 |
+| Semesters | 8 |
+| Courses | 58 |
+| Credits offered | 140 |
+| Minimum graduating credits | 134 |
+| Programme marks | 5,800 |
+| Teaching weeks per semester | 14 |
+| Notional hours per credit | 40 |
+
+### Category totals
+
+| Category | Courses | Credits |
+|---|---:|---:|
+| Core | 42 | 98 |
+| GED | 13 | 35 |
+| Capstone | 3 | 7 |
+| **Total** | **58** | **140** |
+
+### Semester aggregates
+
+| Year | Semester | Core Credits | GED Credits | Capstone Credits | Total Credits | Core Courses | GED Courses | Capstone Courses | Total Courses | Marks |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 1 | 10 | 5 | 0 | 15 | 4 | 2 | 0 | 6 | 600 |
+| 1 | 2 | 7 | 9 | 0 | 16 | 3 | 3 | 0 | 6 | 600 |
+| 2 | 1 | 11 | 6 | 0 | 17 | 5 | 2 | 0 | 7 | 700 |
+| 2 | 2 | 13 | 5 | 0 | 18 | 6 | 2 | 0 | 8 | 800 |
+| 3 | 1 | 14 | 3 | 0 | 17 | 6 | 1 | 0 | 7 | 700 |
+| 3 | 2 | 16 | 3 | 0 | 19 | 7 | 1 | 0 | 8 | 800 |
+| 4 | 1 | 15 | 2 | 2 | 19 | 6 | 1 | 1 | 8 | 800 |
+| 4 | 2 | 12 | 2 | 5 | 19 | 5 | 1 | 2 | 8 | 800 |
+
+All eight rows were independently pinned and checked against values derived from the 58 course records.
+
+### Assessment templates
+
+#### Standard theoretical course
+
+`LLB-STANDARD-100-V1`
+
+- Formative Activities: 30
+- Attendance: 5
+- Comprehensive Examination: 5
+- Summative Examination: 60
+- Total: 100
+
+#### Capstone defence and practical
+
+`LLB-CAPSTONE-DEFENCE-PRACTICAL-100-V1`
+
+- Defence: 40
+- Practical: 60
+- Total: 100
+
+#### Capstone defence and dissertation
+
+`LLB-CAPSTONE-DEFENCE-DISSERTATION-100-V1`
+
+- Defence: 40
+- Dissertation: 60
+- Total: 100
+
+### Canonical Capstones
+
+| Code | Title | Credits | Placement | Template |
+|---|---|---:|---|---|
+| `0421-4108` | Clinical Legal Education (Criminal Trial and Report on Court Visit) (Capstone) | 2 | Year 4, Semester 1 | Defence and Practical |
+| `0421-4207` | Research Paper (Capstone) | 3 | Year 4, Semester 2 | Defence and Dissertation |
+| `0421-4208` | Clinical Legal Education (Civil Trial and Report on Court Visit) (Capstone) | 2 | Year 4, Semester 2 | Defence and Practical |
+
+The superseded code `0421-4209` is not part of the canonical dataset.
+
+Archived/runtime-test codes `LAW-101` and `LAW-999` are not part of the canonical dataset and were not modified.
+
+### Independent 58-course fingerprint
+
+The reviewed ordered course snapshot is pinned by SHA-256:
+
+`b25fb4585a364c35d9ace53ae20e9c8677fa6c4759fbed6d02bc9f4983598b33`
+
+The fingerprint covers:
+
+- course code;
+- title snapshot;
+- credit;
+- total marks;
+- category;
+- academic year;
+- semester;
+- semester sequence;
+- display order;
+- assessment-template assignment.
+
+A change to any covered academic field or array ordering causes the focused validation to fail.
+
+### Static verification
+
+Verified results:
+
+- [x] Authoritative source paths and hashes independently pinned.
+- [x] Actual source-file hashes verified.
+- [x] Exactly 58 course records.
+- [x] Exactly 140 offered credits.
+- [x] Exactly 5,800 programme marks.
+- [x] Core, GED and Capstone totals verified independently.
+- [x] All eight semester aggregates verified independently.
+- [x] Exactly three assessment templates.
+- [x] Exact component codes, marks and display order verified.
+- [x] All template totals equal 100.
+- [x] Only the three approved Capstones use Capstone templates.
+- [x] `0421-4209`, `LAW-101` and `LAW-999` are absent.
+- [x] No live database-ID dependency exists.
+- [x] Focused tests passed: 9 passed, 0 failed.
+- [x] Independent compiled-artifact verification passed.
+- [x] API typecheck passed.
+- [x] API build passed.
+- [x] `git diff --check` passed.
+
+### Security and data boundary
+
+This checkpoint did not:
+
+- access PostgreSQL;
+- execute a Prisma migration;
+- run a seed;
+- insert curriculum rows;
+- modify existing Course rows;
+- alter CourseOffering records;
+- alter enrollments;
+- alter attendance;
+- alter results;
+- alter transcripts;
+- change authorization or department-isolation behavior;
+- deploy to the Ubuntu runtime;
+- restart PM2.
+
+No credentials, tokens, password hashes or production secrets were added.
+
+### Current accurate status
+
+> The canonical LL.B. curriculum and assessment-template dataset is implemented as a deterministic, typed repository artifact, independently statically validated, committed and pushed. It contains the reviewed 58-course, 140-credit and 5,800-mark programme snapshot, eight semester aggregates and three exact 100-mark assessment templates. No canonical curriculum records have yet been inserted into the ordinary Lexora runtime database, and database backfill/runtime verification remain pending.
+
+### Next safe steps
+
+Proceed in this order:
+
+1. Commit and push this documentation checkpoint.
+2. Synchronize the dataset and documentation commits to the Ubuntu server.
+3. Run a read-only live collision and dependency audit against existing Course records.
+4. Preserve all existing Course IDs and archived legacy/runtime-test evidence.
+5. Design an idempotent, transaction-safe and department-scoped canonical backfill workflow.
+6. Test the backfill against a disposable PostgreSQL copy first.
+7. Verify allowed rerun behavior, rollback behavior and mismatch fail-closed behavior.
+8. Create and validate a fresh private backup before ordinary-runtime backfill.
+9. Apply the reviewed backfill to the ordinary runtime database only after disposable verification.
+10. Document live backfill evidence separately.
