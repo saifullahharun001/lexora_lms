@@ -11591,3 +11591,264 @@ The following remain outside this checkpoint:
 - retention, quotas and orphan cleanup;
 - frontend integration;
 - production file-upload enablement.
+
+## Versioned Curriculum and Assessment Template Schema Foundation — 2026-08-06
+
+### Classification
+
+This checkpoint records the first additive, versioned curriculum and course-assessment-template database foundation.
+
+Current verified classification:
+
+- implementation committed and pushed;
+- Prisma schema statically validated;
+- API typecheck and build passed;
+- migration runtime verified against an isolated disposable PostgreSQL 16 database;
+- ordinary Lexora runtime database migration not applied;
+- live application routes and services not runtime verified for this foundation;
+- no ordinary runtime database data changed;
+- no canonical curriculum records or assessment-template records backfilled.
+
+### Related implementation commit
+
+| Purpose | Commit |
+|---|---|
+| Versioned curriculum and assessment-template schema foundation | `a8dac018c5077d197c14316f5ccf546f71b74fff` |
+
+Commit message:
+
+`Add versioned curriculum schema foundation`
+
+Implementation files:
+
+- `.gitignore`
+- `apps/api/prisma/schema.prisma`
+- `apps/api/prisma/migrations/202608060001_add_curriculum_assessment_foundation/migration.sql`
+
+Baseline before implementation:
+
+`084a09efe8efa60e394c7ae2bb445aacb6529172`
+
+### Implemented schema foundation
+
+The implementation adds:
+
+- `AcademicVersionStatus`;
+- `CurriculumVersion`;
+- `CurriculumCourse`;
+- `CourseAssessmentTemplate`;
+- `AssessmentTemplateComponent`.
+
+The foundation supports:
+
+- department-scoped and academic-programme-scoped curriculum versions;
+- stable curriculum version codes;
+- effective academic-session identity and optional date ranges;
+- programme duration, semester, credit, course-count and programme-mark totals;
+- Core, GED and Capstone aggregate credits and course counts;
+- curriculum-specific academic year, semester and display ordering;
+- immutable course-code, course-title, credit and total-mark snapshots;
+- configurable course-category codes;
+- versioned course assessment templates;
+- generic assessment components;
+- restrictive academic-history foreign keys.
+
+No Law-specific curriculum rows, assessment components, seed records or backfill data were inserted.
+
+### Migration structure
+
+The additive migration creates:
+
+| Object | Count |
+|---|---:|
+| New enum | 1 |
+| New tables | 4 |
+| Foreign keys | 10 |
+| `ON DELETE RESTRICT` foreign keys | 10 |
+| `ON DELETE CASCADE` foreign keys | 0 |
+| Check constraints | 14 |
+| Unique indexes | 6 |
+| Ordinary indexes | 10 |
+| Total non-primary indexes | 16 |
+
+The migration contains no:
+
+- existing-table or existing-column drop;
+- existing-row update;
+- curriculum seed;
+- course-title correction;
+- course-offering update;
+- destructive cascade deletion.
+
+All 16 new non-primary indexes use explicit PostgreSQL-safe mapped names.
+
+Maximum mapped identifier length:
+
+`45` UTF-8 bytes.
+
+### Department isolation boundary
+
+Every new table has a required `department_id` and a relation to `departments`.
+
+Existing:
+
+- AuthGuard;
+- PolicyGuard;
+- `@RequirePolicy()`;
+- request context;
+- department isolation;
+- object-level authorization;
+- result locks;
+- GPA/CGPA controls;
+- transcript snapshots;
+- audit behavior
+
+were not modified.
+
+Composite tenant-aware foreign keys were not added because the current related models do not expose the necessary composite candidate keys without a broader populated-schema change.
+
+Before curriculum write APIs or canonical backfill are introduced, future repository and service logic must enforce same-department consistency across:
+
+- curriculum version;
+- academic programme;
+- course;
+- assessment template;
+- assessment component.
+
+### Review corrections completed
+
+#### Prisma and migration consistency
+
+The initial source contained an unintended optional `CurriculumCourse` to `AcademicTerm` relation without a matching migration column.
+
+It was removed.
+
+Final state:
+
+- `CurriculumCourse` has no `academicTerm`;
+- `CurriculumCourse` has no `academicTermId`;
+- `AcademicTerm` has no new `curriculumCourses` reverse relation;
+- `curriculum_courses` has no `academic_term_id`.
+
+#### PostgreSQL identifier safety
+
+The first disposable PostgreSQL run showed automatic truncation of several generated index names.
+
+The correction added explicit mapped names for all 16 indexes.
+
+The corrected verification confirmed:
+
+- no identifier truncation;
+- all expected index names exist exactly;
+- Prisma schema and migration names match;
+- no database-to-datamodel drift remains.
+
+### Static validation
+
+Final local validation passed:
+
+- Prisma format;
+- Prisma validate;
+- Prisma Client generation;
+- API typecheck;
+- API build;
+- `git diff --check`.
+
+No Prisma major-version migration, Node module-system migration or ESM migration was performed.
+
+### Disposable PostgreSQL runtime verification
+
+Verification used:
+
+- image: `postgres:16-alpine`;
+- host publication: loopback `127.0.0.1` only;
+- disposable database initialized from the exact baseline Prisma schema;
+- corrected migration applied directly to the isolated database;
+- runtime/ordinary Lexora database not accessed;
+- disposable container removed automatically.
+
+Evidence bundle:
+
+`/home/sh002/lexora-curriculum-migration-verification-v2-20260806-154635`
+
+Runtime evidence report:
+
+`/home/sh002/lexora-curriculum-migration-verification-v2-20260806-154635/runtime-verification-20260806-094706.txt`
+
+Verified results:
+
+- [x] Migration application passed.
+- [x] Four tables were created.
+- [x] Ten foreign keys were created.
+- [x] All ten foreign keys use delete-restrict and update-cascade behavior.
+- [x] Fourteen check constraints were created.
+- [x] Sixteen exact mapped indexes were created.
+- [x] PostgreSQL identifier truncation did not occur.
+- [x] `curriculum_courses.academic_term_id` is absent.
+- [x] Prisma drift check reported no difference.
+- [x] A second migration application failed safely at the existing enum.
+- [x] No ordinary runtime database was accessed.
+- [x] No database credentials were documented.
+- [x] The disposable container was removed.
+
+This verifies migration behavior in an isolated PostgreSQL environment. It is not evidence that the migration has been applied to the ordinary Lexora runtime database.
+
+### Existing ordinary-runtime course boundary
+
+The separate read-only course audit remains the current ordinary-runtime evidence:
+
+`/home/sh002/lexora-course-runtime-db-audit-20260806-081803.txt`
+
+That audit confirmed:
+
+- 60 Department of Law course rows;
+- 58 active official courses;
+- 2 archived legacy/runtime-test courses;
+- 140 active official credits;
+- no duplicate course code;
+- no course without programme binding.
+
+Preserved archived courses:
+
+- `LAW-101`;
+- `LAW-999`.
+
+No existing course, offering, teacher assignment, enrollment, attendance, result or transcript record was changed by this schema-foundation checkpoint.
+
+### Explicitly pending
+
+This checkpoint does not implement:
+
+- ordinary-runtime migration deployment;
+- live catalog verification;
+- canonical LL.B. curriculum-version record;
+- canonical 58-course curriculum backfill;
+- standard or Capstone assessment-template records;
+- correction of current course-title or placement mismatches;
+- `CourseOffering` to `CurriculumCourse` binding;
+- immutable student curriculum-version assignment;
+- enrollment curriculum binding;
+- `SyllabusVersion`;
+- curriculum repository, service, controller, DTO or policy endpoints;
+- Admin curriculum management UI;
+- Teacher Course Workspace;
+- result or transcript recalculation changes.
+
+The current `CourseOffering` uniqueness constraint requires a later focused review before simultaneous old and new curriculum offerings are supported for irregular or failed students.
+
+### Current accurate status
+
+> The versioned curriculum and assessment-template Prisma/PostgreSQL foundation is implemented, committed and pushed, statically validated, and runtime verified against an isolated disposable PostgreSQL 16 database. The additive migration creates one lifecycle enum, four department-scoped tables, fourteen row-local checks, ten restrictive foreign keys and sixteen explicitly mapped PostgreSQL-safe indexes. The ordinary Lexora runtime database has not received the migration, no canonical curriculum data has been backfilled, and no curriculum API, Admin UI, Teacher Workspace, student curriculum assignment or syllabus-version workflow is implemented.
+
+### Next safe steps
+
+1. Synchronize implementation commit `a8dac018c5077d197c14316f5ccf546f71b74fff` to the Ubuntu server.
+2. Create and validate a private pre-migration PostgreSQL backup.
+3. Apply only the additive curriculum-foundation migration to the ordinary runtime database.
+4. Verify migration history and live PostgreSQL catalog structure.
+5. Verify PM2/API/Nginx health and confirm non-disruption.
+6. Document live migration evidence in a separate superseding checkpoint.
+7. Prepare the canonical LL.B. curriculum and assessment-template dataset as a reviewed repository artifact.
+8. Run a read-only collision and dependency audit before canonical backfill.
+9. Preserve existing Course IDs and archived legacy evidence.
+10. Enforce department consistency in repository/service logic before exposing curriculum write APIs.
