@@ -12486,3 +12486,396 @@ This checkpoint does not implement or verify:
 - broader multi-department curriculum rollout.
 
 These remaining items must continue module by module with department isolation, policy checks, object-level authorization, audit evidence and focused runtime verification.
+
+## CourseOffering to CurriculumCourse Binding Runtime Verification — 2026-08-07
+
+### Supersession and classification
+
+This checkpoint supersedes only earlier statements that `CourseOffering` to `CurriculumCourse` binding and its binding-specific API/runtime verification were pending.
+
+Earlier curriculum schema-foundation, canonical dataset, canonical backfill and historical runtime evidence remain valid.
+
+Current verified classification:
+
+- `CourseOffering` to `CurriculumCourse` binding foundation implemented;
+- implementation committed and pushed;
+- focused automated tests passed;
+- binding-specific lint passed;
+- Prisma format, validation and Client generation passed;
+- API typecheck and build passed;
+- additive migration verified against disposable PostgreSQL;
+- additive migration deployed to the ordinary `lexora_lms` database;
+- live PostgreSQL catalog verified;
+- binding endpoint authorization and department isolation runtime verified;
+- immutable same-target and different-target behavior runtime verified;
+- success audit runtime verified;
+- Teacher assigned-course compact curriculum read runtime verified;
+- canonical runtime binding created for one reviewed offering;
+- unrelated curriculum/student/syllabus/result work remains pending.
+
+### Implementation commit
+
+Implementation commit:
+
+`da99a18503ee30d3d0805cb07734f86b770694c4`
+
+Commit message:
+
+`Add immutable course offering curriculum binding`
+
+Migration:
+
+`202608070001_add_course_offering_curriculum_binding`
+
+### Schema and migration behavior
+
+The migration adds nullable `course_offerings.curriculum_course_id`.
+
+Verified schema behavior:
+
+- [x] Existing `CourseOffering` rows remained valid without a binding.
+- [x] The new field is nullable.
+- [x] Index `course_offering_dept_curriculum_course_idx` exists.
+- [x] The foreign key references `curriculum_courses.id`.
+- [x] Delete behavior is restrictive.
+- [x] No automatic existing-offering backfill occurs.
+- [x] Existing business/foundation row counts were unchanged by migration.
+- [x] Prisma reported no schema drift after deployment.
+
+Before the live binding API verification, the ordinary database contained:
+
+- 9 CourseOffering rows;
+- 0 bound CourseOffering rows.
+
+### Static and focused automated verification
+
+Final implementation verification reported:
+
+- focused curriculum-binding tests: 36 passed, 0 failed;
+- focused lint for the binding correction files: passed;
+- Prisma format: passed;
+- Prisma validate: passed;
+- Prisma Client generation: passed;
+- API typecheck: passed;
+- API build: passed;
+- `git diff --check`: passed.
+
+Repository-wide API lint still has unrelated pre-existing lint debt. That broader lint debt was not changed or represented as resolved by this feature.
+
+### Binding-specific security model
+
+The binding endpoint is:
+
+`PUT /api/v1/course-offerings/:id/curriculum-binding`
+
+It uses a dedicated binding-management policy rather than relying on the broader Teacher offering-management capability.
+
+Binding behavior enforces:
+
+- authenticated-principal department scope;
+- DB-backed active Department Admin verification;
+- active/nonarchived/nondeleted user and department requirements;
+- valid same-department, unrevoked and unexpired Department Admin role assignment;
+- same-department CourseOffering and Course identity;
+- same-department CurriculumCourse identity;
+- exact CourseOffering Course to CurriculumCourse Course equality;
+- CurriculumVersion relation and programme consistency;
+- CurriculumVersion department consistency;
+- assessment-template relation and department consistency;
+- non-null assessment-template programme consistency;
+- department-scoped generic assessment templates when template programme is null;
+- explicit bindable lifecycle allowlist:
+  - `DRAFT`;
+  - `APPROVED`;
+  - `ACTIVE`;
+- immutable first binding;
+- exact same-target retry idempotence;
+- different-target overwrite rejection;
+- success audit written transactionally with the binding.
+
+Existing exact bindings remain idempotent after later curriculum/template retirement or archival, but malformed tenant, relation or programme identity remains fail-closed.
+
+### Read-side isolation
+
+CourseOffering list/detail responses expose only a compact nullable curriculum summary.
+
+Repository read sanitization validates tenant/relation/programme identity before returning curriculum metadata.
+
+Verified behavior includes:
+
+- malformed cross-department curriculum metadata is not exposed;
+- malformed list rows are dropped;
+- malformed direct-detail rows return safe not-found behavior;
+- Teacher assigned-course filtering remains authoritative;
+- assessment-template component internals are not exposed through the compact CourseOffering summary.
+
+### Disposable PostgreSQL verification
+
+The migration was first verified against an isolated disposable PostgreSQL environment using:
+
+- image: `postgres:16-alpine`;
+- host publication: loopback `127.0.0.1` only;
+- exact pre-feature Prisma schema as baseline;
+- no persistent volume;
+- no ordinary Lexora database access.
+
+Verified results:
+
+- [x] Baseline schema initialization passed.
+- [x] Migration application passed.
+- [x] Nullable binding column verified.
+- [x] Mapped index verified.
+- [x] Restrictive foreign key verified.
+- [x] Prisma drift check reported no difference.
+- [x] A second direct migration application failed safely.
+- [x] Post-failure drift check still reported no difference.
+- [x] Existing API runtime remained healthy.
+- [x] Direct API health returned HTTP `200`.
+- [x] Nginx-proxied API health returned HTTP `200`.
+- [x] Live server repository was not changed by disposable verification.
+- [x] Ordinary `lexora_lms` database was not accessed.
+- [x] Disposable container/worktree/temp artifacts were cleaned automatically.
+
+### Ordinary runtime migration deployment
+
+Before ordinary migration application:
+
+- server repository was clean;
+- server source was fast-forwarded to implementation commit `da99a18`;
+- API typecheck and build passed on server;
+- database identity was explicitly confirmed as `lexora_lms`;
+- the target column was absent;
+- the target Prisma migration record was absent.
+
+A validated private custom-format PostgreSQL backup was created before migration:
+
+`/home/sh002/lexora-private-backups/lexora_lms-before-202608070001_add_course_offering_curriculum_binding-20260807T031553Z.dump`
+
+Backup SHA-256:
+
+`cd0b0b4399b4d64949ab4172f8a055d7554d2010f693ba38c643159112a8152a`
+
+Backup controls:
+
+- [x] backup archive was validated with `pg_restore --list`;
+- [x] backup file permission was `0600`;
+- [x] backup directory permission was `0700`;
+- [x] no database credential was printed or documented.
+
+Ordinary migration result:
+
+- [x] Prisma migration deployed successfully.
+- [x] Prisma migration status reported database schema up to date.
+- [x] Exactly one completed non-rolled-back migration record exists.
+- [x] No incomplete migration record exists.
+- [x] Live nullable column verified.
+- [x] Live mapped index verified.
+- [x] Live restrictive foreign key verified.
+- [x] Selected business/foundation table counts were unchanged.
+- [x] Existing CourseOffering rows were not automatically bound.
+- [x] Prisma drift check reported no difference.
+
+Runtime restart result:
+
+- PM2 PID before controlled deployment restart: `1860`;
+- PM2 PID after restart: `39696`;
+- direct API health returned HTTP `200`;
+- Nginx-proxied API health returned HTTP `200`;
+- application port remained bound to loopback only;
+- repository remained clean and origin-aligned.
+
+### Canonical runtime binding target
+
+A read-only target audit rejected the archived legacy `LAW-101` runtime offering as a canonical binding target because it has no canonical CurriculumCourse relation.
+
+Preserved legacy course:
+
+- Course code: `LAW-101`;
+- title: `Constitutional Law I`;
+- status: `ARCHIVED`;
+- historical offering count: 1;
+- historical teacher-assignment count: 2;
+- historical enrollment count: 3.
+
+Its offering remained unbound.
+
+The reviewed canonical positive target was:
+
+- CourseOffering:
+  `offering_0421_1101_2025_2026_s1_a`
+- Department:
+  `dept_law_test`
+- Course:
+  `0421-1101 — Jurisprudence-I`
+- CurriculumCourse:
+  `cmsi9mwp6001b2iiulsk1kkeq`
+- CurriculumVersion:
+  `cmsi9mwow000n2iiumxospbg6`
+- CurriculumVersion code:
+  `LLB-HONS-2025-2026-V1`
+- AssessmentTemplate:
+  `cmsi9mwoy000p2iiub0z5yc8v`
+- AssessmentTemplate code:
+  `LLB-STANDARD-100-V1`
+
+Exactly one matching CurriculumCourse was found.
+
+The CurriculumVersion and assessment template were both in `DRAFT`, which is intentionally allowed for configuration binding. Binding does not itself represent curriculum approval or publication.
+
+### Live authorization and isolation verification
+
+Canonical runtime accounts were authenticated using department code `0421`.
+
+Raw passwords, access tokens and refresh tokens were not printed or documented.
+
+Verified negative cases:
+
+- [x] Unauthenticated binding returned HTTP `401`.
+- [x] Teacher binding attempt returned HTTP `403`.
+- [x] Student binding attempt returned HTTP `403`.
+- [x] Whitespace-only `curriculumCourseId` returned HTTP `400`.
+- [x] Law Department Admin direct binding attempt against BUS offering returned safe HTTP `404`.
+- [x] Forged `x-department-id: dept_bus_test` did not switch a Law Department Admin into the BUS department.
+- [x] Forged-header BUS direct object attempt returned safe HTTP `404`.
+- [x] All negative attempts left the Law canonical target unbound before the positive test.
+- [x] All negative attempts left the BUS target unbound.
+- [x] No success binding audit existed after negative attempts.
+
+### Positive immutable binding verification
+
+Department Admin successfully bound the canonical offering.
+
+Result:
+
+- [x] Initial canonical binding returned HTTP `200`.
+- [x] Returned CourseOffering identity matched the target.
+- [x] Returned CurriculumCourse identity matched the target.
+- [x] Compact CurriculumVersion summary was present.
+- [x] Compact assessment-template summary was present.
+- [x] PostgreSQL stored the exact reviewed CurriculumCourse ID.
+
+Idempotence:
+
+- [x] Exact same-target retry returned HTTP `200`.
+- [x] Same-target retry did not create a duplicate audit.
+- [x] Forged `x-department-id` on the already-lawful same-target request did not override the authenticated principal's real department scope.
+- [x] Same lawful binding remained HTTP `200`.
+
+Immutability:
+
+- [x] A different CurriculumCourse overwrite attempt returned HTTP `409`.
+- [x] Existing binding remained unchanged after the conflict.
+
+### Binding audit verification
+
+Exactly one successful binding audit exists for the canonical offering.
+
+Verified audit identity:
+
+- actor:
+  `cmpmmnmk700072imth5f907a6`
+- department:
+  `dept_law_test`
+- action:
+  `course-management.offering.curriculum-bound`
+- target type:
+  `course_offering`
+- target:
+  `offering_0421_1101_2025_2026_s1_a`
+- outcome:
+  `SUCCESS`
+- CurriculumCourse:
+  `cmsi9mwp6001b2iiulsk1kkeq`
+- CurriculumVersion:
+  `cmsi9mwow000n2iiumxospbg6`
+- AssessmentTemplate:
+  `cmsi9mwoy000p2iiub0z5yc8v`
+
+Observed audit time:
+
+`2026-08-07 03:40:15.379`
+
+The audit context matched the actual persisted binding identity.
+
+### Teacher assigned-course read verification
+
+Before temporary assignment reactivation:
+
+- canonical Teacher had no active assignment to the canonical offering;
+- Teacher offering list did not expose the offering;
+- direct Teacher read returned safe HTTP `404`.
+
+A dedicated historical runtime-test assignment row was temporarily reactivated for the canonical Teacher.
+
+Reactivation result:
+
+- HTTP `201`;
+- assignment became `ACTIVE`.
+
+While actively assigned:
+
+- [x] Teacher offering list returned HTTP `200`.
+- [x] Canonical curriculum-bound offering appeared in the assigned Teacher list.
+- [x] Compact curriculum summary contained the expected CurriculumCourse.
+- [x] Teacher direct offering read returned HTTP `200`.
+- [x] Direct response contained the expected compact curriculum summary.
+- [x] Assessment-template components were not exposed through the compact summary.
+
+The dedicated runtime-test assignment was then unassigned.
+
+Unassignment result:
+
+- HTTP `201`;
+- assignment returned to `INACTIVE`.
+
+After unassignment:
+
+- [x] Teacher offering list returned HTTP `200`.
+- [x] Canonical offering disappeared from the Teacher list.
+- [x] Teacher direct offering read returned safe HTTP `404`.
+- [x] No active canonical Teacher assignment remained.
+
+### Final runtime invariants
+
+Final ordinary-runtime state after verification:
+
+- [x] Canonical CourseOffering has the exact reviewed CurriculumCourse binding.
+- [x] Total bound CourseOfferings: 1.
+- [x] Exactly one successful curriculum-binding audit exists.
+- [x] Temporary active canonical Teacher assignments remaining: 0.
+- [x] BUS runtime offering remains unbound.
+- [x] Archived legacy `LAW-101` offering remains unbound.
+- [x] PM2 PID remained `39696` throughout the endpoint verification.
+- [x] Direct API health remained HTTP `200`.
+- [x] Nginx-proxied API health remained HTTP `200`.
+- [x] Repository HEAD remained implementation commit `da99a18`.
+- [x] Working tree remained clean.
+- [x] Local/server `main` and `origin/main` remained aligned.
+- [x] No raw password or authentication token was printed in the runtime evidence.
+
+### Accurate current status
+
+> The immutable `CourseOffering` to `CurriculumCourse` binding foundation is implemented, committed, deployed and runtime verified. The ordinary `lexora_lms` database has the nullable restrictive binding column and currently contains one reviewed canonical binding for `0421-1101 — Jurisprudence-I`. The binding endpoint is restricted to an active Department Admin, remains scoped to the authenticated principal's real department, rejects cross-department direct object access, rejects Teacher/Student writes, is idempotent for the exact existing target, rejects a different-target overwrite, and writes exactly one success audit transactionally. Assigned Teachers can read the compact curriculum identity only while an active assignment exists. Archived `LAW-101` evidence and the BUS runtime offering remain unbound and unchanged.
+
+### Explicitly still pending
+
+This checkpoint does not implement or verify:
+
+- immutable student curriculum-version assignment;
+- enrollment-to-curriculum binding;
+- historical, irregular, failed or retaking student curriculum coexistence rules;
+- focused review of the current CourseOffering uniqueness constraint for multi-curriculum coexistence;
+- broad curriculum-version CRUD/approval APIs;
+- broad curriculum-course management APIs;
+- assessment-template management UI/API beyond the binding dependency foundation already present;
+- Admin curriculum-management UI;
+- Teacher Course Workspace;
+- `SyllabusVersion`;
+- syllabus approval and publication workflow;
+- curriculum-aware result recalculation;
+- curriculum-aware transcript generation/recalculation;
+- broader multi-department curriculum rollout.
+
+Binding one canonical CourseOffering does not mean all current or future CourseOfferings are automatically curriculum-bound.
+
+The remaining curriculum work must continue module by module with department isolation, object-level authorization, audit evidence, immutable academic-history rules and focused runtime verification.
