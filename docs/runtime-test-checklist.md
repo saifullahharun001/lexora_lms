@@ -12295,3 +12295,194 @@ Proceed in this order:
 8. Create and validate a fresh private backup before ordinary-runtime backfill.
 9. Apply the reviewed backfill to the ordinary runtime database only after disposable verification.
 10. Document live backfill evidence separately.
+## Canonical LL.B. Curriculum Backfill — Disposable and Ordinary Runtime Verification — 2026-08-07
+
+### Classification and supersession scope
+
+This checkpoint records the completed canonical LL.B. curriculum backfill workflow and its disposable and ordinary-runtime verification.
+
+It supersedes only earlier statements that the following were pending:
+
+- canonical 58-course curriculum backfill;
+- creation of the canonical curriculum-version record;
+- creation of the three canonical assessment templates;
+- creation of the eight canonical assessment components;
+- correction of the eleven reviewed course-title transitions;
+- ordinary-runtime application of that canonical foundation.
+
+Earlier schema-foundation, canonical-source, migration, audit and dependency evidence remains valid and is not deleted or replaced.
+
+This checkpoint does not claim that the complete curriculum-management feature, CourseOffering integration, student curriculum assignment, syllabus management, Admin UI or Teacher Course Workspace is complete.
+
+### Source implementation
+
+| Item | Verified value |
+|---|---|
+| Branch | `main` |
+| Implementation commit | `c0a187d5584bed819e9c5c4e5c36d62f30e4642b` |
+| Commit message | `Add canonical LLB curriculum backfill workflow` |
+| Canonical fingerprint | `b25fb4585a364c35d9ace53ae20e9c8677fa6c4759fbed6d02bc9f4983598b33` |
+| Backfill implementation | `apps/api/prisma/backfills/llb-2025-2026-curriculum.backfill.ts` |
+| CLI | `apps/api/prisma/backfills/llb-2025-2026-curriculum.backfill.cli.ts` |
+| Focused tests | `apps/api/prisma/backfills/llb-2025-2026-curriculum.backfill.test.ts` |
+
+Static verification passed before runtime application:
+
+- canonical dataset tests: `9/9`;
+- focused backfill tests: `49/49`;
+- API typecheck;
+- API build;
+- `git diff --check`;
+- clean repository boundary;
+- local and remote commit alignment.
+
+### Preserved security and academic-history boundaries
+
+The workflow preserves:
+
+- Department of Law scope, code `0421`;
+- LL.B. programme scope;
+- exact database-name confirmation before APPLY;
+- canonical source fingerprint confirmation;
+- active scoped `department_admin` actor validation;
+- bounded non-placeholder audit reason;
+- PostgreSQL advisory-lock protection;
+- serializable APPLY transaction;
+- compare-and-swap title correction;
+- post-write exact-state verification;
+- audit records for every title correction and the overall backfill;
+- all 58 existing canonical Course IDs;
+- archived `LAW-101` and `LAW-999`;
+- existing offering, enrollment, attendance, result, transcript and other historical references;
+- safe conflict failure without partial writes;
+- exact idempotent rerun behavior.
+
+No Course row was deleted and no canonical Course ID was replaced.
+
+### Disposable PostgreSQL runtime verification
+
+Private evidence report:
+
+`/home/sh002/lexora-runtime-evidence/llb-backfill-disposable-runtime-20260807T012405Z.txt`
+
+Verification environment:
+
+- PostgreSQL image: `postgres:18.4-alpine3.23`;
+- restore client: host `pg_restore 18.4`;
+- disposable exposure: loopback only;
+- disposable data source: read-only `pg_dump` snapshot of the ordinary runtime database;
+- ordinary runtime database mutation during disposable verification: none;
+- temporary snapshot removed automatically;
+- disposable container removed automatically.
+
+Verified disposable behavior:
+
+- [x] Fresh PLAN classified the target as `FRESH_APPLY`.
+- [x] PLAN found 58 canonical courses.
+- [x] PLAN preserved 58 existing Course IDs.
+- [x] PLAN proposed exactly 11 title corrections.
+- [x] PLAN proposed exactly 70 foundation inserts.
+- [x] Wrong database-name confirmation failed closed before target-state work.
+- [x] Shared PLAN advisory locks were mutually compatible.
+- [x] APPLY refused to run while a shared PLAN lock was held.
+- [x] PLAN refused to run while an exclusive APPLY lock was held.
+- [x] Forced failure during foundation creation rolled back all title changes.
+- [x] Forced failure rolled back all foundation inserts.
+- [x] Forced failure rolled back all transactional audits.
+- [x] Fresh APPLY completed successfully.
+- [x] All 58 existing canonical Course IDs remained unchanged.
+- [x] Eleven canonical title corrections were applied.
+- [x] Seventy foundation rows were created.
+- [x] Eleven title-correction audit rows were created.
+- [x] One overall backfill audit row was created.
+- [x] `LAW-101` and `LAW-999` remained unchanged.
+- [x] Post-APPLY PLAN classified the state as `EXACT_NOOP`.
+- [x] Repeated APPLY classified the state as `EXACT_NOOP`.
+- [x] Rerun created no duplicate foundation or audit rows.
+- [x] Ordinary PM2/API/Nginx runtime remained unaffected.
+
+### Validated private pre-backfill backup
+
+Backup:
+
+`/home/sh002/lexora-private-backups/lexora_lms-before-canonical-llb-backfill-20260807T012811Z.dump`
+
+Verified backup properties:
+
+- custom-format PostgreSQL archive;
+- archive listing validation passed;
+- SHA-256:
+  `c35c6f8140b5ac8348debe25af8cef7f9b8cdba113f73d383fd2c72f562afd5e`;
+- file permission: `600`;
+- backup-directory permission: `700`;
+- no credential was printed or documented;
+- automatic restore was not required.
+
+### Ordinary-runtime application and verification
+
+Private evidence report:
+
+`/home/sh002/lexora-runtime-evidence/live-canonical-llb-backfill-20260807T012811Z.txt`
+
+Target database:
+
+`lexora_lms`
+
+Verified live baseline before APPLY:
+
+- 58 canonical courses;
+- 47 titles already canonical;
+- 11 reviewed legacy titles requiring correction;
+- zero canonical curriculum-foundation rows;
+- exactly one active scoped Department of Law `department_admin`;
+- archived `LAW-101` and `LAW-999` present and protected.
+
+Verified ordinary-runtime result:
+
+- [x] Live PLAN classified the target as `FRESH_APPLY`.
+- [x] Live APPLY completed successfully.
+- [x] All 58 existing canonical Course IDs were preserved.
+- [x] Eleven canonical course titles were corrected.
+- [x] One canonical CurriculumVersion row was created.
+- [x] Three CourseAssessmentTemplate rows were created.
+- [x] Eight AssessmentTemplateComponent rows were created.
+- [x] Fifty-eight CurriculumCourse binding rows were created.
+- [x] Total foundation rows created: 70.
+- [x] Eleven title-correction audit rows were created.
+- [x] One overall backfill audit row was created.
+- [x] `LAW-101` and `LAW-999` remained unchanged.
+- [x] Post-application PLAN returned `EXACT_NOOP`.
+- [x] Repeated APPLY returned `EXACT_NOOP`.
+- [x] No duplicate foundation row was created.
+- [x] No duplicate title audit was created.
+- [x] No duplicate overall audit was created.
+- [x] PM2 PID remained unchanged.
+- [x] PM2 restart count remained unchanged.
+- [x] Direct API health returned HTTP `200`.
+- [x] Nginx-proxied API health returned HTTP `200`.
+- [x] Repository remained clean.
+- [x] Evidence permission and secret scan passed.
+
+### Accurate current status
+
+> The canonical LL.B. 2025–2026 curriculum backfill workflow is implemented and committed. It has been runtime verified against a loopback-only disposable PostgreSQL 18.4 copy, including database-name mismatch rejection, advisory-lock behavior, forced transaction rollback, fresh APPLY and exact idempotent rerun. A validated private backup was created before ordinary-runtime application. The ordinary `lexora_lms` database now contains the canonical curriculum version, three assessment templates, eight assessment components and 58 curriculum-course bindings; the eleven reviewed title corrections were applied while all 58 existing Course IDs and archived historical rows were preserved. Post-application PLAN and APPLY both return exact no-op, and PM2/API/Nginx runtime health remained stable.
+
+### Explicitly pending
+
+This checkpoint does not implement or verify:
+
+- `CourseOffering` to `CurriculumCourse` binding;
+- immutable student curriculum-version assignment;
+- enrollment-to-curriculum binding;
+- historical/irregular-student curriculum coexistence rules;
+- focused review of the current CourseOffering uniqueness constraint;
+- curriculum repository, service, controller, DTO and policy endpoints;
+- object-level authorization tests for future curriculum endpoints;
+- Admin curriculum-management UI;
+- Teacher Course Workspace;
+- `SyllabusVersion`;
+- syllabus approval and publication workflow;
+- curriculum-aware result or transcript recalculation changes;
+- broader multi-department curriculum rollout.
+
+These remaining items must continue module by module with department isolation, policy checks, object-level authorization, audit evidence and focused runtime verification.
