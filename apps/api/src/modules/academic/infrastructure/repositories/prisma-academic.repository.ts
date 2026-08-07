@@ -1,35 +1,238 @@
 import { Injectable } from "@nestjs/common";
 import {
+  AcademicVersionStatus,
   CourseOfferingStatus,
   CourseStatus,
   EnrollmentStatus,
+  Prisma,
 } from "@prisma/client";
 
 import { PrismaService } from "@/common/prisma/prisma.service";
+
 import type {
   AcademicRepositoryPort,
   AcademicTermListFilters,
   AcademicYearListFilters,
+  BindCourseOfferingCurriculumInput,
   CourseListFilters,
-  CreateTeacherAssignmentInput,
+  CourseOfferingListFilters,
   CreateAcademicTermInput,
   CreateAcademicYearInput,
-  CourseOfferingListFilters,
   CreateCourseInput,
   CreateCourseOfferingInput,
   CreateEnrollmentInput,
   CreateProgramInput,
+  CreateTeacherAssignmentInput,
   EnrollmentListFilters,
-  UpdateAcademicTermInput,
-  UpdateAcademicYearInput,
   ProgramListFilters,
   StudentCourseOfferingListFilters,
   TeacherAssignmentListFilters,
+  UpdateAcademicTermInput,
+  UpdateAcademicYearInput,
   UpdateCourseInput,
   UpdateCourseOfferingInput,
   UpdateEnrollmentInput,
   UpdateProgramInput,
 } from "../../application/ports/academic.repository.port";
+import { ACADEMIC_AUDIT_EVENTS } from "../../domain/academic.audit-events";
+
+const courseOfferingInclude = {
+  course: true,
+  academicTerm: true,
+  curriculumCourse: {
+    select: {
+      id: true,
+      categoryCode: true,
+      academicYearNumber: true,
+      semesterNumber: true,
+      displayOrder: true,
+      courseCodeSnapshot: true,
+      courseTitleSnapshot: true,
+      creditHoursSnapshot: true,
+      totalMarksSnapshot: true,
+      isRequired: true,
+      departmentId: true,
+      courseId: true,
+      curriculumVersionId: true,
+      assessmentTemplateId: true,
+      course: {
+        select: {
+          id: true,
+          departmentId: true,
+          academicProgramId: true,
+        },
+      },
+      curriculumVersion: {
+        select: {
+          id: true,
+          departmentId: true,
+          academicProgramId: true,
+          code: true,
+          name: true,
+          status: true,
+          effectiveAcademicSessionCode: true,
+          academicProgram: {
+            select: { id: true, departmentId: true },
+          },
+        },
+      },
+      assessmentTemplate: {
+        select: {
+          id: true,
+          departmentId: true,
+          academicProgramId: true,
+          code: true,
+          versionNumber: true,
+          name: true,
+          status: true,
+          totalMarks: true,
+          academicProgram: {
+            select: { id: true, departmentId: true },
+          },
+        },
+      },
+    },
+  },
+} satisfies Prisma.CourseOfferingInclude;
+
+const BINDABLE_ACADEMIC_VERSION_STATUSES: readonly AcademicVersionStatus[] = [
+  AcademicVersionStatus.DRAFT,
+  AcademicVersionStatus.APPROVED,
+  AcademicVersionStatus.ACTIVE,
+];
+
+interface CourseOfferingReadRecord {
+  id: string;
+  departmentId: string;
+  courseId: string;
+  course: {
+    id: string;
+    departmentId: string;
+    academicProgramId: string | null;
+  };
+  curriculumCourse: null | {
+    id: string;
+    departmentId: string;
+    courseId: string;
+    curriculumVersionId: string;
+    assessmentTemplateId: string;
+    categoryCode: string;
+    academicYearNumber: number;
+    semesterNumber: number;
+    displayOrder: number;
+    courseCodeSnapshot: string;
+    courseTitleSnapshot: string;
+    creditHoursSnapshot: Prisma.Decimal;
+    totalMarksSnapshot: Prisma.Decimal;
+    isRequired: boolean;
+    course: {
+      id: string;
+      departmentId: string;
+      academicProgramId: string | null;
+    };
+    curriculumVersion: {
+      id: string;
+      departmentId: string;
+      academicProgramId: string;
+      code: string;
+      name: string;
+      status: AcademicVersionStatus;
+      effectiveAcademicSessionCode: string;
+      academicProgram: { id: string; departmentId: string };
+    };
+    assessmentTemplate: {
+      id: string;
+      departmentId: string;
+      academicProgramId: string | null;
+      code: string;
+      versionNumber: number;
+      name: string;
+      status: AcademicVersionStatus;
+      totalMarks: Prisma.Decimal;
+      academicProgram: { id: string; departmentId: string } | null;
+    };
+  };
+  [key: string]: unknown;
+}
+
+function sanitizeCourseOfferingRead(
+  value: unknown,
+  departmentId: string,
+): unknown | null {
+  const offering = value as CourseOfferingReadRecord;
+
+  if (
+    offering.departmentId !== departmentId ||
+    offering.course?.id !== offering.courseId ||
+    offering.course.departmentId !== departmentId
+  ) {
+    return null;
+  }
+
+  const curriculumCourse = offering.curriculumCourse;
+  if (!curriculumCourse) {
+    return offering;
+  }
+
+  const version = curriculumCourse.curriculumVersion;
+  const template = curriculumCourse.assessmentTemplate;
+  const academicProgramId = offering.course.academicProgramId;
+  const templateProgramIsValid = template.academicProgramId
+    ? template.academicProgramId === academicProgramId &&
+      template.academicProgram?.id === template.academicProgramId &&
+      template.academicProgram.departmentId === departmentId
+    : template.academicProgram === null;
+
+  if (
+    !academicProgramId ||
+    curriculumCourse.departmentId !== departmentId ||
+    curriculumCourse.courseId !== offering.courseId ||
+    curriculumCourse.course.id !== curriculumCourse.courseId ||
+    curriculumCourse.course.departmentId !== departmentId ||
+    curriculumCourse.course.academicProgramId !== academicProgramId ||
+    version.id !== curriculumCourse.curriculumVersionId ||
+    version.departmentId !== departmentId ||
+    version.academicProgramId !== academicProgramId ||
+    version.academicProgram.id !== version.academicProgramId ||
+    version.academicProgram.departmentId !== departmentId ||
+    template.id !== curriculumCourse.assessmentTemplateId ||
+    template.departmentId !== departmentId ||
+    !templateProgramIsValid
+  ) {
+    return null;
+  }
+
+  return {
+    ...offering,
+    curriculumCourse: {
+      id: curriculumCourse.id,
+      categoryCode: curriculumCourse.categoryCode,
+      academicYearNumber: curriculumCourse.academicYearNumber,
+      semesterNumber: curriculumCourse.semesterNumber,
+      displayOrder: curriculumCourse.displayOrder,
+      courseCodeSnapshot: curriculumCourse.courseCodeSnapshot,
+      courseTitleSnapshot: curriculumCourse.courseTitleSnapshot,
+      creditHoursSnapshot: curriculumCourse.creditHoursSnapshot,
+      totalMarksSnapshot: curriculumCourse.totalMarksSnapshot,
+      isRequired: curriculumCourse.isRequired,
+      curriculumVersion: {
+        id: version.id,
+        code: version.code,
+        name: version.name,
+        status: version.status,
+        effectiveAcademicSessionCode: version.effectiveAcademicSessionCode,
+      },
+      assessmentTemplate: {
+        id: template.id,
+        code: template.code,
+        versionNumber: template.versionNumber,
+        name: template.name,
+        status: template.status,
+        totalMarks: template.totalMarks,
+      },
+    },
+  };
+}
 
 @Injectable()
 export class PrismaAcademicRepository implements AcademicRepositoryPort {
@@ -368,8 +571,8 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
     });
   }
 
-  findCourseOfferings(filters: CourseOfferingListFilters) {
-    return this.prisma.courseOffering.findMany({
+  async findCourseOfferings(filters: CourseOfferingListFilters) {
+    const offerings = await this.prisma.courseOffering.findMany({
       where: {
         departmentId: filters.departmentId,
         archivedAt: null,
@@ -388,13 +591,15 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
             }
           : undefined,
       },
-      include: {
-        course: true,
-        academicTerm: true,
-      },
+      include: courseOfferingInclude,
       orderBy: {
         createdAt: "desc",
       },
+    });
+
+    return offerings.flatMap((offering) => {
+      const safe = sanitizeCourseOfferingRead(offering, filters.departmentId);
+      return safe ? [safe] : [];
     });
   }
 
@@ -531,26 +736,27 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
     });
   }
 
-  findCourseOfferingById(departmentId: string, id: string) {
-    return this.prisma.courseOffering.findFirst({
+  async findCourseOfferingById(departmentId: string, id: string) {
+    const offering = await this.prisma.courseOffering.findFirst({
       where: {
         id,
         departmentId,
         archivedAt: null,
       },
-      include: {
-        course: true,
-        academicTerm: true,
-      },
+      include: courseOfferingInclude,
     });
+
+    return offering
+      ? sanitizeCourseOfferingRead(offering, departmentId)
+      : null;
   }
 
-  findCourseOfferingByIdForTeacher(
+  async findCourseOfferingByIdForTeacher(
     departmentId: string,
     id: string,
     teacherUserId: string,
   ) {
-    return this.prisma.courseOffering.findFirst({
+    const offering = await this.prisma.courseOffering.findFirst({
       where: {
         id,
         departmentId,
@@ -565,15 +771,16 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
           },
         },
       },
-      include: {
-        course: true,
-        academicTerm: true,
-      },
+      include: courseOfferingInclude,
     });
+
+    return offering
+      ? sanitizeCourseOfferingRead(offering, departmentId)
+      : null;
   }
 
-  createCourseOffering(input: CreateCourseOfferingInput) {
-    return this.prisma.courseOffering.create({
+  async createCourseOffering(input: CreateCourseOfferingInput) {
+    const offering = await this.prisma.courseOffering.create({
       data: {
         departmentId: input.departmentId,
         courseId: input.courseId,
@@ -584,11 +791,10 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
         visibilityStartAt: input.visibilityStartAt,
         visibilityEndAt: input.visibilityEndAt,
       },
-      include: {
-        course: true,
-        academicTerm: true,
-      },
+      include: courseOfferingInclude,
     });
+
+    return sanitizeCourseOfferingRead(offering, input.departmentId);
   }
 
   updateCourseOffering(
@@ -610,17 +816,360 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
         return null;
       }
 
-      return tx.courseOffering.findFirst({
+      const offering = await tx.courseOffering.findFirst({
         where: {
           id,
           departmentId,
           archivedAt: null,
         },
-        include: {
-          course: true,
-          academicTerm: true,
+        include: courseOfferingInclude,
+      });
+
+      return offering
+        ? sanitizeCourseOfferingRead(offering, departmentId)
+        : null;
+    });
+  }
+
+  bindCourseOfferingCurriculum(input: BindCourseOfferingCurriculumInput) {
+    return this.prisma.$transaction(async (tx) => {
+      const offering = await tx.courseOffering.findFirst({
+        where: {
+          id: input.courseOfferingId,
+          departmentId: input.departmentId,
+          archivedAt: null,
+        },
+        select: {
+          id: true,
+          departmentId: true,
+          courseId: true,
+          curriculumCourseId: true,
+          course: {
+            select: {
+              id: true,
+              departmentId: true,
+              academicProgramId: true,
+            },
+          },
+          curriculumCourse: {
+            select: {
+              id: true,
+              departmentId: true,
+              courseId: true,
+              curriculumVersionId: true,
+              assessmentTemplateId: true,
+              course: {
+                select: {
+                  id: true,
+                  departmentId: true,
+                  academicProgramId: true,
+                },
+              },
+              curriculumVersion: {
+                select: {
+                  id: true,
+                  departmentId: true,
+                  academicProgramId: true,
+                  academicProgram: {
+                    select: { id: true, departmentId: true },
+                  },
+                },
+              },
+              assessmentTemplate: {
+                select: {
+                  id: true,
+                  departmentId: true,
+                  academicProgramId: true,
+                  academicProgram: {
+                    select: { id: true, departmentId: true },
+                  },
+                },
+              },
+            },
+          },
         },
       });
+
+      if (!offering) {
+        return { outcome: "OFFERING_NOT_FOUND" } as const;
+      }
+
+      if (offering.curriculumCourseId) {
+        if (offering.curriculumCourseId !== input.curriculumCourseId) {
+          return { outcome: "BINDING_CONFLICT" } as const;
+        }
+
+        const current = offering.curriculumCourse;
+        const academicProgramId = offering.course.academicProgramId;
+        const templateProgramIsValid = current?.assessmentTemplate
+          .academicProgramId
+          ? current.assessmentTemplate.academicProgramId ===
+              academicProgramId &&
+            current.assessmentTemplate.academicProgram?.id ===
+              current.assessmentTemplate.academicProgramId &&
+            current.assessmentTemplate.academicProgram.departmentId ===
+              input.departmentId
+          : current?.assessmentTemplate.academicProgram === null;
+        if (
+          !academicProgramId ||
+          offering.departmentId !== input.departmentId ||
+          offering.course.id !== offering.courseId ||
+          offering.course.departmentId !== input.departmentId ||
+          !current ||
+          current.id !== offering.curriculumCourseId ||
+          current.departmentId !== input.departmentId ||
+          current.courseId !== offering.courseId ||
+          current.course.id !== current.courseId ||
+          current.course.departmentId !== input.departmentId ||
+          current.course.academicProgramId !== academicProgramId ||
+          current.curriculumVersion.id !== current.curriculumVersionId ||
+          current.curriculumVersion.departmentId !== input.departmentId ||
+          current.curriculumVersion.academicProgramId !== academicProgramId ||
+          current.curriculumVersion.academicProgram.id !== academicProgramId ||
+          current.curriculumVersion.academicProgram.departmentId !==
+            input.departmentId ||
+          current.assessmentTemplate.id !== current.assessmentTemplateId ||
+          current.assessmentTemplate.departmentId !== input.departmentId ||
+          !templateProgramIsValid
+        ) {
+          return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+        }
+
+        const existing = await tx.courseOffering.findFirst({
+          where: {
+            id: offering.id,
+            departmentId: input.departmentId,
+            archivedAt: null,
+          },
+          include: courseOfferingInclude,
+        });
+
+        if (!existing) {
+          return { outcome: "OFFERING_NOT_FOUND" } as const;
+        }
+
+        const safeExisting = sanitizeCourseOfferingRead(
+          existing,
+          input.departmentId,
+        );
+
+        return safeExisting
+          ? ({ outcome: "ALREADY_BOUND", offering: safeExisting } as const)
+          : ({ outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const);
+      }
+
+      if (
+        offering.departmentId !== input.departmentId ||
+        offering.course.id !== offering.courseId ||
+        offering.course.departmentId !== input.departmentId
+      ) {
+        return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+      }
+
+      const curriculumCourse = await tx.curriculumCourse.findFirst({
+        where: {
+          id: input.curriculumCourseId,
+          departmentId: input.departmentId,
+        },
+        select: {
+          id: true,
+          departmentId: true,
+          courseId: true,
+          curriculumVersionId: true,
+          assessmentTemplateId: true,
+          course: {
+            select: {
+              id: true,
+              departmentId: true,
+              academicProgramId: true,
+            },
+          },
+          curriculumVersion: {
+            select: {
+              id: true,
+              departmentId: true,
+              status: true,
+              archivedAt: true,
+              academicProgramId: true,
+              academicProgram: {
+                select: { id: true, departmentId: true },
+              },
+            },
+          },
+          assessmentTemplate: {
+            select: {
+              id: true,
+              departmentId: true,
+              status: true,
+              archivedAt: true,
+              academicProgramId: true,
+              academicProgram: {
+                select: { id: true, departmentId: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!curriculumCourse) {
+        return { outcome: "CURRICULUM_COURSE_NOT_FOUND" } as const;
+      }
+
+      const academicProgramId = offering.course.academicProgramId;
+      const templateProgramIsValid = curriculumCourse.assessmentTemplate
+        .academicProgramId
+        ? curriculumCourse.assessmentTemplate.academicProgramId ===
+            academicProgramId &&
+          curriculumCourse.assessmentTemplate.academicProgram?.id ===
+            curriculumCourse.assessmentTemplate.academicProgramId &&
+          curriculumCourse.assessmentTemplate.academicProgram.departmentId ===
+            input.departmentId
+        : curriculumCourse.assessmentTemplate.academicProgram === null;
+
+      if (
+        !academicProgramId ||
+        curriculumCourse.departmentId !== input.departmentId ||
+        curriculumCourse.course.id !== curriculumCourse.courseId ||
+        curriculumCourse.course.departmentId !== input.departmentId ||
+        curriculumCourse.course.academicProgramId !== academicProgramId ||
+        curriculumCourse.curriculumVersion.id !==
+          curriculumCourse.curriculumVersionId ||
+        curriculumCourse.curriculumVersion.departmentId !==
+          input.departmentId ||
+        curriculumCourse.curriculumVersion.academicProgramId !==
+          academicProgramId ||
+        curriculumCourse.curriculumVersion.academicProgram.id !==
+          academicProgramId ||
+        curriculumCourse.curriculumVersion.academicProgram.departmentId !==
+          input.departmentId ||
+        curriculumCourse.assessmentTemplate.id !==
+          curriculumCourse.assessmentTemplateId ||
+        curriculumCourse.assessmentTemplate.departmentId !==
+          input.departmentId ||
+        !templateProgramIsValid
+      ) {
+        return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+      }
+
+      if (curriculumCourse.courseId !== offering.courseId) {
+        return { outcome: "COURSE_MISMATCH" } as const;
+      }
+
+      if (
+        curriculumCourse.curriculumVersion.archivedAt ||
+        !BINDABLE_ACADEMIC_VERSION_STATUSES.includes(
+          curriculumCourse.curriculumVersion.status,
+        )
+      ) {
+        return { outcome: "INACTIVE_CURRICULUM_VERSION" } as const;
+      }
+
+      if (
+        curriculumCourse.assessmentTemplate.archivedAt ||
+        !BINDABLE_ACADEMIC_VERSION_STATUSES.includes(
+          curriculumCourse.assessmentTemplate.status,
+        )
+      ) {
+        return { outcome: "INACTIVE_ASSESSMENT_TEMPLATE" } as const;
+      }
+
+      const updated = await tx.courseOffering.updateMany({
+        where: {
+          id: offering.id,
+          departmentId: input.departmentId,
+          archivedAt: null,
+          curriculumCourseId: null,
+        },
+        data: { curriculumCourseId: curriculumCourse.id },
+      });
+
+      if (updated.count === 0) {
+        const concurrent = await tx.courseOffering.findFirst({
+          where: {
+            id: offering.id,
+            departmentId: input.departmentId,
+            archivedAt: null,
+          },
+          select: { curriculumCourseId: true },
+        });
+
+        if (!concurrent) {
+          return { outcome: "OFFERING_NOT_FOUND" } as const;
+        }
+
+        if (concurrent.curriculumCourseId !== curriculumCourse.id) {
+          return { outcome: "BINDING_CONFLICT" } as const;
+        }
+
+        const existing = await tx.courseOffering.findFirst({
+          where: {
+            id: offering.id,
+            departmentId: input.departmentId,
+            archivedAt: null,
+          },
+          include: courseOfferingInclude,
+        });
+
+        if (!existing) {
+          return { outcome: "OFFERING_NOT_FOUND" } as const;
+        }
+
+        const safeExisting = sanitizeCourseOfferingRead(
+          existing,
+          input.departmentId,
+        );
+
+        return safeExisting
+          ? ({ outcome: "ALREADY_BOUND", offering: safeExisting } as const)
+          : ({ outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const);
+      }
+
+      await tx.auditLog.create({
+        data: {
+          requestId: input.requestId,
+          actorUserId: input.actorUserId,
+          actorType: "USER",
+          departmentId: input.departmentId,
+          action: ACADEMIC_AUDIT_EVENTS.OFFERING_CURRICULUM_BOUND,
+          targetType: "course_offering",
+          targetId: offering.id,
+          outcome: "SUCCESS",
+          ipAddress: input.ipAddress,
+          userAgent: input.userAgent,
+          contextJson: {
+            courseOfferingId: offering.id,
+            curriculumCourseId: curriculumCourse.id,
+            curriculumVersionId: curriculumCourse.curriculumVersionId,
+            assessmentTemplateId: curriculumCourse.assessmentTemplateId,
+            courseId: offering.courseId,
+            previousBindingValue: null,
+            newBindingValue: curriculumCourse.id,
+            curriculumVersionStatus:
+              curriculumCourse.curriculumVersion.status,
+            assessmentTemplateStatus:
+              curriculumCourse.assessmentTemplate.status,
+          },
+        },
+      });
+
+      const bound = await tx.courseOffering.findFirst({
+        where: {
+          id: offering.id,
+          departmentId: input.departmentId,
+          archivedAt: null,
+        },
+        include: courseOfferingInclude,
+      });
+
+      const safeBound = bound
+        ? sanitizeCourseOfferingRead(bound, input.departmentId)
+        : null;
+
+      if (!safeBound) {
+        throw new Error("BOUND_COURSE_OFFERING_NOT_FOUND");
+      }
+
+      return { outcome: "BOUND", offering: safeBound } as const;
     });
   }
 

@@ -786,6 +786,7 @@ model CurriculumCourse {
   curriculumVersion    CurriculumVersion        @relation(fields: [curriculumVersionId], references: [id], onDelete: Restrict)
   course               Course                   @relation(fields: [courseId], references: [id], onDelete: Restrict)
   assessmentTemplate   CourseAssessmentTemplate @relation(fields: [assessmentTemplateId], references: [id], onDelete: Restrict)
+  courseOfferings      CourseOffering[]
 
   @@unique([curriculumVersionId, courseId], map: "curriculum_course_version_course_uq")
   @@unique([curriculumVersionId, academicYearNumber, semesterNumber, displayOrder], map: "curriculum_course_version_term_order_uq")
@@ -801,6 +802,7 @@ model CourseOffering {
   departmentId            String                    @map("department_id")
   courseId                String                    @map("course_id")
   academicTermId          String                    @map("academic_term_id")
+  curriculumCourseId      String?                   @map("curriculum_course_id")
   sectionCode             String                    @map("section_code")
   capacity                Int?
   status                  CourseOfferingStatus      @default(PLANNED)
@@ -812,6 +814,7 @@ model CourseOffering {
   department              Department                @relation(fields: [departmentId], references: [id])
   course                  Course                    @relation(fields: [courseId], references: [id])
   academicTerm            AcademicTerm              @relation(fields: [academicTermId], references: [id])
+  curriculumCourse        CurriculumCourse?         @relation(fields: [curriculumCourseId], references: [id], onDelete: Restrict)
   teacherAssignments      TeacherCourseAssignment[]
   enrollments             Enrollment[]
   classSessions           ClassSession[]
@@ -829,6 +832,7 @@ model CourseOffering {
   @@index([departmentId])
   @@index([courseId])
   @@index([academicTermId])
+  @@index([departmentId, curriculumCourseId], map: "course_offering_dept_curriculum_course_idx")
   @@map("course_offerings")
 }
 

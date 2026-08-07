@@ -1,10 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Put, Query, UseGuards } from "@nestjs/common";
 
 import { RequirePolicy } from "@/modules/authorization/decorators/require-policy.decorator";
 import { AuthGuard } from "@/modules/authorization/guards/auth.guard";
 import { PolicyGuard } from "@/modules/authorization/guards/policy.guard";
+
 import { AcademicService } from "../../application/services/academic.service";
 import { ACADEMIC_POLICY_NAMES } from "../../domain/academic.policy-names";
+import { BindCourseOfferingCurriculumDto } from "../dto/bind-course-offering-curriculum.dto";
 import { CreateCourseOfferingDto } from "../dto/create-course-offering.dto";
 import { CreateTeacherAssignmentDto } from "../dto/create-teacher-assignment.dto";
 import { ListCourseOfferingsQueryDto } from "../dto/list-course-offerings-query.dto";
@@ -48,6 +50,18 @@ export class CourseOfferingsController {
   @RequirePolicy(ACADEMIC_POLICY_NAMES.OFFERING_MANAGE)
   update(@Param() params: ResourceIdParamDto, @Body() body: UpdateCourseOfferingDto) {
     return this.academicService.updateCourseOffering(params.id, body);
+  }
+
+  @Put(":id/curriculum-binding")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.CURRICULUM_BINDING_MANAGE)
+  bindCurriculum(
+    @Param() params: ResourceIdParamDto,
+    @Body() body: BindCourseOfferingCurriculumDto,
+  ) {
+    return this.academicService.bindCourseOfferingCurriculum(
+      params.id,
+      body.curriculumCourseId,
+    );
   }
 
   @Post(":id/teacher-assignments")

@@ -175,6 +175,29 @@ export interface UpdateCourseOfferingInput {
   visibilityEndAt?: Date | null;
 }
 
+export interface BindCourseOfferingCurriculumInput {
+  departmentId: string;
+  courseOfferingId: string;
+  curriculumCourseId: string;
+  actorUserId: string;
+  requestId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export type BindCourseOfferingCurriculumResult =
+  | { outcome: "BOUND" | "ALREADY_BOUND"; offering: unknown }
+  | {
+      outcome:
+        | "OFFERING_NOT_FOUND"
+        | "CURRICULUM_COURSE_NOT_FOUND"
+        | "DEPENDENCY_SCOPE_MISMATCH"
+        | "COURSE_MISMATCH"
+        | "INACTIVE_CURRICULUM_VERSION"
+        | "INACTIVE_ASSESSMENT_TEMPLATE"
+        | "BINDING_CONFLICT";
+    };
+
 export interface CreateEnrollmentInput {
   departmentId: string;
   academicTermId: string;
@@ -259,6 +282,9 @@ export interface AcademicRepositoryPort {
     id: string,
     input: UpdateCourseOfferingInput,
   ): Promise<unknown | null>;
+  bindCourseOfferingCurriculum(
+    input: BindCourseOfferingCurriculumInput,
+  ): Promise<BindCourseOfferingCurriculumResult>;
   findTeacherAssignments(
     filters: TeacherAssignmentListFilters,
   ): Promise<unknown[]>;

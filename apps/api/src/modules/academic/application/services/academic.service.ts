@@ -19,6 +19,9 @@ import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 import { PrismaService } from "@/common/prisma/prisma.service";
 import { RequestContextService } from "@/common/request-context/request-context.service";
+
+import { ACADEMIC_AUDIT_EVENTS } from "../../domain/academic.audit-events";
+import { ACADEMIC_REPOSITORY } from "../../domain/academic.constants";
 import type {
   AcademicRepositoryPort,
   AcademicTermListFilters,
@@ -33,17 +36,15 @@ import type {
   CreateProgramInput,
   CreateTeacherAssignmentInput,
   EnrollmentListFilters,
+  ProgramListFilters,
   StudentCourseOfferingListFilters,
   UpdateAcademicTermInput,
   UpdateAcademicYearInput,
-  ProgramListFilters,
   UpdateCourseInput,
   UpdateCourseOfferingInput,
   UpdateEnrollmentInput,
   UpdateProgramInput,
 } from "../ports/academic.repository.port";
-import { ACADEMIC_REPOSITORY } from "../../domain/academic.constants";
-import { ACADEMIC_AUDIT_EVENTS } from "../../domain/academic.audit-events";
 
 interface AuditMetadata {
   [key: string]: unknown;
@@ -562,6 +563,51 @@ export class AcademicService {
     }
   }
 
+  async bindCourseOfferingCurriculum(
+    courseOfferingId: string,
+    curriculumCourseId: string,
+  ) {
+    const departmentId = await this.assertDepartmentAdminCanBindCurriculum();
+    const requestContext = this.requestContextService.get();
+    const result = await this.repository.bindCourseOfferingCurriculum({
+      departmentId,
+      courseOfferingId,
+      curriculumCourseId,
+      actorUserId: this.getActorId(),
+      requestId: requestContext?.requestId,
+      ipAddress: requestContext?.audit.ipAddress,
+      userAgent: requestContext?.audit.userAgent,
+    });
+
+    switch (result.outcome) {
+      case "BOUND":
+      case "ALREADY_BOUND":
+        return result.offering;
+      case "OFFERING_NOT_FOUND":
+        throw new NotFoundException("Course offering not found");
+      case "CURRICULUM_COURSE_NOT_FOUND":
+        throw new NotFoundException("Curriculum course not found");
+      case "DEPENDENCY_SCOPE_MISMATCH":
+        throw new NotFoundException("Curriculum binding dependency not found");
+      case "COURSE_MISMATCH":
+        throw new BadRequestException(
+          "Curriculum course does not match the course offering",
+        );
+      case "INACTIVE_CURRICULUM_VERSION":
+        throw new BadRequestException(
+          "Curriculum version is not available for binding",
+        );
+      case "INACTIVE_ASSESSMENT_TEMPLATE":
+        throw new BadRequestException(
+          "Assessment template is not available for binding",
+        );
+      case "BINDING_CONFLICT":
+        throw new ConflictException(
+          "Course offering is already bound to a different curriculum course",
+        );
+    }
+  }
+
   async assignTeacherToCourseOffering(
     courseOfferingId: string,
     input: Omit<
@@ -1006,6 +1052,48 @@ export class AcademicService {
 
     if (!department) {
       throw new BadRequestException("Active department context is required");
+    }
+
+    return departmentId;
+  }
+
+  private async assertDepartmentAdminCanBindCurriculum() {
+    const departmentId = this.getDepartmentId();
+    const actorId = this.getActorId();
+    const now = new Date();
+    const actor = await this.prisma.user.findFirst({
+      where: {
+        id: actorId,
+        departmentId,
+        status: UserStatus.ACTIVE,
+        archivedAt: null,
+        deletedAt: null,
+        department: {
+          id: departmentId,
+          status: DepartmentStatus.ACTIVE,
+          archivedAt: null,
+          deletedAt: null,
+        },
+        userRoles: {
+          some: {
+            departmentId,
+            revokedAt: null,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+            role: {
+              code: "department_admin",
+              departmentId,
+              archivedAt: null,
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!actor) {
+      throw new ForbiddenException(
+        "Only active department admins can manage curriculum bindings",
+      );
     }
 
     return departmentId;
