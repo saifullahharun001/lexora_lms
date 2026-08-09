@@ -26,6 +26,8 @@ apps/api/prisma/migrations/*
 !apps/api/prisma/migrations/202608070001_add_course_offering_curriculum_binding/migration.sql
 !apps/api/prisma/migrations/202608090001_add_student_curriculum_assignment/
 !apps/api/prisma/migrations/202608090001_add_student_curriculum_assignment/migration.sql
+!apps/api/prisma/migrations/202608090002_add_enrollment_curriculum_binding_foundation/
+!apps/api/prisma/migrations/202608090002_add_enrollment_curriculum_binding_foundation/migration.sql
 *.log
 
 

@@ -739,6 +739,7 @@ model StudentCurriculumAssignment {
   academicProgram     AcademicProgram   @relation(fields: [academicProgramId], references: [id], onDelete: Restrict)
   curriculumVersion   CurriculumVersion @relation(fields: [curriculumVersionId], references: [id], onDelete: Restrict)
   assignedByUser      User              @relation("CurriculumAssignmentsAssignedBy", fields: [assignedByUserId], references: [id], onDelete: Restrict)
+  enrollments         Enrollment[]
 
   @@unique([departmentId, studentUserId, academicProgramId], map: "student_curriculum_assignment_dept_student_program_uq")
   @@index([departmentId, curriculumVersionId], map: "student_curriculum_assignment_dept_version_idx")
@@ -816,6 +817,7 @@ model CurriculumCourse {
   course               Course                   @relation(fields: [courseId], references: [id], onDelete: Restrict)
   assessmentTemplate   CourseAssessmentTemplate @relation(fields: [assessmentTemplateId], references: [id], onDelete: Restrict)
   courseOfferings      CourseOffering[]
+  enrollments          Enrollment[]
 
   @@unique([curriculumVersionId, courseId], map: "curriculum_course_version_course_uq")
   @@unique([curriculumVersionId, academicYearNumber, semesterNumber, displayOrder], map: "curriculum_course_version_term_order_uq")
@@ -889,35 +891,41 @@ model TeacherCourseAssignment {
 }
 
 model Enrollment {
-  id                      String                 @id @default(cuid())
-  departmentId            String                 @map("department_id")
-  academicTermId          String                 @map("academic_term_id")
-  courseOfferingId        String                 @map("course_offering_id")
-  studentUserId           String                 @map("student_user_id")
-  approvedByUserId        String?                @map("approved_by_user_id")
-  sourceType              EnrollmentSourceType   @default(ADMIN) @map("source_type")
-  status                  EnrollmentStatus       @default(PENDING)
-  eligibilityStatus       EligibilityStatus      @default(PENDING_REVIEW) @map("eligibility_status")
-  eligibilitySnapshotJson Json?                  @map("eligibility_snapshot_json")
-  enrolledAt              DateTime?              @map("enrolled_at")
-  droppedAt               DateTime?              @map("dropped_at")
-  archivedAt              DateTime?              @map("archived_at")
-  createdAt               DateTime               @default(now()) @map("created_at")
-  updatedAt               DateTime               @updatedAt @map("updated_at")
-  department              Department             @relation(fields: [departmentId], references: [id])
-  academicTerm            AcademicTerm           @relation(fields: [academicTermId], references: [id])
-  courseOffering          CourseOffering         @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
-  studentUser             User                   @relation("StudentEnrollments", fields: [studentUserId], references: [id])
-  approvedByUser          User?                  @relation("EnrollmentApprovedBy", fields: [approvedByUserId], references: [id])
-  attendanceRecords       AttendanceRecord[]
-  assignmentSubmissions   AssignmentSubmission[]
-  quizAttempts            QuizAttempt[]
-  resultRecords           ResultRecord[]
+  id                            String                       @id @default(cuid())
+  departmentId                  String                       @map("department_id")
+  academicTermId                String                       @map("academic_term_id")
+  courseOfferingId              String                       @map("course_offering_id")
+  studentUserId                 String                       @map("student_user_id")
+  studentCurriculumAssignmentId String?                      @map("student_curriculum_assignment_id")
+  curriculumCourseId            String?                      @map("curriculum_course_id")
+  approvedByUserId              String?                      @map("approved_by_user_id")
+  sourceType                    EnrollmentSourceType         @default(ADMIN) @map("source_type")
+  status                        EnrollmentStatus             @default(PENDING)
+  eligibilityStatus             EligibilityStatus            @default(PENDING_REVIEW) @map("eligibility_status")
+  eligibilitySnapshotJson       Json?                        @map("eligibility_snapshot_json")
+  enrolledAt                    DateTime?                    @map("enrolled_at")
+  droppedAt                     DateTime?                    @map("dropped_at")
+  archivedAt                    DateTime?                    @map("archived_at")
+  createdAt                     DateTime                     @default(now()) @map("created_at")
+  updatedAt                     DateTime                     @updatedAt @map("updated_at")
+  department                    Department                   @relation(fields: [departmentId], references: [id])
+  academicTerm                  AcademicTerm                 @relation(fields: [academicTermId], references: [id])
+  courseOffering                CourseOffering               @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
+  studentUser                   User                         @relation("StudentEnrollments", fields: [studentUserId], references: [id])
+  studentCurriculumAssignment   StudentCurriculumAssignment? @relation(fields: [studentCurriculumAssignmentId], references: [id], onDelete: Restrict, map: "enrollment_student_curriculum_assignment_fk")
+  curriculumCourse              CurriculumCourse?            @relation(fields: [curriculumCourseId], references: [id], onDelete: Restrict, map: "enrollment_curriculum_course_fk")
+  approvedByUser                User?                        @relation("EnrollmentApprovedBy", fields: [approvedByUserId], references: [id])
+  attendanceRecords             AttendanceRecord[]
+  assignmentSubmissions         AssignmentSubmission[]
+  quizAttempts                  QuizAttempt[]
+  resultRecords                 ResultRecord[]
 
   @@unique([courseOfferingId, studentUserId])
   @@index([departmentId])
   @@index([academicTermId])
   @@index([studentUserId])
+  @@index([departmentId, studentCurriculumAssignmentId], map: "enrollment_dept_student_curriculum_idx")
+  @@index([departmentId, curriculumCourseId], map: "enrollment_dept_curriculum_course_idx")
   @@map("enrollments")
 }
 
