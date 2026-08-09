@@ -12879,3 +12879,315 @@ This checkpoint does not implement or verify:
 Binding one canonical CourseOffering does not mean all current or future CourseOfferings are automatically curriculum-bound.
 
 The remaining curriculum work must continue module by module with department isolation, object-level authorization, audit evidence, immutable academic-history rules and focused runtime verification.
+
+## Student Curriculum Assignment Schema Foundation Runtime Verification — 2026-08-09
+
+### Supersession and classification
+
+This checkpoint supersedes only earlier statements that the schema foundation for immutable student curriculum-version assignment was still pending.
+
+It does **not** supersede or complete the remaining student-curriculum application workflow.
+
+Current verified classification:
+
+- `StudentCurriculumAssignment` schema foundation implemented;
+- implementation independently reviewed;
+- implementation committed and pushed;
+- focused schema tests passed;
+- Prisma schema validation and Client generation passed;
+- API typecheck and build passed;
+- additive migration verified against loopback-only disposable PostgreSQL 16;
+- additive migration deployed to the ordinary `lexora_lms` database;
+- live PostgreSQL migration history and catalog verified;
+- existing Enrollment and CourseOffering schema behavior preserved;
+- existing selected academic/business row counts preserved;
+- no student curriculum assignment row was automatically created;
+- PM2/API/Nginx runtime health verified after controlled restart;
+- API listener remained loopback-only;
+- student curriculum-assignment API remains pending;
+- enrollment-to-curriculum binding remains pending.
+
+### Implementation commit
+
+Implementation commit:
+
+`532c7df6b98b2f7e4ec6e2c07bc662463bda77d3`
+
+Commit message:
+
+`Add student curriculum assignment foundation`
+
+Migration:
+
+`202608090001_add_student_curriculum_assignment`
+
+### Schema foundation
+
+The new `StudentCurriculumAssignment` model records a student's programme-level curriculum identity.
+
+Verified fields:
+
+- `id`
+- `departmentId`
+- `studentUserId`
+- `academicProgramId`
+- `curriculumVersionId`
+- `assignedByUserId`
+- `assignedAt`
+- `createdAt`
+
+The model intentionally has no `updatedAt` field.
+
+Verified relations:
+
+- Department
+- Student User
+- AcademicProgram
+- CurriculumVersion
+- assigning User
+
+All five academic-history foreign keys use restrictive delete behavior.
+
+Verified uniqueness:
+
+`departmentId + studentUserId + academicProgramId`
+
+This prevents multiple curriculum-assignment rows for the same student/programme within a department.
+
+Important limitation:
+
+The current foundation is immutable by domain design and schema shape, but the database does not use a trigger that physically prohibits every SQL `UPDATE`. No generic curriculum-assignment update API or repository workflow exists. Any future exceptional curriculum migration/reassignment must be designed as a separate, explicitly authorised and audited workflow.
+
+### Focused static verification
+
+Focused schema test file:
+
+`apps/api/prisma/student-curriculum-assignment.schema.test.ts`
+
+Actual focused test result:
+
+- tests: `5`
+- passed: `5`
+- failed: `0`
+- skipped: `0`
+
+Verified test coverage includes:
+
+- required mapped scalar fields;
+- absence of `updatedAt`;
+- exact student/programme uniqueness;
+- five restrictive academic-history dependencies;
+- exact mapped identifier names;
+- no Enrollment migration alteration;
+- no CourseOffering migration or uniqueness alteration;
+- preservation of existing CourseOffering curriculum-binding schema;
+- documented future assignment authorization/lifecycle requirements.
+
+Server-side verification also passed:
+
+- Prisma validate;
+- Prisma generate;
+- API typecheck;
+- API build.
+
+### Disposable PostgreSQL 16 migration verification
+
+The migration was tested before ordinary deployment using:
+
+- image: `postgres:16-alpine`;
+- loopback-only random host port;
+- no persistent Docker volume;
+- temporary generated database credentials;
+- detached temporary Git worktree at the implementation commit;
+- exact pre-implementation Prisma schema as baseline;
+- no ordinary `lexora_lms` database access.
+
+Verified disposable-database results:
+
+- [x] Target Prisma schema validated.
+- [x] Exact baseline schema initialized successfully.
+- [x] `student_curriculum_assignments` did not exist before migration.
+- [x] Migration applied successfully.
+- [x] Exactly one new public table was added.
+- [x] Assignment table contains 8 columns.
+- [x] All 8 columns are NOT NULL.
+- [x] Exactly 2 database defaults exist.
+- [x] `updated_at` is absent.
+- [x] `assigned_at` and `created_at` use `TIMESTAMP(3)`.
+- [x] Four indexes including the primary-key index exist.
+- [x] Exact student/programme unique index verified.
+- [x] Five foreign keys exist.
+- [x] All five foreign keys use `ON DELETE RESTRICT`.
+- [x] All five foreign keys use `ON UPDATE CASCADE`.
+- [x] Exact foreign-key targets verified.
+- [x] PostgreSQL identifier truncation did not occur.
+- [x] Enrollment catalog fingerprint was unchanged.
+- [x] CourseOffering catalog fingerprint was unchanged.
+- [x] A second direct application of the migration failed safely.
+- [x] The assignment table remained singular after the failed second application.
+- [x] Foreign-key count remained exactly five.
+- [x] Prisma database-to-datamodel drift check reported no difference.
+- [x] Existing PM2 process remained unchanged during disposable verification.
+- [x] Direct API health remained HTTP `200`.
+- [x] Nginx-proxied API health remained HTTP `200`.
+- [x] Ordinary `lexora_lms` database was not accessed.
+- [x] Temporary container/worktree artifacts were cleaned automatically.
+
+### Verification-script notes
+
+Two verification-environment issues were encountered before the successful clean disposable run:
+
+1. Docker administration under `sh002` correctly required `sudo`; `sh002` was not added to the `docker` group. The existing Docker socket security boundary was preserved.
+2. An initial catalog-fingerprint helper needed an explicit `pg_constraint.contype::text` cast because PostgreSQL reported an ambiguous `text || "char"` concatenation operator.
+
+Neither issue required a Lexora schema/code change, and neither affected the ordinary runtime database.
+
+### Ordinary runtime migration deployment
+
+Before ordinary migration application:
+
+- server repository was clean;
+- server source was fast-forwarded to implementation commit `532c7df6b98b2f7e4ec6e2c07bc662463bda77d3`;
+- Prisma validate/generate passed on server;
+- API typecheck/build passed on server;
+- focused schema tests passed `5/5`;
+- ordinary database identity was explicitly confirmed as `lexora_lms`;
+- target assignment table was absent;
+- target migration record was absent;
+- Prisma reported the target migration as pending.
+
+The non-zero exit from `prisma migrate status` while the migration was pending was treated as an expected pre-deployment condition. The first deployment script stopped before `migrate deploy`; the retained backup and clean pending state were revalidated before deployment continued.
+
+### Validated private backup
+
+A private PostgreSQL custom-format backup was created before ordinary migration application.
+
+Backup path:
+
+`/home/sh002/lexora-private-backups/lexora_lms-before-202608090001_add_student_curriculum_assignment-20260809T144110Z.dump`
+
+SHA-256:
+
+`2d396d5b6fd381dc2895c0785d06fc7ccce490bc3a29abdca815592e98f03741`
+
+Verified backup properties:
+
+- archive passed `pg_restore --list`;
+- backup file mode: `0600`;
+- backup directory mode: `0700`;
+- no database credentials were printed or documented.
+
+### Ordinary pre-migration business counts
+
+Selected ordinary-runtime counts captured immediately before migration:
+
+| Table | Count |
+|---|---:|
+| `academic_programs` | 2 |
+| `assessment_template_components` | 8 |
+| `course_assessment_templates` | 3 |
+| `course_offerings` | 9 |
+| `courses` | 61 |
+| `curriculum_courses` | 58 |
+| `curriculum_versions` | 1 |
+| `enrollments` | 10 |
+| `result_records` | 1 |
+| `transcript_records` | 1 |
+| `users` | 11 |
+
+### Ordinary migration result
+
+Prisma successfully applied:
+
+`202608090001_add_student_curriculum_assignment`
+
+Post-deployment Prisma migration status:
+
+`Database schema is up to date!`
+
+Migration-history verification:
+
+- completed records: `1`;
+- rolled-back records: `0`;
+- incomplete records: `0`.
+
+### Live ordinary PostgreSQL catalog verification
+
+Verified live catalog:
+
+- [x] `student_curriculum_assignments` exists exactly once.
+- [x] Table contains 8 columns.
+- [x] `updated_at` is absent.
+- [x] Four indexes including the primary key exist.
+- [x] Five foreign keys exist.
+- [x] All five foreign keys use restrictive delete behavior.
+- [x] Exact student/programme uniqueness is:
+  `department_id + student_user_id + academic_program_id`.
+- [x] Automatic student curriculum-assignment rows created: `0`.
+- [x] Selected pre-existing academic/business counts remained unchanged.
+- [x] Prisma database-to-datamodel drift check reported no difference.
+
+### Runtime non-disruption verification
+
+Controlled API restart result:
+
+- PM2 PID before: `1844`;
+- PM2 PID after: `29449`;
+- API health restored on retry attempt `2`;
+- direct API health: HTTP `200`;
+- Nginx-proxied API health: HTTP `200`;
+- NestJS API port `4000` remained bound to loopback only;
+- repository remained clean;
+- local `main` and `origin/main` remained aligned.
+
+### Accurate current status
+
+> The immutable student curriculum-assignment **schema foundation** is implemented, independently reviewed, committed, disposable-PostgreSQL verified, deployed to the ordinary `lexora_lms` database and runtime verified. The ordinary database now contains the empty `student_curriculum_assignments` table with the reviewed unique and restrictive foreign-key constraints. No student has been automatically assigned to a curriculum version. No assignment API, generic update workflow, enrollment curriculum binding or curriculum reassignment workflow has been implemented.
+
+### Explicitly pending
+
+This checkpoint does not implement or verify:
+
+- Department-Admin-controlled initial student curriculum assignment API;
+- assignment-specific policy/controller/DTO/service/repository behavior;
+- object-level assignment authorization;
+- principal-department enforcement for assignment writes;
+- active Student-role verification before assignment;
+- CurriculumVersion lifecycle enforcement for assignment;
+- enforcement that only `APPROVED` or `ACTIVE` curriculum versions may be assigned;
+- rejection of `DRAFT`, `RETIRED` and `ARCHIVED` versions for operational student assignment;
+- assignment audit event and audit-context verification;
+- idempotent same-target initial assignment behavior;
+- conflict behavior for a different curriculum target;
+- enrollment-to-student-curriculum-assignment binding;
+- Enrollment to exact `CurriculumCourse` binding;
+- old/new curriculum CourseOffering coexistence;
+- focused replacement/review of the current CourseOffering uniqueness constraint;
+- irregular/failed/retake/improvement curriculum rules;
+- earlier-syllabus candidate handling;
+- curriculum-aware student available/eligible offering discovery;
+- curriculum-aware result or transcript recalculation;
+- broader curriculum-management UI/API work.
+
+### Next safe step
+
+The next implementation checkpoint should be the narrow, Department-Admin-controlled **initial StudentCurriculumAssignment API**.
+
+Before implementation, preserve these rules:
+
+1. authenticated principal department scope is authoritative;
+2. `x-department-id` must never override the principal's real department;
+3. only a suitably authorised Department Admin may create an initial assignment;
+4. the target user must belong to the same department;
+5. the target user must hold an active department-scoped Student role;
+6. the AcademicProgram must belong to the same department;
+7. the CurriculumVersion must belong to the same department and exact AcademicProgram;
+8. only `APPROVED` or `ACTIVE` CurriculumVersion records may be assigned operationally;
+9. `DRAFT`, `RETIRED` and `ARCHIVED` versions must fail closed;
+10. first assignment is create-once;
+11. same-target retry should be idempotent;
+12. a different-target retry must conflict rather than silently rewrite history;
+13. successful initial assignment must emit a department-scoped audit record;
+14. cross-department and direct-object access must use safe not-found behavior where appropriate;
+15. no generic curriculum-assignment update endpoint should be created;
+16. Enrollment integration remains a separate later checkpoint.
