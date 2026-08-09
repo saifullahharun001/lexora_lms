@@ -429,6 +429,7 @@ model Department {
   academicPrograms             AcademicProgram[]
   curriculumVersions           CurriculumVersion[]
   curriculumCourses            CurriculumCourse[]
+  studentCurriculumAssignments StudentCurriculumAssignment[]
   courseAssessmentTemplates    CourseAssessmentTemplate[]
   assessmentTemplateComponents AssessmentTemplateComponent[]
   academicYears                AcademicYear[]
@@ -506,6 +507,8 @@ model User {
   teachingAssignments                TeacherCourseAssignment[]     @relation("TeacherAssignments")
   studentEnrollments                 Enrollment[]                  @relation("StudentEnrollments")
   enrollmentApprovals                Enrollment[]                  @relation("EnrollmentApprovedBy")
+  studentCurriculumAssignments       StudentCurriculumAssignment[] @relation("StudentCurriculumAssignments")
+  curriculumAssignmentsAssigned      StudentCurriculumAssignment[] @relation("CurriculumAssignmentsAssignedBy")
   attendanceAsStudent                AttendanceRecord[]            @relation("AttendanceStudent")
   gradedRecords                      GradingRecord[]               @relation("GradingRecords")
   attendanceMarked                   AttendanceRecord[]            @relation("AttendanceMarkedBy")
@@ -578,21 +581,22 @@ model DepartmentAcademicConfig {
 }
 
 model AcademicProgram {
-  id                        String                     @id @default(cuid())
-  departmentId              String                     @map("department_id")
-  code                      String
-  name                      String
-  description               String?
-  status                    AcademicProgramStatus      @default(ACTIVE)
-  archivedAt                DateTime?                  @map("archived_at")
-  createdAt                 DateTime                   @default(now()) @map("created_at")
-  updatedAt                 DateTime                   @updatedAt @map("updated_at")
-  department                Department                 @relation(fields: [departmentId], references: [id])
-  courses                   Course[]
-  curriculumVersions        CurriculumVersion[]
-  courseAssessmentTemplates CourseAssessmentTemplate[]
-  eligibilityRuleBindings   EligibilityRuleBinding[]
-  notices                   Notice[]
+  id                           String                        @id @default(cuid())
+  departmentId                 String                        @map("department_id")
+  code                         String
+  name                         String
+  description                  String?
+  status                       AcademicProgramStatus         @default(ACTIVE)
+  archivedAt                   DateTime?                     @map("archived_at")
+  createdAt                    DateTime                      @default(now()) @map("created_at")
+  updatedAt                    DateTime                      @updatedAt @map("updated_at")
+  department                   Department                    @relation(fields: [departmentId], references: [id])
+  courses                      Course[]
+  curriculumVersions           CurriculumVersion[]
+  studentCurriculumAssignments StudentCurriculumAssignment[]
+  courseAssessmentTemplates    CourseAssessmentTemplate[]
+  eligibilityRuleBindings      EligibilityRuleBinding[]
+  notices                      Notice[]
 
   @@unique([departmentId, code])
   @@index([departmentId])
@@ -678,43 +682,68 @@ model Course {
 }
 
 model CurriculumVersion {
-  id                           String                @id @default(cuid())
-  departmentId                 String                @map("department_id")
-  academicProgramId            String                @map("academic_program_id")
-  code                         String                @db.VarChar(64)
-  name                         String                @db.VarChar(255)
+  id                           String                        @id @default(cuid())
+  departmentId                 String                        @map("department_id")
+  academicProgramId            String                        @map("academic_program_id")
+  code                         String                        @db.VarChar(64)
+  name                         String                        @db.VarChar(255)
   description                  String?
-  status                       AcademicVersionStatus @default(DRAFT)
-  effectiveAcademicSessionCode String                @map("effective_academic_session_code") @db.VarChar(64)
-  effectiveFrom                DateTime?             @map("effective_from")
-  effectiveTo                  DateTime?             @map("effective_to")
-  durationYears                Int                   @map("duration_years") @db.SmallInt
-  totalSemesters               Int                   @map("total_semesters") @db.SmallInt
-  creditsOffered               Decimal               @map("credits_offered") @db.Decimal(6, 2)
-  minimumCreditsRequired       Decimal               @map("minimum_credits_required") @db.Decimal(6, 2)
-  totalCourses                 Int                   @map("total_courses") @db.SmallInt
-  totalProgrammeMarks          Decimal               @map("total_programme_marks") @db.Decimal(8, 2)
-  coreCredits                  Decimal               @map("core_credits") @db.Decimal(6, 2)
-  gedCredits                   Decimal               @map("ged_credits") @db.Decimal(6, 2)
-  capstoneCredits              Decimal               @map("capstone_credits") @db.Decimal(6, 2)
-  coreCourseCount              Int                   @map("core_course_count") @db.SmallInt
-  gedCourseCount               Int                   @map("ged_course_count") @db.SmallInt
-  capstoneCourseCount          Int                   @map("capstone_course_count") @db.SmallInt
-  teachingWeeksPerSemester     Int?                  @map("teaching_weeks_per_semester") @db.SmallInt
-  notionalHoursPerCredit       Int?                  @map("notional_hours_per_credit") @db.SmallInt
-  approvedAt                   DateTime?             @map("approved_at")
-  archivedAt                   DateTime?             @map("archived_at")
-  createdAt                    DateTime              @default(now()) @map("created_at")
-  updatedAt                    DateTime              @updatedAt @map("updated_at")
-  department                   Department            @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  academicProgram              AcademicProgram       @relation(fields: [academicProgramId], references: [id], onDelete: Restrict)
+  status                       AcademicVersionStatus         @default(DRAFT)
+  effectiveAcademicSessionCode String                        @map("effective_academic_session_code") @db.VarChar(64)
+  effectiveFrom                DateTime?                     @map("effective_from")
+  effectiveTo                  DateTime?                     @map("effective_to")
+  durationYears                Int                           @map("duration_years") @db.SmallInt
+  totalSemesters               Int                           @map("total_semesters") @db.SmallInt
+  creditsOffered               Decimal                       @map("credits_offered") @db.Decimal(6, 2)
+  minimumCreditsRequired       Decimal                       @map("minimum_credits_required") @db.Decimal(6, 2)
+  totalCourses                 Int                           @map("total_courses") @db.SmallInt
+  totalProgrammeMarks          Decimal                       @map("total_programme_marks") @db.Decimal(8, 2)
+  coreCredits                  Decimal                       @map("core_credits") @db.Decimal(6, 2)
+  gedCredits                   Decimal                       @map("ged_credits") @db.Decimal(6, 2)
+  capstoneCredits              Decimal                       @map("capstone_credits") @db.Decimal(6, 2)
+  coreCourseCount              Int                           @map("core_course_count") @db.SmallInt
+  gedCourseCount               Int                           @map("ged_course_count") @db.SmallInt
+  capstoneCourseCount          Int                           @map("capstone_course_count") @db.SmallInt
+  teachingWeeksPerSemester     Int?                          @map("teaching_weeks_per_semester") @db.SmallInt
+  notionalHoursPerCredit       Int?                          @map("notional_hours_per_credit") @db.SmallInt
+  approvedAt                   DateTime?                     @map("approved_at")
+  archivedAt                   DateTime?                     @map("archived_at")
+  createdAt                    DateTime                      @default(now()) @map("created_at")
+  updatedAt                    DateTime                      @updatedAt @map("updated_at")
+  department                   Department                    @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  academicProgram              AcademicProgram               @relation(fields: [academicProgramId], references: [id], onDelete: Restrict)
   curriculumCourses            CurriculumCourse[]
+  studentCurriculumAssignments StudentCurriculumAssignment[]
 
   @@unique([departmentId, academicProgramId, code], map: "curriculum_version_dept_program_code_uq")
   @@index([departmentId, status], map: "curriculum_version_dept_status_idx")
   @@index([departmentId, effectiveAcademicSessionCode], map: "curriculum_version_dept_session_idx")
   @@index([departmentId, academicProgramId, status], map: "curriculum_version_dept_program_status_idx")
   @@map("curriculum_versions")
+}
+
+/// Immutable programme-level curriculum identity for a student.
+/// Assignment logic must verify department equality, an active department-scoped Student role,
+/// matching CurriculumVersion.academicProgramId, APPROVED/ACTIVE lifecycle, and actor authority.
+model StudentCurriculumAssignment {
+  id                  String            @id @default(cuid())
+  departmentId        String            @map("department_id")
+  studentUserId       String            @map("student_user_id")
+  academicProgramId   String            @map("academic_program_id")
+  curriculumVersionId String            @map("curriculum_version_id")
+  assignedByUserId    String            @map("assigned_by_user_id")
+  assignedAt          DateTime          @default(now()) @map("assigned_at")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  department          Department        @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  studentUser         User              @relation("StudentCurriculumAssignments", fields: [studentUserId], references: [id], onDelete: Restrict)
+  academicProgram     AcademicProgram   @relation(fields: [academicProgramId], references: [id], onDelete: Restrict)
+  curriculumVersion   CurriculumVersion @relation(fields: [curriculumVersionId], references: [id], onDelete: Restrict)
+  assignedByUser      User              @relation("CurriculumAssignmentsAssignedBy", fields: [assignedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([departmentId, studentUserId, academicProgramId], map: "student_curriculum_assignment_dept_student_program_uq")
+  @@index([departmentId, curriculumVersionId], map: "student_curriculum_assignment_dept_version_idx")
+  @@index([departmentId, assignedByUserId], map: "student_curriculum_assignment_dept_assigner_idx")
+  @@map("student_curriculum_assignments")
 }
 
 model CourseAssessmentTemplate {
