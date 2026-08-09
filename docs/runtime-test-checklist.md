@@ -13191,3 +13191,542 @@ Before implementation, preserve these rules:
 14. cross-department and direct-object access must use safe not-found behavior where appropriate;
 15. no generic curriculum-assignment update endpoint should be created;
 16. Enrollment integration remains a separate later checkpoint.
+
+## Initial Student Curriculum Assignment API Ordinary Runtime Verification — 2026-08-09
+
+### Supersession and classification
+
+This checkpoint supersedes only earlier statements that the Department-Admin-controlled initial `StudentCurriculumAssignment` API and its runtime verification were pending.
+
+The earlier StudentCurriculumAssignment schema-foundation, migration, disposable PostgreSQL, ordinary deployment and historical evidence remain valid.
+
+Current verified classification:
+
+- initial StudentCurriculumAssignment API implemented;
+- implementation independently security-reviewed;
+- review correction completed before commit;
+- implementation committed and pushed;
+- focused automated tests passed `58/58`;
+- API typecheck passed;
+- API build passed;
+- server source deployed to the reviewed implementation commit;
+- Prisma migration status remained up to date;
+- Department-Admin authorization runtime verified;
+- Teacher and Student write denial runtime verified;
+- authenticated-principal department authority runtime verified;
+- forged `x-department-id` scope override blocked;
+- cross-department direct-object isolation runtime verified;
+- active Student-role requirement runtime verified;
+- AcademicProgram department isolation runtime verified;
+- exact CurriculumVersion programme/department dependency verification runtime tested;
+- `APPROVED` initial assignment runtime verified;
+- `DRAFT`, `RETIRED` and `ARCHIVED` rejection runtime verified;
+- exact same-target idempotence runtime verified;
+- different-target immutable conflict runtime verified;
+- persisted ordinary PostgreSQL assignment verified;
+- exact single transactional success audit verified;
+- compact/sanitized response verified;
+- Prisma database-to-datamodel drift check passed;
+- PM2/API/Nginx runtime health verified;
+- API listener remained loopback-only;
+- ordinary live concurrent-request race was not executed.
+
+### Implementation commit
+
+Implementation commit:
+
+`88a34455639a239bee0e8d47500ee3c1a0e478ea`
+
+Commit message:
+
+`Add immutable student curriculum assignment API`
+
+Implementation parent/documentation baseline:
+
+`bf2f9e43044edefc174e949cf27b822fae5d8704`
+
+The implementation changed exactly fourteen reviewed API source/test files.
+
+No Prisma schema, migration, Enrollment, CourseOffering, frontend, environment or documentation file was changed by the implementation commit.
+
+### HTTP endpoint
+
+Runtime-verified endpoint:
+
+`PUT /api/v1/students/:studentUserId/curriculum-assignments/:academicProgramId`
+
+Request body:
+
+`{ "curriculumVersionId": "..." }`
+
+Dedicated policy:
+
+`course-management.student-curriculum-assignment.manage`
+
+Success audit action:
+
+`course-management.student-curriculum-assignment.created`
+
+Controller protection includes:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- `@RequirePolicy()`.
+
+The authenticated principal's department remains the authoritative department scope.
+
+The request body does not control:
+
+- department identity;
+- assigning actor;
+- assignment ID;
+- assignment timestamps;
+- role;
+- lifecycle status.
+
+### Independent review
+
+The implementation received an independent security/code review before commit.
+
+Initial review findings:
+
+- Critical: none;
+- High: one tenant dependency-chain hardening issue;
+- Medium: none;
+- Low: one overly permissive assignment-specific `P2002` matcher;
+- Suggestion: explicit successful repository response typing could be improved later.
+
+The High finding was corrected before commit.
+
+The final sanitizer verifies:
+
+- assignment department;
+- Student relation ID;
+- Student relation department;
+- assigning User relation ID;
+- assigning User relation department;
+- AcademicProgram identity and department;
+- CurriculumVersion identity;
+- CurriculumVersion department;
+- CurriculumVersion exact AcademicProgram relationship.
+
+This sanitizer protects:
+
+- existing exact-target reads;
+- newly created assignment responses;
+- assignment-specific `P2002` concurrency re-reads.
+
+Historical exact-target idempotence does not require the original assigning administrator or assigned student to remain currently active.
+
+The Low finding was also corrected.
+
+The assignment-specific `P2002` matcher now accepts only:
+
+- the exact mapped unique-constraint name;
+- the exact three mapped database columns;
+- or the exact three Prisma field names.
+
+Partial names, unrelated targets and larger target supersets fail closed.
+
+Final independent review:
+
+- Critical: none;
+- High: none;
+- Medium: none;
+- Low: none;
+- non-blocking typing suggestion remains.
+
+### Focused static verification
+
+Before commit, focused StudentCurriculumAssignment and relevant CourseOffering curriculum-binding tests reported:
+
+- passed: `58`;
+- failed: `0`.
+
+Also passed:
+
+- API typecheck;
+- API build;
+- focused lint;
+- `git diff --check`.
+
+Concurrency behavior covered by focused tests includes:
+
+- same-target assignment unique race re-read;
+- different-target assignment unique race conflict;
+- malformed dependency-chain race re-read rejection;
+- unrelated Prisma error propagation;
+- exact assignment-specific `P2002` target matching;
+- audit failure transaction rollback.
+
+These focused tests do not constitute an ordinary live concurrent PostgreSQL race test.
+
+### Server deployment
+
+The Ubuntu runtime server was initially at:
+
+`bf2f9e43044edefc174e949cf27b822fae5d8704`
+
+The server was fast-forwarded to:
+
+`88a34455639a239bee0e8d47500ee3c1a0e478ea`
+
+Deployment verification confirmed:
+
+- exactly fourteen implementation files in the commit;
+- no schema change;
+- no migration change;
+- no frontend change;
+- no environment change;
+- no documentation change;
+- API typecheck passed on the server;
+- API build passed on the server;
+- Prisma reported the database schema up to date.
+
+Controlled PM2 restart:
+
+- PID before: `29449`;
+- PID after: `41413`;
+- health restored on attempt `2`;
+- direct API health: HTTP `200`;
+- Nginx-proxied API health: HTTP `200`;
+- API port `4000` remained loopback-only.
+
+### Ordinary runtime pre-test inventory
+
+Before HTTP mutation testing:
+
+- ordinary database identity: `lexora_lms`;
+- StudentCurriculumAssignment row count: `0`;
+- StudentCurriculumAssignment success-audit count: `0`.
+
+Canonical Law AcademicProgram:
+
+- ID: `cmozwlcul000d2i0lgujx0pw5`;
+- code: `LLB`;
+- status: `ACTIVE`.
+
+Canonical Law CurriculumVersion:
+
+- ID: `cmsi9mwow000n2iiumxospbg6`;
+- code: `LLB-HONS-2025-2026-V1`;
+- status: `DRAFT`;
+- archived: no.
+
+Assignable canonical Law CurriculumVersion count for `APPROVED|ACTIVE` was:
+
+`0`
+
+The canonical curriculum was deliberately not promoted or mutated merely to enable this API runtime test.
+
+Canonical runtime accounts were confirmed active:
+
+- Department Admin;
+- Teacher;
+- Student.
+
+The canonical Student had an active, non-revoked, non-expired department-scoped Student role.
+
+### Isolated ordinary-runtime fixtures
+
+Because the canonical Law CurriculumVersion remained `DRAFT`, the positive runtime test used explicitly named runtime-only fixtures rather than changing canonical curriculum lifecycle.
+
+Runtime AcademicProgram:
+
+- ID: `program_law_sca_runtime`;
+- code: `SCA-RT`;
+- department: `dept_law_test`;
+- status during verification: `ACTIVE`.
+
+Runtime lifecycle CurriculumVersions:
+
+- `cv_law_sca_runtime_approved` — `APPROVED`;
+- `cv_law_sca_runtime_active` — `ACTIVE`;
+- `cv_law_sca_runtime_draft` — `DRAFT`;
+- `cv_law_sca_runtime_retired` — `RETIRED`;
+- `cv_law_sca_runtime_archived` — `ARCHIVED`.
+
+The fixtures copied the required academic numeric snapshot fields from the canonical curriculum but use separate IDs, codes, programme identity and lifecycle state.
+
+These records are test evidence only.
+
+They are not canonical LL.B. curriculum records and must not be treated as operational academic configuration.
+
+Before production readiness, runtime/test fixture visibility and segregation should receive a separate reviewed hygiene step. Historical assignment/audit evidence should not be deleted casually.
+
+### Runtime authentication
+
+Canonical Law runtime accounts were used.
+
+Login results:
+
+- Department Admin: HTTP `201`;
+- Teacher: HTTP `201`;
+- Student: HTTP `201`.
+
+Passwords were entered through hidden terminal prompts.
+
+Raw passwords were not printed.
+
+Raw access/refresh tokens were not printed or documented.
+
+Authentication material was held only in temporary runtime files/variables and removed automatically.
+
+### Authorization and validation negative tests
+
+Verified HTTP results:
+
+- unauthenticated write: `401`;
+- Teacher write: `403`;
+- Student write: `403`;
+- whitespace-only `curriculumVersionId`: `400`;
+- same-department non-Student target: `404`;
+- cross-department direct User ID: `404`;
+- cross-department AcademicProgram ID: `404`;
+- forged BUS `x-department-id` with BUS programme target: `404`;
+- wrong-programme CurriculumVersion: `404`;
+- `DRAFT` CurriculumVersion: `400`;
+- `RETIRED` CurriculumVersion: `400`;
+- `ARCHIVED` CurriculumVersion: `400`.
+
+After all negative tests:
+
+- StudentCurriculumAssignment rows for the runtime programme: `0`;
+- StudentCurriculumAssignment success audits: `0`.
+
+This verifies that denied/invalid cases did not accidentally create assignment records or success audits.
+
+### Positive initial assignment
+
+A Department Admin assigned the canonical Law runtime Student to:
+
+`cv_law_sca_runtime_approved`
+
+Result:
+
+HTTP `200`
+
+The response verified:
+
+- correct Student identity;
+- correct AcademicProgram identity;
+- correct CurriculumVersion identity;
+- CurriculumVersion status `APPROVED`;
+- correct assigning Department Admin identity;
+- compact response shape.
+
+The response did not expose:
+
+- password hash;
+- access token;
+- refresh token;
+- internal Student relation;
+- internal assigning-User relation;
+- raw department relation data.
+
+### Idempotence and principal-department authority
+
+An exact same-target retry returned:
+
+HTTP `200`
+
+The retry preserved the original:
+
+- assignment ID;
+- assigning User ID;
+- `assignedAt`;
+- `createdAt`;
+- CurriculumVersion ID.
+
+No second success audit was created.
+
+A same-target retry was also sent with a forged BUS department header.
+
+Result:
+
+HTTP `200`
+
+The returned assignment fingerprint remained identical.
+
+The forged `x-department-id` did not change the authenticated principal's real Law department scope.
+
+### Immutable different-target conflict
+
+A subsequent attempt to replace the stored `APPROVED` CurriculumVersion with the runtime `ACTIVE` CurriculumVersion returned:
+
+HTTP `409`
+
+The stored assignment remained unchanged.
+
+No additional success audit was created.
+
+No generic curriculum reassignment/update API exists.
+
+### Persisted ordinary PostgreSQL assignment
+
+Persisted assignment ID:
+
+`cmslyv8k5000n2iydy4rtqziy`
+
+Verified stored identity:
+
+- department: `dept_law_test`;
+- Student: canonical Law runtime Student;
+- AcademicProgram: `program_law_sca_runtime`;
+- CurriculumVersion: `cv_law_sca_runtime_approved`;
+- assigning actor: canonical Law Department Admin.
+
+Verified row count for the Student/runtime-programme identity:
+
+`1`
+
+`assigned_at` is present.
+
+`created_at` is present.
+
+The HTTP `409` different-target attempt did not change the stored CurriculumVersion.
+
+### Success audit verification
+
+Exactly one success audit exists for:
+
+`course-management.student-curriculum-assignment.created`
+
+Verified audit properties:
+
+- department: `dept_law_test`;
+- actor: canonical Law Department Admin;
+- target type: `student_curriculum_assignment`;
+- target ID: `cmslyv8k5000n2iydy4rtqziy`;
+- outcome: `SUCCESS`.
+
+The audit context SQL type is:
+
+`jsonb`
+
+The context is a JSON object.
+
+Verified context identity:
+
+- `studentCurriculumAssignmentId` = runtime assignment ID;
+- `studentUserId` = canonical Law runtime Student;
+- `academicProgramId` = runtime AcademicProgram;
+- `curriculumVersionId` = runtime `APPROVED` CurriculumVersion.
+
+Same-target retries did not create duplicate success audits.
+
+The different-target conflict did not create a success audit.
+
+### Canonical curriculum non-mutation
+
+After all endpoint tests and PostgreSQL verification, the canonical Law CurriculumVersion remained:
+
+- ID: `cmsi9mwow000n2iiumxospbg6`;
+- code: `LLB-HONS-2025-2026-V1`;
+- status: `DRAFT`;
+- unarchived.
+
+No StudentCurriculumAssignment was created against the canonical LL.B. AcademicProgram during this runtime test.
+
+### Prisma/runtime non-disruption
+
+Post-test Prisma database-to-datamodel comparison reported:
+
+`No difference detected.`
+
+Final runtime checks:
+
+- API listener remained loopback-only;
+- direct API health: HTTP `200`;
+- Nginx-proxied API health: HTTP `200`;
+- repository remained clean;
+- local `main` and `origin/main` remained aligned.
+
+### Verification-harness interruptions
+
+Two verification-harness issues occurred and were resolved without product-code changes.
+
+1. The first read-only inventory continuation used non-interactive `sudo` before refreshing the sudo authentication cache. It stopped safely before database inventory and was resumed after `sudo -v`.
+
+2. The first post-HTTP audit-context query used chained JSON extraction and string concatenation with ambiguous PostgreSQL operator precedence. PostgreSQL rejected the verification query. The query was corrected using `concat_ws()`, and the persisted audit context then verified successfully.
+
+Neither issue was a Lexora implementation defect.
+
+Neither required a schema, migration or source-code correction.
+
+### Immutability boundary
+
+StudentCurriculumAssignment remains create-once through the reviewed application API.
+
+No generic update, reassignment, delete or bulk-write API was added.
+
+The database schema does not currently use a trigger that physically blocks every possible direct SQL `UPDATE`.
+
+Therefore "immutable" at this checkpoint means enforced application/domain workflow plus reviewed unique/restrictive schema boundaries, not universal trigger-enforced database immutability.
+
+Any future exceptional curriculum migration/reassignment must be a separate explicitly authorised and audited workflow.
+
+### Remaining limitation: ordinary concurrency
+
+An ordinary live concurrent PostgreSQL/HTTP race was not executed in this checkpoint.
+
+Assignment-specific race handling is currently supported by focused automated evidence covering:
+
+- exact unique-constraint recognition;
+- same-target `P2002` re-read idempotence;
+- different-target `P2002` re-read conflict;
+- malformed tenant-chain re-read rejection;
+- unrelated Prisma-error propagation.
+
+Do not claim live ordinary concurrency verification until a real concurrent runtime test is performed.
+
+### Accurate current status
+
+> The initial Department-Admin-controlled StudentCurriculumAssignment API is implemented, independently security-reviewed, committed and pushed, deployed to the ordinary Lexora runtime, and ordinary HTTP/PostgreSQL runtime verified. Department isolation, active Student-role enforcement, exact AcademicProgram/CurriculumVersion scoping, APPROVED/ACTIVE lifecycle allowlisting, DRAFT/RETIRED/ARCHIVED rejection, create-once behavior, exact-target idempotence, different-target conflict, transactional success audit identity and compact response behavior have runtime evidence. The canonical LL.B. CurriculumVersion remains DRAFT and was not modified for testing. Live ordinary concurrency remains unverified and is supported only by focused automated race tests at this checkpoint.
+
+### Explicitly pending
+
+This checkpoint does not implement or verify:
+
+- Enrollment to StudentCurriculumAssignment binding;
+- Enrollment to exact CurriculumCourse binding;
+- Enrollment department/programme/version/course consistency enforcement;
+- old/new curriculum CourseOffering coexistence;
+- focused replacement/review of the existing CourseOffering uniqueness constraint;
+- irregular/failed/retake/improvement curriculum workflow;
+- earlier-syllabus candidate handling;
+- curriculum-aware eligible/available offering discovery;
+- curriculum reassignment/migration workflow;
+- database-trigger-level StudentCurriculumAssignment immutability;
+- ordinary live concurrent assignment race;
+- broader curriculum-management API/UI;
+- Student curriculum-assignment UI;
+- curriculum-aware result/transcript recalculation;
+- production/test-data fixture segregation and hygiene.
+
+### Next safe step
+
+After this documentation checkpoint is committed and pushed, the next development work should begin with a focused source/runtime audit for **Enrollment curriculum binding**.
+
+Do not immediately modify Enrollment.
+
+First inspect:
+
+- current Enrollment schema and service behavior;
+- existing CourseOffering curriculum binding;
+- StudentCurriculumAssignment identity;
+- current duplicated Enrollment `academicTermId`;
+- existing CourseOffering uniqueness;
+- historical Enrollment delete behavior;
+- irregular/failed/retake/improvement coexistence requirements.
+
+The next implementation should remain additive and legacy-safe.
+
+Enrollment integration must not weaken:
+
+- department isolation;
+- Student own-resource access;
+- Teacher assigned-course boundaries;
+- historical enrollment evidence;
+- CourseOffering binding immutability;
+- StudentCurriculumAssignment create-once semantics.
