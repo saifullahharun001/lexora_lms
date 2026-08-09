@@ -1,11 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import {
+  AcademicProgramStatus,
   AcademicVersionStatus,
   CourseOfferingStatus,
   CourseStatus,
   EnrollmentStatus,
   Prisma,
 } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 import { PrismaService } from "@/common/prisma/prisma.service";
 
@@ -22,6 +24,7 @@ import type {
   CreateCourseOfferingInput,
   CreateEnrollmentInput,
   CreateProgramInput,
+  CreateStudentCurriculumAssignmentInput,
   CreateTeacherAssignmentInput,
   EnrollmentListFilters,
   ProgramListFilters,
@@ -100,6 +103,122 @@ const BINDABLE_ACADEMIC_VERSION_STATUSES: readonly AcademicVersionStatus[] = [
   AcademicVersionStatus.APPROVED,
   AcademicVersionStatus.ACTIVE,
 ];
+
+const ASSIGNABLE_STUDENT_CURRICULUM_STATUSES: readonly AcademicVersionStatus[] = [
+  AcademicVersionStatus.APPROVED,
+  AcademicVersionStatus.ACTIVE,
+];
+
+const studentCurriculumAssignmentSelect = {
+  id: true,
+  departmentId: true,
+  studentUserId: true,
+  academicProgramId: true,
+  curriculumVersionId: true,
+  assignedByUserId: true,
+  assignedAt: true,
+  createdAt: true,
+  studentUser: {
+    select: { id: true, departmentId: true },
+  },
+  assignedByUser: {
+    select: { id: true, departmentId: true },
+  },
+  academicProgram: {
+    select: { id: true, departmentId: true, code: true, name: true },
+  },
+  curriculumVersion: {
+    select: {
+      id: true,
+      departmentId: true,
+      academicProgramId: true,
+      code: true,
+      name: true,
+      status: true,
+      effectiveAcademicSessionCode: true,
+    },
+  },
+} satisfies Prisma.StudentCurriculumAssignmentSelect;
+
+type StudentCurriculumAssignmentRecord = Prisma.StudentCurriculumAssignmentGetPayload<{
+  select: typeof studentCurriculumAssignmentSelect;
+}>;
+
+function sanitizeStudentCurriculumAssignment(
+  assignment: StudentCurriculumAssignmentRecord,
+  departmentId: string,
+) {
+  if (
+    assignment.departmentId !== departmentId ||
+    assignment.studentUser.id !== assignment.studentUserId ||
+    assignment.studentUser.departmentId !== departmentId ||
+    assignment.assignedByUser.id !== assignment.assignedByUserId ||
+    assignment.assignedByUser.departmentId !== departmentId ||
+    assignment.academicProgram.id !== assignment.academicProgramId ||
+    assignment.academicProgram.departmentId !== departmentId ||
+    assignment.curriculumVersion.id !== assignment.curriculumVersionId ||
+    assignment.curriculumVersion.departmentId !== departmentId ||
+    assignment.curriculumVersion.academicProgramId !==
+      assignment.academicProgramId
+  ) {
+    return null;
+  }
+
+  return {
+    id: assignment.id,
+    studentUserId: assignment.studentUserId,
+    academicProgram: {
+      id: assignment.academicProgram.id,
+      code: assignment.academicProgram.code,
+      name: assignment.academicProgram.name,
+    },
+    curriculumVersion: {
+      id: assignment.curriculumVersion.id,
+      code: assignment.curriculumVersion.code,
+      name: assignment.curriculumVersion.name,
+      status: assignment.curriculumVersion.status,
+      effectiveAcademicSessionCode:
+        assignment.curriculumVersion.effectiveAcademicSessionCode,
+    },
+    assignedByUserId: assignment.assignedByUserId,
+    assignedAt: assignment.assignedAt,
+    createdAt: assignment.createdAt,
+  };
+}
+
+function isStudentCurriculumAssignmentUniqueConflict(error: unknown) {
+  if (
+    !(error instanceof PrismaClientKnownRequestError) ||
+    error.code !== "P2002"
+  ) {
+    return false;
+  }
+
+  const target = error.meta?.target;
+  const mappedColumns = [
+    "department_id",
+    "student_user_id",
+    "academic_program_id",
+  ];
+  const prismaFields = [
+    "departmentId",
+    "studentUserId",
+    "academicProgramId",
+  ];
+
+  if (typeof target === "string") {
+    return target === "student_curriculum_assignment_dept_student_program_uq";
+  }
+
+  if (!Array.isArray(target) || target.length !== 3) {
+    return false;
+  }
+
+  return (
+    mappedColumns.every((column) => target.includes(column)) ||
+    prismaFields.every((field) => target.includes(field))
+  );
+}
 
 interface CourseOfferingReadRecord {
   id: string;
@@ -1171,6 +1290,201 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
 
       return { outcome: "BOUND", offering: safeBound } as const;
     });
+  }
+
+  async createStudentCurriculumAssignment(
+    input: CreateStudentCurriculumAssignmentInput,
+  ) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const existing = await tx.studentCurriculumAssignment.findUnique({
+          where: {
+            departmentId_studentUserId_academicProgramId: {
+              departmentId: input.departmentId,
+              studentUserId: input.studentUserId,
+              academicProgramId: input.academicProgramId,
+            },
+          },
+          select: studentCurriculumAssignmentSelect,
+        });
+
+        if (existing) {
+          const safeExisting = sanitizeStudentCurriculumAssignment(
+            existing,
+            input.departmentId,
+          );
+          if (!safeExisting) {
+            return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+          }
+          return existing.curriculumVersionId === input.curriculumVersionId
+            ? ({
+                outcome: "ALREADY_ASSIGNED",
+                assignment: safeExisting,
+              } as const)
+            : ({ outcome: "ASSIGNMENT_CONFLICT" } as const);
+        }
+
+        const now = new Date();
+        const student = await tx.user.findFirst({
+          where: {
+            id: input.studentUserId,
+            departmentId: input.departmentId,
+            status: "ACTIVE",
+            archivedAt: null,
+            deletedAt: null,
+            department: {
+              id: input.departmentId,
+              status: "ACTIVE",
+              archivedAt: null,
+              deletedAt: null,
+            },
+            userRoles: {
+              some: {
+                departmentId: input.departmentId,
+                revokedAt: null,
+                OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+                role: {
+                  code: "student",
+                  departmentId: input.departmentId,
+                  archivedAt: null,
+                },
+              },
+            },
+          },
+          select: { id: true },
+        });
+
+        if (!student) {
+          return { outcome: "STUDENT_NOT_FOUND" } as const;
+        }
+
+        const academicProgram = await tx.academicProgram.findFirst({
+          where: {
+            id: input.academicProgramId,
+            departmentId: input.departmentId,
+            status: AcademicProgramStatus.ACTIVE,
+            archivedAt: null,
+          },
+          select: { id: true, departmentId: true },
+        });
+
+        if (!academicProgram) {
+          return { outcome: "ACADEMIC_PROGRAM_NOT_FOUND" } as const;
+        }
+
+        const curriculumVersion = await tx.curriculumVersion.findFirst({
+          where: {
+            id: input.curriculumVersionId,
+            departmentId: input.departmentId,
+            academicProgramId: input.academicProgramId,
+          },
+          select: {
+            id: true,
+            departmentId: true,
+            academicProgramId: true,
+            status: true,
+            archivedAt: true,
+            academicProgram: {
+              select: { id: true, departmentId: true },
+            },
+          },
+        });
+
+        if (!curriculumVersion) {
+          return { outcome: "CURRICULUM_VERSION_NOT_FOUND" } as const;
+        }
+
+        if (
+          curriculumVersion.departmentId !== input.departmentId ||
+          curriculumVersion.academicProgramId !== input.academicProgramId ||
+          curriculumVersion.academicProgram.id !== input.academicProgramId ||
+          curriculumVersion.academicProgram.departmentId !== input.departmentId
+        ) {
+          return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+        }
+
+        if (
+          curriculumVersion.archivedAt ||
+          !ASSIGNABLE_STUDENT_CURRICULUM_STATUSES.includes(
+            curriculumVersion.status,
+          )
+        ) {
+          return { outcome: "INACTIVE_CURRICULUM_VERSION" } as const;
+        }
+
+        const created = await tx.studentCurriculumAssignment.create({
+          data: {
+            departmentId: input.departmentId,
+            studentUserId: input.studentUserId,
+            academicProgramId: input.academicProgramId,
+            curriculumVersionId: input.curriculumVersionId,
+            assignedByUserId: input.actorUserId,
+          },
+          select: studentCurriculumAssignmentSelect,
+        });
+
+        await tx.auditLog.create({
+          data: {
+            requestId: input.requestId,
+            actorUserId: input.actorUserId,
+            actorType: "USER",
+            departmentId: input.departmentId,
+            action: ACADEMIC_AUDIT_EVENTS.STUDENT_CURRICULUM_ASSIGNED,
+            targetType: "student_curriculum_assignment",
+            targetId: created.id,
+            outcome: "SUCCESS",
+            ipAddress: input.ipAddress,
+            userAgent: input.userAgent,
+            contextJson: {
+              studentCurriculumAssignmentId: created.id,
+              studentUserId: input.studentUserId,
+              academicProgramId: input.academicProgramId,
+              curriculumVersionId: input.curriculumVersionId,
+            },
+          },
+        });
+
+        const safeCreated = sanitizeStudentCurriculumAssignment(
+          created,
+          input.departmentId,
+        );
+        if (!safeCreated) {
+          throw new Error("CREATED_STUDENT_CURRICULUM_ASSIGNMENT_NOT_FOUND");
+        }
+
+        return { outcome: "CREATED", assignment: safeCreated } as const;
+      });
+    } catch (error) {
+      if (!isStudentCurriculumAssignmentUniqueConflict(error)) {
+        throw error;
+      }
+
+      const concurrent = await this.prisma.studentCurriculumAssignment.findUnique({
+        where: {
+          departmentId_studentUserId_academicProgramId: {
+            departmentId: input.departmentId,
+            studentUserId: input.studentUserId,
+            academicProgramId: input.academicProgramId,
+          },
+        },
+        select: studentCurriculumAssignmentSelect,
+      });
+      if (!concurrent) {
+        throw error;
+      }
+
+      const safeConcurrent = sanitizeStudentCurriculumAssignment(
+        concurrent,
+        input.departmentId,
+      );
+      if (!safeConcurrent) {
+        throw error;
+      }
+
+      return concurrent.curriculumVersionId === input.curriculumVersionId
+        ? ({ outcome: "ALREADY_ASSIGNED", assignment: safeConcurrent } as const)
+        : ({ outcome: "ASSIGNMENT_CONFLICT" } as const);
+    }
   }
 
   findTeacherAssignments(filters: TeacherAssignmentListFilters) {

@@ -8,6 +8,8 @@ export const COURSE_MANAGEMENT_POLICY_NAMES = {
   OFFERING_READ: "course-management.offering.read",
   OFFERING_MANAGE: "course-management.offering.manage",
   CURRICULUM_BINDING_MANAGE: "course-management.curriculum-binding.manage",
+  STUDENT_CURRICULUM_ASSIGNMENT_MANAGE:
+    "course-management.student-curriculum-assignment.manage",
   TEACHER_ASSIGNMENT_MANAGE: "course-management.teacher-assignment.manage",
   ELIGIBILITY_RULE_MANAGE: "course-management.eligibility-rule.manage",
 } as const;

@@ -608,6 +608,47 @@ export class AcademicService {
     }
   }
 
+  async createStudentCurriculumAssignment(
+    studentUserId: string,
+    academicProgramId: string,
+    curriculumVersionId: string,
+  ) {
+    const departmentId =
+      await this.assertDepartmentAdminCanAssignStudentCurriculum();
+    const requestContext = this.requestContextService.get();
+    const result = await this.repository.createStudentCurriculumAssignment({
+      departmentId,
+      studentUserId,
+      academicProgramId,
+      curriculumVersionId,
+      actorUserId: this.getActorId(),
+      requestId: requestContext?.requestId,
+      ipAddress: requestContext?.audit.ipAddress,
+      userAgent: requestContext?.audit.userAgent,
+    });
+
+    switch (result.outcome) {
+      case "CREATED":
+      case "ALREADY_ASSIGNED":
+        return result.assignment;
+      case "STUDENT_NOT_FOUND":
+        throw new NotFoundException("Student not found");
+      case "ACADEMIC_PROGRAM_NOT_FOUND":
+        throw new NotFoundException("Academic program not found");
+      case "CURRICULUM_VERSION_NOT_FOUND":
+      case "DEPENDENCY_SCOPE_MISMATCH":
+        throw new NotFoundException("Curriculum version not found");
+      case "INACTIVE_CURRICULUM_VERSION":
+        throw new BadRequestException(
+          "Curriculum version is not available for student assignment",
+        );
+      case "ASSIGNMENT_CONFLICT":
+        throw new ConflictException(
+          "Student already has a different curriculum assignment for this academic program",
+        );
+    }
+  }
+
   async assignTeacherToCourseOffering(
     courseOfferingId: string,
     input: Omit<
@@ -1093,6 +1134,48 @@ export class AcademicService {
     if (!actor) {
       throw new ForbiddenException(
         "Only active department admins can manage curriculum bindings",
+      );
+    }
+
+    return departmentId;
+  }
+
+  private async assertDepartmentAdminCanAssignStudentCurriculum() {
+    const departmentId = this.getDepartmentId();
+    const actorId = this.getActorId();
+    const now = new Date();
+    const actor = await this.prisma.user.findFirst({
+      where: {
+        id: actorId,
+        departmentId,
+        status: UserStatus.ACTIVE,
+        archivedAt: null,
+        deletedAt: null,
+        department: {
+          id: departmentId,
+          status: DepartmentStatus.ACTIVE,
+          archivedAt: null,
+          deletedAt: null,
+        },
+        userRoles: {
+          some: {
+            departmentId,
+            revokedAt: null,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+            role: {
+              code: "department_admin",
+              departmentId,
+              archivedAt: null,
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!actor) {
+      throw new ForbiddenException(
+        "Only active department admins can assign student curricula",
       );
     }
 

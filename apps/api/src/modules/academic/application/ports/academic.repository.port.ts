@@ -198,6 +198,29 @@ export type BindCourseOfferingCurriculumResult =
         | "BINDING_CONFLICT";
     };
 
+export interface CreateStudentCurriculumAssignmentInput {
+  departmentId: string;
+  studentUserId: string;
+  academicProgramId: string;
+  curriculumVersionId: string;
+  actorUserId: string;
+  requestId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export type CreateStudentCurriculumAssignmentResult =
+  | { outcome: "CREATED" | "ALREADY_ASSIGNED"; assignment: unknown }
+  | {
+      outcome:
+        | "STUDENT_NOT_FOUND"
+        | "ACADEMIC_PROGRAM_NOT_FOUND"
+        | "CURRICULUM_VERSION_NOT_FOUND"
+        | "INACTIVE_CURRICULUM_VERSION"
+        | "DEPENDENCY_SCOPE_MISMATCH"
+        | "ASSIGNMENT_CONFLICT";
+    };
+
 export interface CreateEnrollmentInput {
   departmentId: string;
   academicTermId: string;
@@ -285,6 +308,9 @@ export interface AcademicRepositoryPort {
   bindCourseOfferingCurriculum(
     input: BindCourseOfferingCurriculumInput,
   ): Promise<BindCourseOfferingCurriculumResult>;
+  createStudentCurriculumAssignment(
+    input: CreateStudentCurriculumAssignmentInput,
+  ): Promise<CreateStudentCurriculumAssignmentResult>;
   findTeacherAssignments(
     filters: TeacherAssignmentListFilters,
   ): Promise<unknown[]>;

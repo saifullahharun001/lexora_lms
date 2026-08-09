@@ -10,6 +10,8 @@ export const ACADEMIC_AUDIT_EVENTS = {
   OFFERING_CREATED: "course-management.offering.created",
   OFFERING_UPDATED: "course-management.offering.updated",
   OFFERING_CURRICULUM_BOUND: "course-management.offering.curriculum-bound",
+  STUDENT_CURRICULUM_ASSIGNED:
+    "course-management.student-curriculum-assignment.created",
   TEACHER_ASSIGNMENT_ASSIGNED:
     "course-management.teacher-assignment.assigned",
   TEACHER_ASSIGNMENT_UNASSIGNED:
