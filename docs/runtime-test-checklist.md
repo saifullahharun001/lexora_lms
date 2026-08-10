@@ -14657,3 +14657,509 @@ The next focused task should be selected based on current academic priority whil
 - irregular/retake/improvement workflows;
 - available-offering discovery;
 - result/transcript curriculum integration.
+
+## Enrollment to CourseOffering Historical Delete Hardening Runtime Verification — 2026-08-10
+
+### Supersession and classification
+
+This checkpoint supersedes earlier statements only to the extent that the
+`Enrollment → CourseOffering` historical delete-hardening task remained pending.
+
+The previous database relationship allowed:
+
+`CourseOffering → Enrollment`
+
+with:
+
+`ON DELETE CASCADE`
+
+That behavior created an academic-history deletion risk because an Enrollment can itself have downstream academic evidence such as attendance, assignment submissions, quiz attempts and result records.
+
+This checkpoint changes only the parent CourseOffering → Enrollment boundary.
+
+Current verified classification:
+
+- implementation completed;
+- independent source/diff review passed;
+- implementation committed and pushed;
+- focused schema/migration tests passed;
+- Prisma format/validate/generate passed;
+- API typecheck passed;
+- API build passed;
+- exact-current-data PostgreSQL 18.4 disposable verification passed;
+- ordinary PostgreSQL 18.4 deployment passed;
+- migration history verified;
+- live PostgreSQL foreign-key behavior verified;
+- referenced CourseOffering deletion is now blocked by the Enrollment FK;
+- unreferenced CourseOffering delete control passed transactionally;
+- selected academic/business data counts remained unchanged;
+- Enrollment dataset fingerprint remained unchanged;
+- Prisma database-to-datamodel drift check reported no difference;
+- repeated Prisma migration deployment is a safe no-op;
+- PM2 restart was not required;
+- direct and Nginx API health remained HTTP `200`;
+- repository remained clean and aligned after deployment.
+
+### Implementation commit
+
+Implementation commit:
+
+`11311ab462d80b5f36341d1824f21fda5c1ac6a1`
+
+Commit message:
+
+`Harden enrollment course offering deletion`
+
+Implementation baseline:
+
+`7b5735980bc2e1cdd50f7deb41b91db864cb21c9`
+
+Migration:
+
+`202608100001_harden_enrollment_course_offering_delete`
+
+### Exact implementation boundary
+
+The reviewed implementation changed exactly five files:
+
+- `.gitignore`;
+- `apps/api/prisma/schema.prisma`;
+- `apps/api/prisma/enrollment-curriculum-binding-foundation.schema.test.ts`;
+- `apps/api/prisma/enrollment-course-offering-delete-hardening.schema.test.ts`;
+- `apps/api/prisma/migrations/202608100001_harden_enrollment_course_offering_delete/migration.sql`.
+
+No controller, service, repository, DTO, policy, authorization, frontend, environment, PM2, Nginx or application-runtime source was changed.
+
+### Prisma relation hardening
+
+Previous current-schema relation:
+
+`Enrollment.courseOffering → CourseOffering`
+
+Delete behavior:
+
+`Cascade`
+
+New current-schema relation:
+
+`Enrollment.courseOffering → CourseOffering`
+
+Delete behavior:
+
+`Restrict`
+
+`courseOfferingId` remains required.
+
+Existing Enrollment uniqueness remains:
+
+`courseOfferingId + studentUserId`
+
+Existing CourseOffering uniqueness remains:
+
+`department + academicTerm + course + section`
+
+No curriculum identity column or curriculum relation was changed.
+
+### Migration behavior
+
+The migration performs only two DDL operations:
+
+1. drops `enrollments_course_offering_id_fkey`;
+2. recreates the same foreign key from
+   `enrollments.course_offering_id`
+   to
+   `course_offerings.id`.
+
+New referential behavior:
+
+- `ON DELETE RESTRICT`;
+- `ON UPDATE CASCADE`.
+
+The migration does not:
+
+- update data;
+- delete data;
+- add or drop Enrollment columns;
+- create or drop tables;
+- create or drop indexes;
+- alter Enrollment uniqueness;
+- alter CourseOffering uniqueness;
+- alter StudentCurriculumAssignment relations;
+- alter CurriculumCourse relations.
+
+### Historical migration preservation
+
+Historical migration:
+
+`202608090002_add_enrollment_curriculum_binding_foundation/migration.sql`
+
+remained unchanged.
+
+Verified SHA-256 during implementation review:
+
+`A991D2679E732F2868EBF61FB4CFF8E7FB6CF402BDE10B21ED8DCEB475C26B32`
+
+The new hardening migration was added separately rather than rewriting historical migration evidence.
+
+### Independent review
+
+Final independent review:
+
+- Critical: `0`;
+- High: `0`;
+- Medium: `0`;
+- Low: `0`;
+- Suggestion: `1`.
+
+The suggestion was to verify the migration against an exact-current ordinary database snapshot on PostgreSQL 18.4 before applying it to the ordinary database.
+
+That verification was subsequently completed successfully.
+
+### Focused static verification
+
+New focused schema/migration test:
+
+`apps/api/prisma/enrollment-course-offering-delete-hardening.schema.test.ts`
+
+Result:
+
+- tests: `3`;
+- passed: `3`;
+- failed: `0`.
+
+Existing Enrollment curriculum-binding foundation test:
+
+`apps/api/prisma/enrollment-curriculum-binding-foundation.schema.test.ts`
+
+Result:
+
+- tests: `5`;
+- passed: `5`;
+- failed: `0`.
+
+Verified static checks also included:
+
+- Prisma format: passed;
+- Prisma validate: passed;
+- Prisma generate: passed;
+- API typecheck: passed;
+- API build: passed;
+- `git diff --check`: passed.
+
+### Disposable exact-current PostgreSQL 18.4 verification
+
+Before ordinary deployment, a private exact-current snapshot of the ordinary
+`lexora_lms` database was restored into a loopback-only disposable PostgreSQL 18.4 container.
+
+Verified baseline:
+
+- restored business/evidence counts matched the ordinary database;
+- Enrollment fingerprint matched the ordinary database;
+- original Enrollment → CourseOffering FK used `ON DELETE CASCADE / ON UPDATE CASCADE`.
+
+The pre-hardening destructive behavior was reproduced transactionally:
+
+- deleting the isolated referenced CourseOffering removed its Enrollment inside the test transaction;
+- the transaction was rolled back;
+- no test data persisted.
+
+The reviewed migration was then applied to the disposable database.
+
+Verified result:
+
+- migration completed exactly once;
+- rolled-back migration records: `0`;
+- incomplete migration records: `0`;
+- FK name remained `enrollments_course_offering_id_fkey`;
+- delete behavior became `RESTRICT`;
+- update behavior remained `CASCADE`;
+- no old Enrollment → CourseOffering DELETE CASCADE FK remained.
+
+After hardening:
+
+- referenced CourseOffering deletion was blocked;
+- referenced CourseOffering remained;
+- referenced Enrollment remained;
+- a fully unreferenced CourseOffering could still be deleted inside a rollback-only control transaction;
+- selected business/evidence counts were unchanged;
+- Enrollment fingerprint was unchanged;
+- Prisma drift check reported no difference;
+- a second migration deployment was a safe no-op;
+- ordinary database was not changed by disposable verification.
+
+### Disposable verification harness interruption
+
+The first disposable verification attempt stopped during the pre-hardening delete probe.
+
+Cause:
+
+- a `psql` variable reference was placed inside a PostgreSQL dollar-quoted `DO` block;
+- `psql` variable substitution does not occur inside that dollar-quoted server-side block;
+- PostgreSQL therefore received a literal `:` token and returned a syntax error.
+
+This was a verification-harness defect, not a Lexora schema or migration defect.
+
+The corrected verification used SQL result queries outside a dollar-quoted `DO` block and Bash assertions.
+
+No product-code correction was required.
+
+### Ordinary deployment preconditions
+
+Immediately before ordinary deployment:
+
+- server source was still at the pre-implementation documentation baseline;
+- repository was clean;
+- direct API health returned HTTP `200`;
+- Nginx API health returned HTTP `200`;
+- PM2 process `lexora-api` remained online;
+- ordinary database was explicitly confirmed as `lexora_lms`;
+- PostgreSQL version was `18.4 (Ubuntu 18.4-0ubuntu0.26.04.1)`;
+- current Enrollment → CourseOffering FK was still `CASCADE/CASCADE`;
+- target migration was absent from `_prisma_migrations`;
+- referenced runtime Enrollment fixture was present.
+
+A private pre-migration custom-format PostgreSQL dump was created with mode `0600` and validated with `pg_restore --list`.
+
+### Server source deployment
+
+Server source was fast-forwarded from:
+
+`7b5735980bc2e1cdd50f7deb41b91db864cb21c9`
+
+to:
+
+`11311ab462d80b5f36341d1824f21fda5c1ac6a1`
+
+The server-side reviewed five-file implementation boundary matched the independently reviewed commit.
+
+Server static verification passed after fast-forward:
+
+- Prisma format;
+- Prisma validate;
+- Prisma generate;
+- API typecheck;
+- API build.
+
+No PM2 restart was required because this checkpoint changed Prisma schema/migration/test metadata only and did not change running application JavaScript behavior.
+
+### Ordinary deployment harness interruption
+
+The first ordinary deployment command stopped before migration application while verifying that exactly one migration was pending.
+
+Prisma itself correctly reported only:
+
+`202608100001_harden_enrollment_course_offering_delete`
+
+as pending.
+
+The auxiliary shell parser used an incorrect migration-name digit count and therefore produced a false failure.
+
+At that point:
+
+- server source had already been safely fast-forwarded to the implementation commit;
+- target migration had not been applied;
+- ordinary FK remained `CASCADE/CASCADE`;
+- ordinary business data remained unchanged;
+- private rollback snapshot remained available.
+
+This was a deployment-verification harness defect, not a Lexora migration or application defect.
+
+The corrected resume verification compared repository migration directories directly with `_prisma_migrations` rather than relying on the faulty text-count regex.
+
+### Ordinary migration deployment
+
+Corrected pre-deployment verification established:
+
+- repository clean/aligned at implementation commit `11311ab462d80b5f36341d1824f21fda5c1ac6a1`;
+- rollback snapshot valid with `0600` permissions;
+- PM2 PID: `8129`;
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- ordinary PostgreSQL: `18.4`;
+- pre-migration FK: `ON DELETE CASCADE / ON UPDATE CASCADE`;
+- target migration absent;
+- exactly one repository migration pending;
+- the only pending migration was `202608100001_harden_enrollment_course_offering_delete`;
+- Prisma migration status independently reported the same migration as pending.
+
+`prisma migrate deploy` successfully applied:
+
+`202608100001_harden_enrollment_course_offering_delete`
+
+### Ordinary migration history verification
+
+After deployment:
+
+- completed target migration records: `1`;
+- incomplete target migration records: `0`;
+- rolled-back target migration records: `0`.
+
+A second `prisma migrate deploy` reported:
+
+`No pending migrations to apply.`
+
+No duplicate migration record was created.
+
+### Ordinary PostgreSQL foreign-key verification
+
+Live foreign key:
+
+`enrollments_course_offering_id_fkey`
+
+Verified live behavior:
+
+- delete action: `RESTRICT`;
+- update action: `CASCADE`.
+
+The previous Enrollment → CourseOffering DELETE CASCADE relationship is no longer present.
+
+### Referenced CourseOffering runtime protection
+
+Runtime verification used the existing isolated runtime CourseOffering:
+
+`offering_law_enrollment_runtime_positive`
+
+That CourseOffering had exactly one Enrollment reference for this test boundary.
+
+After migration, direct deletion of the referenced CourseOffering was rejected by PostgreSQL.
+
+The blocking constraint was:
+
+`enrollments_course_offering_id_fkey`
+
+Verified after the failed delete:
+
+- CourseOffering remained present;
+- Enrollment remained present.
+
+Therefore the core historical-protection invariant is runtime verified:
+
+> A CourseOffering referenced by an Enrollment cannot be physically deleted through the Enrollment relationship.
+
+### Unreferenced CourseOffering control
+
+A CourseOffering with no direct references in the tested dependent tables was selected.
+
+Inside a transaction:
+
+- the unreferenced CourseOffering was successfully deleted;
+- absence was confirmed;
+- the transaction was rolled back.
+
+After rollback, the CourseOffering remained present.
+
+Therefore the hardening does not globally make CourseOffering rows undeletable.
+
+It blocks deletion specifically where referential history exists.
+
+### Academic/business data non-mutation
+
+Before and after the ordinary migration/runtime probes:
+
+- selected academic/business table counts were unchanged;
+- the deterministic Enrollment fingerprint was unchanged.
+
+The successful hardening migration changed FK metadata only.
+
+The failed referenced-parent delete did not mutate academic data.
+
+The unreferenced delete control was rollback-only.
+
+### Prisma drift verification
+
+After ordinary deployment:
+
+`prisma migrate diff`
+
+reported:
+
+`No difference detected.`
+
+Database-to-datamodel drift:
+
+`none`
+
+### Runtime service non-disruption
+
+PM2 restart:
+
+`not required`
+
+PM2 PID before/after:
+
+`8129`
+
+Direct API health after deployment:
+
+HTTP `200`
+
+Nginx API health after deployment:
+
+HTTP `200`
+
+Repository after deployment:
+
+- HEAD: `11311ab462d80b5f36341d1824f21fda5c1ac6a1`;
+- aligned with `origin/main`;
+- working tree clean.
+
+The validated private rollback snapshot was removed only after the full deployment/runtime verification passed.
+
+### Accurate current status
+
+> Enrollment → CourseOffering historical delete hardening is implemented, independently reviewed, committed and pushed, exact-current-data PostgreSQL 18.4 disposable verified, deployed to the ordinary Lexora PostgreSQL 18.4 runtime, and runtime verified. The live `enrollments_course_offering_id_fkey` now uses `ON DELETE RESTRICT / ON UPDATE CASCADE`. A CourseOffering referenced by an Enrollment cannot be physically deleted through that relationship. Live referenced-parent deletion was blocked while both CourseOffering and Enrollment remained intact; an unreferenced CourseOffering delete control succeeded transactionally. Migration history, academic/business non-mutation, Enrollment fingerprint stability, Prisma drift, repeated migration deployment, PM2 continuity and direct/Nginx health all passed.
+
+### Scope boundary and remaining work
+
+This checkpoint intentionally does **not** change the existing downstream relations from Enrollment to:
+
+- AttendanceRecord;
+- AssignmentSubmission;
+- QuizAttempt;
+- ResultRecord.
+
+Those relations remain outside this focused checkpoint.
+
+Direct physical Enrollment deletion policy and its downstream academic-history implications remain a separate hardening/design concern and must not be considered solved solely by this CourseOffering-parent protection.
+
+This checkpoint also does not complete:
+
+- CourseOffering multi-curriculum coexistence/uniqueness redesign;
+- controlled historical Enrollment curriculum backfill;
+- canonical LL.B. StudentCurriculumAssignment establishment;
+- remaining canonical CourseOffering bindings;
+- irregular/failed/retake/improvement workflows;
+- earlier-syllabus candidate handling;
+- curriculum-aware available/eligible offering discovery;
+- StudentCurriculumAssignment exceptional reassignment;
+- StudentCurriculumAssignment database-trigger immutability;
+- live StudentCurriculumAssignment concurrent first-write verification;
+- curriculum-aware results/transcript integration;
+- runtime/test-fixture segregation and hygiene;
+- broader security and production hardening.
+
+### Supersession note
+
+Earlier checklist entries that describe:
+
+`Enrollment → CourseOffering ON DELETE CASCADE`
+
+as the current ordinary database state are superseded by this checkpoint.
+
+Earlier warnings that CourseOffering physical deletion could transitively remove Enrollment history through that foreign-key edge are also superseded.
+
+The new ordinary runtime state is:
+
+`Enrollment → CourseOffering ON DELETE RESTRICT / ON UPDATE CASCADE`
+
+The remaining downstream Enrollment-deletion concerns listed above remain valid.
+
+### Next safe step
+
+After this runtime evidence is committed to the checklist, reassess the remaining curriculum and academic-history tasks from the latest source-of-truth documents.
+
+Do not automatically perform historical Enrollment backfill.
+
+Do not mix CourseOffering multi-curriculum uniqueness redesign with direct Enrollment-deletion hardening.
+
+Select the next focused module/checkpoint based on current academic priority and verified dependencies.
