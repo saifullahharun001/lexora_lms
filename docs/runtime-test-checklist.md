@@ -13730,3 +13730,414 @@ Enrollment integration must not weaken:
 - historical enrollment evidence;
 - CourseOffering binding immutability;
 - StudentCurriculumAssignment create-once semantics.
+
+## Enrollment Curriculum Binding Schema Foundation Ordinary Runtime Verification — 2026-08-09
+
+### Supersession and classification
+
+This checkpoint supersedes earlier statements only to the extent that an Enrollment curriculum-binding **database/schema foundation** was still wholly pending.
+
+It does **not** supersede statements that curriculum-aware Enrollment creation, dependency-chain enforcement, historical backfill, irregular/retake handling, multi-curriculum CourseOffering coexistence and broader curriculum-aware Enrollment behavior remain pending.
+
+Current verified classification:
+
+- Enrollment curriculum-binding schema foundation implemented;
+- implementation independently diff-reviewed;
+- focused schema/migration static verification passed;
+- exact-current-data disposable PostgreSQL verification passed;
+- implementation committed and pushed;
+- Ubuntu server source fast-forwarded to the reviewed implementation commit;
+- Prisma schema validation and Client generation passed on server;
+- API typecheck passed on server;
+- API build passed on server;
+- focused Enrollment curriculum-binding schema test passed `5/5`;
+- ordinary PostgreSQL migration deployed successfully;
+- migration history verified complete with no rollback/incomplete record;
+- live database-to-datamodel drift check passed;
+- PM2 controlled restart passed;
+- direct and Nginx API health returned HTTP `200`;
+- API listener remained loopback-only;
+- existing Enrollment and selected academic-evidence counts were preserved;
+- no automatic Enrollment curriculum binding or historical backfill occurred.
+
+### Implementation commit
+
+Implementation commit:
+
+`41614022de3376fffeade326d34438c2c3c1190c`
+
+Commit message:
+
+`Add enrollment curriculum binding foundation`
+
+Implementation parent:
+
+`bcdf9beaeb2c3d577d7aa9d9841fc853f8d5890f`
+
+The reviewed implementation changed exactly:
+
+- `.gitignore`;
+- `apps/api/prisma/schema.prisma`;
+- `apps/api/prisma/enrollment-curriculum-binding-foundation.schema.test.ts`;
+- `apps/api/prisma/migrations/202608090002_add_enrollment_curriculum_binding_foundation/migration.sql`.
+
+No Enrollment controller, DTO, service, repository, frontend, environment or documentation behavior was changed by the implementation commit.
+
+### Schema foundation
+
+Enrollment now has nullable mapped scalar fields:
+
+- `studentCurriculumAssignmentId` → `student_curriculum_assignment_id`;
+- `curriculumCourseId` → `curriculum_course_id`.
+
+Enrollment does not store a direct `curriculumVersionId`.
+
+Nullable relations were added to:
+
+- `StudentCurriculumAssignment`;
+- `CurriculumCourse`.
+
+Both new foreign keys use:
+
+- `ON DELETE RESTRICT`;
+- `ON UPDATE CASCADE`.
+
+Reverse Enrollment relations exist on:
+
+- `StudentCurriculumAssignment`;
+- `CurriculumCourse`.
+
+Mapped department-scoped indexes:
+
+- `enrollment_dept_student_curriculum_idx`;
+- `enrollment_dept_curriculum_course_idx`.
+
+Existing Enrollment uniqueness on:
+
+`courseOfferingId + studentUserId`
+
+was preserved.
+
+### Pair-completeness invariant
+
+Migration CHECK constraint:
+
+`enrollment_curriculum_pair_ck`
+
+Database invariant:
+
+`student_curriculum_assignment_id` and `curriculum_course_id` must be either:
+
+- both `NULL`; or
+- both non-`NULL`.
+
+A row with only one member of the curriculum pair populated is rejected.
+
+This CHECK is deliberately only a row-local structural completeness invariant.
+
+It does not and cannot by itself prove:
+
+- Enrollment department equals StudentCurriculumAssignment department;
+- Enrollment student equals StudentCurriculumAssignment student;
+- StudentCurriculumAssignment programme matches the relevant CurriculumVersion programme;
+- CurriculumCourse version equals StudentCurriculumAssignment version;
+- CurriculumCourse course equals CourseOffering course;
+- CourseOffering's bound CurriculumCourse is the exact Enrollment CurriculumCourse.
+
+Those dependency-chain checks remain a later server-side transactional repository/service responsibility.
+
+### Migration
+
+Migration:
+
+`202608090002_add_enrollment_curriculum_binding_foundation`
+
+Migration behavior:
+
+- added two nullable Enrollment columns;
+- added pair-completeness CHECK;
+- added two department-scoped indexes;
+- added two restrictive curriculum foreign keys;
+- performed no historical data UPDATE;
+- performed no Enrollment backfill;
+- performed no DELETE;
+- performed no CourseOffering uniqueness change;
+- performed no existing Enrollment → CourseOffering FK change;
+- performed no downstream academic-evidence FK change.
+
+### Independent diff review
+
+Actual schema and migration diff was independently inspected before commit.
+
+Review findings:
+
+- Critical: `0`;
+- High: `0`;
+- Medium: `0`;
+- Low: `0`.
+
+The implementation boundary was confirmed additive and legacy-safe.
+
+`.gitignore` changed only to whitelist the new migration directory and migration SQL.
+
+### Focused static verification
+
+Server-side focused schema test result:
+
+- tests: `5`;
+- passed: `5`;
+- failed: `0`;
+- skipped: `0`.
+
+Verified test coverage includes:
+
+- nullable mapped curriculum identity fields;
+- restrictive Prisma relations;
+- reverse relations;
+- absence of a direct Enrollment `curriculumVersionId`;
+- exact mapped department-scoped indexes;
+- preservation of Enrollment offering/student uniqueness;
+- preservation of current Enrollment → CourseOffering `onDelete: Cascade`;
+- preservation of current CourseOffering uniqueness;
+- nullable migration columns;
+- exactly two new restrictive curriculum FKs;
+- pair-completeness CHECK;
+- absence of backfill/destructive SQL;
+- absence of CourseOffering mutation in this migration.
+
+Also passed:
+
+- Prisma format before commit;
+- Prisma validate;
+- Prisma Client generation;
+- API typecheck;
+- API build;
+- `git diff --check`.
+
+### Exact-current-data disposable PostgreSQL verification
+
+Before ordinary deployment, the reviewed migration was tested against an exact-current-data disposable PostgreSQL copy.
+
+Verification environment:
+
+- PostgreSQL source/client/target major version: `18`;
+- disposable target: PostgreSQL `18.4`;
+- host exposure: loopback-only;
+- persistent disposable volume: none;
+- raw database credentials were not printed.
+
+The disposable copy was restored from an ordinary-runtime snapshot.
+
+Verified behavior:
+
+- migration applied successfully;
+- existing Enrollment rows remained `10`;
+- both new columns were nullable;
+- automatic/backfilled curriculum bindings remained `0`;
+- both-present curriculum pair was accepted;
+- partial curriculum pair was rejected;
+- failed partial write persisted no data;
+- both restrictive parent FKs were catalog-verified;
+- deletion of a referenced StudentCurriculumAssignment was rejected;
+- deletion of a referenced CurriculumCourse was rejected;
+- both new indexes existed with exact mapped names;
+- existing Enrollment → CourseOffering CASCADE remained unchanged;
+- current CourseOffering uniqueness remained unchanged;
+- existing Enrollment offering/student uniqueness remained unchanged;
+- Prisma reported no database-to-datamodel difference;
+- second raw application failed safely;
+- ordinary database remained untouched by disposable verification.
+
+Two earlier disposable-harness attempts did not constitute migration failures:
+
+1. PostgreSQL 16 `pg_restore` could not read a PostgreSQL 18 custom dump archive;
+2. one dump attempt asked the `postgres` OS user to open a `sh002`-owned `0600` output file.
+
+Both issues were verification-harness/environment issues and were corrected before the successful PostgreSQL 18.4 disposable verification.
+
+### Ordinary deployment
+
+Server source before deployment:
+
+`bcdf9beaeb2c3d577d7aa9d9841fc853f8d5890f`
+
+Server source after fast-forward:
+
+`41614022de3376fffeade326d34438c2c3c1190c`
+
+The server working tree remained clean and local `main` remained aligned with `origin/main`.
+
+Before ordinary migration:
+
+- target Enrollment columns: absent;
+- pair CHECK: absent;
+- target indexes: absent;
+- target migration record: absent;
+- Prisma correctly reported the migration as pending.
+
+Ordinary database:
+
+`lexora_lms`
+
+The migration was applied using Prisma migrate deploy.
+
+After migration:
+
+- Prisma reported `6` migrations;
+- database schema reported up to date;
+- completed target migration records: `1`;
+- rolled-back target migration records: `0`;
+- incomplete target migration records: `0`.
+
+### Validated private pre-migration backup
+
+Retained backup:
+
+`/home/sh002/lexora-private-backups/lexora_lms-before-202608090002_add_enrollment_curriculum_binding_foundation-20260809T172108Z.dump`
+
+SHA-256:
+
+`d8e671b9199766368e26d388d31d999cdfb54301d582ea1fa34c9143cfbeb3d2`
+
+Verification:
+
+- archive listing passed;
+- file permission: `0600`;
+- backup directory permission: `0700`;
+- raw database credentials were not printed.
+
+### Ordinary database preservation evidence
+
+Selected row counts before and after migration were identical:
+
+- `assignment_submissions`: `1`;
+- `attendance_records`: `1`;
+- `course_offerings`: `9`;
+- `curriculum_courses`: `58`;
+- `enrollments`: `10`;
+- `quiz_attempts`: `1`;
+- `result_records`: `1`;
+- `student_curriculum_assignments`: `1`;
+- `transcript_records`: `1`.
+
+Automatic/backfilled Enrollment curriculum bindings after migration:
+
+`0`
+
+This is intentional.
+
+Existing historical/runtime Enrollment rows remain legacy-safe and unbound until a later controlled workflow establishes authoritative curriculum identity.
+
+### Preserved existing academic boundaries
+
+This checkpoint intentionally did not change:
+
+- current Enrollment → CourseOffering `ON DELETE CASCADE`;
+- current CourseOffering uniqueness on department + academic term + base Course + section;
+- current Enrollment uniqueness on CourseOffering + Student;
+- StudentCurriculumAssignment create-once semantics;
+- CourseOffering curriculum-binding immutability;
+- Student own-resource Enrollment access model;
+- Teacher assigned-course boundaries;
+- department isolation;
+- AuthGuard/PolicyGuard/policy requirements;
+- result/transcript immutability rules.
+
+The existing Enrollment → CourseOffering CASCADE remains a separately identified academic-history hardening gap.
+
+The current CourseOffering uniqueness also remains a separate blocker for future old/new curriculum coexistence.
+
+### PM2 and runtime health
+
+Controlled PM2 restart:
+
+- PID before: `41413`;
+- PID after: `77542`.
+
+One immediate health probe during restart received a temporary connection-refused response while the process was restarting.
+
+The retry loop subsequently verified:
+
+- direct API health: HTTP `200`;
+- Nginx-proxied API health: HTTP `200`;
+- API listener on port `4000`: loopback-only.
+
+The temporary restart-window connection refusal is not classified as an application/runtime failure.
+
+### StudentCurriculumAssignment runtime-evidence clarification
+
+The earlier StudentCurriculumAssignment API checkpoint has positive ordinary-runtime evidence for a fresh `APPROVED` initial assignment.
+
+A fresh `ACTIVE` initial assignment was not separately executed as a positive ordinary-runtime creation case.
+
+`ACTIVE` was exercised live as the different-target immutable-conflict target, while initial `ACTIVE` acceptance remains supported by focused automated tests.
+
+This clarification does not reopen or invalidate the previously verified StudentCurriculumAssignment implementation.
+
+### Current boundary
+
+This checkpoint establishes durable nullable Enrollment columns capable of storing:
+
+- the authoritative StudentCurriculumAssignment identity;
+- the exact CurriculumCourse identity.
+
+It does **not** implement curriculum-aware Enrollment creation or mutation.
+
+No existing Enrollment was backfilled.
+
+No API accepts these curriculum IDs from the client as enrollment authority.
+
+The later service/repository implementation must derive and persist them server-side from authoritative scoped relationships.
+
+### Explicitly pending
+
+The following remain pending:
+
+- curriculum-aware Enrollment create/service/repository enforcement;
+- Enrollment department/programme/version/course dependency-chain enforcement;
+- authoritative server-side derivation of StudentCurriculumAssignment and CurriculumCourse during Enrollment creation;
+- controlled historical Enrollment backfill;
+- valid canonical StudentCurriculumAssignment before canonical backfill;
+- binding remaining canonical CourseOfferings where appropriate;
+- old/new curriculum CourseOffering coexistence;
+- focused redesign/replacement of current CourseOffering uniqueness;
+- Enrollment → CourseOffering historical delete hardening;
+- irregular/failed/retake/improvement curriculum workflow;
+- earlier-syllabus candidate handling;
+- curriculum-aware eligible/available offering discovery;
+- exceptional curriculum reassignment/migration workflow;
+- database-trigger-level StudentCurriculumAssignment immutability;
+- ordinary live concurrent StudentCurriculumAssignment first-write race;
+- broader curriculum-management API/UI;
+- Student curriculum-assignment UI;
+- curriculum-aware result/transcript integration;
+- production/test-data fixture segregation and hygiene.
+
+### Next safe step
+
+Do not backfill existing Enrollment rows yet.
+
+Do not promote the canonical LL.B. CurriculumVersion merely to enable testing.
+
+Do not expose `studentCurriculumAssignmentId` or `curriculumCourseId` as client-controlled Enrollment authority.
+
+The next implementation checkpoint should remain focused on curriculum-aware Enrollment create/service/repository enforcement.
+
+Before coding that behavior, define and test the exact authoritative dependency chain:
+
+1. authenticated principal department remains authoritative;
+2. CourseOffering belongs to the principal department;
+3. Enrollment academic term matches the CourseOffering academic term;
+4. target Student belongs to the principal department and has an active scoped Student role where required;
+5. authoritative StudentCurriculumAssignment belongs to the same department and Student;
+6. CurriculumCourse belongs to the same department;
+7. CurriculumCourse CurriculumVersion equals StudentCurriculumAssignment CurriculumVersion;
+8. CurriculumCourse base Course equals CourseOffering base Course;
+9. CourseOffering is bound to that exact CurriculumCourse for curriculum-aware enrollment;
+10. persisted Enrollment stores both curriculum IDs atomically;
+11. retries/duplicates cannot create contradictory curriculum identity;
+12. cross-department/direct-object failures remain safe-not-found where appropriate.
+
+Legacy unbound Enrollment rows must remain readable and historically valid.
+
+CourseOffering uniqueness redesign and Enrollment → CourseOffering CASCADE hardening should remain separate focused checkpoints unless a later source/runtime review demonstrates a compelling atomic dependency.
