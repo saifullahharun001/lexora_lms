@@ -15163,3 +15163,385 @@ Do not automatically perform historical Enrollment backfill.
 Do not mix CourseOffering multi-curriculum uniqueness redesign with direct Enrollment-deletion hardening.
 
 Select the next focused module/checkpoint based on current academic priority and verified dependencies.
+
+## CourseOffering Multi-Curriculum Uniqueness Redesign and Runtime Verification — 2026-08-10
+
+### Status
+
+This checkpoint is complete and runtime verified.
+
+Implementation commit:
+
+`5d4d46983a61e80a8c8b8ec1589b95535b540827`
+
+Implementation subject:
+
+`Redesign course offering curriculum uniqueness`
+
+Migration:
+
+`202608100002_redesign_course_offering_uniqueness`
+
+This later evidence supersedes earlier checklist language that identified the existing CourseOffering uniqueness rule as a blocker for old/new curriculum coexistence.
+
+### Problem closed
+
+The previous database uniqueness identity was:
+
+`department + academicTerm + base Course + section`
+
+That global identity prevented two CourseOfferings for the same base Course, AcademicTerm and section from coexisting when they belonged to different CurriculumCourse / CurriculumVersion identities.
+
+The redesign deliberately preserves the existing two-step workflow:
+
+1. create a CourseOffering unbound to curriculum;
+2. use the separate immutable Admin curriculum-binding workflow to bind it to the authoritative CurriculumCourse.
+
+No CourseOffering create/update DTO was widened to accept client-controlled curriculum identity.
+
+### New database-enforced identities
+
+Prisma's previous global CourseOffering `@@unique` was removed.
+
+Because the current Prisma 6.x schema cannot express the required partial uniqueness directly, PostgreSQL raw partial unique indexes are authoritative.
+
+Unbound / legacy / staging identity:
+
+`course_offering_unbound_identity_uq`
+
+Columns:
+
+`department_id + academic_term_id + course_id + section_code`
+
+Predicate:
+
+`curriculum_course_id IS NULL`
+
+Bound curriculum identity:
+
+`course_offering_bound_curriculum_identity_uq`
+
+Columns:
+
+`department_id + academic_term_id + curriculum_course_id + section_code`
+
+Predicate:
+
+`curriculum_course_id IS NOT NULL`
+
+The previous global unique index:
+
+`course_offerings_department_id_academic_term_id_course_id_s_key`
+
+was removed by the migration.
+
+`archived_at` is intentionally not part of either predicate.
+
+Therefore archived CourseOfferings continue to reserve their identity. Archive/reuse semantics were not changed by this checkpoint.
+
+### Migration safety
+
+The migration:
+
+- performs fail-closed duplicate prechecks for both proposed identity sets;
+- creates both replacement partial unique indexes before dropping the old global unique index;
+- performs no CourseOffering data UPDATE;
+- performs no backfill;
+- performs no DELETE;
+- performs no curriculum rebinding;
+- does not alter historical migrations.
+
+Before ordinary deployment, live data contained:
+
+- CourseOfferings: `14`;
+- Enrollments: `12`;
+- unbound proposed-identity collisions: `0`;
+- bound proposed-identity collisions: `0`.
+
+### Binding-conflict hardening
+
+The existing immutable CourseOffering curriculum-binding workflow was preserved.
+
+Binding now checks whether another CourseOffering already occupies the exact scoped bound identity:
+
+`department + academicTerm + target CurriculumCourse + section`
+
+Archived conflicting offerings are included because archived rows remain inside the database uniqueness rule.
+
+The PostgreSQL partial unique index remains the final race authority.
+
+The repository handles only target-specific Prisma `P2002` bound-identity violations as candidate binding conflicts.
+
+After transaction rollback, the repository performs a scoped confirmation before returning the existing sanitized:
+
+`BINDING_CONFLICT`
+
+Unrelated Prisma errors and unconfirmed `P2002` errors continue to propagate.
+
+Conflict paths do not write a success audit.
+
+The service returns sanitized HTTP `409 Conflict` without exposing another CourseOffering ID.
+
+### Independent implementation review
+
+The actual implementation diff was independently reviewed before commit.
+
+Review result:
+
+- Critical: `0`;
+- High: `0`;
+- Medium: `0`;
+- Low: `0`;
+- Suggestions: `2` non-blocking runtime-verification notes.
+
+The reviewed implementation boundary contained exactly `10` files.
+
+Historical migrations remained unchanged.
+
+### Focused static verification
+
+Focused automated suites reported:
+
+- new CourseOffering uniqueness schema/migration suite: `4` passed;
+- compatibility schema suites: `13` passed;
+- PrismaAcademicRepository suite: `47` passed;
+- AcademicService suite: `16` passed;
+- total focused tests/assertions reported by runners: `80` passed.
+
+Also passed:
+
+- Prisma format;
+- Prisma validate;
+- Prisma Client generation;
+- API typecheck;
+- API build;
+- `git diff --check`.
+
+### Exact-current-data disposable PostgreSQL 18.4 verification
+
+Before ordinary deployment, the reviewed implementation was exercised against an exact-current ordinary-database snapshot restored into disposable PostgreSQL `18.4`.
+
+Disposable PostgreSQL exposure was loopback-only.
+
+The ordinary database remained untouched during disposable verification.
+
+Verified:
+
+- exact-current CourseOffering count matched ordinary runtime;
+- exact-current Enrollment count matched ordinary runtime;
+- CourseOffering row fingerprint matched ordinary runtime;
+- target migration was initially pending;
+- migration applied successfully;
+- migration history completed exactly once;
+- both required partial unique indexes existed with exact predicates;
+- `archived_at` was absent from both predicates;
+- previous global unique index was removed;
+- duplicate unbound identity was rejected;
+- duplicate bound curriculum identity was rejected;
+- archived CourseOffering continued to reserve its bound identity;
+- same department/base Course/AcademicTerm/section successfully coexisted across two different CurriculumVersions after binding to different CurriculumCourses;
+- transactional coexistence probes persisted no data;
+- CourseOffering rows remained unchanged after probes;
+- second Prisma migrate deploy was a no-op.
+
+### Real Prisma 6.19.3 `P2002` evidence
+
+A real Prisma/PostgreSQL partial-index collision produced:
+
+`P2002`
+
+with runtime target metadata:
+
+`["department_id","academic_term_id","curriculum_course_id","section_code"]`
+
+The implemented repository matcher accepted this exact runtime shape.
+
+The probe row was removed and the CourseOffering fingerprint remained unchanged.
+
+This closes the earlier uncertainty about Prisma 6.19.3 `P2002` metadata for the raw PostgreSQL partial unique index.
+
+### Disposable verification harness notes
+
+Several earlier attempts failed for verification-harness reasons rather than Lexora product/migration defects:
+
+1. `sh002` correctly had no direct Docker daemon access; Docker administration remained sudo-only and the harness was corrected to use `sudo docker`.
+2. PostgreSQL 18 uses `PGDATA=/var/lib/postgresql/18/docker`; an initial harness used an obsolete PostgreSQL data-path assumption.
+3. container-local `pg_isready` could observe the temporary initialization server before final host TCP readiness; final harness readiness was therefore based on a successful host-side TCP `SELECT 1`.
+4. an initial Prisma probe stored outside the package tree could not resolve `@prisma/client`; the focused rerun explicitly resolved the installed Prisma Client entry before execution.
+
+All harness issues were corrected before the successful disposable verification.
+
+### Ordinary deployment
+
+Ordinary database:
+
+`lexora_lms`
+
+PostgreSQL:
+
+`18.4 (Ubuntu 18.4-0ubuntu0.26.04.1)`
+
+Server source before deployment:
+
+`193eca23d6eb00632b43edcb576e1a5986d194dd`
+
+Server source after reviewed fast-forward:
+
+`5d4d46983a61e80a8c8b8ec1589b95535b540827`
+
+Server-side validation after fast-forward passed:
+
+- Prisma validate;
+- Prisma Client generation;
+- API typecheck;
+- API build;
+- repository clean-state check.
+
+Controlled PM2 restart:
+
+- PID before: `8129`;
+- PID after: `78750`.
+
+Health recovered successfully after restart.
+
+### Validated private pre-migration backup
+
+Retained backup:
+
+`/home/sh002/lexora-private-backups/lexora_lms-before-202608100002_redesign_course_offering_uniqueness-20260810T170907Z.dump`
+
+SHA-256:
+
+`4601ae2a209d6a6e72396b79c6f5af1b09f1d458ddbb49aa419f05ba73b7533f`
+
+Verification:
+
+- archive listing passed;
+- backup file mode: `0600`;
+- backup directory mode: `0700`;
+- raw database credentials were not printed.
+
+### Ordinary migration verification
+
+Immediately before migration:
+
+- CourseOfferings: `14`;
+- Enrollments: `12`;
+- target migration record: absent;
+- old global unique index: present;
+- target partial unique indexes: absent;
+- unbound identity collisions: `0`;
+- bound identity collisions: `0`.
+
+Prisma correctly reported exactly the target migration as pending.
+
+`prisma migrate deploy` successfully applied:
+
+`202608100002_redesign_course_offering_uniqueness`
+
+Migration history after deployment:
+
+- completed target records: `1`;
+- rolled-back target records: `0`;
+- incomplete target records: `0`.
+
+Live PostgreSQL catalog verified:
+
+- `course_offering_unbound_identity_uq`: present and unique;
+- predicate: `curriculum_course_id IS NULL`;
+- `course_offering_bound_curriculum_identity_uq`: present and unique;
+- predicate: `curriculum_course_id IS NOT NULL`;
+- neither predicate contains `archived_at`;
+- previous global CourseOffering unique index: absent.
+
+### Ordinary live behavioral verification
+
+Transactional live probes verified:
+
+- duplicate unbound identity is rejected;
+- duplicate bound curriculum identity is rejected;
+- same base Course/AcademicTerm/section can coexist across different CurriculumVersions when bound to different CurriculumCourses;
+- probe rows were rolled back and persisted no data.
+
+Business-data preservation after migration and probes:
+
+- CourseOffering count: unchanged;
+- Enrollment count: unchanged;
+- CourseOffering row fingerprint: unchanged.
+
+Prisma verification:
+
+- migration status: up to date;
+- Prisma-visible database-to-datamodel difference: none;
+- partial-index definitions independently verified from PostgreSQL catalog;
+- second `prisma migrate deploy`: no pending migrations;
+- duplicate target migration record: none.
+
+### Final runtime state
+
+Application code active at:
+
+`5d4d46983a61e80a8c8b8ec1589b95535b540827`
+
+Final runtime verification:
+
+- PM2 remained stable after the controlled restart;
+- direct API health: HTTP `200`;
+- Nginx-proxied API health: HTTP `200`;
+- NestJS listener on port `4000`: loopback-only;
+- local `main` and `origin/main`: `0 0`;
+- working tree: clean before this documentation update.
+
+### Preserved security and academic-history boundaries
+
+This checkpoint did not weaken:
+
+- AuthGuard;
+- PolicyGuard;
+- `@RequirePolicy()`;
+- authenticated-principal department authority;
+- department-scoped repository queries;
+- object-level authorization;
+- CourseOffering curriculum-binding immutability;
+- Admin-only curriculum binding;
+- Teacher assigned-course isolation;
+- Student own-resource rules;
+- Enrollment curriculum dependency enforcement;
+- Enrollment → CourseOffering `ON DELETE RESTRICT`;
+- result publication/amendment protections;
+- transcript immutability;
+- audit requirements.
+
+No client-controlled `curriculumCourseId` was added to CourseOffering create or update DTOs.
+
+### Closed structural blocker
+
+The previously documented CourseOffering multi-curriculum coexistence / uniqueness blocker is now closed.
+
+The durable identity model is:
+
+- one unbound CourseOffering per department + AcademicTerm + base Course + section;
+- one bound CourseOffering per department + AcademicTerm + CurriculumCourse + section.
+
+This permits old/new curriculum coexistence while preserving unbound staging safety and immutable separate binding.
+
+### Still pending
+
+This checkpoint does not complete the broader curriculum programme.
+
+Still pending include:
+
+- controlled historical Enrollment curriculum backfill;
+- remaining canonical CourseOffering bindings where appropriate;
+- irregular/failed/retake/improvement curriculum workflow;
+- earlier-syllabus candidate handling;
+- curriculum-aware eligible/available offering discovery;
+- exceptional curriculum reassignment/migration;
+- database-trigger-level StudentCurriculumAssignment immutability;
+- ordinary live concurrent StudentCurriculumAssignment first-write race verification;
+- broader curriculum-management API/UI;
+- Student curriculum-assignment UI;
+- curriculum-aware result/transcript integration;
+- production/test fixture segregation and hygiene;
+- SyllabusVersion and approval/publication workflow;
+- broader OBE/formative/summative/examiner/committee/CQI/Course File implementation.
