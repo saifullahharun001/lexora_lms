@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-const schema = readFileSync(join(process.cwd(), "prisma", "schema.prisma"), "utf8");
+const schema = readFileSync(
+  join(process.cwd(), "prisma", "schema.prisma"),
+  "utf8",
+);
 const migration = readFileSync(
   join(
     process.cwd(),
@@ -16,7 +19,9 @@ const migration = readFileSync(
 );
 
 function model(name: string) {
-  return schema.match(new RegExp(`model ${name} \\{[\\s\\S]*?\\n\\}`))?.[0] ?? "";
+  return (
+    schema.match(new RegExp(`model ${name} \\{[\\s\\S]*?\\n\\}`))?.[0] ?? ""
+  );
 }
 
 const enrollment = model("Enrollment");
@@ -48,10 +53,7 @@ test("Enrollment has nullable mapped curriculum identity and restrictive relatio
 
 test("mapped department indexes are exact and existing uniqueness is preserved", () => {
   const indexes = [
-    [
-      "studentCurriculumAssignmentId",
-      "enrollment_dept_student_curriculum_idx",
-    ],
+    ["studentCurriculumAssignmentId", "enrollment_dept_student_curriculum_idx"],
     ["curriculumCourseId", "enrollment_dept_curriculum_course_idx"],
   ] as const;
 
@@ -67,7 +69,7 @@ test("mapped department indexes are exact and existing uniqueness is preserved",
   assert.match(enrollment, /@@unique\(\[courseOfferingId, studentUserId\]\)/);
   assert.match(
     enrollment,
-    /courseOffering\s+CourseOffering\s+@relation\(fields: \[courseOfferingId\], references: \[id\], onDelete: Cascade\)/,
+    /courseOffering\s+CourseOffering\s+@relation\(fields: \[courseOfferingId\], references: \[id\], onDelete: Restrict\)/,
   );
   assert.match(
     courseOffering,
@@ -105,7 +107,10 @@ test("migration creates exactly two restrictive curriculum foreign keys", () => 
     ],
   ] as const;
 
-  assert.equal((migration.match(/ADD CONSTRAINT "enrollment_[^"]+_fk"/g) ?? []).length, 2);
+  assert.equal(
+    (migration.match(/ADD CONSTRAINT "enrollment_[^"]+_fk"/g) ?? []).length,
+    2,
+  );
   for (const [name, column, target] of foreignKeys) {
     assert.ok(name.length <= 63);
     assert.match(

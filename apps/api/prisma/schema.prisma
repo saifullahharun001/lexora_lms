@@ -910,7 +910,7 @@ model Enrollment {
   updatedAt                     DateTime                     @updatedAt @map("updated_at")
   department                    Department                   @relation(fields: [departmentId], references: [id])
   academicTerm                  AcademicTerm                 @relation(fields: [academicTermId], references: [id])
-  courseOffering                CourseOffering               @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
+  courseOffering                CourseOffering               @relation(fields: [courseOfferingId], references: [id], onDelete: Restrict)
   studentUser                   User                         @relation("StudentEnrollments", fields: [studentUserId], references: [id])
   studentCurriculumAssignment   StudentCurriculumAssignment? @relation(fields: [studentCurriculumAssignmentId], references: [id], onDelete: Restrict, map: "enrollment_student_curriculum_assignment_fk")
   curriculumCourse              CurriculumCourse?            @relation(fields: [curriculumCourseId], references: [id], onDelete: Restrict, map: "enrollment_curriculum_course_fk")
