@@ -235,6 +235,20 @@ export interface CreateEnrollmentInput {
     | Prisma.NullableJsonNullValueInput;
 }
 
+export type CreateEnrollmentResult =
+  | { outcome: "CREATED"; enrollment: unknown }
+  | {
+      outcome:
+        | "OFFERING_NOT_FOUND"
+        | "OFFERING_CURRICULUM_NOT_BOUND"
+        | "TERM_MISMATCH"
+        | "STUDENT_NOT_FOUND"
+        | "STUDENT_CURRICULUM_ASSIGNMENT_NOT_FOUND"
+        | "CURRICULUM_DEPENDENCY_MISMATCH"
+        | "STUDENT_CURRICULUM_VERSION_MISMATCH"
+        | "DUPLICATE_ENROLLMENT";
+    };
+
 export interface UpdateEnrollmentInput {
   approvedByUserId?: string;
   sourceType?: EnrollmentSourceType;
@@ -333,7 +347,9 @@ export interface AcademicRepositoryPort {
     id: string,
     studentUserId: string,
   ): Promise<unknown | null>;
-  createEnrollment(input: CreateEnrollmentInput): Promise<unknown>;
+  createEnrollment(
+    input: CreateEnrollmentInput,
+  ): Promise<CreateEnrollmentResult>;
   updateEnrollment(
     departmentId: string,
     id: string,

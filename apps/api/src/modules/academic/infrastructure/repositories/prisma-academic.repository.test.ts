@@ -244,10 +244,11 @@ test("first binding is atomic, audited once, compact, and idempotent", async () 
   assert.equal(h.getState().offering.curriculumCourseId, "curriculum-a");
   assert.equal(h.getState().audits.length, 1);
   assert.equal(
-    (first as unknown as {
-      offering: { curriculumCourse: { assessmentTemplate: { id: string } } };
-    })
-      .offering.curriculumCourse.assessmentTemplate.id,
+    (
+      first as unknown as {
+        offering: { curriculumCourse: { assessmentTemplate: { id: string } } };
+      }
+    ).offering.curriculumCourse.assessmentTemplate.id,
     "template-a",
   );
 
@@ -259,7 +260,10 @@ test("first binding is atomic, audited once, compact, and idempotent", async () 
 test("wrong-department identifiers are safely hidden", async () => {
   const wrongOffering = baseState();
   wrongOffering.offering.departmentId = "department-b";
-  assert.equal((await harness(wrongOffering).bind()).outcome, "OFFERING_NOT_FOUND");
+  assert.equal(
+    (await harness(wrongOffering).bind()).outcome,
+    "OFFERING_NOT_FOUND",
+  );
 
   const wrongCurriculum = baseState();
   wrongCurriculum.curriculum.departmentId = "department-b";
@@ -323,7 +327,10 @@ test("DRAFT, APPROVED, and ACTIVE dependencies are eligible for configuration bi
 
 test("same binding remains idempotent after dependency retirement or archival", async () => {
   const variants: State[] = [];
-  for (const dependency of ["curriculumVersion", "assessmentTemplate"] as const) {
+  for (const dependency of [
+    "curriculumVersion",
+    "assessmentTemplate",
+  ] as const) {
     const retired = baseState();
     retired.offering.curriculumCourseId = "curriculum-a";
     retired.audits.push({ originalBinding: true });
@@ -445,7 +452,6 @@ test("different existing binding conflicts without success audit", async () => {
   const existingHarness = harness(existing);
   assert.equal((await existingHarness.bind()).outcome, "BINDING_CONFLICT");
   assert.equal(existingHarness.getState().audits.length, 0);
-
 });
 
 test("concurrent same-target binding resolves idempotently with one audit", async () => {
@@ -491,11 +497,13 @@ test("department-scoped list and detail reads use compact nullable curriculum su
   await repository.findCourseOfferingById("department-a", "offering-a");
 
   for (const query of queries) {
-    const include = (query as {
-      include: {
-        curriculumCourse: { select: Record<string, unknown> };
-      };
-    }).include;
+    const include = (
+      query as {
+        include: {
+          curriculumCourse: { select: Record<string, unknown> };
+        };
+      }
+    ).include;
     const summary = include.curriculumCourse.select;
     assert.equal(summary.id, true);
     assert.ok("curriculumVersion" in summary);
@@ -539,4 +547,501 @@ test("ordinary and Teacher reads hide malformed cross-department curriculum meta
     ),
     null,
   );
+});
+
+interface EnrollmentState {
+  offering: {
+    id: string;
+    departmentId: string;
+    academicTermId: string;
+    courseId: string;
+    curriculumCourseId: string | null;
+    archivedAt: Date | null;
+    academicTerm: { departmentId: string; archivedAt: Date | null };
+    course: { id: string; departmentId: string };
+  };
+  curriculumCourse: {
+    id: string;
+    departmentId: string;
+    courseId: string;
+    curriculumVersionId: string;
+    curriculumVersion: {
+      id: string;
+      departmentId: string;
+      academicProgramId: string;
+      academicProgram: { id: string; departmentId: string };
+    };
+    course: { id: string; departmentId: string };
+  };
+  student: {
+    id: string;
+    departmentId: string;
+    status: string;
+    archivedAt: Date | null;
+    deletedAt: Date | null;
+    department: {
+      id: string;
+      status: string;
+      archivedAt: Date | null;
+      deletedAt: Date | null;
+    };
+    userRoles: Array<{
+      departmentId: string;
+      revokedAt: Date | null;
+      expiresAt: Date | null;
+      role: { code: string; departmentId: string; archivedAt: Date | null };
+    }>;
+  } | null;
+  assignment: {
+    id: string;
+    departmentId: string;
+    studentUserId: string;
+    academicProgramId: string;
+    curriculumVersionId: string;
+  } | null;
+  enrollments: Array<Record<string, unknown>>;
+}
+
+function enrollmentState(): EnrollmentState {
+  return {
+    offering: {
+      id: "offering-a",
+      departmentId: "department-a",
+      academicTermId: "term-a",
+      courseId: "course-a",
+      curriculumCourseId: "curriculum-course-a",
+      archivedAt: null,
+      academicTerm: { departmentId: "department-a", archivedAt: null },
+      course: { id: "course-a", departmentId: "department-a" },
+    },
+    curriculumCourse: {
+      id: "curriculum-course-a",
+      departmentId: "department-a",
+      courseId: "course-a",
+      curriculumVersionId: "version-a",
+      curriculumVersion: {
+        id: "version-a",
+        departmentId: "department-a",
+        academicProgramId: "program-a",
+        academicProgram: { id: "program-a", departmentId: "department-a" },
+      },
+      course: { id: "course-a", departmentId: "department-a" },
+    },
+    student: {
+      id: "student-a",
+      departmentId: "department-a",
+      status: "ACTIVE",
+      archivedAt: null,
+      deletedAt: null,
+      department: {
+        id: "department-a",
+        status: "ACTIVE",
+        archivedAt: null,
+        deletedAt: null,
+      },
+      userRoles: [
+        {
+          departmentId: "department-a",
+          revokedAt: null,
+          expiresAt: null,
+          role: {
+            code: "student",
+            departmentId: "department-a",
+            archivedAt: null,
+          },
+        },
+      ],
+    },
+    assignment: {
+      id: "assignment-a",
+      departmentId: "department-a",
+      studentUserId: "student-a",
+      academicProgramId: "program-a",
+      curriculumVersionId: "version-a",
+    },
+    enrollments: [],
+  };
+}
+
+function enrollmentHarness(initial = enrollmentState()) {
+  const state = structuredClone(initial);
+  const events: string[] = [];
+  let studentQuery: unknown;
+  const prisma = {
+    $transaction: async (callback: (tx: unknown) => Promise<unknown>) => {
+      events.push("transaction");
+      return callback({
+        courseOffering: {
+          findFirst: async (args: {
+            where: { id: string; departmentId: string };
+          }) => {
+            events.push("offering-read");
+            const row = state.offering;
+            if (
+              row.id !== args.where.id ||
+              row.departmentId !== args.where.departmentId ||
+              row.archivedAt
+            )
+              return null;
+            return {
+              ...row,
+              curriculumCourse:
+                row.curriculumCourseId === state.curriculumCourse.id
+                  ? state.curriculumCourse
+                  : null,
+            };
+          },
+        },
+        user: {
+          findFirst: async (args: {
+            where: {
+              id: string;
+              departmentId: string;
+              status: string;
+              archivedAt: null;
+              deletedAt: null;
+              department: {
+                id: string;
+                status: string;
+                archivedAt: null;
+                deletedAt: null;
+              };
+              userRoles: {
+                some: {
+                  departmentId: string;
+                  revokedAt: null;
+                  OR: Array<{ expiresAt: null | { gt: Date } }>;
+                  role: {
+                    code: string;
+                    departmentId: string;
+                    archivedAt: null;
+                  };
+                };
+              };
+            };
+          }) => {
+            events.push("student-read");
+            studentQuery = args;
+            const row = state.student;
+            const role = row?.userRoles.find(
+              (candidate) =>
+                candidate.departmentId ===
+                  args.where.userRoles.some.departmentId &&
+                candidate.revokedAt === null &&
+                (candidate.expiresAt === null ||
+                  candidate.expiresAt >
+                    args.where.userRoles.some.OR[1]!.expiresAt!.gt) &&
+                candidate.role.code === args.where.userRoles.some.role.code &&
+                candidate.role.departmentId ===
+                  args.where.userRoles.some.role.departmentId &&
+                candidate.role.archivedAt === null,
+            );
+            return row &&
+              row.id === args.where.id &&
+              row.departmentId === args.where.departmentId &&
+              row.status === args.where.status &&
+              row.archivedAt === null &&
+              row.deletedAt === null &&
+              row.department.id === args.where.department.id &&
+              row.department.status === args.where.department.status &&
+              row.department.archivedAt === null &&
+              row.department.deletedAt === null &&
+              Boolean(role)
+              ? row
+              : null;
+          },
+        },
+        studentCurriculumAssignment: {
+          findFirst: async (args: {
+            where: {
+              departmentId: string;
+              studentUserId: string;
+              academicProgramId: string;
+            };
+          }) => {
+            events.push("assignment-read");
+            const row = state.assignment;
+            return row &&
+              row.departmentId === args.where.departmentId &&
+              row.studentUserId === args.where.studentUserId &&
+              row.academicProgramId === args.where.academicProgramId
+              ? row
+              : null;
+          },
+        },
+        enrollment: {
+          findUnique: async () => {
+            events.push("duplicate-read");
+            return (
+              state.enrollments.find(
+                (row) =>
+                  row.courseOfferingId === "offering-a" &&
+                  row.studentUserId === "student-a",
+              ) ?? null
+            );
+          },
+          create: async (args: { data: Record<string, unknown> }) => {
+            events.push("create");
+            const row = { id: "enrollment-new", ...args.data };
+            state.enrollments.push(row);
+            return row;
+          },
+        },
+      });
+    },
+  };
+  const repository = new PrismaAcademicRepository(prisma as never);
+  const create = () =>
+    repository.createEnrollment({
+      departmentId: "department-a",
+      academicTermId: "term-a",
+      courseOfferingId: "offering-a",
+      studentUserId: "student-a",
+    });
+  return { state, events, create, getStudentQuery: () => studentQuery };
+}
+
+test("Enrollment transaction derives and persists both curriculum identities", async () => {
+  const h = enrollmentHarness();
+  assert.equal((await h.create()).outcome, "CREATED");
+  assert.deepEqual(h.events, [
+    "transaction",
+    "offering-read",
+    "student-read",
+    "assignment-read",
+    "duplicate-read",
+    "create",
+  ]);
+  assert.equal(
+    h.state.enrollments[0]?.studentCurriculumAssignmentId,
+    "assignment-a",
+  );
+  assert.equal(
+    h.state.enrollments[0]?.curriculumCourseId,
+    "curriculum-course-a",
+  );
+  const studentWhere = (
+    h.getStudentQuery() as { where: Record<string, unknown> }
+  ).where;
+  assert.equal(studentWhere.status, "ACTIVE");
+  assert.deepEqual(studentWhere.department, {
+    id: "department-a",
+    status: "ACTIVE",
+    archivedAt: null,
+    deletedAt: null,
+  });
+  assert.deepEqual(
+    (studentWhere.userRoles as { some: Record<string, unknown> }).some.role,
+    { code: "student", departmentId: "department-a", archivedAt: null },
+  );
+});
+
+for (const [name, mutate, outcome] of [
+  [
+    "unbound offering",
+    (s: EnrollmentState) => {
+      s.offering.curriculumCourseId = null;
+    },
+    "OFFERING_CURRICULUM_NOT_BOUND",
+  ],
+  [
+    "missing programme assignment",
+    (s: EnrollmentState) => {
+      s.assignment = null;
+    },
+    "STUDENT_CURRICULUM_ASSIGNMENT_NOT_FOUND",
+  ],
+  [
+    "missing valid department-scoped student",
+    (s: EnrollmentState) => {
+      s.student = null;
+    },
+    "STUDENT_NOT_FOUND",
+  ],
+  [
+    "INVITED target user",
+    (s: EnrollmentState) => {
+      s.student!.status = "INVITED";
+    },
+    "STUDENT_NOT_FOUND",
+  ],
+  [
+    "inactive target user",
+    (s: EnrollmentState) => {
+      s.student!.status = "INACTIVE";
+    },
+    "STUDENT_NOT_FOUND",
+  ],
+  [
+    "archived target user",
+    (s: EnrollmentState) => {
+      s.student!.archivedAt = new Date();
+    },
+    "STUDENT_NOT_FOUND",
+  ],
+  [
+    "deleted target user",
+    (s: EnrollmentState) => {
+      s.student!.deletedAt = new Date();
+    },
+    "STUDENT_NOT_FOUND",
+  ],
+  [
+    "wrong-department target user",
+    (s: EnrollmentState) => {
+      s.student!.departmentId = "department-b";
+    },
+    "STUDENT_NOT_FOUND",
+  ],
+  [
+    "target user without Student role",
+    (s: EnrollmentState) => {
+      s.student!.userRoles = [];
+    },
+    "STUDENT_NOT_FOUND",
+  ],
+  [
+    "revoked Student role",
+    (s: EnrollmentState) => {
+      s.student!.userRoles[0]!.revokedAt = new Date();
+    },
+    "STUDENT_NOT_FOUND",
+  ],
+  [
+    "expired Student role",
+    (s: EnrollmentState) => {
+      s.student!.userRoles[0]!.expiresAt = new Date("2000-01-01T00:00:00Z");
+    },
+    "STUDENT_NOT_FOUND",
+  ],
+  [
+    "archived Student role",
+    (s: EnrollmentState) => {
+      s.student!.userRoles[0]!.role.archivedAt = new Date();
+    },
+    "STUDENT_NOT_FOUND",
+  ],
+  [
+    "wrong-department Student role assignment",
+    (s: EnrollmentState) => {
+      s.student!.userRoles[0]!.departmentId = "department-b";
+    },
+    "STUDENT_NOT_FOUND",
+  ],
+  [
+    "wrong-department Student role",
+    (s: EnrollmentState) => {
+      s.student!.userRoles[0]!.role.departmentId = "department-b";
+    },
+    "STUDENT_NOT_FOUND",
+  ],
+  [
+    "inactive Student Department",
+    (s: EnrollmentState) => {
+      s.student!.department.status = "INACTIVE";
+    },
+    "STUDENT_NOT_FOUND",
+  ],
+  [
+    "archived Student Department",
+    (s: EnrollmentState) => {
+      s.student!.department.archivedAt = new Date();
+    },
+    "STUDENT_NOT_FOUND",
+  ],
+  [
+    "deleted Student Department",
+    (s: EnrollmentState) => {
+      s.student!.department.deletedAt = new Date();
+    },
+    "STUDENT_NOT_FOUND",
+  ],
+  [
+    "different assigned curriculum version",
+    (s: EnrollmentState) => {
+      s.assignment!.curriculumVersionId = "version-b";
+    },
+    "STUDENT_CURRICULUM_VERSION_MISMATCH",
+  ],
+  [
+    "curriculum course mismatch",
+    (s: EnrollmentState) => {
+      s.curriculumCourse.courseId = "course-b";
+    },
+    "CURRICULUM_DEPENDENCY_MISMATCH",
+  ],
+  [
+    "curriculum department mismatch",
+    (s: EnrollmentState) => {
+      s.curriculumCourse.departmentId = "department-b";
+    },
+    "CURRICULUM_DEPENDENCY_MISMATCH",
+  ],
+  [
+    "CourseOffering actual Course belongs to another department",
+    (s: EnrollmentState) => {
+      s.offering.course.departmentId = "department-b";
+    },
+    "CURRICULUM_DEPENDENCY_MISMATCH",
+  ],
+  [
+    "CurriculumCourse actual Course relation is inconsistent",
+    (s: EnrollmentState) => {
+      s.curriculumCourse.course.id = "course-b";
+    },
+    "CURRICULUM_DEPENDENCY_MISMATCH",
+  ],
+  [
+    "CurriculumCourse actual Course belongs to another department",
+    (s: EnrollmentState) => {
+      s.curriculumCourse.course.departmentId = "department-b";
+    },
+    "CURRICULUM_DEPENDENCY_MISMATCH",
+  ],
+  [
+    "CurriculumVersion AcademicProgram belongs to another department",
+    (s: EnrollmentState) => {
+      s.curriculumCourse.curriculumVersion.academicProgram.departmentId =
+        "department-b";
+    },
+    "CURRICULUM_DEPENDENCY_MISMATCH",
+  ],
+  [
+    "CurriculumVersion AcademicProgram relation is inconsistent",
+    (s: EnrollmentState) => {
+      s.curriculumCourse.curriculumVersion.academicProgram.id = "program-b";
+    },
+    "CURRICULUM_DEPENDENCY_MISMATCH",
+  ],
+] as const) {
+  test(`${name} fails closed without creation`, async () => {
+    const state = enrollmentState();
+    mutate(state);
+    const h = enrollmentHarness(state);
+    assert.deepEqual(await h.create(), { outcome });
+    assert.equal(h.events.includes("create"), false);
+  });
+}
+
+test("Enrollment term mismatch remains rejected transactionally", async () => {
+  const h = enrollmentHarness();
+  h.state.offering.academicTermId = "term-b";
+  assert.deepEqual(await h.create(), { outcome: "TERM_MISMATCH" });
+  assert.equal(h.events.includes("student-read"), false);
+});
+
+test("duplicate Enrollment is conflict-safe and legacy null bindings remain untouched", async () => {
+  const state = enrollmentState();
+  state.enrollments.push({
+    id: "legacy",
+    courseOfferingId: "offering-a",
+    studentUserId: "student-a",
+    studentCurriculumAssignmentId: null,
+    curriculumCourseId: null,
+  });
+  const h = enrollmentHarness(state);
+  assert.deepEqual(await h.create(), { outcome: "DUPLICATE_ENROLLMENT" });
+  assert.equal(h.events.includes("create"), false);
+  assert.equal(h.state.enrollments[0]?.studentCurriculumAssignmentId, null);
+  assert.equal(h.state.enrollments[0]?.curriculumCourseId, null);
 });

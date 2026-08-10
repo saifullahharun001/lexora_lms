@@ -6,6 +6,7 @@ import {
   CourseStatus,
   EnrollmentStatus,
   Prisma,
+  UserStatus,
 } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
@@ -104,10 +105,8 @@ const BINDABLE_ACADEMIC_VERSION_STATUSES: readonly AcademicVersionStatus[] = [
   AcademicVersionStatus.ACTIVE,
 ];
 
-const ASSIGNABLE_STUDENT_CURRICULUM_STATUSES: readonly AcademicVersionStatus[] = [
-  AcademicVersionStatus.APPROVED,
-  AcademicVersionStatus.ACTIVE,
-];
+const ASSIGNABLE_STUDENT_CURRICULUM_STATUSES: readonly AcademicVersionStatus[] =
+  [AcademicVersionStatus.APPROVED, AcademicVersionStatus.ACTIVE];
 
 const studentCurriculumAssignmentSelect = {
   id: true,
@@ -140,9 +139,10 @@ const studentCurriculumAssignmentSelect = {
   },
 } satisfies Prisma.StudentCurriculumAssignmentSelect;
 
-type StudentCurriculumAssignmentRecord = Prisma.StudentCurriculumAssignmentGetPayload<{
-  select: typeof studentCurriculumAssignmentSelect;
-}>;
+type StudentCurriculumAssignmentRecord =
+  Prisma.StudentCurriculumAssignmentGetPayload<{
+    select: typeof studentCurriculumAssignmentSelect;
+  }>;
 
 function sanitizeStudentCurriculumAssignment(
   assignment: StudentCurriculumAssignmentRecord,
@@ -200,11 +200,7 @@ function isStudentCurriculumAssignmentUniqueConflict(error: unknown) {
     "student_user_id",
     "academic_program_id",
   ];
-  const prismaFields = [
-    "departmentId",
-    "studentUserId",
-    "academicProgramId",
-  ];
+  const prismaFields = ["departmentId", "studentUserId", "academicProgramId"];
 
   if (typeof target === "string") {
     return target === "student_curriculum_assignment_dept_student_program_uq";
@@ -722,9 +718,7 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
     });
   }
 
-  findStudentVisibleCourseOfferings(
-    filters: StudentCourseOfferingListFilters,
-  ) {
+  findStudentVisibleCourseOfferings(filters: StudentCourseOfferingListFilters) {
     const now = filters.now ?? new Date();
 
     return this.prisma.courseOffering.findMany({
@@ -865,9 +859,7 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
       include: courseOfferingInclude,
     });
 
-    return offering
-      ? sanitizeCourseOfferingRead(offering, departmentId)
-      : null;
+    return offering ? sanitizeCourseOfferingRead(offering, departmentId) : null;
   }
 
   async findCourseOfferingByIdForTeacher(
@@ -893,9 +885,7 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
       include: courseOfferingInclude,
     });
 
-    return offering
-      ? sanitizeCourseOfferingRead(offering, departmentId)
-      : null;
+    return offering ? sanitizeCourseOfferingRead(offering, departmentId) : null;
   }
 
   async createCourseOffering(input: CreateCourseOfferingInput) {
@@ -1263,8 +1253,7 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
             courseId: offering.courseId,
             previousBindingValue: null,
             newBindingValue: curriculumCourse.id,
-            curriculumVersionStatus:
-              curriculumCourse.curriculumVersion.status,
+            curriculumVersionStatus: curriculumCourse.curriculumVersion.status,
             assessmentTemplateStatus:
               curriculumCourse.assessmentTemplate.status,
           },
@@ -1459,16 +1448,17 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
         throw error;
       }
 
-      const concurrent = await this.prisma.studentCurriculumAssignment.findUnique({
-        where: {
-          departmentId_studentUserId_academicProgramId: {
-            departmentId: input.departmentId,
-            studentUserId: input.studentUserId,
-            academicProgramId: input.academicProgramId,
+      const concurrent =
+        await this.prisma.studentCurriculumAssignment.findUnique({
+          where: {
+            departmentId_studentUserId_academicProgramId: {
+              departmentId: input.departmentId,
+              studentUserId: input.studentUserId,
+              academicProgramId: input.academicProgramId,
+            },
           },
-        },
-        select: studentCurriculumAssignmentSelect,
-      });
+          select: studentCurriculumAssignmentSelect,
+        });
       if (!concurrent) {
         throw error;
       }
@@ -1718,43 +1708,198 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
     });
   }
 
-  createEnrollment(input: CreateEnrollmentInput) {
-    return this.prisma.enrollment.create({
-      data: {
-        departmentId: input.departmentId,
-        academicTermId: input.academicTermId,
-        courseOfferingId: input.courseOfferingId,
-        studentUserId: input.studentUserId,
-        approvedByUserId: input.approvedByUserId,
-        sourceType: input.sourceType,
-        status: input.status,
-        eligibilityStatus: input.eligibilityStatus,
-        eligibilitySnapshotJson: input.eligibilitySnapshotJson,
-        enrolledAt: input.status === "APPROVED" ? new Date() : null,
-      },
-      include: {
-        academicTerm: true,
-        courseOffering: {
-          include: {
-            course: true,
-          },
+  async createEnrollment(input: CreateEnrollmentInput) {
+    try {
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const now = new Date();
+          const offering = await tx.courseOffering.findFirst({
+            where: {
+              id: input.courseOfferingId,
+              departmentId: input.departmentId,
+              archivedAt: null,
+            },
+            select: {
+              id: true,
+              departmentId: true,
+              academicTermId: true,
+              courseId: true,
+              curriculumCourseId: true,
+              course: {
+                select: { id: true, departmentId: true },
+              },
+              academicTerm: {
+                select: { departmentId: true, archivedAt: true },
+              },
+              curriculumCourse: {
+                select: {
+                  id: true,
+                  departmentId: true,
+                  courseId: true,
+                  curriculumVersionId: true,
+                  course: {
+                    select: { id: true, departmentId: true },
+                  },
+                  curriculumVersion: {
+                    select: {
+                      id: true,
+                      departmentId: true,
+                      academicProgramId: true,
+                      academicProgram: {
+                        select: { id: true, departmentId: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          });
+
+          if (!offering) return { outcome: "OFFERING_NOT_FOUND" } as const;
+          if (offering.academicTermId !== input.academicTermId)
+            return { outcome: "TERM_MISMATCH" } as const;
+          if (
+            offering.academicTerm.departmentId !== input.departmentId ||
+            offering.academicTerm.archivedAt !== null
+          )
+            return { outcome: "CURRICULUM_DEPENDENCY_MISMATCH" } as const;
+          if (!offering.curriculumCourseId || !offering.curriculumCourse)
+            return { outcome: "OFFERING_CURRICULUM_NOT_BOUND" } as const;
+
+          const curriculumCourse = offering.curriculumCourse;
+          const curriculumVersion = curriculumCourse.curriculumVersion;
+          if (
+            offering.departmentId !== input.departmentId ||
+            offering.course.id !== offering.courseId ||
+            offering.course.departmentId !== input.departmentId ||
+            curriculumCourse.id !== offering.curriculumCourseId ||
+            curriculumCourse.departmentId !== input.departmentId ||
+            curriculumCourse.courseId !== offering.courseId ||
+            curriculumCourse.course.id !== curriculumCourse.courseId ||
+            curriculumCourse.course.departmentId !== input.departmentId ||
+            curriculumVersion.id !== curriculumCourse.curriculumVersionId ||
+            curriculumVersion.departmentId !== input.departmentId ||
+            curriculumVersion.academicProgram.id !==
+              curriculumVersion.academicProgramId ||
+            curriculumVersion.academicProgram.departmentId !==
+              input.departmentId
+          )
+            return { outcome: "CURRICULUM_DEPENDENCY_MISMATCH" } as const;
+
+          const student = await tx.user.findFirst({
+            where: {
+              id: input.studentUserId,
+              departmentId: input.departmentId,
+              status: UserStatus.ACTIVE,
+              archivedAt: null,
+              deletedAt: null,
+              department: {
+                id: input.departmentId,
+                status: "ACTIVE",
+                archivedAt: null,
+                deletedAt: null,
+              },
+              userRoles: {
+                some: {
+                  departmentId: input.departmentId,
+                  revokedAt: null,
+                  OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+                  role: {
+                    code: "student",
+                    departmentId: input.departmentId,
+                    archivedAt: null,
+                  },
+                },
+              },
+            },
+            select: { id: true, departmentId: true },
+          });
+          if (!student) return { outcome: "STUDENT_NOT_FOUND" } as const;
+
+          const assignment = await tx.studentCurriculumAssignment.findFirst({
+            where: {
+              departmentId: input.departmentId,
+              studentUserId: student.id,
+              academicProgramId: curriculumVersion.academicProgram.id,
+            },
+            select: {
+              id: true,
+              departmentId: true,
+              studentUserId: true,
+              academicProgramId: true,
+              curriculumVersionId: true,
+            },
+          });
+          if (!assignment)
+            return {
+              outcome: "STUDENT_CURRICULUM_ASSIGNMENT_NOT_FOUND",
+            } as const;
+          if (
+            assignment.departmentId !== input.departmentId ||
+            assignment.studentUserId !== student.id ||
+            assignment.academicProgramId !==
+              curriculumVersion.academicProgram.id
+          )
+            return { outcome: "CURRICULUM_DEPENDENCY_MISMATCH" } as const;
+          if (
+            assignment.curriculumVersionId !==
+            curriculumCourse.curriculumVersionId
+          )
+            return {
+              outcome: "STUDENT_CURRICULUM_VERSION_MISMATCH",
+            } as const;
+
+          const existing = await tx.enrollment.findUnique({
+            where: {
+              courseOfferingId_studentUserId: {
+                courseOfferingId: offering.id,
+                studentUserId: student.id,
+              },
+            },
+            select: { id: true },
+          });
+          if (existing) return { outcome: "DUPLICATE_ENROLLMENT" } as const;
+
+          const enrollment = await tx.enrollment.create({
+            data: {
+              departmentId: input.departmentId,
+              academicTermId: input.academicTermId,
+              courseOfferingId: offering.id,
+              studentUserId: student.id,
+              studentCurriculumAssignmentId: assignment.id,
+              curriculumCourseId: curriculumCourse.id,
+              approvedByUserId: input.approvedByUserId,
+              sourceType: input.sourceType,
+              status: input.status,
+              eligibilityStatus: input.eligibilityStatus,
+              eligibilitySnapshotJson: input.eligibilitySnapshotJson,
+              enrolledAt: input.status === "APPROVED" ? new Date() : null,
+            },
+            include: {
+              academicTerm: true,
+              courseOffering: { include: { course: true } },
+              studentUser: {
+                select: { id: true, displayName: true, email: true },
+              },
+              approvedByUser: {
+                select: { id: true, displayName: true, email: true },
+              },
+            },
+          });
+          return { outcome: "CREATED", enrollment } as const;
         },
-        studentUser: {
-          select: {
-            id: true,
-            displayName: true,
-            email: true,
-          },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
         },
-        approvedByUser: {
-          select: {
-            id: true,
-            displayName: true,
-            email: true,
-          },
-        },
-      },
-    });
+      );
+    } catch (error) {
+      if (
+        error instanceof PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      )
+        return { outcome: "DUPLICATE_ENROLLMENT" } as const;
+      throw error;
+    }
   }
 
   updateEnrollment(

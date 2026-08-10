@@ -133,9 +133,7 @@ test("Department Admin binding uses only principal department despite forged dep
   assert.equal(assignment.departmentId, "department-a");
   assert.equal(assignment.revokedAt, null);
   assert.equal(assignment.OR[0]?.expiresAt, null);
-  assert.ok(
-    (assignment.OR[1]?.expiresAt as { gt: Date }).gt instanceof Date,
-  );
+  assert.ok((assignment.OR[1]?.expiresAt as { gt: Date }).gt instanceof Date);
   assert.deepEqual(assignment.role, {
     code: "department_admin",
     departmentId: "department-a",
@@ -160,6 +158,152 @@ test("Teacher and Student cannot bind curriculum at the service boundary", async
       false,
     );
   }
+});
+
+function enrollmentServiceHarness(
+  result: Awaited<
+    ReturnType<
+      import("../ports/academic.repository.port").AcademicRepositoryPort["createEnrollment"]
+    >
+  >,
+) {
+  const calls: unknown[] = [];
+  const enrollment = {
+    id: "enrollment-a",
+    departmentId: "department-a",
+    studentUserId: "student-a",
+    studentCurriculumAssignmentId: "assignment-a",
+    curriculumCourseId: "curriculum-course-a",
+  };
+  const repository = {
+    createEnrollment: async (input: unknown) => {
+      calls.push({ kind: "create", input });
+      return result;
+    },
+    findEnrollmentById: async () => enrollment,
+    findEnrollmentByIdForStudent: async (...args: unknown[]) => {
+      calls.push({ kind: "student-read", args });
+      return enrollment;
+    },
+    findEnrollments: async (input: unknown) => {
+      calls.push({ kind: "list", input });
+      return [enrollment];
+    },
+  };
+  const prisma = {
+    auditLog: {
+      create: async (input: unknown) => {
+        calls.push({ kind: "audit", input });
+        return input;
+      },
+    },
+  };
+  const context = {
+    requestId: "request-a",
+    principal: {
+      actorId: "admin-a",
+      activeDepartmentId: "department-a",
+      roleAssignments: [
+        { departmentId: "department-a", role: "department_admin" },
+      ],
+      permissions: [],
+    },
+    department: {
+      kind: "department",
+      departmentId: "forged",
+      source: "header",
+    },
+    audit: { ipAddress: "127.0.0.1", userAgent: "test" },
+  };
+  return {
+    calls,
+    service: new AcademicService(
+      repository as never,
+      prisma as never,
+      { get: () => context } as never,
+    ),
+  };
+}
+
+test("Enrollment service sends no caller-authoritative curriculum identity and audits derived IDs", async () => {
+  const enrollment = {
+    id: "enrollment-a",
+    studentCurriculumAssignmentId: "assignment-a",
+    curriculumCourseId: "curriculum-course-a",
+  };
+  const h = enrollmentServiceHarness({ outcome: "CREATED", enrollment });
+  await h.service.createEnrollment({
+    academicTermId: "term-a",
+    courseOfferingId: "offering-a",
+    studentUserId: "student-a",
+    studentCurriculumAssignmentId: "attacker-assignment",
+    curriculumCourseId: "attacker-course",
+    curriculumVersionId: "attacker-version",
+    academicProgramId: "attacker-program",
+  } as never);
+  const create = h.calls.find(
+    (call) => (call as { kind?: string }).kind === "create",
+  ) as { input: Record<string, unknown> };
+  assert.equal(create.input.departmentId, "department-a");
+  for (const key of [
+    "studentCurriculumAssignmentId",
+    "curriculumCourseId",
+    "curriculumVersionId",
+    "academicProgramId",
+  ])
+    assert.equal(key in create.input, false);
+  const audit = h.calls.find(
+    (call) => (call as { kind?: string }).kind === "audit",
+  ) as { input: { data: { contextJson: Record<string, unknown> } } };
+  assert.equal(
+    audit.input.data.contextJson.studentCurriculumAssignmentId,
+    "assignment-a",
+  );
+  assert.equal(
+    audit.input.data.contextJson.curriculumCourseId,
+    "curriculum-course-a",
+  );
+});
+
+test("Enrollment repository outcomes map to safe existing HTTP semantics", async () => {
+  const cases = [
+    ["OFFERING_NOT_FOUND", BadRequestException],
+    ["OFFERING_CURRICULUM_NOT_BOUND", BadRequestException],
+    ["TERM_MISMATCH", BadRequestException],
+    ["STUDENT_NOT_FOUND", BadRequestException],
+    ["STUDENT_CURRICULUM_ASSIGNMENT_NOT_FOUND", BadRequestException],
+    ["CURRICULUM_DEPENDENCY_MISMATCH", NotFoundException],
+    ["STUDENT_CURRICULUM_VERSION_MISMATCH", BadRequestException],
+    ["DUPLICATE_ENROLLMENT", ConflictException],
+  ] as const;
+  for (const [outcome, exception] of cases)
+    await assert.rejects(
+      enrollmentServiceHarness({ outcome }).service.createEnrollment({
+        academicTermId: "term-a",
+        courseOfferingId: "offering-a",
+        studentUserId: "student-a",
+      }),
+      exception,
+    );
+});
+
+test("legacy Enrollment reads and student own-resource scoping remain unchanged", async () => {
+  const h = enrollmentServiceHarness({ outcome: "DUPLICATE_ENROLLMENT" });
+  await h.service.listMyEnrollments({});
+  await h.service.getMyEnrollment("legacy-enrollment");
+  const list = h.calls.find(
+    (call) => (call as { kind?: string }).kind === "list",
+  ) as { input: Record<string, unknown> };
+  assert.equal(list.input.departmentId, "department-a");
+  assert.equal(list.input.studentUserId, "admin-a");
+  const ownRead = h.calls.find(
+    (call) => (call as { kind?: string }).kind === "student-read",
+  ) as { args: unknown[] };
+  assert.deepEqual(ownRead.args, [
+    "department-a",
+    "legacy-enrollment",
+    "admin-a",
+  ]);
 });
 
 test("stale or invalid Department Admin database state is forbidden before mutation", async (t) => {
@@ -188,10 +332,16 @@ test("stale or invalid Department Admin database state is forbidden before mutat
 });
 
 test("binding outcomes map to safe HTTP errors", async () => {
-  const cases: Array<[
-    BindCourseOfferingCurriculumResult,
-    typeof BadRequestException | typeof ConflictException | typeof NotFoundException,
-  ]> = [
+  const cases: Array<
+    [
+      BindCourseOfferingCurriculumResult,
+      (
+        | typeof BadRequestException
+        | typeof ConflictException
+        | typeof NotFoundException
+      ),
+    ]
+  > = [
     [{ outcome: "OFFERING_NOT_FOUND" }, NotFoundException],
     [{ outcome: "CURRICULUM_COURSE_NOT_FOUND" }, NotFoundException],
     [{ outcome: "DEPENDENCY_SCOPE_MISMATCH" }, NotFoundException],
@@ -221,7 +371,10 @@ test("Teacher offering reads remain limited to active assignments", async () => 
   assert.deepEqual(await service.getCourseOffering("assigned"), {
     id: "assigned",
   });
-  await assert.rejects(service.getCourseOffering("unassigned"), NotFoundException);
+  await assert.rejects(
+    service.getCourseOffering("unassigned"),
+    NotFoundException,
+  );
 });
 
 test("Student /course-offerings/me semantics remain principal-scoped and unchanged", async () => {

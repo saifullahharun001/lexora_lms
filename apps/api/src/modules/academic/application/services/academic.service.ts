@@ -738,8 +738,7 @@ export class AcademicService {
       {
         courseOfferingId: (assignment as { courseOfferingId?: string })
           .courseOfferingId,
-        teacherUserId: (assignment as { teacherUserId?: string })
-          .teacherUserId,
+        teacherUserId: (assignment as { teacherUserId?: string }).teacherUserId,
         roleCode: (assignment as { roleCode?: string }).roleCode,
       },
     );
@@ -797,41 +796,72 @@ export class AcademicService {
   async createEnrollment(input: Omit<CreateEnrollmentInput, "departmentId">) {
     const departmentId = this.getDepartmentId();
     const actorId = this.getActorId();
-    const offering = await this.assertCourseOfferingInDepartment(
-      input.courseOfferingId,
-    );
-    await this.assertAcademicTermInDepartment(input.academicTermId);
-    await this.assertStudentInDepartment(input.studentUserId);
+    const result = await this.repository.createEnrollment({
+      departmentId,
+      academicTermId: input.academicTermId,
+      courseOfferingId: input.courseOfferingId,
+      studentUserId: input.studentUserId,
+      approvedByUserId:
+        input.status === EnrollmentStatus.APPROVED ? actorId : undefined,
+      sourceType: input.sourceType,
+      status: input.status,
+      eligibilityStatus: input.eligibilityStatus,
+      eligibilitySnapshotJson: input.eligibilitySnapshotJson,
+    });
 
-    if (offering.academicTermId !== input.academicTermId) {
-      throw new BadRequestException(
-        "Enrollment term must match the selected course offering",
-      );
-    }
+    switch (result.outcome) {
+      case "OFFERING_NOT_FOUND":
+        throw new BadRequestException(
+          "Course offering does not belong to the active department",
+        );
+      case "OFFERING_CURRICULUM_NOT_BOUND":
+        throw new BadRequestException(
+          "Course offering is not bound to a curriculum course",
+        );
+      case "TERM_MISMATCH":
+        throw new BadRequestException(
+          "Enrollment term must match the selected course offering",
+        );
+      case "STUDENT_NOT_FOUND":
+        throw new BadRequestException(
+          "Student user does not belong to the active department",
+        );
+      case "STUDENT_CURRICULUM_ASSIGNMENT_NOT_FOUND":
+        throw new BadRequestException(
+          "Student has no curriculum assignment for the offering programme",
+        );
+      case "CURRICULUM_DEPENDENCY_MISMATCH":
+        throw new NotFoundException(
+          "Enrollment curriculum dependency not found",
+        );
+      case "STUDENT_CURRICULUM_VERSION_MISMATCH":
+        throw new BadRequestException(
+          "Student curriculum version does not match the course offering",
+        );
+      case "DUPLICATE_ENROLLMENT":
+        throw new ConflictException(
+          "Student is already enrolled in this course offering",
+        );
+      case "CREATED": {
+        const enrollment = result.enrollment as {
+          id: string;
+          studentCurriculumAssignmentId?: string | null;
+          curriculumCourseId?: string | null;
+        };
+        await this.writeAudit(
+          ACADEMIC_AUDIT_EVENTS.ENROLLMENT_CREATED,
+          "enrollment",
+          enrollment,
+          {
+            studentUserId: input.studentUserId,
+            studentCurriculumAssignmentId:
+              enrollment.studentCurriculumAssignmentId,
+            curriculumCourseId: enrollment.curriculumCourseId,
+          },
+        );
 
-    try {
-      const enrollment = await this.repository.createEnrollment({
-        departmentId,
-        approvedByUserId:
-          input.status === EnrollmentStatus.APPROVED ? actorId : undefined,
-        ...input,
-      });
-
-      await this.writeAudit(
-        ACADEMIC_AUDIT_EVENTS.ENROLLMENT_CREATED,
-        "enrollment",
-        enrollment,
-        {
-          studentUserId: input.studentUserId,
-        },
-      );
-
-      return this.getEnrollment((enrollment as { id: string }).id);
-    } catch (error) {
-      this.rethrowKnownError(
-        error,
-        "Student is already enrolled in this course offering",
-      );
+        return this.getEnrollment(enrollment.id);
+      }
     }
   }
 
