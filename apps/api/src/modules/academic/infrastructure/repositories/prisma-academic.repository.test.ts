@@ -1,14 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
+
 import { PrismaAcademicRepository } from "./prisma-academic.repository";
 
 interface State {
   offering: {
     id: string;
     departmentId: string;
+    academicTermId: string;
     courseId: string;
     curriculumCourseId: string | null;
+    sectionCode: string;
     archivedAt: Date | null;
     course: {
       id: string;
@@ -16,6 +20,14 @@ interface State {
       academicProgramId: string | null;
     };
   };
+  otherOffering: {
+    id: string;
+    departmentId: string;
+    academicTermId: string;
+    curriculumCourseId: string;
+    sectionCode: string;
+    archivedAt: Date | null;
+  } | null;
   curriculum: {
     id: string;
     departmentId: string;
@@ -52,8 +64,10 @@ function baseState(): State {
     offering: {
       id: "offering-a",
       departmentId: "department-a",
+      academicTermId: "term-a",
       courseId: "course-a",
       curriculumCourseId: null,
+      sectionCode: "A",
       archivedAt: null,
       course: {
         id: "course-a",
@@ -61,6 +75,7 @@ function baseState(): State {
         academicProgramId: "program-a",
       },
     },
+    otherOffering: null,
     curriculum: {
       id: "curriculum-a",
       departmentId: "department-a",
@@ -141,44 +156,89 @@ function harness(initial = baseState()) {
   let state = structuredClone(initial);
   let failAudit = false;
   let forceConcurrentBinding: string | null = null;
+  let updateError: Error | null = null;
+  let addConcurrentIdentityOnError = false;
   let updateCalls = 0;
+
+  const findOffering = (
+    source: State,
+    args: {
+      where: {
+        id: string | { not: string };
+        departmentId: string;
+        academicTermId?: string;
+        curriculumCourseId?: string;
+        sectionCode?: string;
+      };
+      include?: unknown;
+      select?: {
+        courseId?: boolean;
+        curriculumCourseId?: boolean;
+        academicTermId?: boolean;
+      };
+    },
+  ) => {
+    if (typeof args.where.id === "object") {
+      const other = source.otherOffering;
+      return other &&
+        other.id !== args.where.id.not &&
+        other.departmentId === args.where.departmentId &&
+        other.academicTermId === args.where.academicTermId &&
+        other.curriculumCourseId === args.where.curriculumCourseId &&
+        other.sectionCode === args.where.sectionCode
+        ? { id: other.id }
+        : null;
+    }
+    if (
+      source.offering.id !== args.where.id ||
+      source.offering.departmentId !== args.where.departmentId ||
+      source.offering.archivedAt
+    )
+      return null;
+    if (args.include) return compactOffering(source);
+    if (args.select?.courseId)
+      return {
+        id: source.offering.id,
+        departmentId: source.offering.departmentId,
+        academicTermId: source.offering.academicTermId,
+        courseId: source.offering.courseId,
+        curriculumCourseId: source.offering.curriculumCourseId,
+        sectionCode: source.offering.sectionCode,
+        course: source.offering.course,
+        curriculumCourse: source.offering.curriculumCourseId
+          ? source.curriculum
+          : null,
+      };
+    if (args.select?.curriculumCourseId)
+      return { curriculumCourseId: source.offering.curriculumCourseId };
+    return {
+      academicTermId: source.offering.academicTermId,
+      sectionCode: source.offering.sectionCode,
+    };
+  };
 
   const prisma = {
     $transaction: async (callback: (tx: unknown) => Promise<unknown>) => {
       const working = structuredClone(state);
       const tx = {
         courseOffering: {
-          findFirst: async (args: {
-            where: { id: string; departmentId: string };
-            include?: unknown;
-            select?: { courseId?: boolean; curriculumCourseId?: boolean };
-          }) => {
-            if (
-              working.offering.id !== args.where.id ||
-              working.offering.departmentId !== args.where.departmentId ||
-              working.offering.archivedAt
-            ) {
-              return null;
-            }
-            if (args.include) return compactOffering(working);
-            if (args.select?.courseId) {
-              return {
-                id: working.offering.id,
-                departmentId: working.offering.departmentId,
-                courseId: working.offering.courseId,
-                curriculumCourseId: working.offering.curriculumCourseId,
-                course: working.offering.course,
-                curriculumCourse: working.offering.curriculumCourseId
-                  ? working.curriculum
-                  : null,
-              };
-            }
-            return {
-              curriculumCourseId: working.offering.curriculumCourseId,
-            };
-          },
+          findFirst: async (args: Parameters<typeof findOffering>[1]) =>
+            findOffering(working, args),
           updateMany: async () => {
             updateCalls += 1;
+            if (updateError) {
+              if (addConcurrentIdentityOnError) {
+                state.otherOffering = {
+                  id: "offering-b",
+                  departmentId: "department-a",
+                  academicTermId: "term-a",
+                  curriculumCourseId: "curriculum-a",
+                  sectionCode: "A",
+                  archivedAt: null,
+                };
+              }
+              throw updateError;
+            }
             if (forceConcurrentBinding) {
               working.offering.curriculumCourseId = forceConcurrentBinding;
               working.audits.push({ concurrentWinner: forceConcurrentBinding });
@@ -213,6 +273,10 @@ function harness(initial = baseState()) {
       state = working;
       return result;
     },
+    courseOffering: {
+      findFirst: async (args: Parameters<typeof findOffering>[1]) =>
+        findOffering(state, args),
+    },
   };
   const repository = new PrismaAcademicRepository(prisma as never);
   const bind = () =>
@@ -233,6 +297,20 @@ function harness(initial = baseState()) {
     },
     setConcurrentBinding: (id: string) => {
       forceConcurrentBinding = id;
+    },
+    setOtherOffering: (archivedAt: Date | null = null) => {
+      state.otherOffering = {
+        id: "offering-b",
+        departmentId: "department-a",
+        academicTermId: "term-a",
+        curriculumCourseId: "curriculum-a",
+        sectionCode: "A",
+        archivedAt,
+      };
+    },
+    setUpdateError: (error: Error, addConcurrentIdentity = false) => {
+      updateError = error;
+      addConcurrentIdentityOnError = addConcurrentIdentity;
     },
   };
 }
@@ -452,6 +530,47 @@ test("different existing binding conflicts without success audit", async () => {
   const existingHarness = harness(existing);
   assert.equal((await existingHarness.bind()).outcome, "BINDING_CONFLICT");
   assert.equal(existingHarness.getState().audits.length, 0);
+});
+
+const prismaError = (code: string, target?: string | string[]) =>
+  new PrismaClientKnownRequestError("simulated Prisma error", {
+    code,
+    clientVersion: "test",
+    meta: target ? { target } : undefined,
+  });
+
+test("other offering with the target bound identity conflicts without update or audit", async () => {
+  for (const archivedAt of [null, new Date("2026-01-01T00:00:00Z")]) {
+    const h = harness();
+    h.setOtherOffering(archivedAt);
+    assert.equal((await h.bind()).outcome, "BINDING_CONFLICT");
+    assert.equal(h.getUpdateCalls(), 0);
+    assert.equal(h.getState().audits.length, 0);
+  }
+});
+
+test("concurrent bound-identity P2002 is safely confirmed after rollback", async () => {
+  const h = harness();
+  h.setUpdateError(
+    prismaError("P2002", "course_offering_bound_curriculum_identity_uq"),
+    true,
+  );
+  assert.equal((await h.bind()).outcome, "BINDING_CONFLICT");
+  assert.equal(h.getState().offering.curriculumCourseId, null);
+  assert.equal(h.getState().audits.length, 0);
+});
+
+test("unrelated Prisma errors and unconfirmed bound-index P2002 propagate", async () => {
+  for (const error of [
+    prismaError("P2003"),
+    prismaError("P2002", "unrelated_unique_index"),
+    prismaError("P2002", "course_offering_bound_curriculum_identity_uq"),
+  ]) {
+    const h = harness();
+    h.setUpdateError(error);
+    await assert.rejects(h.bind(), (received: unknown) => received === error);
+    assert.equal(h.getState().audits.length, 0);
+  }
 });
 
 test("concurrent same-target binding resolves idempotently with one audit", async () => {

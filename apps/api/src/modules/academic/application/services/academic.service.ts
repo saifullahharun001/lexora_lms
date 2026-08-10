@@ -603,7 +603,7 @@ export class AcademicService {
         );
       case "BINDING_CONFLICT":
         throw new ConflictException(
-          "Course offering is already bound to a different curriculum course",
+          "Course offering curriculum binding conflicts with an existing offering",
         );
     }
   }

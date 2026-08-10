@@ -859,7 +859,7 @@ model CourseOffering {
   transcriptCourseLines   TranscriptCourseLine[]
   notices                 Notice[]
 
-  @@unique([departmentId, academicTermId, courseId, sectionCode])
+  /// Uniqueness is enforced by PostgreSQL partial unique indexes because Prisma 6.x cannot represent them.
   @@index([departmentId])
   @@index([courseId])
   @@index([academicTermId])

@@ -37,10 +37,11 @@ test("current schema restricts CourseOffering deletion while preserving Enrollme
     /courseOffering\s+CourseOffering\s+@relation\(fields: \[courseOfferingId\], references: \[id\], onDelete: Restrict\)/,
   );
   assert.match(enrollment, /@@unique\(\[courseOfferingId, studentUserId\]\)/);
-  assert.match(
+  assert.doesNotMatch(
     courseOffering,
     /@@unique\(\[departmentId, academicTermId, courseId, sectionCode\]\)/,
   );
+  assert.match(courseOffering, /PostgreSQL partial unique indexes/);
   assert.match(
     enrollment,
     /studentCurriculumAssignment\s+StudentCurriculumAssignment\?\s+@relation\([^\n]+onDelete: Restrict/,

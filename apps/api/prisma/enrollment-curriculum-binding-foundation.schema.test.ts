@@ -71,10 +71,11 @@ test("mapped department indexes are exact and existing uniqueness is preserved",
     enrollment,
     /courseOffering\s+CourseOffering\s+@relation\(fields: \[courseOfferingId\], references: \[id\], onDelete: Restrict\)/,
   );
-  assert.match(
+  assert.doesNotMatch(
     courseOffering,
     /@@unique\(\[departmentId, academicTermId, courseId, sectionCode\]\)/,
   );
+  assert.match(courseOffering, /PostgreSQL partial unique indexes/);
 });
 
 test("migration adds only nullable paired curriculum columns", () => {

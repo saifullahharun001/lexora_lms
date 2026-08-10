@@ -216,6 +216,42 @@ function isStudentCurriculumAssignmentUniqueConflict(error: unknown) {
   );
 }
 
+function isCourseOfferingBoundIdentityConflict(error: unknown) {
+  if (
+    !(error instanceof PrismaClientKnownRequestError) ||
+    error.code !== "P2002"
+  ) {
+    return false;
+  }
+
+  const target = error.meta?.target;
+  if (typeof target === "string") {
+    return target === "course_offering_bound_curriculum_identity_uq";
+  }
+
+  if (!Array.isArray(target) || target.length !== 4) {
+    return false;
+  }
+
+  const mappedColumns = [
+    "department_id",
+    "academic_term_id",
+    "curriculum_course_id",
+    "section_code",
+  ];
+  const prismaFields = [
+    "departmentId",
+    "academicTermId",
+    "curriculumCourseId",
+    "sectionCode",
+  ];
+
+  return (
+    mappedColumns.every((column) => target.includes(column)) ||
+    prismaFields.every((field) => target.includes(field))
+  );
+}
+
 interface CourseOfferingReadRecord {
   id: string;
   departmentId: string;
@@ -940,345 +976,400 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
     });
   }
 
-  bindCourseOfferingCurriculum(input: BindCourseOfferingCurriculumInput) {
-    return this.prisma.$transaction(async (tx) => {
-      const offering = await tx.courseOffering.findFirst({
+  async bindCourseOfferingCurriculum(input: BindCourseOfferingCurriculumInput) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const offering = await tx.courseOffering.findFirst({
+          where: {
+            id: input.courseOfferingId,
+            departmentId: input.departmentId,
+            archivedAt: null,
+          },
+          select: {
+            id: true,
+            departmentId: true,
+            academicTermId: true,
+            courseId: true,
+            curriculumCourseId: true,
+            sectionCode: true,
+            course: {
+              select: {
+                id: true,
+                departmentId: true,
+                academicProgramId: true,
+              },
+            },
+            curriculumCourse: {
+              select: {
+                id: true,
+                departmentId: true,
+                courseId: true,
+                curriculumVersionId: true,
+                assessmentTemplateId: true,
+                course: {
+                  select: {
+                    id: true,
+                    departmentId: true,
+                    academicProgramId: true,
+                  },
+                },
+                curriculumVersion: {
+                  select: {
+                    id: true,
+                    departmentId: true,
+                    academicProgramId: true,
+                    academicProgram: {
+                      select: { id: true, departmentId: true },
+                    },
+                  },
+                },
+                assessmentTemplate: {
+                  select: {
+                    id: true,
+                    departmentId: true,
+                    academicProgramId: true,
+                    academicProgram: {
+                      select: { id: true, departmentId: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (!offering) {
+          return { outcome: "OFFERING_NOT_FOUND" } as const;
+        }
+
+        if (offering.curriculumCourseId) {
+          if (offering.curriculumCourseId !== input.curriculumCourseId) {
+            return { outcome: "BINDING_CONFLICT" } as const;
+          }
+
+          const current = offering.curriculumCourse;
+          const academicProgramId = offering.course.academicProgramId;
+          const templateProgramIsValid = current?.assessmentTemplate
+            .academicProgramId
+            ? current.assessmentTemplate.academicProgramId ===
+                academicProgramId &&
+              current.assessmentTemplate.academicProgram?.id ===
+                current.assessmentTemplate.academicProgramId &&
+              current.assessmentTemplate.academicProgram.departmentId ===
+                input.departmentId
+            : current?.assessmentTemplate.academicProgram === null;
+          if (
+            !academicProgramId ||
+            offering.departmentId !== input.departmentId ||
+            offering.course.id !== offering.courseId ||
+            offering.course.departmentId !== input.departmentId ||
+            !current ||
+            current.id !== offering.curriculumCourseId ||
+            current.departmentId !== input.departmentId ||
+            current.courseId !== offering.courseId ||
+            current.course.id !== current.courseId ||
+            current.course.departmentId !== input.departmentId ||
+            current.course.academicProgramId !== academicProgramId ||
+            current.curriculumVersion.id !== current.curriculumVersionId ||
+            current.curriculumVersion.departmentId !== input.departmentId ||
+            current.curriculumVersion.academicProgramId !== academicProgramId ||
+            current.curriculumVersion.academicProgram.id !==
+              academicProgramId ||
+            current.curriculumVersion.academicProgram.departmentId !==
+              input.departmentId ||
+            current.assessmentTemplate.id !== current.assessmentTemplateId ||
+            current.assessmentTemplate.departmentId !== input.departmentId ||
+            !templateProgramIsValid
+          ) {
+            return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+          }
+
+          const existing = await tx.courseOffering.findFirst({
+            where: {
+              id: offering.id,
+              departmentId: input.departmentId,
+              archivedAt: null,
+            },
+            include: courseOfferingInclude,
+          });
+
+          if (!existing) {
+            return { outcome: "OFFERING_NOT_FOUND" } as const;
+          }
+
+          const safeExisting = sanitizeCourseOfferingRead(
+            existing,
+            input.departmentId,
+          );
+
+          return safeExisting
+            ? ({ outcome: "ALREADY_BOUND", offering: safeExisting } as const)
+            : ({ outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const);
+        }
+
+        if (
+          offering.departmentId !== input.departmentId ||
+          offering.course.id !== offering.courseId ||
+          offering.course.departmentId !== input.departmentId
+        ) {
+          return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+        }
+
+        const curriculumCourse = await tx.curriculumCourse.findFirst({
+          where: {
+            id: input.curriculumCourseId,
+            departmentId: input.departmentId,
+          },
+          select: {
+            id: true,
+            departmentId: true,
+            courseId: true,
+            curriculumVersionId: true,
+            assessmentTemplateId: true,
+            course: {
+              select: {
+                id: true,
+                departmentId: true,
+                academicProgramId: true,
+              },
+            },
+            curriculumVersion: {
+              select: {
+                id: true,
+                departmentId: true,
+                status: true,
+                archivedAt: true,
+                academicProgramId: true,
+                academicProgram: {
+                  select: { id: true, departmentId: true },
+                },
+              },
+            },
+            assessmentTemplate: {
+              select: {
+                id: true,
+                departmentId: true,
+                status: true,
+                archivedAt: true,
+                academicProgramId: true,
+                academicProgram: {
+                  select: { id: true, departmentId: true },
+                },
+              },
+            },
+          },
+        });
+
+        if (!curriculumCourse) {
+          return { outcome: "CURRICULUM_COURSE_NOT_FOUND" } as const;
+        }
+
+        const academicProgramId = offering.course.academicProgramId;
+        const templateProgramIsValid = curriculumCourse.assessmentTemplate
+          .academicProgramId
+          ? curriculumCourse.assessmentTemplate.academicProgramId ===
+              academicProgramId &&
+            curriculumCourse.assessmentTemplate.academicProgram?.id ===
+              curriculumCourse.assessmentTemplate.academicProgramId &&
+            curriculumCourse.assessmentTemplate.academicProgram.departmentId ===
+              input.departmentId
+          : curriculumCourse.assessmentTemplate.academicProgram === null;
+
+        if (
+          !academicProgramId ||
+          curriculumCourse.departmentId !== input.departmentId ||
+          curriculumCourse.course.id !== curriculumCourse.courseId ||
+          curriculumCourse.course.departmentId !== input.departmentId ||
+          curriculumCourse.course.academicProgramId !== academicProgramId ||
+          curriculumCourse.curriculumVersion.id !==
+            curriculumCourse.curriculumVersionId ||
+          curriculumCourse.curriculumVersion.departmentId !==
+            input.departmentId ||
+          curriculumCourse.curriculumVersion.academicProgramId !==
+            academicProgramId ||
+          curriculumCourse.curriculumVersion.academicProgram.id !==
+            academicProgramId ||
+          curriculumCourse.curriculumVersion.academicProgram.departmentId !==
+            input.departmentId ||
+          curriculumCourse.assessmentTemplate.id !==
+            curriculumCourse.assessmentTemplateId ||
+          curriculumCourse.assessmentTemplate.departmentId !==
+            input.departmentId ||
+          !templateProgramIsValid
+        ) {
+          return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+        }
+
+        if (curriculumCourse.courseId !== offering.courseId) {
+          return { outcome: "COURSE_MISMATCH" } as const;
+        }
+
+        if (
+          curriculumCourse.curriculumVersion.archivedAt ||
+          !BINDABLE_ACADEMIC_VERSION_STATUSES.includes(
+            curriculumCourse.curriculumVersion.status,
+          )
+        ) {
+          return { outcome: "INACTIVE_CURRICULUM_VERSION" } as const;
+        }
+
+        if (
+          curriculumCourse.assessmentTemplate.archivedAt ||
+          !BINDABLE_ACADEMIC_VERSION_STATUSES.includes(
+            curriculumCourse.assessmentTemplate.status,
+          )
+        ) {
+          return { outcome: "INACTIVE_ASSESSMENT_TEMPLATE" } as const;
+        }
+
+        const identityConflict = await tx.courseOffering.findFirst({
+          where: {
+            id: { not: offering.id },
+            departmentId: input.departmentId,
+            academicTermId: offering.academicTermId,
+            curriculumCourseId: curriculumCourse.id,
+            sectionCode: offering.sectionCode,
+          },
+          select: { id: true },
+        });
+        if (identityConflict) {
+          return { outcome: "BINDING_CONFLICT" } as const;
+        }
+
+        const updated = await tx.courseOffering.updateMany({
+          where: {
+            id: offering.id,
+            departmentId: input.departmentId,
+            archivedAt: null,
+            curriculumCourseId: null,
+          },
+          data: { curriculumCourseId: curriculumCourse.id },
+        });
+
+        if (updated.count === 0) {
+          const concurrent = await tx.courseOffering.findFirst({
+            where: {
+              id: offering.id,
+              departmentId: input.departmentId,
+              archivedAt: null,
+            },
+            select: { curriculumCourseId: true },
+          });
+
+          if (!concurrent) {
+            return { outcome: "OFFERING_NOT_FOUND" } as const;
+          }
+
+          if (concurrent.curriculumCourseId !== curriculumCourse.id) {
+            return { outcome: "BINDING_CONFLICT" } as const;
+          }
+
+          const existing = await tx.courseOffering.findFirst({
+            where: {
+              id: offering.id,
+              departmentId: input.departmentId,
+              archivedAt: null,
+            },
+            include: courseOfferingInclude,
+          });
+
+          if (!existing) {
+            return { outcome: "OFFERING_NOT_FOUND" } as const;
+          }
+
+          const safeExisting = sanitizeCourseOfferingRead(
+            existing,
+            input.departmentId,
+          );
+
+          return safeExisting
+            ? ({ outcome: "ALREADY_BOUND", offering: safeExisting } as const)
+            : ({ outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const);
+        }
+
+        await tx.auditLog.create({
+          data: {
+            requestId: input.requestId,
+            actorUserId: input.actorUserId,
+            actorType: "USER",
+            departmentId: input.departmentId,
+            action: ACADEMIC_AUDIT_EVENTS.OFFERING_CURRICULUM_BOUND,
+            targetType: "course_offering",
+            targetId: offering.id,
+            outcome: "SUCCESS",
+            ipAddress: input.ipAddress,
+            userAgent: input.userAgent,
+            contextJson: {
+              courseOfferingId: offering.id,
+              curriculumCourseId: curriculumCourse.id,
+              curriculumVersionId: curriculumCourse.curriculumVersionId,
+              assessmentTemplateId: curriculumCourse.assessmentTemplateId,
+              courseId: offering.courseId,
+              previousBindingValue: null,
+              newBindingValue: curriculumCourse.id,
+              curriculumVersionStatus:
+                curriculumCourse.curriculumVersion.status,
+              assessmentTemplateStatus:
+                curriculumCourse.assessmentTemplate.status,
+            },
+          },
+        });
+
+        const bound = await tx.courseOffering.findFirst({
+          where: {
+            id: offering.id,
+            departmentId: input.departmentId,
+            archivedAt: null,
+          },
+          include: courseOfferingInclude,
+        });
+
+        const safeBound = bound
+          ? sanitizeCourseOfferingRead(bound, input.departmentId)
+          : null;
+
+        if (!safeBound) {
+          throw new Error("BOUND_COURSE_OFFERING_NOT_FOUND");
+        }
+
+        return { outcome: "BOUND", offering: safeBound } as const;
+      });
+    } catch (error) {
+      if (!isCourseOfferingBoundIdentityConflict(error)) {
+        throw error;
+      }
+
+      const offering = await this.prisma.courseOffering.findFirst({
         where: {
           id: input.courseOfferingId,
           departmentId: input.departmentId,
           archivedAt: null,
         },
         select: {
-          id: true,
-          departmentId: true,
-          courseId: true,
-          curriculumCourseId: true,
-          course: {
-            select: {
-              id: true,
-              departmentId: true,
-              academicProgramId: true,
-            },
-          },
-          curriculumCourse: {
-            select: {
-              id: true,
-              departmentId: true,
-              courseId: true,
-              curriculumVersionId: true,
-              assessmentTemplateId: true,
-              course: {
-                select: {
-                  id: true,
-                  departmentId: true,
-                  academicProgramId: true,
-                },
-              },
-              curriculumVersion: {
-                select: {
-                  id: true,
-                  departmentId: true,
-                  academicProgramId: true,
-                  academicProgram: {
-                    select: { id: true, departmentId: true },
-                  },
-                },
-              },
-              assessmentTemplate: {
-                select: {
-                  id: true,
-                  departmentId: true,
-                  academicProgramId: true,
-                  academicProgram: {
-                    select: { id: true, departmentId: true },
-                  },
-                },
-              },
-            },
-          },
+          academicTermId: true,
+          sectionCode: true,
         },
       });
-
       if (!offering) {
-        return { outcome: "OFFERING_NOT_FOUND" } as const;
+        throw error;
       }
 
-      if (offering.curriculumCourseId) {
-        if (offering.curriculumCourseId !== input.curriculumCourseId) {
-          return { outcome: "BINDING_CONFLICT" } as const;
-        }
-
-        const current = offering.curriculumCourse;
-        const academicProgramId = offering.course.academicProgramId;
-        const templateProgramIsValid = current?.assessmentTemplate
-          .academicProgramId
-          ? current.assessmentTemplate.academicProgramId ===
-              academicProgramId &&
-            current.assessmentTemplate.academicProgram?.id ===
-              current.assessmentTemplate.academicProgramId &&
-            current.assessmentTemplate.academicProgram.departmentId ===
-              input.departmentId
-          : current?.assessmentTemplate.academicProgram === null;
-        if (
-          !academicProgramId ||
-          offering.departmentId !== input.departmentId ||
-          offering.course.id !== offering.courseId ||
-          offering.course.departmentId !== input.departmentId ||
-          !current ||
-          current.id !== offering.curriculumCourseId ||
-          current.departmentId !== input.departmentId ||
-          current.courseId !== offering.courseId ||
-          current.course.id !== current.courseId ||
-          current.course.departmentId !== input.departmentId ||
-          current.course.academicProgramId !== academicProgramId ||
-          current.curriculumVersion.id !== current.curriculumVersionId ||
-          current.curriculumVersion.departmentId !== input.departmentId ||
-          current.curriculumVersion.academicProgramId !== academicProgramId ||
-          current.curriculumVersion.academicProgram.id !== academicProgramId ||
-          current.curriculumVersion.academicProgram.departmentId !==
-            input.departmentId ||
-          current.assessmentTemplate.id !== current.assessmentTemplateId ||
-          current.assessmentTemplate.departmentId !== input.departmentId ||
-          !templateProgramIsValid
-        ) {
-          return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
-        }
-
-        const existing = await tx.courseOffering.findFirst({
-          where: {
-            id: offering.id,
-            departmentId: input.departmentId,
-            archivedAt: null,
-          },
-          include: courseOfferingInclude,
-        });
-
-        if (!existing) {
-          return { outcome: "OFFERING_NOT_FOUND" } as const;
-        }
-
-        const safeExisting = sanitizeCourseOfferingRead(
-          existing,
-          input.departmentId,
-        );
-
-        return safeExisting
-          ? ({ outcome: "ALREADY_BOUND", offering: safeExisting } as const)
-          : ({ outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const);
-      }
-
-      if (
-        offering.departmentId !== input.departmentId ||
-        offering.course.id !== offering.courseId ||
-        offering.course.departmentId !== input.departmentId
-      ) {
-        return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
-      }
-
-      const curriculumCourse = await tx.curriculumCourse.findFirst({
+      const conflict = await this.prisma.courseOffering.findFirst({
         where: {
-          id: input.curriculumCourseId,
+          id: { not: input.courseOfferingId },
           departmentId: input.departmentId,
+          academicTermId: offering.academicTermId,
+          curriculumCourseId: input.curriculumCourseId,
+          sectionCode: offering.sectionCode,
         },
-        select: {
-          id: true,
-          departmentId: true,
-          courseId: true,
-          curriculumVersionId: true,
-          assessmentTemplateId: true,
-          course: {
-            select: {
-              id: true,
-              departmentId: true,
-              academicProgramId: true,
-            },
-          },
-          curriculumVersion: {
-            select: {
-              id: true,
-              departmentId: true,
-              status: true,
-              archivedAt: true,
-              academicProgramId: true,
-              academicProgram: {
-                select: { id: true, departmentId: true },
-              },
-            },
-          },
-          assessmentTemplate: {
-            select: {
-              id: true,
-              departmentId: true,
-              status: true,
-              archivedAt: true,
-              academicProgramId: true,
-              academicProgram: {
-                select: { id: true, departmentId: true },
-              },
-            },
-          },
-        },
+        select: { id: true },
       });
 
-      if (!curriculumCourse) {
-        return { outcome: "CURRICULUM_COURSE_NOT_FOUND" } as const;
+      if (conflict) {
+        return { outcome: "BINDING_CONFLICT" } as const;
       }
-
-      const academicProgramId = offering.course.academicProgramId;
-      const templateProgramIsValid = curriculumCourse.assessmentTemplate
-        .academicProgramId
-        ? curriculumCourse.assessmentTemplate.academicProgramId ===
-            academicProgramId &&
-          curriculumCourse.assessmentTemplate.academicProgram?.id ===
-            curriculumCourse.assessmentTemplate.academicProgramId &&
-          curriculumCourse.assessmentTemplate.academicProgram.departmentId ===
-            input.departmentId
-        : curriculumCourse.assessmentTemplate.academicProgram === null;
-
-      if (
-        !academicProgramId ||
-        curriculumCourse.departmentId !== input.departmentId ||
-        curriculumCourse.course.id !== curriculumCourse.courseId ||
-        curriculumCourse.course.departmentId !== input.departmentId ||
-        curriculumCourse.course.academicProgramId !== academicProgramId ||
-        curriculumCourse.curriculumVersion.id !==
-          curriculumCourse.curriculumVersionId ||
-        curriculumCourse.curriculumVersion.departmentId !==
-          input.departmentId ||
-        curriculumCourse.curriculumVersion.academicProgramId !==
-          academicProgramId ||
-        curriculumCourse.curriculumVersion.academicProgram.id !==
-          academicProgramId ||
-        curriculumCourse.curriculumVersion.academicProgram.departmentId !==
-          input.departmentId ||
-        curriculumCourse.assessmentTemplate.id !==
-          curriculumCourse.assessmentTemplateId ||
-        curriculumCourse.assessmentTemplate.departmentId !==
-          input.departmentId ||
-        !templateProgramIsValid
-      ) {
-        return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
-      }
-
-      if (curriculumCourse.courseId !== offering.courseId) {
-        return { outcome: "COURSE_MISMATCH" } as const;
-      }
-
-      if (
-        curriculumCourse.curriculumVersion.archivedAt ||
-        !BINDABLE_ACADEMIC_VERSION_STATUSES.includes(
-          curriculumCourse.curriculumVersion.status,
-        )
-      ) {
-        return { outcome: "INACTIVE_CURRICULUM_VERSION" } as const;
-      }
-
-      if (
-        curriculumCourse.assessmentTemplate.archivedAt ||
-        !BINDABLE_ACADEMIC_VERSION_STATUSES.includes(
-          curriculumCourse.assessmentTemplate.status,
-        )
-      ) {
-        return { outcome: "INACTIVE_ASSESSMENT_TEMPLATE" } as const;
-      }
-
-      const updated = await tx.courseOffering.updateMany({
-        where: {
-          id: offering.id,
-          departmentId: input.departmentId,
-          archivedAt: null,
-          curriculumCourseId: null,
-        },
-        data: { curriculumCourseId: curriculumCourse.id },
-      });
-
-      if (updated.count === 0) {
-        const concurrent = await tx.courseOffering.findFirst({
-          where: {
-            id: offering.id,
-            departmentId: input.departmentId,
-            archivedAt: null,
-          },
-          select: { curriculumCourseId: true },
-        });
-
-        if (!concurrent) {
-          return { outcome: "OFFERING_NOT_FOUND" } as const;
-        }
-
-        if (concurrent.curriculumCourseId !== curriculumCourse.id) {
-          return { outcome: "BINDING_CONFLICT" } as const;
-        }
-
-        const existing = await tx.courseOffering.findFirst({
-          where: {
-            id: offering.id,
-            departmentId: input.departmentId,
-            archivedAt: null,
-          },
-          include: courseOfferingInclude,
-        });
-
-        if (!existing) {
-          return { outcome: "OFFERING_NOT_FOUND" } as const;
-        }
-
-        const safeExisting = sanitizeCourseOfferingRead(
-          existing,
-          input.departmentId,
-        );
-
-        return safeExisting
-          ? ({ outcome: "ALREADY_BOUND", offering: safeExisting } as const)
-          : ({ outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const);
-      }
-
-      await tx.auditLog.create({
-        data: {
-          requestId: input.requestId,
-          actorUserId: input.actorUserId,
-          actorType: "USER",
-          departmentId: input.departmentId,
-          action: ACADEMIC_AUDIT_EVENTS.OFFERING_CURRICULUM_BOUND,
-          targetType: "course_offering",
-          targetId: offering.id,
-          outcome: "SUCCESS",
-          ipAddress: input.ipAddress,
-          userAgent: input.userAgent,
-          contextJson: {
-            courseOfferingId: offering.id,
-            curriculumCourseId: curriculumCourse.id,
-            curriculumVersionId: curriculumCourse.curriculumVersionId,
-            assessmentTemplateId: curriculumCourse.assessmentTemplateId,
-            courseId: offering.courseId,
-            previousBindingValue: null,
-            newBindingValue: curriculumCourse.id,
-            curriculumVersionStatus: curriculumCourse.curriculumVersion.status,
-            assessmentTemplateStatus:
-              curriculumCourse.assessmentTemplate.status,
-          },
-        },
-      });
-
-      const bound = await tx.courseOffering.findFirst({
-        where: {
-          id: offering.id,
-          departmentId: input.departmentId,
-          archivedAt: null,
-        },
-        include: courseOfferingInclude,
-      });
-
-      const safeBound = bound
-        ? sanitizeCourseOfferingRead(bound, input.departmentId)
-        : null;
-
-      if (!safeBound) {
-        throw new Error("BOUND_COURSE_OFFERING_NOT_FOUND");
-      }
-
-      return { outcome: "BOUND", offering: safeBound } as const;
-    });
+      throw error;
+    }
   }
 
   async createStudentCurriculumAssignment(

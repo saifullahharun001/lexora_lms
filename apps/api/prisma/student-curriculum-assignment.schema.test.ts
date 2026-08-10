@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-const schema = readFileSync(join(process.cwd(), "prisma", "schema.prisma"), "utf8");
+const schema = readFileSync(
+  join(process.cwd(), "prisma", "schema.prisma"),
+  "utf8",
+);
 const migration = readFileSync(
   join(
     process.cwd(),
@@ -15,7 +18,8 @@ const migration = readFileSync(
   "utf8",
 );
 
-const model = schema.match(/model StudentCurriculumAssignment \{[\s\S]*?\n\}/)?.[0] ?? "";
+const model =
+  schema.match(/model StudentCurriculumAssignment \{[\s\S]*?\n\}/)?.[0] ?? "";
 
 test("immutable assignment model has the required mapped scalar fields", () => {
   assert.match(model, /id\s+String\s+@id @default\(cuid\(\)\)/);
@@ -26,10 +30,19 @@ test("immutable assignment model has the required mapped scalar fields", () => {
     "curriculumVersionId",
     "assignedByUserId",
   ]) {
-    assert.match(model, new RegExp(`${field}\\s+String\\s+@map\\("[a-z_]+"\\)`));
+    assert.match(
+      model,
+      new RegExp(`${field}\\s+String\\s+@map\\("[a-z_]+"\\)`),
+    );
   }
-  assert.match(model, /assignedAt\s+DateTime\s+@default\(now\(\)\) @map\("assigned_at"\)/);
-  assert.match(model, /createdAt\s+DateTime\s+@default\(now\(\)\) @map\("created_at"\)/);
+  assert.match(
+    model,
+    /assignedAt\s+DateTime\s+@default\(now\(\)\) @map\("assigned_at"\)/,
+  );
+  assert.match(
+    model,
+    /createdAt\s+DateTime\s+@default\(now\(\)\) @map\("created_at"\)/,
+  );
   assert.doesNotMatch(model, /updatedAt|updated_at/);
   assert.match(model, /@@map\("student_curriculum_assignments"\)/);
   assert.match(migration, /CREATE TABLE "student_curriculum_assignments"/);
@@ -41,11 +54,15 @@ test("one immutable assignment per department, student, and programme is enforce
   assert.ok(name.length <= 63);
   assert.match(
     model,
-    new RegExp(`@@unique\\(\\[departmentId, studentUserId, academicProgramId\\], map: "${name}"\\)`),
+    new RegExp(
+      `@@unique\\(\\[departmentId, studentUserId, academicProgramId\\], map: "${name}"\\)`,
+    ),
   );
   assert.match(
     migration,
-    new RegExp(`CREATE UNIQUE INDEX "${name}"\\s+ON "student_curriculum_assignments"\\("department_id", "student_user_id", "academic_program_id"\\)`),
+    new RegExp(
+      `CREATE UNIQUE INDEX "${name}"\\s+ON "student_curriculum_assignments"\\("department_id", "student_user_id", "academic_program_id"\\)`,
+    ),
   );
 });
 
@@ -84,10 +101,11 @@ test("assignment foundation does not alter enrollment or offering behavior", () 
   assert.doesNotMatch(migration, /enrollments|course_offerings/i);
   assert.match(schema, /curriculumCourseId\s+String\?/);
   assert.match(schema, /curriculumCourse\s+CurriculumCourse\?/);
-  assert.match(
+  assert.doesNotMatch(
     schema,
     /@@unique\(\[departmentId, academicTermId, courseId, sectionCode\]\)/,
   );
+  assert.match(schema, /PostgreSQL partial unique indexes/);
   assert.match(
     schema,
     /@@index\(\[departmentId, curriculumCourseId\], map: "course_offering_dept_curriculum_course_idx"\)/,
