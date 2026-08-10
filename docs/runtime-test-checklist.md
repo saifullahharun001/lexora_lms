@@ -14141,3 +14141,519 @@ Before coding that behavior, define and test the exact authoritative dependency 
 Legacy unbound Enrollment rows must remain readable and historically valid.
 
 CourseOffering uniqueness redesign and Enrollment → CourseOffering CASCADE hardening should remain separate focused checkpoints unless a later source/runtime review demonstrates a compelling atomic dependency.
+
+## Curriculum-Aware Enrollment Creation Ordinary Runtime Verification — 2026-08-10
+
+### Supersession and classification
+
+This checkpoint supersedes earlier statements only to the extent that curriculum-aware Enrollment creation, server-side curriculum identity derivation, Enrollment dependency-chain enforcement and ordinary live Enrollment first-write concurrency were still pending.
+
+It does **not** supersede pending work for:
+
+- controlled historical Enrollment curriculum backfill;
+- canonical StudentCurriculumAssignment establishment;
+- remaining canonical CourseOffering bindings;
+- old/new curriculum CourseOffering coexistence;
+- CourseOffering uniqueness redesign;
+- Enrollment → CourseOffering historical delete hardening;
+- irregular/failed/retake/improvement handling;
+- earlier-syllabus candidate handling;
+- curriculum-aware eligible/available offering discovery;
+- exceptional StudentCurriculumAssignment reassignment/migration;
+- database-trigger-level StudentCurriculumAssignment immutability;
+- ordinary live concurrent StudentCurriculumAssignment first-write verification;
+- broader curriculum-management API/UI;
+- Student curriculum-assignment UI;
+- curriculum-aware result/transcript integration;
+- production/runtime-test fixture segregation and hygiene.
+
+Current verified classification:
+
+- curriculum-aware Enrollment creation implemented;
+- implementation independently security/diff reviewed;
+- implementation committed and pushed;
+- Ubuntu runtime deployed to the reviewed implementation commit;
+- API typecheck passed;
+- API build passed;
+- ordinary PostgreSQL 18.4 runtime verification passed;
+- Department Admin positive Enrollment creation passed;
+- server-authoritative StudentCurriculumAssignment derivation passed;
+- server-authoritative CurriculumCourse derivation passed;
+- exact curriculum pair persistence passed;
+- unauthenticated create rejection passed;
+- Teacher create rejection passed;
+- Student create rejection passed;
+- unbound CourseOffering rejection passed;
+- StudentCurriculumAssignment/CurriculumVersion mismatch rejection passed;
+- missing StudentCurriculumAssignment rejection passed;
+- academic-term mismatch rejection passed;
+- cross-department direct CourseOffering protection passed;
+- nonexistent/cross-department CourseOffering response equivalence passed;
+- hostile client curriculum-ID submission was rejected safely;
+- duplicate Enrollment rejection passed;
+- authenticated-principal department remained authoritative despite forged `x-department-id`;
+- Student own-resource Enrollment read remained available;
+- Student broad Enrollment direct read remained denied;
+- real concurrent ordinary first-write produced exactly one Enrollment;
+- concurrent loser mapped cleanly to duplicate HTTP `409`;
+- failed dependency requests persisted no Enrollment rows;
+- failed dependency requests produced no success Enrollment audit;
+- successful Enrollment audit metadata contained the authoritative curriculum identifiers;
+- historical null/null Enrollment rows remained intact;
+- canonical LL.B. CurriculumVersion remained DRAFT;
+- direct and Nginx API health remained HTTP `200`;
+- runtime repository remained clean and aligned with `origin/main`.
+
+### Implementation commit
+
+Implementation commit:
+
+`4f6861495dd9cc37bbabb0568a2a14784db2c815`
+
+Commit message:
+
+`Add curriculum-aware enrollment creation`
+
+Implementation parent:
+
+`764e311954e8c7bed64635c8d8b088018b6b51d3`
+
+The reviewed implementation changed exactly:
+
+- `apps/api/src/modules/academic/application/ports/academic.repository.port.ts`;
+- `apps/api/src/modules/academic/application/services/academic.service.ts`;
+- `apps/api/src/modules/academic/application/services/academic.service.test.ts`;
+- `apps/api/src/modules/academic/infrastructure/repositories/prisma-academic.repository.ts`;
+- `apps/api/src/modules/academic/infrastructure/repositories/prisma-academic.repository.test.ts`.
+
+No Enrollment DTO, controller, Prisma schema, migration, frontend, environment or deployment configuration was changed by this implementation.
+
+### Authoritative Enrollment creation chain
+
+For new curriculum-aware Enrollment creation, the reviewed runtime behavior now enforces the authoritative server-side dependency chain:
+
+1. authenticated principal department remains authoritative;
+2. CourseOffering must resolve inside that department;
+3. Enrollment `academicTermId` must match the CourseOffering academic term;
+4. target Student must be an ACTIVE, non-archived, non-deleted User in the same active Department;
+5. target Student must hold an active, non-revoked, non-expired same-department `student` role;
+6. CourseOffering must be bound to an exact CurriculumCourse;
+7. CourseOffering's actual Course relation must remain in the authoritative department;
+8. CurriculumCourse must remain in the authoritative department;
+9. CurriculumCourse actual Course identity must match the CourseOffering Course;
+10. CurriculumVersion is resolved from the exact CurriculumCourse;
+11. CurriculumVersion must remain in the authoritative department;
+12. AcademicProgram is derived from the validated CurriculumVersion relation;
+13. StudentCurriculumAssignment is resolved server-side from department + Student + validated AcademicProgram;
+14. StudentCurriculumAssignment CurriculumVersion must equal the exact CurriculumCourse CurriculumVersion;
+15. Enrollment stores both `studentCurriculumAssignmentId` and `curriculumCourseId` in the same Serializable repository transaction;
+16. client-supplied curriculum identity cannot become Enrollment authority.
+
+The Enrollment API still does not expose client-controlled curriculum identity fields as accepted authoritative input.
+
+### Independent implementation review
+
+The first implementation diff review identified two blocking High findings:
+
+1. active department-scoped Student-role validation had been weakened;
+2. Course/CurriculumVersion/AcademicProgram relational dependency validation was not deep enough for malformed tenant-linked state.
+
+Both findings were corrected before commit.
+
+Final independent review findings:
+
+- Critical: `0`;
+- High: `0`;
+- Medium: `0`;
+- Low: `0`;
+- Suggestion: `1`.
+
+The remaining suggestion was to exercise real PostgreSQL concurrent first-write behavior.
+
+That concurrency case was subsequently executed successfully in this ordinary runtime checkpoint.
+
+### Static verification
+
+Before commit and again before deployment:
+
+- focused Academic service tests passed;
+- focused Prisma Academic repository tests passed;
+- API typecheck passed;
+- API build passed;
+- `git diff --check` passed.
+
+Final corrected repository-focused test result:
+
+- tests: `44`;
+- passed: `44`;
+- failed: `0`.
+
+Service test result:
+
+- tests: `16`;
+- passed: `16`;
+- failed: `0`.
+
+### Deployment evidence
+
+Server source before fast-forward:
+
+`764e311954e8c7bed64635c8d8b088018b6b51d3`
+
+Server source after fast-forward:
+
+`4f6861495dd9cc37bbabb0568a2a14784db2c815`
+
+Controlled PM2 restart:
+
+- PID before: `1880`;
+- PID after: `8129`.
+
+Post-restart verification:
+
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- API listener remained loopback-only on port `4000`;
+- repository remained clean;
+- local/origin alignment remained `0 0`.
+
+Ordinary database:
+
+- database: `lexora_lms`;
+- PostgreSQL: `18.4`.
+
+### Canonical curriculum non-mutation
+
+Canonical LL.B. CurriculumVersion:
+
+`cmsi9mwow000n2iiumxospbg6`
+
+Code:
+
+`LLB-HONS-2025-2026-V1`
+
+Status remained:
+
+`DRAFT`
+
+The canonical CurriculumVersion was not promoted or otherwise modified to enable Enrollment testing.
+
+The runtime Enrollment checkpoint deliberately used isolated runtime-only curriculum data instead.
+
+### Runtime StudentCurriculumAssignment dependency
+
+Existing runtime StudentCurriculumAssignment reused:
+
+`cmslyv8k5000n2iydy4rtqziy`
+
+Department:
+
+`dept_law_test`
+
+Student:
+
+`cmpmmnn00000f2imt3sqhgto9`
+
+AcademicProgram:
+
+`program_law_sca_runtime`
+
+CurriculumVersion:
+
+`cv_law_sca_runtime_approved`
+
+This StudentCurriculumAssignment is a runtime-only verification fixture.
+
+It is not the canonical LL.B. StudentCurriculumAssignment.
+
+### Runtime-only Enrollment fixture boundary
+
+The ordinary database initially had no CurriculumCourse under the existing SCA runtime programme.
+
+Therefore canonical curriculum data was not repurposed.
+
+Dedicated runtime-only fixtures were created for this verification.
+
+Runtime AssessmentTemplate:
+
+`assessment_template_law_enrollment_runtime_v1`
+
+Runtime Courses:
+
+- `course_law_enrollment_runtime_001`;
+- `course_law_enrollment_nosca_runtime_002`.
+
+Additional no-SCA runtime AcademicProgram:
+
+`program_law_enrollment_nosca_runtime`
+
+Additional no-SCA runtime CurriculumVersion:
+
+`cv_law_enrollment_nosca_approved`
+
+Runtime CurriculumCourses:
+
+- `curriculum_course_law_enrollment_runtime_approved`;
+- `curriculum_course_law_enrollment_runtime_active`;
+- `curriculum_course_law_enrollment_nosca_approved`.
+
+Runtime CourseOfferings:
+
+- `offering_law_enrollment_runtime_positive`;
+- `offering_law_enrollment_runtime_race`;
+- `offering_law_enrollment_runtime_unbound`;
+- `offering_law_enrollment_runtime_version_mismatch`;
+- `offering_law_enrollment_runtime_nosca`.
+
+These are explicitly runtime-test fixtures and must not be treated as canonical academic data.
+
+They remain subject to the separately tracked production/runtime-test fixture segregation and hygiene work.
+
+### Verification-harness interruption
+
+The first runtime verification command successfully committed the isolated runtime fixture transaction and then stopped before any Enrollment API test.
+
+Cause:
+
+- the login-body helper attempted to pipe credentials into `python3 -` while simultaneously supplying the Python program through a heredoc;
+- the heredoc occupied Python standard input;
+- the piped login data was therefore unavailable;
+- the helper exited with an `IndexError`.
+
+This was a test-harness defect, not a Lexora application defect.
+
+Before resuming, the continuation verified:
+
+- all intended runtime fixtures existed;
+- no runtime Enrollment had yet been created;
+- total Enrollment count remained `10`;
+- historical null/null Enrollment count remained `10`;
+- canonical LL.B. remained DRAFT;
+- repository remained clean and aligned.
+
+The helper was corrected to use `python3 -c` so piped input remained available.
+
+No product-code correction was required.
+
+### Runtime authentication and authorization
+
+Fresh runtime login succeeded for:
+
+- Law Department Admin: HTTP `201`;
+- Law Teacher: HTTP `201`;
+- Law Student: HTTP `201`.
+
+Raw passwords and access tokens were not printed or documented.
+
+Enrollment create authorization:
+
+- unauthenticated request: HTTP `401`;
+- Teacher request: HTTP `403`;
+- Student request: HTTP `403`;
+- Department Admin: allowed subject to scoped dependency validation.
+
+### Dependency-negative runtime verification
+
+The following requests were rejected with HTTP `400`:
+
+- unbound CourseOffering;
+- StudentCurriculumAssignment/CurriculumVersion mismatch;
+- missing StudentCurriculumAssignment;
+- academic-term mismatch;
+- cross-department CourseOffering direct-object attempt;
+- nonexistent CourseOffering direct-object attempt.
+
+The cross-department CourseOffering request and nonexistent CourseOffering request returned the same response message.
+
+No object-existence oracle was observed for that tested path.
+
+Failed dependency requests produced:
+
+- Enrollment rows: `0`;
+- success Enrollment audits: `0`.
+
+### Hostile client curriculum identity
+
+A Department Admin request attempted to supply hostile extra curriculum identity fields:
+
+- fake StudentCurriculumAssignment ID;
+- fake CurriculumCourse ID.
+
+The external API rejected the request safely with HTTP `400`.
+
+A normal request without those untrusted fields then succeeded.
+
+No hostile curriculum identity was persisted.
+
+### Positive Enrollment runtime result
+
+Positive Enrollment ID:
+
+`cmsnbenop000n2i9tjzk2cm0x`
+
+Verified persisted identity:
+
+- department: `dept_law_test`;
+- Student: `cmpmmnn00000f2imt3sqhgto9`;
+- CourseOffering: `offering_law_enrollment_runtime_positive`;
+- StudentCurriculumAssignment: `cmslyv8k5000n2iydy4rtqziy`;
+- CurriculumCourse: `curriculum_course_law_enrollment_runtime_approved`;
+- status: `APPROVED`;
+- source type: `ADMIN`;
+- approving actor: canonical Law runtime Department Admin;
+- `enrolled_at`: populated.
+
+The authoritative curriculum pair was persisted by the server.
+
+### Duplicate and department-header runtime verification
+
+A duplicate create request for the same Student and CourseOffering returned:
+
+HTTP `409`
+
+A duplicate request with a forged foreign `x-department-id` also returned:
+
+HTTP `409`
+
+Database cardinality remained exactly one Enrollment for that Student/CourseOffering.
+
+The forged header did not override the authenticated principal's department.
+
+### Student own-resource regression verification
+
+For the newly created positive Enrollment:
+
+- Student `GET /api/v1/enrollments/me/:id`: HTTP `200`;
+- Student broad `GET /api/v1/enrollments/:id`: HTTP `403`.
+
+The existing Student own-resource access model remained preserved.
+
+No broad Enrollment read permission was added to Student.
+
+### Real ordinary concurrent first-write verification
+
+Two simultaneous Department Admin Enrollment create requests targeted:
+
+`offering_law_enrollment_runtime_race`
+
+Observed HTTP outcomes:
+
+- one request: `201`;
+- one request: `409`.
+
+Exactly one Enrollment row was persisted.
+
+Concurrent winner Enrollment ID:
+
+`cmsnbeo00000t2i9t4dtwwvnw`
+
+Persisted authoritative curriculum identity:
+
+- StudentCurriculumAssignment: `cmslyv8k5000n2iydy4rtqziy`;
+- CurriculumCourse: `curriculum_course_law_enrollment_runtime_approved`.
+
+Concurrency verdict:
+
+`LOSER_MAPPED_TO_DUPLICATE_409`
+
+Therefore ordinary PostgreSQL/API concurrent first-write behavior is runtime verified for curriculum-aware Enrollment creation.
+
+No Serializable loser surfaced as an HTTP `500` in this tested race.
+
+This result does not imply that every possible PostgreSQL serialization/deadlock scenario has been exhaustively tested.
+
+### Audit runtime verification
+
+Exactly two success Enrollment audits were verified for the two successful runtime-created Enrollments.
+
+Both success audits contained:
+
+- correct Department Admin actor identity;
+- correct Student identity;
+- authoritative StudentCurriculumAssignment ID;
+- authoritative CurriculumCourse ID.
+
+Failed dependency requests did not create success Enrollment audits.
+
+Audit creation remains outside the repository transaction according to the existing service convention.
+
+This checkpoint verifies observed successful audit creation and absence of success audits for the tested rejected paths.
+
+It does not redefine the audit transaction boundary.
+
+### Historical Enrollment compatibility
+
+Enrollment count before curriculum-aware runtime creation:
+
+`10`
+
+All `10` pre-existing Enrollment rows had:
+
+- `student_curriculum_assignment_id = NULL`;
+- `curriculum_course_id = NULL`.
+
+After successful runtime testing:
+
+- new bound runtime Enrollments: `2`;
+- total Enrollment rows: `12`;
+- historical null/null Enrollment rows: `10`;
+- invalid partial curriculum pairs: `0`.
+
+A deterministic fingerprint of the historical null/null Enrollment set remained unchanged.
+
+Therefore the two new curriculum-aware Enrollments did not mutate or backfill the pre-existing historical Enrollment rows.
+
+### Accurate current status
+
+> Curriculum-aware Enrollment creation is implemented, independently security-reviewed, committed and pushed, deployed to the ordinary Lexora runtime, and ordinary HTTP/PostgreSQL runtime verified. New Enrollment creation derives curriculum identity server-side through the scoped CourseOffering → CurriculumCourse → CurriculumVersion → AcademicProgram → StudentCurriculumAssignment chain and persists the exact StudentCurriculumAssignment/CurriculumCourse pair atomically within the Serializable repository transaction. Department isolation, active scoped Student-role enforcement, hostile curriculum-ID rejection, unbound/mismatch/missing-SCA/term rejection, duplicate handling, forged department-header resistance, Student own-resource preservation, audit identity, historical null/null Enrollment compatibility and a real concurrent first-write `201 + 409` outcome all have ordinary runtime evidence. The canonical LL.B. CurriculumVersion remains DRAFT and was not modified for testing.
+
+### Remaining limitations and pending work
+
+This checkpoint does **not** complete:
+
+- controlled historical Enrollment backfill;
+- canonical LL.B. StudentCurriculumAssignment creation;
+- remaining canonical CourseOffering curriculum bindings;
+- old/new curriculum CourseOffering coexistence;
+- redesign/replacement of current CourseOffering uniqueness;
+- Enrollment → CourseOffering historical delete hardening;
+- irregular/failed/retake/improvement curriculum workflow;
+- earlier-syllabus candidate handling;
+- curriculum-aware eligible/available offering discovery;
+- exceptional StudentCurriculumAssignment reassignment/migration;
+- database-trigger-level StudentCurriculumAssignment immutability;
+- ordinary live concurrent StudentCurriculumAssignment first-write verification;
+- broader curriculum-management API/UI;
+- Student curriculum-assignment UI;
+- curriculum-aware result/transcript integration;
+- runtime/test-data fixture segregation and hygiene;
+- broader security/production hardening tracked elsewhere.
+
+The current CourseOffering uniqueness remains:
+
+`department + academicTerm + base Course + section`
+
+The current Enrollment → CourseOffering foreign key remains:
+
+`ON DELETE CASCADE`
+
+Both remain separate structural follow-up tasks.
+
+Do not perform historical Enrollment backfill until authoritative canonical StudentCurriculumAssignment and curriculum-version eligibility are established.
+
+Do not promote the canonical LL.B. CurriculumVersion merely to make backfill possible.
+
+### Next safe step
+
+After this runtime evidence is documented and committed, reassess the remaining curriculum work from the latest source files.
+
+Do not automatically choose historical backfill next.
+
+The next focused task should be selected based on current academic priority while preserving separate boundaries for:
+
+- CourseOffering multi-curriculum coexistence;
+- Enrollment historical delete protection;
+- canonical curriculum assignment/backfill;
+- irregular/retake/improvement workflows;
+- available-offering discovery;
+- result/transcript curriculum integration.
