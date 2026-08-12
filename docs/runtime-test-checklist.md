@@ -15545,3 +15545,156 @@ Still pending include:
 - production/test fixture segregation and hygiene;
 - SyllabusVersion and approval/publication workflow;
 - broader OBE/formative/summative/examiner/committee/CQI/Course File implementation.
+
+## Historical Enrollment Curriculum Backfill Eligibility Read-Only Audit — 2026-08-13
+
+### Scope
+
+A focused ordinary-runtime PostgreSQL read-only audit was performed to determine whether the preserved historical Enrollment rows currently have sufficient authoritative curriculum identity for a controlled curriculum backfill.
+
+This checkpoint performed no:
+
+- Enrollment update;
+- CourseOffering binding;
+- StudentCurriculumAssignment creation;
+- CurriculumVersion status change;
+- curriculum promotion;
+- delete;
+- migration;
+- application-source modification.
+
+Both database audit passes used explicit read-only transactions and ended with `ROLLBACK`.
+
+### Runtime environment
+
+Verified ordinary runtime:
+
+- database: `lexora_lms`;
+- PostgreSQL: `18.4`;
+- repository baseline: `2b9992a4c8e10f86b69e09ae931a707020f50e46`;
+- local HEAD, local `origin/main`, and remote `main` were aligned before the audit;
+- working tree was clean.
+
+### Enrollment inventory
+
+Observed ordinary-runtime Enrollment state:
+
+- total Enrollments: `12`;
+- curriculum-bound Enrollments: `2`;
+- historical `NULL/NULL` curriculum Enrollments: `10`;
+- invalid partial curriculum-binding pairs: `0`.
+
+### First-pass historical classification
+
+The 10 historical `NULL/NULL` Enrollment rows classified as:
+
+- `BLOCKED_COURSE_OFFERING_UNBOUND`: `9`;
+- `BLOCKED_NO_STUDENT_CURRICULUM_ASSIGNMENT`: `1`;
+- authoritatively backfillable at current state: `0`.
+
+The single historical Enrollment whose CourseOffering was already curriculum-bound was:
+
+- course: `0421-1101 — Jurisprudence-I`;
+- CourseOffering: `offering_0421_1101_2025_2026_s1_a`;
+- CurriculumCourse: `cmsi9mwp6001b2iiulsk1kkeq`;
+- CurriculumVersion: `LLB-HONS-2025-2026-V1`;
+- CurriculumVersion status: `DRAFT`.
+
+It remained blocked because no exact canonical LL.B. StudentCurriculumAssignment exists for the Student.
+
+### Canonical six-offering audit
+
+The six reviewed canonical first-semester offerings were:
+
+- `0231-1105 — General English (GED)`;
+- `0311-1106 — Fundamentals of Economics (GED)`;
+- `0421-1101 — Jurisprudence-I`;
+- `0421-1102 — Muslim Law-I`;
+- `0421-1103 — Hindu Law`;
+- `0421-1104 — Legal History of Bangladesh and Roman Law`.
+
+Each had exactly one reviewed CurriculumCourse candidate in:
+
+- AcademicProgram: `LLB — Bachelor of Laws`;
+- CurriculumVersion: `LLB-HONS-2025-2026-V1`;
+- CurriculumVersion ID: `cmsi9mwow000n2iiumxospbg6`;
+- status: `DRAFT`.
+
+Binding state:
+
+- `0421-1101`: bound to its exact candidate;
+- remaining five canonical offerings: unbound.
+
+No CourseOffering was rebound during this audit.
+
+### Canonical StudentCurriculumAssignment finding
+
+The canonical Law runtime Student currently has exactly one StudentCurriculumAssignment, but it is not a canonical LL.B. assignment.
+
+The existing assignment belongs to isolated runtime-only data:
+
+- AcademicProgram: `SCA-RT`;
+- CurriculumVersion: `SCA-RT-APPROVED-V1`;
+- CurriculumVersion status: `APPROVED`.
+
+Therefore this runtime-only StudentCurriculumAssignment must not be used as authority for canonical LL.B. historical Enrollment backfill.
+
+### Positive controls
+
+The two existing curriculum-bound Enrollment rows were inspected as positive controls.
+
+Both use the isolated runtime-only curriculum setup and verified:
+
+- StudentCurriculumAssignment CurriculumVersion = CurriculumCourse CurriculumVersion;
+- CourseOffering bound CurriculumCourse = Enrollment CurriculumCourse;
+- `VERSION_MATCH`;
+- `OFFERING_MATCH`.
+
+These records demonstrate the current curriculum-aware Enrollment identity chain but do not provide canonical LL.B. backfill authority.
+
+### Backfill verdict
+
+Current safe historical backfill subset:
+
+`0 rows`
+
+No historical Enrollment may be backfilled at the present state.
+
+Reasons:
+
+1. nine historical Enrollment rows use unbound CourseOfferings;
+2. the one already-bound canonical Enrollment has no exact canonical LL.B. StudentCurriculumAssignment;
+3. canonical `LLB-HONS-2025-2026-V1` remains `DRAFT`;
+4. the existing StudentCurriculumAssignment belongs only to isolated runtime-test curriculum data.
+
+Do not:
+
+- infer curriculum identity merely from a matching base Course;
+- use the runtime-only `SCA-RT` assignment for canonical LL.B. records;
+- manufacture a canonical StudentCurriculumAssignment for testing;
+- promote the canonical CurriculumVersion merely to make backfill possible;
+- rewrite legacy `LAW-101` or BUS runtime evidence with the newer canonical curriculum.
+
+### Accurate current status
+
+> Historical Enrollment curriculum-backfill eligibility has now been ordinary-runtime audited read-only. All 10 preserved historical `NULL/NULL` Enrollment rows remain historically valid and unchanged. Zero rows currently satisfy the authoritative dependency requirements for safe backfill. The canonical six reviewed offerings each resolve to the canonical LL.B. CurriculumVersion, but that version remains `DRAFT`; five offerings remain unbound, and the one bound canonical offering has no exact canonical StudentCurriculumAssignment. The Student's only current assignment is an isolated runtime-test assignment and is not canonical LL.B. authority.
+
+### Next safe checkpoint
+
+Do not begin historical Enrollment backfill implementation.
+
+Before any canonical curriculum assignment or backfill, inspect and design the controlled CurriculumVersion lifecycle / approval boundary.
+
+Any future CurriculumVersion approval/activation workflow must preserve:
+
+- authenticated-principal department authority;
+- appropriate Department/Academic authority;
+- explicit allowed state transitions;
+- immutable/versioned historical curriculum data;
+- deny-by-default transition behavior;
+- audit logging;
+- no generic unsafe status overwrite;
+- no direct SQL status mutation as normal workflow;
+- no silent promotion merely to unblock testing.
+
+Curriculum lifecycle implementation and historical Enrollment backfill must remain separate focused checkpoints.
