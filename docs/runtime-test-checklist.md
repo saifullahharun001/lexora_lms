@@ -16077,3 +16077,427 @@ This section supersedes earlier pending wording only for CurriculumVersion lifec
 - lifecycle success-audit behavior.
 
 It does not supersede broader pending curriculum or production work.
+
+## Authorization Provenance and Terminal Transcript Lineage Runtime Verification — 2026-08-13
+
+### Scope
+
+This checkpoint closes the current runtime-verification cycle for:
+
+- PrincipalLoader role-assignment provenance and role-validity hardening;
+- authorization-policy provenance reconstruction;
+- canonical Admin / Teacher / Student authorization regression;
+- authenticated department-scope enforcement;
+- transcript public-verification regression after authorization hardening;
+- terminal transcript-lineage correction discovered during the regression.
+
+This does **not** mean the complete Lexora LMS or all production hardening is complete.
+
+### Authorization implementation
+
+Authorization provenance implementation commit:
+
+- `c773df4866df2355f8a3d141014ebcfec8aa403b`
+- `Harden authorization principal provenance`
+
+The implementation introduced and enforced authoritative role-assignment provenance including:
+
+- UserRole identity;
+- Role identity;
+- department identity;
+- role code;
+- PermissionGrant source provenance.
+
+Principal reconstruction now filters or rejects authority where applicable for:
+
+- revoked UserRole;
+- expired UserRole;
+- wrong UserRole department;
+- wrong Role department;
+- archived Role;
+- invalid user/department authority state.
+
+The authenticated principal's real department remains authoritative.
+
+`x-department-id` does not override a valid authenticated principal's department.
+
+### Static and automated validation
+
+Before runtime deployment, the authorization implementation passed:
+
+- focused authorization tests;
+- broader authorization-related tests;
+- complete compiled API test suite with no failures;
+- API typecheck;
+- API build;
+- `git diff --check`.
+
+Independent review reported no Critical, High, or Medium blocking finding within the reviewed authorization scope.
+
+### PostgreSQL authority-state runtime verification
+
+Real PostgreSQL tests verified:
+
+- valid same-department role assignment grants expected authority;
+- revoked assignment fails closed;
+- expired assignment fails closed;
+- future-valid assignment remains valid;
+- UserRole department mismatch fails closed;
+- Role department mismatch fails closed;
+- changing the authoritative database assignment changes authorization even when an older access token is still being used;
+- forged `x-department-id` does not change the authenticated principal's Law department scope.
+
+Canonical role regression also verified:
+
+- canonical Law Admin could access the expected administrative resource;
+- canonical Teacher could access the expected assigned-teacher resource;
+- Teacher remained blocked from an administrative resource;
+- canonical Student could access own enrollment resource;
+- Student remained blocked from the administrative programs resource;
+- forged department header did not move the canonical Admin into the BUS department.
+
+### Runtime verification limitation retained
+
+For proportional safety, the following destructive or broad authority mutations were not separately repeated against canonical runtime objects after this implementation:
+
+- inactive/archived authenticated user mutation;
+- inactive/archived/deleted authoritative department mutation;
+- archived Role mutation.
+
+These paths remain covered by implementation/static/unit evidence but are not claimed here as separately re-proven through live canonical-object mutation.
+
+Dynamic PermissionGrant exact-provenance behavior was also not separately re-run as an additional dedicated runtime cycle after this hardening.
+
+### Transcript regression finding discovered during authorization verification
+
+The final public-transcript regression initially exposed a pre-existing transcript lifecycle defect.
+
+Historical transcript record:
+
+- TranscriptRecord ID: `cmpbfkcou000p2i4hiwnpkcrz`
+- original version ID: `cmpbfkcox000r2i4h01tco1pu`
+
+The historical record had already been legitimately revoked.
+
+A new transcript-generation request incorrectly reused that terminal REVOKED record and created:
+
+- version ID: `cmsrrdnrz001j2iyh8uysl2hr`
+- version number: `2`
+- version status: `GENERATED`
+
+while the parent TranscriptRecord remained:
+
+- `REVOKED`;
+- `latestVersionNumber = 2`;
+- historical `revokedAt` preserved.
+
+This produced an inconsistent lineage:
+
+- parent: REVOKED;
+- version 1: REVOKED;
+- version 2: GENERATED.
+
+The defect was in transcript snapshot lineage selection, not in the authorization-provenance implementation.
+
+### Transcript lineage root cause
+
+`createTranscriptSnapshot()` selected the oldest non-archived transcript record for the same department/student without excluding terminal lifecycle states.
+
+A REVOKED record normally retains `archivedAt = null`, so it could be selected and incremented.
+
+### Transcript lineage correction
+
+Implementation commit:
+
+- `ce67cade1e1556fb71be755e67be4020458040fe`
+- `Preserve terminal transcript lineages`
+
+Changed production behavior:
+
+- only non-archived `DRAFT`, `GENERATED`, or `ISSUED` records can be reused as an active transcript lineage;
+- `REVOKED` is terminal and cannot be reused;
+- `ARCHIVED` is terminal and cannot be reused;
+- a record with `archivedAt` set cannot be reused;
+- update of a selected reusable lineage is guarded again by department, allowed lifecycle state, and `archivedAt = null`;
+- when no reusable lineage exists, a fresh TranscriptRecord is created;
+- the fresh record receives a distinct transcript number;
+- the fresh lineage starts at version `1 / GENERATED`;
+- historical terminal transcript history remains immutable.
+
+No Prisma schema or migration was required for this correction.
+
+### Focused transcript correction validation
+
+The correction added five focused repository scenarios:
+
+1. no previous transcript creates a new record and version 1;
+2. legitimate DRAFT / GENERATED / ISSUED active lineage remains reusable;
+3. REVOKED history is not reused and remains unchanged;
+4. ARCHIVED / archived history is not reused;
+5. opposite-department terminal history cannot influence lineage selection.
+
+Validation passed:
+
+- focused tests: `5/5`;
+- API typecheck;
+- API build;
+- `git diff --check`.
+
+The implementation was deployed to the Ubuntu runtime server.
+
+Post-deployment verification passed:
+
+- server API typecheck;
+- server API build;
+- focused compiled transcript tests `5/5`;
+- PM2 restart;
+- direct API health HTTP `200`;
+- Nginx API health HTTP `200`;
+- unauthenticated protected resource remained HTTP `401`;
+- NestJS remained bound to `127.0.0.1:4000`;
+- repository remained clean and aligned.
+
+### Pre-fix anomaly inspection and remediation
+
+Read-only inspection confirmed the pre-fix generated version had:
+
+- one transcript term-summary snapshot;
+- one course-line snapshot;
+- zero verification tokens;
+- zero transcript revocation records;
+- zero seal records;
+- an existing successful transcript-creation audit entry.
+
+Because the version contained immutable snapshot evidence and an audit trail, it was **not deleted**.
+
+Controlled remediation preserved the historical record and changed only the invalid pre-fix generated version:
+
+- parent TranscriptRecord remained `REVOKED`;
+- parent `latestVersionNumber` remained `2`;
+- historical version 1 remained `REVOKED`;
+- pre-fix version 2 changed `GENERATED → REVOKED`;
+- version-2 term/course snapshot rows were preserved;
+- no rows were deleted;
+- historical verification-token and revocation evidence remained unchanged.
+
+Operational remediation audit:
+
+- actor type: `SERVICE`;
+- outcome: `SUCCESS`;
+- action:
+  `transcript-verification.runtime-remediation.generated-version-revoked`;
+- remediation audit ID:
+  `runtime_remediation_20260813174138748_f3ac5a193a1d`.
+
+The remediation intentionally did not create a normal user-driven transcript-revocation record because this was correction of a pre-fix operational defect rather than a new academic revocation decision.
+
+### Final real PostgreSQL terminal-lineage regression
+
+After deployment and remediation, the transcript-generation flow was re-run against the same historical student source.
+
+Important source context:
+
+- source user ID: `user_law_runtime_student_own`;
+- source user status during this test: `SUSPENDED`;
+- source department: Law;
+- source user was neither deleted nor archived;
+- the transcript service contract permits this historical/nondeleted same-department source;
+- this must not be confused with the canonical active Student test account.
+
+Source data available:
+
+- eligible published/amended ResultRecord count: `1`;
+- GPA record count: `1`;
+- CGPA record count: `1`.
+
+#### Fresh-generation result
+
+`POST /api/v1/transcripts` returned HTTP `201`.
+
+Verified:
+
+- historical REVOKED TranscriptRecord was **not reused**;
+- a new TranscriptRecord was created;
+- the new transcript number was different from the historical transcript number;
+- new record state was `GENERATED`;
+- new `latestVersionNumber` was `1`;
+- a new version `1 / GENERATED` was created;
+- one term-summary snapshot was captured;
+- one course-line snapshot was captured;
+- expected latest CGPA source was captured;
+- historical revoked lineage remained unchanged.
+
+Fresh runtime evidence TranscriptRecord:
+
+- ID: `cmsrt7a4200072i1tbp2s6pk3`
+
+### Fresh transcript issue
+
+`POST /api/v1/transcripts/:id/issue` returned HTTP `201`.
+
+Verified:
+
+- TranscriptRecord: `ISSUED`;
+- TranscriptVersion: `ISSUED`;
+- record issued timestamp set;
+- version issued timestamp set;
+- issuing actor recorded.
+
+### Verification-token security
+
+`POST /api/v1/transcripts/:id/verification-token` returned HTTP `201`.
+
+Runtime verification confirmed:
+
+- token initially `ACTIVE`;
+- verification count initially `0`;
+- `lastVerifiedAt` initially null;
+- raw public verification token was not printed or documented;
+- SHA-256 of the runtime token matched the value stored in `public_code`;
+- raw token was not stored as the database verification value.
+
+Verification-token evidence ID:
+
+- `cmsrt7ai8000i2i1tsf22oi73`
+
+The raw verification token is intentionally not recorded.
+
+### Valid public verification
+
+Public verification returned HTTP `200`.
+
+Verified:
+
+- `valid = true`;
+- public response remained minimal;
+- no student identifier/name, course marks, GPA, CGPA, internal snapshot, token hash/public code, or password-hash field was exposed by the checked response;
+- after successful verification:
+  - verification count became `1`;
+  - `lastVerifiedAt` was set.
+
+### Token expiry
+
+A short-lived verification token was allowed to expire.
+
+Public verification after expiry returned HTTP `200` with the minimal invalid contract:
+
+- `valid = false`;
+- `status = INVALID`.
+
+Database state after expiry:
+
+- token status: `EXPIRED`;
+- verification count remained `1`;
+- expiry access did not increment the successful-verification count.
+
+### Controlled final transcript revocation
+
+The fresh runtime evidence transcript was revoked through the protected API.
+
+`POST /api/v1/transcripts/:id/revoke` returned HTTP `201`.
+
+Verified:
+
+- fresh TranscriptRecord ended `REVOKED`;
+- fresh TranscriptVersion ended `REVOKED`;
+- an `APPLIED` revocation record exists;
+- `appliesToAllTokens = true`;
+- already-expired verification token remained `EXPIRED`.
+
+The fresh transcript was intentionally retained as revoked audit evidence rather than deleted.
+
+### Academic and historical non-mutation verification
+
+Before/after fingerprints confirmed:
+
+- historical revoked transcript lineage unchanged;
+- source ResultRecord unchanged;
+- source GPA record unchanged;
+- source CGPA record unchanged.
+
+The expected transcript count increased by exactly one because the fresh runtime evidence TranscriptRecord was retained.
+
+### Audit evidence
+
+Runtime audit evidence verified successful events for:
+
+- transcript creation;
+- transcript issue;
+- verification-token creation;
+- valid public verification access;
+- expired public verification access;
+- transcript revocation.
+
+Create / issue / revoke audit records were explicitly checked.
+
+### Final runtime health
+
+At the end of the regression:
+
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- implementation commit remained deployed;
+- local server repository remained clean and aligned;
+- raw password/access token/transcript verification token was not printed into the retained evidence.
+
+### Final checkpoint verdict
+
+Within the tested scope:
+
+- [x] PrincipalLoader authority reconstruction honors current authoritative database role state.
+- [x] Revoked UserRole authority fails closed.
+- [x] Expired UserRole authority fails closed.
+- [x] Future-valid UserRole authority remains valid.
+- [x] UserRole department mismatch fails closed.
+- [x] Role department mismatch fails closed.
+- [x] Authenticated department scope cannot be overridden by forged `x-department-id`.
+- [x] Canonical Admin allowed-path regression passed.
+- [x] Canonical Teacher allowed-path regression passed.
+- [x] Canonical Teacher administrative denial passed.
+- [x] Canonical Student own-resource regression passed.
+- [x] Canonical Student administrative denial passed.
+- [x] Terminal REVOKED transcript lineage is not reused.
+- [x] Fresh transcript after terminal lineage starts with a new TranscriptRecord and version 1.
+- [x] Transcript issue passed.
+- [x] Verification token remained hash-backed.
+- [x] Public verification response remained minimal.
+- [x] Successful verification accounting passed.
+- [x] Expiry invalidation passed without incrementing the verification count.
+- [x] Controlled transcript revocation passed.
+- [x] Historical transcript evidence remained immutable.
+- [x] Source Result/GPA/CGPA records remained unchanged.
+- [x] Sensitive raw credentials/tokens were not retained in documentation.
+
+**Authorization provenance hardening is runtime verified within this checkpoint scope.**
+
+**Terminal transcript-lineage correction is runtime verified.**
+
+### Known limitation retained
+
+Transcript generation still has a concurrency-hardening gap:
+
+- the current schema does not enforce a database-level invariant guaranteeing exactly one active transcript lineage per department/student;
+- concurrent generation when no reusable active lineage exists could create multiple active records;
+- concurrent generation against one existing lineage can contend on version allocation / uniqueness.
+
+A safe fix requires a deliberate locking/constraint/schema design and was intentionally not mixed into the terminal-lineage correction.
+
+Track this as separate transcript production-hardening work.
+
+### Overall project status note
+
+This checkpoint does **not** mean Lexora LMS is fully production complete.
+
+Broader production and product work remains, including areas such as:
+
+- production/cloud deployment finalization;
+- HTTPS/domain configuration;
+- monitoring, centralized logging, and alerting;
+- backup/restore/disaster-recovery verification;
+- database isolation defense-in-depth / RLS evaluation;
+- identity hardening such as production email flows and required 2FA where applicable;
+- background notification delivery;
+- broader curriculum-management UI/API work;
+- irregular/retake/improvement academic workflows;
+- formative/summative examiner and committee workflows;
+- remaining frontend/product completion and production hardening.
