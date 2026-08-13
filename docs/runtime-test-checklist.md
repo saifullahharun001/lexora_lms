@@ -15698,3 +15698,382 @@ Any future CurriculumVersion approval/activation workflow must preserve:
 - no silent promotion merely to unblock testing.
 
 Curriculum lifecycle implementation and historical Enrollment backfill must remain separate focused checkpoints.
+
+---
+
+## CurriculumVersion Lifecycle Implementation and Ordinary-Runtime Verification — 2026-08-13
+
+### Status
+
+This CurriculumVersion lifecycle checkpoint is implemented, independently reviewed, committed, deployed, and ordinary-runtime verified.
+
+Implementation commit:
+
+`1e5715a851c7be26cdb41bdbb8124da92709a827`
+
+Commit subject:
+
+`Add curriculum version lifecycle controls`
+
+Runtime environment:
+
+- ordinary Ubuntu Lexora runtime;
+- PostgreSQL `18.4`;
+- database `lexora_lms`;
+- PM2 process `lexora-api`;
+- NestJS API bound only to `127.0.0.1:4000`;
+- Nginx reverse proxy remained healthy.
+
+### HTTP lifecycle surface
+
+Runtime-verified routes:
+
+- `PUT /api/v1/curriculum-versions/:id/approve`
+- `PUT /api/v1/curriculum-versions/:id/activate`
+- `PUT /api/v1/curriculum-versions/:id/retire`
+- `PUT /api/v1/curriculum-versions/:id/archive`
+
+Authoritative lifecycle:
+
+`DRAFT → APPROVED → ACTIVE → RETIRED → ARCHIVED`
+
+Skipped and backward transitions fail closed.
+
+### Security and governance boundary
+
+Controller protection preserves:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- `@RequirePolicy()`;
+- authenticated principal department as authoritative;
+- object-level department isolation;
+- safe not-found behavior for cross-department direct-object access.
+
+Dedicated lifecycle policy:
+
+`course-management.curriculum-version.lifecycle.manage`
+
+The lifecycle service additionally requires an exact governance permission:
+
+- resource: `course-management.curriculum-version.lifecycle`;
+- action: `manage`;
+- scope: `DEPARTMENT`.
+
+The caller must also be an active same-department Department Admin with:
+
+- unrevoked UserRole;
+- unexpired UserRole;
+- non-archived Department Admin Role;
+- the exact lifecycle permission attached to that same qualifying role.
+
+Generic `course-management.*`, global `*`, `SELF`, and `PUBLIC_VERIFICATION` permissions do not satisfy the lifecycle governance gate.
+
+### Lifecycle timestamp invariants
+
+Verified authoritative state combinations:
+
+- `DRAFT`: `approved_at IS NULL`, `archived_at IS NULL`;
+- `APPROVED`: `approved_at IS NOT NULL`, `archived_at IS NULL`;
+- `ACTIVE`: `approved_at IS NOT NULL`, `archived_at IS NULL`;
+- `RETIRED`: `approved_at IS NOT NULL`, `archived_at IS NULL`;
+- `ARCHIVED`: `approved_at IS NOT NULL`, `archived_at IS NOT NULL`.
+
+Malformed lifecycle state fails closed.
+
+Later transitions preserve the original `approved_at`.
+
+`ARCHIVE` sets `archived_at` once.
+
+Successful transition and success-audit creation execute transactionally.
+
+### Static deployment verification
+
+Server source was fast-forwarded to implementation commit:
+
+`1e5715a851c7be26cdb41bdbb8124da92709a827`
+
+Verified:
+
+- [x] exact reviewed 13-file implementation boundary;
+- [x] API typecheck passed;
+- [x] API build passed;
+- [x] PM2 restart passed;
+- [x] direct API health HTTP `200`;
+- [x] Nginx API health HTTP `200`;
+- [x] API listener remained `127.0.0.1:4000`;
+- [x] unauthenticated lifecycle route returned HTTP `401`;
+- [x] server `main` and `origin/main` aligned;
+- [x] repository clean.
+
+A temporary connection refusal occurred during the immediate PM2 restart window. Health recovered on the next retry. This was a restart-timing observation, not a persistent application or Nginx failure.
+
+### Canonical LL.B. non-mutation
+
+Canonical CurriculumVersion:
+
+- ID: `cmsi9mwow000n2iiumxospbg6`;
+- code: `LLB-HONS-2025-2026-V1`;
+- department: `dept_law_test`.
+
+Throughout lifecycle verification it remained:
+
+- `DRAFT`;
+- `approved_at IS NULL`;
+- `archived_at IS NULL`.
+
+The canonical curriculum was not promoted for testing.
+
+### Pre-grant fail-closed verification
+
+Before the exact lifecycle permission existed:
+
+- canonical Law Department Admin login: HTTP `201`;
+- lifecycle request: HTTP `403`;
+- canonical curriculum mutation: none;
+- lifecycle success audits: `0`.
+
+This proves the generic Department Admin wildcard does not bypass the exact lifecycle governance boundary.
+
+### Controlled runtime governance grant
+
+For runtime verification only, a temporary exact permission was created:
+
+`perm_cv_lifecycle_manage_department`
+
+Temporary role-permission link:
+
+`rp_law_cv_lifecycle_manage_department`
+
+It was attached only to:
+
+`role_law_department_admin`
+
+The temporary permission and role-permission link were removed after verification.
+
+No permanent lifecycle governance permission remained after the runtime checkpoint.
+
+Therefore lifecycle mutation is intentionally fail-closed until formally approved authority provisioning occurs.
+
+### Sequential lifecycle runtime verification
+
+Dedicated preserved runtime fixture:
+
+`cv_law_lifecycle_runtime_20260813131343`
+
+Code:
+
+`LIFECYCLE-RT-20260813131343-V1`
+
+Verified:
+
+- [x] exact resource/action with `SELF` scope → HTTP `403`;
+- [x] Teacher lifecycle mutation → HTTP `403`;
+- [x] Student lifecycle mutation → HTTP `403`;
+- [x] APPROVE without `approvalReference` → HTTP `400`;
+- [x] `DRAFT → APPROVED` → HTTP `200`;
+- [x] same-target APPROVE retry → HTTP `200`;
+- [x] APPROVE retry created no duplicate success audit;
+- [x] forged `x-department-id` did not override principal department;
+- [x] `APPROVED → ACTIVE` → HTTP `200`;
+- [x] same-target ACTIVATE retry → HTTP `200`;
+- [x] ACTIVATE retry created no duplicate success audit;
+- [x] `ACTIVE → RETIRED` → HTTP `200`;
+- [x] same-target RETIRE retry → HTTP `200`;
+- [x] RETIRE retry created no duplicate success audit;
+- [x] `RETIRED → ARCHIVED` → HTTP `200`;
+- [x] same-target ARCHIVE retry → HTTP `200`;
+- [x] ARCHIVE retry created no duplicate success audit;
+- [x] backward `ARCHIVED → ACTIVE` → HTTP `409`.
+
+Final sequential fixture state:
+
+- status `ARCHIVED`;
+- `approved_at IS NOT NULL`;
+- `archived_at IS NOT NULL`.
+
+Exactly four lifecycle success audits exist for the four real forward transitions.
+
+Verified audit properties include:
+
+- canonical Law Department Admin actor;
+- department `dept_law_test`;
+- target type `curriculum_version`;
+- correct CurriculumVersion target;
+- `SUCCESS` outcome;
+- previous/new lifecycle status context;
+- transition reason;
+- APPROVE audit approval reference.
+
+Denied, invalid, backward and idempotent requests created no additional lifecycle success audits.
+
+After the temporary permission was removed, a fresh Admin lifecycle request again returned HTTP `403`.
+
+### Cross-department direct-object verification
+
+Disposable BUS fixture:
+
+`cv_bus_lifecycle_runtime_20260813132417`
+
+Law Department Admin attempted lifecycle mutation by direct BUS CurriculumVersion ID.
+
+Result:
+
+HTTP `404`
+
+Verified:
+
+- BUS fixture mutation: none;
+- BUS lifecycle success audits: `0`.
+
+Safe cross-department not-found behavior is preserved.
+
+The disposable BUS fixture was removed after verification.
+
+### Malformed-state runtime verification
+
+Disposable malformed fixture:
+
+`cv_law_lifecycle_malformed_20260813132417`
+
+Deliberately malformed state:
+
+- status `APPROVED`;
+- `approved_at IS NULL`;
+- `archived_at IS NULL`.
+
+ACTIVATE result:
+
+HTTP `409`
+
+Verified:
+
+- malformed row mutation: none;
+- lifecycle success audits: `0`.
+
+The implementation does not silently normalize or overwrite malformed academic approval provenance.
+
+The malformed fixture was removed after verification.
+
+### Real PostgreSQL concurrent same-action verification
+
+Disposable concurrency fixture:
+
+`cv_law_lifecycle_concurrency_20260813132417`
+
+Two real HTTP APPROVE requests were issued concurrently against the same ordinary PostgreSQL `DRAFT` CurriculumVersion.
+
+Results:
+
+- request A: HTTP `200`;
+- request B: HTTP `200`.
+
+Final persisted state before cleanup:
+
+- status `APPROVED`;
+- `approved_at IS NOT NULL`;
+- `archived_at IS NULL`.
+
+Success-audit count:
+
+`1`
+
+Therefore the concurrent requests reconciled to one real transition and one same-target idempotent result without duplicate success audits.
+
+The disposable concurrency fixture was removed after verification.
+
+### Final runtime cleanup and health
+
+Verified after specialized runtime testing:
+
+- [x] specialized disposable fixtures removed;
+- [x] temporary exact lifecycle permission removed;
+- [x] temporary role-permission link removed;
+- [x] sequential archived lifecycle evidence fixture preserved;
+- [x] canonical LL.B. remained pristine `DRAFT`;
+- [x] direct API health HTTP `200`;
+- [x] Nginx API health HTTP `200`;
+- [x] repository clean;
+- [x] server `main` and `origin/main` aligned.
+
+No raw password, access token, refresh token, password hash, database credential or production secret is recorded in this evidence.
+
+### Runtime verdict
+
+Within the defined CurriculumVersion lifecycle scope:
+
+- [x] implementation complete;
+- [x] independent security/code review complete;
+- [x] focused tests passed;
+- [x] Academic module tests passed;
+- [x] API typecheck passed;
+- [x] API build passed;
+- [x] implementation committed and pushed;
+- [x] Ubuntu deployment verified;
+- [x] route/AuthGuard verified;
+- [x] exact governance fail-closed behavior verified;
+- [x] wrong-scope behavior verified;
+- [x] Teacher/Student denial verified;
+- [x] required approval-reference validation verified;
+- [x] full forward lifecycle verified;
+- [x] same-target idempotency verified;
+- [x] forged department-header resistance verified;
+- [x] backward transition protection verified;
+- [x] exact audit cardinality/context verified;
+- [x] cross-department direct-object safe-not-found verified;
+- [x] malformed-state fail-closed verified;
+- [x] real PostgreSQL concurrent same-action behavior verified;
+- [x] canonical curriculum non-mutation verified;
+- [x] temporary governance configuration cleaned up.
+
+CurriculumVersion lifecycle ordinary-runtime verification is complete for this checkpoint.
+
+### Remaining limitations / authorization hardening
+
+This checkpoint does not mean institutional curriculum governance is complete.
+
+Still pending:
+
+1. Formal institutional approval evidence is not yet modeled as a dedicated immutable `ApprovalRecord` or equivalent authority record. `approvalReference` remains validated, audit-recorded metadata.
+
+2. Permanent lifecycle authority provisioning is intentionally absent. Real deployment must provision the exact lifecycle permission only after formal academic authority is defined.
+
+3. `PrincipalLoaderService` currently flattens role-derived permissions into `principal.permissions` without retaining source department/UserRole/Role provenance on each `PermissionGrant`.
+
+4. Global PrincipalLoader role-validity and expiry semantics require a separate authorization-foundation review.
+
+5. Future authorization hardening should:
+   - preserve permission department/role provenance;
+   - consistently exclude revoked/expired authority;
+   - avoid combining authority from unrelated roles or departments;
+   - preserve AuthGuard, PolicyGuard and `@RequirePolicy()`;
+   - preserve principal department authority;
+   - preserve safe cross-department not-found behavior.
+
+6. The lifecycle endpoint is currently contained because it independently performs a DB-backed exact-role/exact-permission check against the same qualifying Department Admin authority.
+
+7. Do not weaken that lifecycle-specific containment while performing broader authorization hardening.
+
+Recommended authorization-hardening priority:
+
+`P1`
+
+8. The lifecycle API does not determine when the canonical LL.B. curriculum should be institutionally approved or activated. That remains a formal academic-governance decision.
+
+Do not promote `LLB-HONS-2025-2026-V1` merely because lifecycle APIs are implemented and runtime verified.
+
+### Supersession note
+
+This section supersedes earlier pending wording only for CurriculumVersion lifecycle:
+
+- implementation;
+- deployment;
+- exact authorization boundary;
+- state transition behavior;
+- idempotency;
+- malformed-state protection;
+- cross-department direct-object isolation;
+- concurrency behavior;
+- lifecycle success-audit behavior.
+
+It does not supersede broader pending curriculum or production work.
