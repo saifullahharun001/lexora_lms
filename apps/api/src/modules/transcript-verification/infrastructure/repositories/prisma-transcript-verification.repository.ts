@@ -51,6 +51,13 @@ export class PrismaTranscriptVerificationRepository
         where: {
           departmentId: input.departmentId,
           studentUserId: input.studentUserId,
+          status: {
+            in: [
+              TranscriptRecordStatus.DRAFT,
+              TranscriptRecordStatus.GENERATED,
+              TranscriptRecordStatus.ISSUED
+            ]
+          },
           archivedAt: null
         },
         orderBy: { createdAt: "asc" }
@@ -59,7 +66,18 @@ export class PrismaTranscriptVerificationRepository
       const versionNumber = (existing?.latestVersionNumber ?? 0) + 1;
       const record = existing
         ? await tx.transcriptRecord.update({
-            where: { id: existing.id },
+            where: {
+              id: existing.id,
+              departmentId: input.departmentId,
+              status: {
+                in: [
+                  TranscriptRecordStatus.DRAFT,
+                  TranscriptRecordStatus.GENERATED,
+                  TranscriptRecordStatus.ISSUED
+                ]
+              },
+              archivedAt: null
+            },
             data: { latestVersionNumber: versionNumber }
           })
         : await tx.transcriptRecord.create({
