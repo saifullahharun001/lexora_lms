@@ -6,6 +6,8 @@ export type DepartmentContextKind =
   | "unresolved";
 
 export interface RoleAssignment {
+  userRoleId: string;
+  roleId: string;
   departmentId: string;
   role: PlatformRole;
 }

@@ -2,6 +2,8 @@ import { Injectable } from "@nestjs/common";
 
 import type { DepartmentContext, PrincipalContext } from "@lexora/types";
 
+import { isPermissionGrantFromLoadedRole } from "./principal-authority";
+
 interface PolicyEvaluationInput {
   principal: PrincipalContext | null;
   department: DepartmentContext;
@@ -20,7 +22,8 @@ export class AuthorizationPolicyService {
         principal?.permissions.some(
           (grant) =>
             `${grant.resource}:${grant.action}` === permission &&
-            grant.scope === "public_verification"
+            grant.scope === "public_verification" &&
+            isPermissionGrantFromLoadedRole(principal, grant)
         )
       );
     }
@@ -40,9 +43,9 @@ export class AuthorizationPolicyService {
       principal.permissions.some(
         (grant) =>
           `${grant.resource}:${grant.action}` === permission &&
-          (grant.scope === "department" || grant.scope === "self")
+          (grant.scope === "department" || grant.scope === "self") &&
+          isPermissionGrantFromLoadedRole(principal, grant)
       )
     );
   }
 }
-

@@ -14,6 +14,12 @@ import { AcademicService } from "./academic.service";
 
 type Role = "department_admin" | "teacher" | "student";
 type GrantScope = "department" | "self" | "public_verification";
+interface TestPermissionGrant {
+  resource: string;
+  action: string;
+  scope: GrantScope;
+  source: { departmentId: string; userRoleId: string; roleId: string };
+}
 type DatabaseAuthorizationCase =
   | "qualifying-admin"
   | "permission-on-other-role"
@@ -34,6 +40,23 @@ const lifecycleView = {
   updatedAt: new Date("2026-08-13T10:00:00.000Z"),
 };
 
+function governanceGrant(
+  role: Role,
+  overrides: Partial<Omit<TestPermissionGrant, "source">> = {},
+): TestPermissionGrant {
+  return {
+    resource: "course-management.curriculum-version.lifecycle",
+    action: "manage",
+    scope: "department",
+    source: {
+      departmentId: "department-a",
+      userRoleId: `${role}-assignment-a`,
+      roleId: `${role}-role-a`,
+    },
+    ...overrides,
+  };
+}
+
 function harness(
   role: Role = "department_admin",
   result: TransitionCurriculumVersionResult = {
@@ -41,15 +64,9 @@ function harness(
     curriculumVersion: lifecycleView,
   },
   actorAuthorized = role === "department_admin",
-  permissions: Array<{ resource: string; action: string; scope: GrantScope }> =
+  permissions: TestPermissionGrant[] =
     role === "department_admin"
-      ? [
-          {
-            resource: "course-management.curriculum-version.lifecycle",
-            action: "manage",
-            scope: "department",
-          },
-        ]
+      ? [governanceGrant(role)]
       : [],
   databaseAuthorizationCase: DatabaseAuthorizationCase =
     actorAuthorized && role === "department_admin"
@@ -81,7 +98,14 @@ function harness(
       actorType: "user",
       isAuthenticated: true,
       activeDepartmentId: "department-a",
-      roleAssignments: [{ departmentId: "department-a", role }],
+      roleAssignments: [
+        {
+          userRoleId: `${role}-assignment-a`,
+          roleId: `${role}-role-a`,
+          departmentId: "department-a",
+          role,
+        },
+      ],
       permissions,
     },
     department: {
@@ -196,11 +220,7 @@ test("service rejects whitespace-only reasons even when called without DTO valid
 test("Teacher, Student, and stale Department Admin cannot invoke lifecycle mutation", async () => {
   for (const role of ["teacher", "student"] as const) {
     const { service, transitionCalls } = harness(role, undefined, true, [
-      {
-        resource: "course-management.curriculum-version.lifecycle",
-        action: "manage",
-        scope: "department",
-      },
+      governanceGrant(role),
     ]);
     await assert.rejects(
       service.activateCurriculumVersion("version-a", { reason: "Attempt" }),
@@ -221,13 +241,17 @@ test("Department Admin requires the exact explicit lifecycle permission", async 
   for (const permissions of [
     [],
     [
-      {
+      governanceGrant("department_admin", {
         resource: "course-management",
         action: "*",
-        scope: "department" as const,
-      },
+      }),
     ],
-    [{ resource: "*", action: "*", scope: "department" as const }],
+    [
+      governanceGrant("department_admin", {
+        resource: "*",
+        action: "*",
+      }),
+    ],
   ]) {
     const { service, authorizationQueries, transitionCalls } = harness(
       "department_admin",
@@ -251,13 +275,7 @@ test("exact lifecycle permission with non-department scope is rejected before DB
       "department_admin",
       undefined,
       true,
-      [
-        {
-          resource: "course-management.curriculum-version.lifecycle",
-          action: "manage",
-          scope,
-        },
-      ],
+      [governanceGrant("department_admin", { scope })],
     );
 
     await assert.rejects(

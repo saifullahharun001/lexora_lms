@@ -149,7 +149,8 @@ export class PrismaIdentityAccessRepository
         }
       },
       update: {
-        revokedAt: null
+        revokedAt: null,
+        expiresAt: null
       },
       create: {
         userId: input.userId,
@@ -160,6 +161,7 @@ export class PrismaIdentityAccessRepository
   }
 
   async loadAuthProfile(userId: string): Promise<AuthProfile | null> {
+    const now = new Date();
     const user = await this.prisma.user.findFirst({
       where: {
         id: userId,
@@ -168,7 +170,13 @@ export class PrismaIdentityAccessRepository
       include: {
         userRoles: {
           where: {
-            revokedAt: null
+            revokedAt: null,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+            role: {
+              is: {
+                archivedAt: null
+              }
+            }
           },
           include: {
             role: {
@@ -197,12 +205,29 @@ export class PrismaIdentityAccessRepository
       return null;
     }
 
-    const roles = user.userRoles.map((userRole) => userRole.role.code as PlatformRole);
-    const permissions: PermissionGrant[] = user.userRoles.flatMap((userRole) =>
+    const validUserRoles = user.userRoles.filter(
+      (userRole) =>
+        userRole.userId === user.id &&
+        userRole.departmentId === user.departmentId &&
+        userRole.roleId === userRole.role.id &&
+        userRole.role.departmentId === user.departmentId &&
+        userRole.revokedAt === null &&
+        (userRole.expiresAt === null || userRole.expiresAt > now) &&
+        userRole.role.archivedAt === null
+    );
+    const roles = validUserRoles.map(
+      (userRole) => userRole.role.code as PlatformRole
+    );
+    const permissions: PermissionGrant[] = validUserRoles.flatMap((userRole) =>
       userRole.role.rolePermissions.map((rolePermission) => ({
         resource: rolePermission.permission.resource,
         action: rolePermission.permission.action,
-        scope: rolePermission.permission.scope.toLowerCase() as PermissionGrant["scope"]
+        scope: rolePermission.permission.scope.toLowerCase() as PermissionGrant["scope"],
+        source: {
+          departmentId: userRole.departmentId,
+          userRoleId: userRole.id,
+          roleId: userRole.role.id
+        }
       }))
     );
 

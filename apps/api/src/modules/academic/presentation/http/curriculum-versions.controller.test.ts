@@ -76,7 +76,14 @@ test("static policy permits Department Admin and denies Teacher and Student", ()
       actorId: role + "-a",
       isAuthenticated: true,
       activeDepartmentId: "department-a",
-      roleAssignments: [{ departmentId: "department-a", role }],
+      roleAssignments: [
+        {
+          userRoleId: `${role}-assignment-a`,
+          roleId: `${role}-role-a`,
+          departmentId: "department-a",
+          role,
+        },
+      ],
       permissions: [],
     }) as never;
 

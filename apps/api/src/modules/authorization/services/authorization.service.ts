@@ -6,6 +6,11 @@ import type {
   PrincipalContext
 } from "@lexora/types";
 
+import {
+  isPermissionGrantFromLoadedRole,
+  isRoleAssignmentInActiveDepartment
+} from "@/common/authorization/principal-authority";
+
 const STATIC_ROLE_POLICIES: Record<PlatformRole, string[]> = {
   department_admin: [
     "identity-access.*",
@@ -132,14 +137,33 @@ export class AuthorizationService {
   }
 
   resolvePolicies(principal: PrincipalContext): Set<string> {
+    const roleIdentity = principal.roleAssignments
+      .map((assignment) =>
+        [
+          assignment.departmentId,
+          assignment.userRoleId,
+          assignment.roleId,
+          assignment.role
+        ].join(":")
+      )
+      .sort();
+    const permissionIdentity = principal.permissions
+      .map((grant) =>
+        [
+          grant.source?.departmentId ?? "missing",
+          grant.source?.userRoleId ?? "missing",
+          grant.source?.roleId ?? "missing",
+          grant.resource,
+          grant.action,
+          grant.scope
+        ].join(":")
+      )
+      .sort();
     const cacheKey = [
       principal.actorId,
       principal.activeDepartmentId ?? "none",
-      principal.roleAssignments.map((assignment) => assignment.role).sort().join(","),
-      principal.permissions
-        .map((grant) => `${grant.resource}.${grant.action}.${grant.scope}`)
-        .sort()
-        .join(",")
+      JSON.stringify(roleIdentity),
+      JSON.stringify(permissionIdentity)
     ].join("|");
 
     const cached = this.principalPolicyCache.get(cacheKey);
@@ -151,12 +175,23 @@ export class AuthorizationService {
     const policies = new Set<string>();
 
     for (const roleAssignment of principal.roleAssignments) {
+      if (
+        !isRoleAssignmentInActiveDepartment(
+          principal.activeDepartmentId,
+          roleAssignment
+        )
+      ) {
+        continue;
+      }
       for (const policy of STATIC_ROLE_POLICIES[roleAssignment.role] ?? []) {
         policies.add(policy);
       }
     }
 
     for (const permission of principal.permissions) {
+      if (!isPermissionGrantFromLoadedRole(principal, permission)) {
+        continue;
+      }
       for (const derivedPolicy of this.derivePoliciesFromPermission(permission)) {
         policies.add(derivedPolicy);
       }

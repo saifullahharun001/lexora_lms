@@ -41,7 +41,14 @@ function harness(
     principal: {
       actorId: `${role}-user`,
       activeDepartmentId: "department-a",
-      roleAssignments: [{ departmentId: "department-a", role }],
+      roleAssignments: [
+        {
+          userRoleId: `${role}-assignment-a`,
+          roleId: `${role}-role-a`,
+          departmentId: "department-a",
+          role,
+        },
+      ],
       permissions: [],
     },
     department: {

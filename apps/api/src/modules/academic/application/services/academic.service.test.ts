@@ -59,7 +59,14 @@ function harness(
     principal: {
       actorId: `${role}-user`,
       activeDepartmentId: "department-a",
-      roleAssignments: [{ departmentId: "department-a", role }],
+      roleAssignments: [
+        {
+          userRoleId: `${role}-assignment-a`,
+          roleId: `${role}-role-a`,
+          departmentId: "department-a",
+          role,
+        },
+      ],
       permissions: [],
     },
     department: {
@@ -204,7 +211,12 @@ function enrollmentServiceHarness(
       actorId: "admin-a",
       activeDepartmentId: "department-a",
       roleAssignments: [
-        { departmentId: "department-a", role: "department_admin" },
+        {
+          userRoleId: "department-admin-assignment-a",
+          roleId: "department-admin-role-a",
+          departmentId: "department-a",
+          role: "department_admin",
+        },
       ],
       permissions: [],
     },

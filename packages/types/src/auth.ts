@@ -11,6 +11,11 @@ export interface PermissionGrant {
   action: string;
   resource: string;
   scope: "department" | "self" | "public_verification";
+  source: {
+    departmentId: string;
+    userRoleId: string;
+    roleId: string;
+  };
 }
 
 export interface AuthContext {

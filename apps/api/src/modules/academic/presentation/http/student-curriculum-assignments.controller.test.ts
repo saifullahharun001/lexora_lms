@@ -47,7 +47,14 @@ test("only Department Admin receives the assignment policy", () => {
       actorId: `${role}-a`,
       isAuthenticated: true,
       activeDepartmentId: "department-a",
-      roleAssignments: [{ departmentId: "department-a", role }],
+      roleAssignments: [
+        {
+          userRoleId: `${role}-assignment-a`,
+          roleId: `${role}-role-a`,
+          departmentId: "department-a",
+          role,
+        },
+      ],
       permissions: [],
     }) as never;
 
