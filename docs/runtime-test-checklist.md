@@ -16689,3 +16689,214 @@ Approved/active syllabus historical immutability must be enforced by future life
 During this verification cycle the Ubuntu VM was reachable at `192.168.197.129`.
 
 Older checklist entries referencing `192.168.197.130` are historical runtime observations and should not be assumed to represent the VM's current DHCP-assigned address.
+
+## SyllabusVersion Foundation Ordinary PostgreSQL Runtime Verification — 2026-08-14
+
+### Supersession and classification
+
+This checkpoint supersedes only the earlier `SyllabusVersion` foundation statement that the ordinary Lexora runtime database had not yet been migrated.
+
+The earlier disposable PostgreSQL verification remains valid historical evidence.
+
+Current verified classification:
+
+- `SyllabusVersion` schema foundation implemented;
+- implementation independently reviewed;
+- implementation committed and pushed;
+- focused validation passed;
+- disposable PostgreSQL 16 migration verification passed;
+- migration deployed successfully to the ordinary `lexora_lms` PostgreSQL database;
+- live migration history verified complete;
+- live PostgreSQL catalog and mapped identifiers verified;
+- composite department ownership foreign key verified;
+- restrictive delete behavior verified;
+- lifecycle, effective-date and positive-version constraints verified;
+- no `SyllabusVersion` row was automatically created;
+- selected existing academic/business row counts were preserved;
+- Prisma database-to-datamodel drift check passed;
+- a second `prisma migrate deploy` was verified as a safe no-op;
+- PM2 restart was not required for this schema-only change;
+- the existing Lexora API process remained continuously running;
+- direct API and Nginx health remained HTTP `200`;
+- API port `4000` remained bound to loopback only;
+- validated private pre-migration backup remains retained.
+
+This does **not** mean the complete syllabus workflow is implemented.
+
+Still pending:
+
+- SyllabusVersion CRUD/service/controller APIs;
+- syllabus approval and lifecycle services;
+- create-new-version enforcement for approved/active syllabus history;
+- lifecycle audit events;
+- CourseOffering → SyllabusVersion binding;
+- Teacher syllabus read APIs;
+- Teacher Course Workspace;
+- Course Outline;
+- Lesson Plan;
+- CLO/PLO workflow;
+- historical syllabus backfill.
+
+### Implementation identity
+
+Implementation commit:
+
+`fb35593717511a07253841f101be4dbc658cc576`
+
+Commit message:
+
+`Add syllabus version schema foundation`
+
+Migration:
+
+`202608140001_add_syllabus_version_foundation`
+
+### Server-side validation before ordinary deployment
+
+After the implementation commit was fast-forwarded to the Ubuntu runtime server:
+
+- Prisma schema validation passed;
+- Prisma Client generation passed;
+- API typecheck passed;
+- API build passed;
+- native Node.js execution of `prisma/syllabus-version-foundation.schema.test.ts` passed `6/6`.
+
+The Node.js test run emitted a module-type detection warning because the test uses module syntax in a CommonJS-compatible package.
+
+No `"type": "module"` change, NodeNext migration, ESM migration or TypeScript module-system migration was performed.
+
+### Ordinary database pre-migration state
+
+Verified ordinary database:
+
+- database: `lexora_lms`;
+- PostgreSQL: `18.4`.
+
+Before migration:
+
+- `syllabus_versions`: absent;
+- target migration history row: absent;
+- `curriculum_course_id_department_uq`: absent;
+- target migration was the only pending Prisma migration.
+
+Selected pre-migration counts:
+
+- CourseOfferings: `14`;
+- CurriculumCourses: `61`;
+- CurriculumVersions: `8`;
+- Enrollments: `12`;
+- ResultRecords: `1`;
+- TranscriptRecords: `2`;
+- Users: `11`.
+
+A private pre-migration PostgreSQL custom-format backup was created, permission-restricted and successfully validated with `pg_restore --list`.
+
+No database credential or secret was recorded in project documentation.
+
+### Ordinary PostgreSQL migration result
+
+`prisma migrate deploy` successfully applied:
+
+`202608140001_add_syllabus_version_foundation`
+
+Post-deployment Prisma status:
+
+- migrations found: `9`;
+- database schema up to date: **Yes**.
+
+Migration-history verification:
+
+- completed target migration rows: `1`;
+- rolled-back target migration rows: `0`;
+- incomplete target migration rows: `0`.
+
+### Live PostgreSQL catalog verification
+
+Verified on the ordinary `lexora_lms` database:
+
+- `syllabus_versions` table exists;
+- expected 12-column schema exists;
+- exact mapped target indexes exist;
+- exactly two syllabus foreign keys exist;
+- both syllabus foreign keys use `ON DELETE RESTRICT`;
+- both syllabus foreign keys use `ON UPDATE CASCADE`;
+- composite `(curriculum_course_id, department_id)` foreign key references `curriculum_courses(id, department_id)`;
+- positive version-number CHECK exists;
+- effective-date ordering CHECK exists;
+- lifecycle metadata CHECK exists;
+- automatic SyllabusVersion row creation count: `0`.
+
+### Existing-data preservation
+
+Selected post-migration counts remained:
+
+- CourseOfferings: `14`;
+- CurriculumCourses: `61`;
+- CurriculumVersions: `8`;
+- Enrollments: `12`;
+- ResultRecords: `1`;
+- TranscriptRecords: `2`;
+- Users: `11`.
+
+These selected counts exactly matched the immediate pre-migration values.
+
+No existing academic/business record was automatically rebound, backfilled or modified by this migration.
+
+### Drift and idempotency verification
+
+Prisma database-to-datamodel migration diff:
+
+- difference detected: **No**.
+
+A second:
+
+`prisma migrate deploy`
+
+reported:
+
+`No pending migrations to apply.`
+
+Exactly one target migration-history record remained.
+
+### Runtime non-disruption verification
+
+PM2 process:
+
+- process: `lexora-api`;
+- PID before migration: `50609`;
+- PID after migration: `50609`;
+- PM2 restart: **not required**.
+
+Health verification after migration:
+
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`.
+
+Network binding:
+
+- API listener on port `4000`: loopback-only;
+- unsafe wildcard/public port `4000` listener: not detected.
+
+Repository after deployment:
+
+- branch: `main`;
+- HEAD: `fb35593717511a07253841f101be4dbc658cc576`;
+- `origin/main`: aligned;
+- working tree: clean.
+
+### Runtime verdict
+
+`SyllabusVersion` database/schema foundation is now:
+
+- implemented;
+- reviewed;
+- focused-test verified;
+- disposable PostgreSQL verified;
+- committed and pushed;
+- deployed to ordinary PostgreSQL;
+- live-catalog verified;
+- non-disruption verified.
+
+It is **not yet a complete syllabus-management feature**.
+
+The next implementation must continue with the smallest safe application-layer step and must preserve department isolation, object-level authorization, historical syllabus identity, restrictive academic-history relationships and audit-ready lifecycle behavior.
