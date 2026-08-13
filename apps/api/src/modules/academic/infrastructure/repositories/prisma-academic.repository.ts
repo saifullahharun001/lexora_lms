@@ -25,11 +25,13 @@ import type {
   CreateCourseOfferingInput,
   CreateEnrollmentInput,
   CreateProgramInput,
+  CreateSyllabusVersionInput,
   CreateStudentCurriculumAssignmentInput,
   CreateTeacherAssignmentInput,
   EnrollmentListFilters,
   ProgramListFilters,
   StudentCourseOfferingListFilters,
+  SyllabusVersionListFilters,
   TeacherAssignmentListFilters,
   TransitionCurriculumVersionInput,
   UpdateAcademicTermInput,
@@ -476,6 +478,206 @@ function sanitizeCourseOfferingRead(
       },
     },
   };
+}
+
+const syllabusVersionSelect = {
+  id: true,
+  departmentId: true,
+  curriculumCourseId: true,
+  code: true,
+  versionNumber: true,
+  status: true,
+  effectiveFrom: true,
+  effectiveTo: true,
+  approvedAt: true,
+  archivedAt: true,
+  createdAt: true,
+  updatedAt: true,
+  curriculumCourse: {
+    select: {
+      id: true,
+      departmentId: true,
+      curriculumVersionId: true,
+      courseId: true,
+      assessmentTemplateId: true,
+      categoryCode: true,
+      academicYearNumber: true,
+      semesterNumber: true,
+      courseCodeSnapshot: true,
+      courseTitleSnapshot: true,
+      creditHoursSnapshot: true,
+      totalMarksSnapshot: true,
+      course: {
+        select: {
+          id: true,
+          departmentId: true,
+          academicProgramId: true,
+          code: true,
+          title: true,
+        },
+      },
+      curriculumVersion: {
+        select: {
+          id: true,
+          departmentId: true,
+          academicProgramId: true,
+          code: true,
+          name: true,
+          status: true,
+          effectiveAcademicSessionCode: true,
+          academicProgram: {
+            select: { id: true, departmentId: true },
+          },
+        },
+      },
+      assessmentTemplate: {
+        select: {
+          id: true,
+          departmentId: true,
+          academicProgramId: true,
+          code: true,
+          versionNumber: true,
+          name: true,
+          status: true,
+          totalMarks: true,
+          academicProgram: {
+            select: { id: true, departmentId: true },
+          },
+        },
+      },
+    },
+  },
+} satisfies Prisma.SyllabusVersionSelect;
+
+type SyllabusVersionRecord = Prisma.SyllabusVersionGetPayload<{
+  select: typeof syllabusVersionSelect;
+}>;
+
+type SyllabusCurriculumCourseRecord = SyllabusVersionRecord["curriculumCourse"];
+
+function isSyllabusCurriculumCourseConsistent(
+  curriculumCourse: SyllabusCurriculumCourseRecord,
+  departmentId: string,
+) {
+  const course = curriculumCourse.course;
+  const curriculumVersion = curriculumCourse.curriculumVersion;
+  const assessmentTemplate = curriculumCourse.assessmentTemplate;
+  const academicProgramId = course.academicProgramId;
+  const templateProgramIsValid = assessmentTemplate.academicProgramId
+    ? assessmentTemplate.academicProgramId === academicProgramId &&
+      assessmentTemplate.academicProgram?.id ===
+        assessmentTemplate.academicProgramId &&
+      assessmentTemplate.academicProgram.departmentId === departmentId
+    : assessmentTemplate.academicProgram === null;
+
+  return Boolean(
+    academicProgramId &&
+    curriculumCourse.departmentId === departmentId &&
+    course.id === curriculumCourse.courseId &&
+    course.departmentId === departmentId &&
+    curriculumVersion.id === curriculumCourse.curriculumVersionId &&
+    curriculumVersion.departmentId === departmentId &&
+    curriculumVersion.academicProgramId === academicProgramId &&
+    curriculumVersion.academicProgram.id === academicProgramId &&
+    curriculumVersion.academicProgram.departmentId === departmentId &&
+    assessmentTemplate.id === curriculumCourse.assessmentTemplateId &&
+    assessmentTemplate.departmentId === departmentId &&
+    templateProgramIsValid,
+  );
+}
+
+function sanitizeSyllabusVersion(
+  syllabusVersion: SyllabusVersionRecord,
+  departmentId: string,
+) {
+  const curriculumCourse = syllabusVersion.curriculumCourse;
+  const course = curriculumCourse.course;
+  const curriculumVersion = curriculumCourse.curriculumVersion;
+  const assessmentTemplate = curriculumCourse.assessmentTemplate;
+
+  if (
+    syllabusVersion.departmentId !== departmentId ||
+    curriculumCourse.id !== syllabusVersion.curriculumCourseId ||
+    !isSyllabusCurriculumCourseConsistent(curriculumCourse, departmentId)
+  ) {
+    return null;
+  }
+
+  return {
+    id: syllabusVersion.id,
+    code: syllabusVersion.code,
+    versionNumber: syllabusVersion.versionNumber,
+    status: syllabusVersion.status,
+    effectiveFrom: syllabusVersion.effectiveFrom,
+    effectiveTo: syllabusVersion.effectiveTo,
+    approvedAt: syllabusVersion.approvedAt,
+    archivedAt: syllabusVersion.archivedAt,
+    createdAt: syllabusVersion.createdAt,
+    updatedAt: syllabusVersion.updatedAt,
+    curriculumCourse: {
+      id: curriculumCourse.id,
+      categoryCode: curriculumCourse.categoryCode,
+      academicYearNumber: curriculumCourse.academicYearNumber,
+      semesterNumber: curriculumCourse.semesterNumber,
+      courseCodeSnapshot: curriculumCourse.courseCodeSnapshot,
+      courseTitleSnapshot: curriculumCourse.courseTitleSnapshot,
+      creditHoursSnapshot: curriculumCourse.creditHoursSnapshot,
+      totalMarksSnapshot: curriculumCourse.totalMarksSnapshot,
+      course: {
+        id: course.id,
+        code: course.code,
+        title: course.title,
+      },
+      curriculumVersion: {
+        id: curriculumVersion.id,
+        code: curriculumVersion.code,
+        name: curriculumVersion.name,
+        status: curriculumVersion.status,
+        effectiveAcademicSessionCode:
+          curriculumVersion.effectiveAcademicSessionCode,
+      },
+      assessmentTemplate: {
+        id: assessmentTemplate.id,
+        code: assessmentTemplate.code,
+        versionNumber: assessmentTemplate.versionNumber,
+        name: assessmentTemplate.name,
+        status: assessmentTemplate.status,
+        totalMarks: assessmentTemplate.totalMarks,
+      },
+    },
+  };
+}
+
+function syllabusVersionUniqueConflict(error: unknown) {
+  if (
+    !(error instanceof PrismaClientKnownRequestError) ||
+    error.code !== "P2002"
+  ) {
+    return null;
+  }
+
+  const target = error.meta?.target;
+  if (typeof target === "string") {
+    if (target === "syllabus_version_dept_curriculum_course_code_uq") {
+      return "DUPLICATE_CODE" as const;
+    }
+    if (target === "syllabus_version_dept_curriculum_course_number_uq") {
+      return "DUPLICATE_VERSION_NUMBER" as const;
+    }
+    return null;
+  }
+
+  if (!Array.isArray(target) || target.length !== 3) return null;
+  const hasScope =
+    (target.includes("department_id") &&
+      target.includes("curriculum_course_id")) ||
+    (target.includes("departmentId") && target.includes("curriculumCourseId"));
+  if (!hasScope) return null;
+  if (target.includes("code")) return "DUPLICATE_CODE" as const;
+  if (target.includes("version_number") || target.includes("versionNumber")) {
+    return "DUPLICATE_VERSION_NUMBER" as const;
+  }
+  return null;
 }
 
 @Injectable()
@@ -1461,6 +1663,109 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
       if (conflict) {
         return { outcome: "BINDING_CONFLICT" } as const;
       }
+      throw error;
+    }
+  }
+
+  async findSyllabusVersions(filters: SyllabusVersionListFilters) {
+    const records = await this.prisma.syllabusVersion.findMany({
+      where: {
+        departmentId: filters.departmentId,
+        curriculumCourseId: filters.curriculumCourseId,
+        status: filters.status,
+      },
+      select: syllabusVersionSelect,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    });
+
+    return records.flatMap((record) => {
+      const safe = sanitizeSyllabusVersion(record, filters.departmentId);
+      return safe ? [safe] : [];
+    });
+  }
+
+  async findSyllabusVersionById(departmentId: string, id: string) {
+    const record = await this.prisma.syllabusVersion.findFirst({
+      where: { id, departmentId },
+      select: syllabusVersionSelect,
+    });
+
+    return record ? sanitizeSyllabusVersion(record, departmentId) : null;
+  }
+
+  async createSyllabusVersion(input: CreateSyllabusVersionInput) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const curriculumCourse = await tx.curriculumCourse.findFirst({
+          where: {
+            id: input.curriculumCourseId,
+            departmentId: input.departmentId,
+          },
+          select: syllabusVersionSelect.curriculumCourse.select,
+        });
+
+        if (!curriculumCourse) {
+          return { outcome: "CURRICULUM_COURSE_NOT_FOUND" } as const;
+        }
+        if (
+          !isSyllabusCurriculumCourseConsistent(
+            curriculumCourse,
+            input.departmentId,
+          )
+        ) {
+          return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+        }
+
+        const created = await tx.syllabusVersion.create({
+          data: {
+            departmentId: input.departmentId,
+            curriculumCourseId: input.curriculumCourseId,
+            code: input.code,
+            versionNumber: input.versionNumber,
+            status: AcademicVersionStatus.DRAFT,
+            effectiveFrom: input.effectiveFrom,
+            effectiveTo: input.effectiveTo,
+            approvedAt: null,
+            archivedAt: null,
+          },
+          select: syllabusVersionSelect,
+        });
+
+        const safeCreated = sanitizeSyllabusVersion(
+          created,
+          input.departmentId,
+        );
+        if (!safeCreated) {
+          throw new Error("CREATED_SYLLABUS_VERSION_NOT_FOUND");
+        }
+
+        await tx.auditLog.create({
+          data: {
+            requestId: input.requestId,
+            actorUserId: input.actorUserId,
+            actorType: "USER",
+            departmentId: input.departmentId,
+            action: ACADEMIC_AUDIT_EVENTS.SYLLABUS_VERSION_CREATED,
+            targetType: "syllabus_version",
+            targetId: created.id,
+            outcome: "SUCCESS",
+            ipAddress: input.ipAddress,
+            userAgent: input.userAgent,
+            contextJson: {
+              syllabusVersionId: created.id,
+              curriculumCourseId: input.curriculumCourseId,
+              code: input.code,
+              versionNumber: input.versionNumber,
+              status: AcademicVersionStatus.DRAFT,
+            },
+          },
+        });
+
+        return { outcome: "CREATED", syllabusVersion: safeCreated } as const;
+      });
+    } catch (error) {
+      const outcome = syllabusVersionUniqueConflict(error);
+      if (outcome) return { outcome } as const;
       throw error;
     }
   }

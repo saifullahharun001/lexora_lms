@@ -47,6 +47,12 @@ export interface CourseOfferingListFilters {
   teacherAssignmentStatus?: TeacherAssignmentStatus;
 }
 
+export interface SyllabusVersionListFilters {
+  departmentId: string;
+  curriculumCourseId?: string;
+  status?: AcademicVersionStatus;
+}
+
 export interface StudentCourseOfferingListFilters {
   departmentId: string;
   studentUserId: string;
@@ -185,6 +191,29 @@ export interface BindCourseOfferingCurriculumInput {
   ipAddress?: string;
   userAgent?: string;
 }
+
+export interface CreateSyllabusVersionInput {
+  departmentId: string;
+  curriculumCourseId: string;
+  code: string;
+  versionNumber: number;
+  effectiveFrom?: Date;
+  effectiveTo?: Date;
+  actorUserId: string;
+  requestId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export type CreateSyllabusVersionResult =
+  | { outcome: "CREATED"; syllabusVersion: unknown }
+  | {
+      outcome:
+        | "CURRICULUM_COURSE_NOT_FOUND"
+        | "DEPENDENCY_SCOPE_MISMATCH"
+        | "DUPLICATE_CODE"
+        | "DUPLICATE_VERSION_NUMBER";
+    };
 
 export type BindCourseOfferingCurriculumResult =
   | { outcome: "BOUND" | "ALREADY_BOUND"; offering: unknown }
@@ -367,6 +396,14 @@ export interface AcademicRepositoryPort {
   bindCourseOfferingCurriculum(
     input: BindCourseOfferingCurriculumInput,
   ): Promise<BindCourseOfferingCurriculumResult>;
+  findSyllabusVersions(filters: SyllabusVersionListFilters): Promise<unknown[]>;
+  findSyllabusVersionById(
+    departmentId: string,
+    id: string,
+  ): Promise<unknown | null>;
+  createSyllabusVersion(
+    input: CreateSyllabusVersionInput,
+  ): Promise<CreateSyllabusVersionResult>;
   transitionCurriculumVersion(
     input: TransitionCurriculumVersionInput,
   ): Promise<TransitionCurriculumVersionResult>;

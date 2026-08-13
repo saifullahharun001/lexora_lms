@@ -35,11 +35,13 @@ import type {
   CreateCourseOfferingInput,
   CreateEnrollmentInput,
   CreateProgramInput,
+  CreateSyllabusVersionInput,
   CreateTeacherAssignmentInput,
   CurriculumVersionLifecycleAction,
   EnrollmentListFilters,
   ProgramListFilters,
   StudentCourseOfferingListFilters,
+  SyllabusVersionListFilters,
   UpdateAcademicTermInput,
   UpdateAcademicYearInput,
   UpdateCourseInput,
@@ -59,6 +61,11 @@ interface CurriculumVersionTransitionMetadata {
 
 const CURRICULUM_VERSION_LIFECYCLE_PERMISSION = {
   resource: "course-management.curriculum-version.lifecycle",
+  action: "manage",
+} as const;
+
+const SYLLABUS_VERSION_MANAGE_PERMISSION = {
+  resource: "course-management.syllabus-version",
   action: "manage",
 } as const;
 
@@ -618,6 +625,120 @@ export class AcademicService {
           "Course offering curriculum binding conflicts with an existing offering",
         );
     }
+  }
+
+  async createSyllabusVersion(
+    input: Omit<
+      CreateSyllabusVersionInput,
+      "departmentId" | "actorUserId" | "requestId" | "ipAddress" | "userAgent"
+    >,
+  ) {
+    const departmentId =
+      await this.assertDepartmentAdminCanManageSyllabusVersions();
+    const unsafeInput = input as unknown as Record<string, unknown>;
+    if (
+      "status" in unsafeInput ||
+      "approvedAt" in unsafeInput ||
+      "archivedAt" in unsafeInput ||
+      "departmentId" in unsafeInput
+    ) {
+      throw new BadRequestException(
+        "Syllabus lifecycle and department metadata are server-controlled",
+      );
+    }
+
+    const curriculumCourseId =
+      typeof input.curriculumCourseId === "string"
+        ? input.curriculumCourseId.trim()
+        : "";
+    if (!curriculumCourseId) {
+      throw new BadRequestException("Curriculum course ID is required");
+    }
+    const code = typeof input.code === "string" ? input.code.trim() : "";
+    if (!code || code.length > 64) {
+      throw new BadRequestException(
+        "Syllabus version code must be between 1 and 64 characters",
+      );
+    }
+    if (
+      !Number.isInteger(input.versionNumber) ||
+      input.versionNumber < 1 ||
+      input.versionNumber > 32767
+    ) {
+      throw new BadRequestException(
+        "Syllabus version number must be an integer between 1 and 32767",
+      );
+    }
+    for (const value of [input.effectiveFrom, input.effectiveTo]) {
+      if (
+        value !== undefined &&
+        (!(value instanceof Date) || Number.isNaN(value.getTime()))
+      ) {
+        throw new BadRequestException("Syllabus effective dates must be valid");
+      }
+    }
+    if (
+      input.effectiveFrom &&
+      input.effectiveTo &&
+      input.effectiveTo <= input.effectiveFrom
+    ) {
+      throw new BadRequestException(
+        "Syllabus effectiveTo must be later than effectiveFrom",
+      );
+    }
+
+    const requestContext = this.requestContextService.get();
+    const result = await this.repository.createSyllabusVersion({
+      departmentId,
+      curriculumCourseId,
+      code,
+      versionNumber: input.versionNumber,
+      effectiveFrom: input.effectiveFrom,
+      effectiveTo: input.effectiveTo,
+      actorUserId: this.getActorId(),
+      requestId: requestContext?.requestId,
+      ipAddress: requestContext?.audit.ipAddress,
+      userAgent: requestContext?.audit.userAgent,
+    });
+
+    switch (result.outcome) {
+      case "CREATED":
+        return result.syllabusVersion;
+      case "CURRICULUM_COURSE_NOT_FOUND":
+      case "DEPENDENCY_SCOPE_MISMATCH":
+        throw new NotFoundException("Curriculum course not found");
+      case "DUPLICATE_CODE":
+        throw new ConflictException(
+          "Syllabus version code already exists for this curriculum course",
+        );
+      case "DUPLICATE_VERSION_NUMBER":
+        throw new ConflictException(
+          "Syllabus version number already exists for this curriculum course",
+        );
+    }
+  }
+
+  async listSyllabusVersions(
+    filters: Omit<SyllabusVersionListFilters, "departmentId">,
+  ) {
+    const departmentId =
+      await this.assertDepartmentAdminCanManageSyllabusVersions();
+    return this.repository.findSyllabusVersions({ departmentId, ...filters });
+  }
+
+  async getSyllabusVersion(id: string) {
+    const departmentId =
+      await this.assertDepartmentAdminCanManageSyllabusVersions();
+    const syllabusVersion = await this.repository.findSyllabusVersionById(
+      departmentId,
+      id,
+    );
+
+    if (!syllabusVersion) {
+      throw new NotFoundException("Syllabus version not found");
+    }
+
+    return syllabusVersion;
   }
 
   approveCurriculumVersion(
@@ -1344,6 +1465,73 @@ export class AcademicService {
     if (!actor) {
       throw new ForbiddenException(
         "Only active department admins can manage curriculum version lifecycle",
+      );
+    }
+
+    return departmentId;
+  }
+
+  private async assertDepartmentAdminCanManageSyllabusVersions() {
+    const departmentId = this.getDepartmentId();
+    const actorId = this.getActorId();
+    const principal = this.requestContextService.get()?.principal;
+    const hasExactGovernancePermission = principal?.permissions.some(
+      (permission) =>
+        permission.resource === SYLLABUS_VERSION_MANAGE_PERMISSION.resource &&
+        permission.action === SYLLABUS_VERSION_MANAGE_PERMISSION.action &&
+        permission.scope === "department",
+    );
+
+    if (!hasExactGovernancePermission) {
+      throw new ForbiddenException(
+        "Explicit academic governance permission is required to manage syllabus versions",
+      );
+    }
+
+    const now = new Date();
+    const actor = await this.prisma.user.findFirst({
+      where: {
+        id: actorId,
+        departmentId,
+        status: UserStatus.ACTIVE,
+        archivedAt: null,
+        deletedAt: null,
+        department: {
+          id: departmentId,
+          status: DepartmentStatus.ACTIVE,
+          archivedAt: null,
+          deletedAt: null,
+        },
+        userRoles: {
+          some: {
+            departmentId,
+            revokedAt: null,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+            role: {
+              code: "department_admin",
+              departmentId,
+              archivedAt: null,
+              rolePermissions: {
+                some: {
+                  permission: {
+                    is: {
+                      resource: SYLLABUS_VERSION_MANAGE_PERMISSION.resource,
+                      action: SYLLABUS_VERSION_MANAGE_PERMISSION.action,
+                      scope: PermissionScope.DEPARTMENT,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!actor) {
+      throw new ForbiddenException(
+        "Only active department admins can manage syllabus versions",
       );
     }
 

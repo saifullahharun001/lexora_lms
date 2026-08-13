@@ -16,6 +16,7 @@ import { CurriculumVersionsController } from "./presentation/http/curriculum-ver
 import { EnrollmentsController } from "./presentation/http/enrollments.controller";
 import { ProgramsController } from "./presentation/http/programs.controller";
 import { StudentCurriculumAssignmentsController } from "./presentation/http/student-curriculum-assignments.controller";
+import { SyllabusVersionsController } from "./presentation/http/syllabus-versions.controller";
 import { TeacherAssignmentsController } from "./presentation/http/teacher-assignments.controller";
 
 @Module({
@@ -34,6 +35,7 @@ import { TeacherAssignmentsController } from "./presentation/http/teacher-assign
     CurriculumVersionsController,
     EnrollmentsController,
     StudentCurriculumAssignmentsController,
+    SyllabusVersionsController,
     TeacherAssignmentsController,
   ],
   providers: [
