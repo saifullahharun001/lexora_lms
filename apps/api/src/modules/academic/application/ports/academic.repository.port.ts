@@ -1,6 +1,7 @@
 import type {
   AcademicProgramStatus,
   AcademicTermStatus,
+  AcademicVersionStatus,
   AcademicYearStatus,
   CourseOfferingStatus,
   CourseStatus,
@@ -198,6 +199,50 @@ export type BindCourseOfferingCurriculumResult =
         | "BINDING_CONFLICT";
     };
 
+export type CurriculumVersionLifecycleAction =
+  | "APPROVE"
+  | "ACTIVATE"
+  | "RETIRE"
+  | "ARCHIVE";
+
+export interface CurriculumVersionLifecycleView {
+  id: string;
+  departmentId: string;
+  academicProgramId: string;
+  code: string;
+  name: string;
+  status: AcademicVersionStatus;
+  effectiveAcademicSessionCode: string;
+  approvedAt: Date | null;
+  archivedAt: Date | null;
+  updatedAt: Date;
+}
+
+export interface TransitionCurriculumVersionInput {
+  departmentId: string;
+  curriculumVersionId: string;
+  action: CurriculumVersionLifecycleAction;
+  reason: string;
+  approvalReference?: string;
+  actorUserId: string;
+  transitionAt: Date;
+  requestId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export type TransitionCurriculumVersionResult =
+  | {
+      outcome: "TRANSITIONED" | "ALREADY_TARGET";
+      curriculumVersion: CurriculumVersionLifecycleView;
+    }
+  | {
+      outcome:
+        | "CURRICULUM_VERSION_NOT_FOUND"
+        | "DEPENDENCY_SCOPE_MISMATCH"
+        | "INVALID_TRANSITION";
+    };
+
 export interface CreateStudentCurriculumAssignmentInput {
   departmentId: string;
   studentUserId: string;
@@ -322,6 +367,9 @@ export interface AcademicRepositoryPort {
   bindCourseOfferingCurriculum(
     input: BindCourseOfferingCurriculumInput,
   ): Promise<BindCourseOfferingCurriculumResult>;
+  transitionCurriculumVersion(
+    input: TransitionCurriculumVersionInput,
+  ): Promise<TransitionCurriculumVersionResult>;
   createStudentCurriculumAssignment(
     input: CreateStudentCurriculumAssignmentInput,
   ): Promise<CreateStudentCurriculumAssignmentResult>;

@@ -31,6 +31,7 @@ import type {
   ProgramListFilters,
   StudentCourseOfferingListFilters,
   TeacherAssignmentListFilters,
+  TransitionCurriculumVersionInput,
   UpdateAcademicTermInput,
   UpdateAcademicYearInput,
   UpdateCourseInput,
@@ -107,6 +108,98 @@ const BINDABLE_ACADEMIC_VERSION_STATUSES: readonly AcademicVersionStatus[] = [
 
 const ASSIGNABLE_STUDENT_CURRICULUM_STATUSES: readonly AcademicVersionStatus[] =
   [AcademicVersionStatus.APPROVED, AcademicVersionStatus.ACTIVE];
+
+const CURRICULUM_VERSION_TRANSITIONS = {
+  APPROVE: {
+    expectedStatus: AcademicVersionStatus.DRAFT,
+    targetStatus: AcademicVersionStatus.APPROVED,
+    auditAction: ACADEMIC_AUDIT_EVENTS.CURRICULUM_VERSION_APPROVED,
+  },
+  ACTIVATE: {
+    expectedStatus: AcademicVersionStatus.APPROVED,
+    targetStatus: AcademicVersionStatus.ACTIVE,
+    auditAction: ACADEMIC_AUDIT_EVENTS.CURRICULUM_VERSION_ACTIVATED,
+  },
+  RETIRE: {
+    expectedStatus: AcademicVersionStatus.ACTIVE,
+    targetStatus: AcademicVersionStatus.RETIRED,
+    auditAction: ACADEMIC_AUDIT_EVENTS.CURRICULUM_VERSION_RETIRED,
+  },
+  ARCHIVE: {
+    expectedStatus: AcademicVersionStatus.RETIRED,
+    targetStatus: AcademicVersionStatus.ARCHIVED,
+    auditAction: ACADEMIC_AUDIT_EVENTS.CURRICULUM_VERSION_ARCHIVED,
+  },
+} as const;
+
+const curriculumVersionLifecycleSelect = {
+  id: true,
+  departmentId: true,
+  academicProgramId: true,
+  code: true,
+  name: true,
+  status: true,
+  effectiveAcademicSessionCode: true,
+  approvedAt: true,
+  archivedAt: true,
+  updatedAt: true,
+  academicProgram: {
+    select: { id: true, departmentId: true },
+  },
+} satisfies Prisma.CurriculumVersionSelect;
+
+type CurriculumVersionLifecycleRecord =
+  Prisma.CurriculumVersionGetPayload<{
+    select: typeof curriculumVersionLifecycleSelect;
+  }>;
+
+class InvalidCurriculumVersionLifecycleStateError extends Error {}
+
+function isCurriculumVersionLifecycleStateConsistent(
+  version: Pick<
+    CurriculumVersionLifecycleRecord,
+    "status" | "approvedAt" | "archivedAt"
+  >,
+) {
+  switch (version.status) {
+    case AcademicVersionStatus.DRAFT:
+      return version.approvedAt === null && version.archivedAt === null;
+    case AcademicVersionStatus.APPROVED:
+    case AcademicVersionStatus.ACTIVE:
+    case AcademicVersionStatus.RETIRED:
+      return version.approvedAt !== null && version.archivedAt === null;
+    case AcademicVersionStatus.ARCHIVED:
+      return version.approvedAt !== null && version.archivedAt !== null;
+    default:
+      return false;
+  }
+}
+
+function sanitizeCurriculumVersionLifecycleRead(
+  version: CurriculumVersionLifecycleRecord,
+  departmentId: string,
+) {
+  if (
+    version.departmentId !== departmentId ||
+    version.academicProgram.id !== version.academicProgramId ||
+    version.academicProgram.departmentId !== departmentId
+  ) {
+    return null;
+  }
+
+  return {
+    id: version.id,
+    departmentId: version.departmentId,
+    academicProgramId: version.academicProgramId,
+    code: version.code,
+    name: version.name,
+    status: version.status,
+    effectiveAcademicSessionCode: version.effectiveAcademicSessionCode,
+    approvedAt: version.approvedAt,
+    archivedAt: version.archivedAt,
+    updatedAt: version.updatedAt,
+  };
+}
 
 const studentCurriculumAssignmentSelect = {
   id: true,
@@ -1367,6 +1460,161 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
 
       if (conflict) {
         return { outcome: "BINDING_CONFLICT" } as const;
+      }
+      throw error;
+    }
+  }
+
+  async transitionCurriculumVersion(input: TransitionCurriculumVersionInput) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const transition = CURRICULUM_VERSION_TRANSITIONS[input.action];
+        const findScoped = () =>
+          tx.curriculumVersion.findFirst({
+            where: {
+              id: input.curriculumVersionId,
+              departmentId: input.departmentId,
+            },
+            select: curriculumVersionLifecycleSelect,
+          });
+
+        const existing = await findScoped();
+        if (!existing) {
+          return { outcome: "CURRICULUM_VERSION_NOT_FOUND" } as const;
+        }
+
+        const safeExisting = sanitizeCurriculumVersionLifecycleRead(
+          existing,
+          input.departmentId,
+        );
+        if (!safeExisting) {
+          return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+        }
+
+        if (!isCurriculumVersionLifecycleStateConsistent(existing)) {
+          return { outcome: "INVALID_TRANSITION" } as const;
+        }
+
+        if (existing.status === transition.targetStatus) {
+          return {
+            outcome: "ALREADY_TARGET",
+            curriculumVersion: safeExisting,
+          } as const;
+        }
+
+        if (existing.status !== transition.expectedStatus) {
+          return { outcome: "INVALID_TRANSITION" } as const;
+        }
+
+        const updated = await tx.curriculumVersion.updateMany({
+          where: {
+            id: input.curriculumVersionId,
+            departmentId: input.departmentId,
+            academicProgramId: existing.academicProgramId,
+            status: transition.expectedStatus,
+            ...(input.action === "APPROVE"
+              ? { approvedAt: null }
+              : { approvedAt: { not: null } }),
+            archivedAt: null,
+            academicProgram: {
+              is: {
+                id: existing.academicProgramId,
+                departmentId: input.departmentId,
+              },
+            },
+          },
+          data: {
+            status: transition.targetStatus,
+            ...(input.action === "APPROVE"
+              ? { approvedAt: input.transitionAt }
+              : {}),
+            ...(input.action === "ARCHIVE"
+              ? { archivedAt: input.transitionAt }
+              : {}),
+          },
+        });
+
+        if (updated.count === 0) {
+          const concurrent = await findScoped();
+          if (!concurrent) {
+            return { outcome: "CURRICULUM_VERSION_NOT_FOUND" } as const;
+          }
+
+          const safeConcurrent = sanitizeCurriculumVersionLifecycleRead(
+            concurrent,
+            input.departmentId,
+          );
+          if (!safeConcurrent) {
+            return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+          }
+
+          if (!isCurriculumVersionLifecycleStateConsistent(concurrent)) {
+            return { outcome: "INVALID_TRANSITION" } as const;
+          }
+
+          return concurrent.status === transition.targetStatus
+            ? ({
+                outcome: "ALREADY_TARGET",
+                curriculumVersion: safeConcurrent,
+              } as const)
+            : ({ outcome: "INVALID_TRANSITION" } as const);
+        }
+
+        const transitioned = await findScoped();
+        if (!transitioned) {
+          throw new Error("TRANSITIONED_CURRICULUM_VERSION_NOT_FOUND");
+        }
+        const safeTransitioned = sanitizeCurriculumVersionLifecycleRead(
+          transitioned,
+          input.departmentId,
+        );
+        if (!safeTransitioned) {
+          throw new Error("TRANSITIONED_CURRICULUM_VERSION_NOT_FOUND");
+        }
+        if (
+          transitioned.status !== transition.targetStatus ||
+          !isCurriculumVersionLifecycleStateConsistent(transitioned)
+        ) {
+          throw new InvalidCurriculumVersionLifecycleStateError();
+        }
+
+        await tx.auditLog.create({
+          data: {
+            requestId: input.requestId,
+            actorUserId: input.actorUserId,
+            actorType: "USER",
+            departmentId: input.departmentId,
+            action: transition.auditAction,
+            targetType: "curriculum_version",
+            targetId: input.curriculumVersionId,
+            outcome: "SUCCESS",
+            ipAddress: input.ipAddress,
+            userAgent: input.userAgent,
+            occurredAt: input.transitionAt,
+            contextJson: {
+              curriculumVersionId: input.curriculumVersionId,
+              academicProgramId: existing.academicProgramId,
+              previousStatus: transition.expectedStatus,
+              newStatus: transition.targetStatus,
+              reason: input.reason,
+              ...(input.approvalReference
+                ? { approvalReference: input.approvalReference }
+                : {}),
+              actorUserId: input.actorUserId,
+              departmentId: input.departmentId,
+              transitionTimestamp: input.transitionAt.toISOString(),
+            },
+          },
+        });
+
+        return {
+          outcome: "TRANSITIONED",
+          curriculumVersion: safeTransitioned,
+        } as const;
+      });
+    } catch (error) {
+      if (error instanceof InvalidCurriculumVersionLifecycleStateError) {
+        return { outcome: "INVALID_TRANSITION" } as const;
       }
       throw error;
     }

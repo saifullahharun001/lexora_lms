@@ -12,6 +12,7 @@ import { AcademicTermsController } from "./presentation/http/academic-terms.cont
 import { AcademicYearsController } from "./presentation/http/academic-years.controller";
 import { CourseOfferingsController } from "./presentation/http/course-offerings.controller";
 import { CoursesController } from "./presentation/http/courses.controller";
+import { CurriculumVersionsController } from "./presentation/http/curriculum-versions.controller";
 import { EnrollmentsController } from "./presentation/http/enrollments.controller";
 import { ProgramsController } from "./presentation/http/programs.controller";
 import { StudentCurriculumAssignmentsController } from "./presentation/http/student-curriculum-assignments.controller";
@@ -30,6 +31,7 @@ import { TeacherAssignmentsController } from "./presentation/http/teacher-assign
     ProgramsController,
     CoursesController,
     CourseOfferingsController,
+    CurriculumVersionsController,
     EnrollmentsController,
     StudentCurriculumAssignmentsController,
     TeacherAssignmentsController,

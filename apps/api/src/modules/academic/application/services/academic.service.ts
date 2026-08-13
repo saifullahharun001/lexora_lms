@@ -11,6 +11,7 @@ import {
   AcademicYear,
   DepartmentStatus,
   EnrollmentStatus,
+  PermissionScope,
   Prisma,
   TeacherAssignmentStatus,
   UserStatus,
@@ -35,6 +36,7 @@ import type {
   CreateEnrollmentInput,
   CreateProgramInput,
   CreateTeacherAssignmentInput,
+  CurriculumVersionLifecycleAction,
   EnrollmentListFilters,
   ProgramListFilters,
   StudentCourseOfferingListFilters,
@@ -49,6 +51,16 @@ import type {
 interface AuditMetadata {
   [key: string]: unknown;
 }
+
+interface CurriculumVersionTransitionMetadata {
+  reason: string;
+  approvalReference?: string;
+}
+
+const CURRICULUM_VERSION_LIFECYCLE_PERMISSION = {
+  resource: "course-management.curriculum-version.lifecycle",
+  action: "manage",
+} as const;
 
 @Injectable()
 export class AcademicService {
@@ -604,6 +616,105 @@ export class AcademicService {
       case "BINDING_CONFLICT":
         throw new ConflictException(
           "Course offering curriculum binding conflicts with an existing offering",
+        );
+    }
+  }
+
+  approveCurriculumVersion(
+    curriculumVersionId: string,
+    input: CurriculumVersionTransitionMetadata,
+  ) {
+    return this.transitionCurriculumVersion(
+      curriculumVersionId,
+      "APPROVE",
+      input,
+    );
+  }
+
+  activateCurriculumVersion(
+    curriculumVersionId: string,
+    input: CurriculumVersionTransitionMetadata,
+  ) {
+    return this.transitionCurriculumVersion(
+      curriculumVersionId,
+      "ACTIVATE",
+      input,
+    );
+  }
+
+  retireCurriculumVersion(
+    curriculumVersionId: string,
+    input: CurriculumVersionTransitionMetadata,
+  ) {
+    return this.transitionCurriculumVersion(
+      curriculumVersionId,
+      "RETIRE",
+      input,
+    );
+  }
+
+  archiveCurriculumVersion(
+    curriculumVersionId: string,
+    input: CurriculumVersionTransitionMetadata,
+  ) {
+    return this.transitionCurriculumVersion(
+      curriculumVersionId,
+      "ARCHIVE",
+      input,
+    );
+  }
+
+  private async transitionCurriculumVersion(
+    curriculumVersionId: string,
+    action: CurriculumVersionLifecycleAction,
+    input: CurriculumVersionTransitionMetadata,
+  ) {
+    const departmentId =
+      await this.assertDepartmentAdminCanManageCurriculumLifecycle();
+    const reason = typeof input.reason === "string" ? input.reason.trim() : "";
+    const approvalReference =
+      typeof input.approvalReference === "string"
+        ? input.approvalReference.trim()
+        : undefined;
+
+    if (!reason) {
+      throw new BadRequestException("A non-empty transition reason is required");
+    }
+    if (input.approvalReference !== undefined && !approvalReference) {
+      throw new BadRequestException(
+        "approvalReference must be non-empty when supplied",
+      );
+    }
+    if (action === "APPROVE" && !approvalReference) {
+      throw new BadRequestException(
+        "A formal approvalReference is required to approve a curriculum version",
+      );
+    }
+
+    const requestContext = this.requestContextService.get();
+    const result = await this.repository.transitionCurriculumVersion({
+      departmentId,
+      curriculumVersionId,
+      action,
+      reason,
+      ...(approvalReference ? { approvalReference } : {}),
+      actorUserId: this.getActorId(),
+      transitionAt: new Date(),
+      requestId: requestContext?.requestId,
+      ipAddress: requestContext?.audit.ipAddress,
+      userAgent: requestContext?.audit.userAgent,
+    });
+
+    switch (result.outcome) {
+      case "TRANSITIONED":
+      case "ALREADY_TARGET":
+        return result.curriculumVersion;
+      case "CURRICULUM_VERSION_NOT_FOUND":
+      case "DEPENDENCY_SCOPE_MISMATCH":
+        throw new NotFoundException("Curriculum version not found");
+      case "INVALID_TRANSITION":
+        throw new ConflictException(
+          "Curriculum version cannot perform the requested lifecycle transition",
         );
     }
   }
@@ -1164,6 +1275,75 @@ export class AcademicService {
     if (!actor) {
       throw new ForbiddenException(
         "Only active department admins can manage curriculum bindings",
+      );
+    }
+
+    return departmentId;
+  }
+
+  private async assertDepartmentAdminCanManageCurriculumLifecycle() {
+    const departmentId = this.getDepartmentId();
+    const actorId = this.getActorId();
+    const principal = this.requestContextService.get()?.principal;
+    const hasExactGovernancePermission = principal?.permissions.some(
+      (permission) =>
+        permission.resource ===
+          CURRICULUM_VERSION_LIFECYCLE_PERMISSION.resource &&
+        permission.action === CURRICULUM_VERSION_LIFECYCLE_PERMISSION.action &&
+        permission.scope === "department",
+    );
+
+    if (!hasExactGovernancePermission) {
+      throw new ForbiddenException(
+        "Explicit academic governance permission is required to manage curriculum version lifecycle",
+      );
+    }
+
+    const now = new Date();
+    const actor = await this.prisma.user.findFirst({
+      where: {
+        id: actorId,
+        departmentId,
+        status: UserStatus.ACTIVE,
+        archivedAt: null,
+        deletedAt: null,
+        department: {
+          id: departmentId,
+          status: DepartmentStatus.ACTIVE,
+          archivedAt: null,
+          deletedAt: null,
+        },
+        userRoles: {
+          some: {
+            departmentId,
+            revokedAt: null,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+            role: {
+              code: "department_admin",
+              departmentId,
+              archivedAt: null,
+              rolePermissions: {
+                some: {
+                  permission: {
+                    is: {
+                      resource:
+                        CURRICULUM_VERSION_LIFECYCLE_PERMISSION.resource,
+                      action: CURRICULUM_VERSION_LIFECYCLE_PERMISSION.action,
+                      scope: PermissionScope.DEPARTMENT,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!actor) {
+      throw new ForbiddenException(
+        "Only active department admins can manage curriculum version lifecycle",
       );
     }
 
