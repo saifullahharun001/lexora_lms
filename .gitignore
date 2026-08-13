@@ -32,6 +32,8 @@ apps/api/prisma/migrations/*
 !apps/api/prisma/migrations/202608100001_harden_enrollment_course_offering_delete/migration.sql
 !apps/api/prisma/migrations/202608100002_redesign_course_offering_uniqueness/
 !apps/api/prisma/migrations/202608100002_redesign_course_offering_uniqueness/migration.sql
+!apps/api/prisma/migrations/202608140001_add_syllabus_version_foundation/
+!apps/api/prisma/migrations/202608140001_add_syllabus_version_foundation/migration.sql
 *.log
 
 

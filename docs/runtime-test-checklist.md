@@ -16501,3 +16501,191 @@ Broader production and product work remains, including areas such as:
 - irregular/retake/improvement academic workflows;
 - formative/summative examiner and committee workflows;
 - remaining frontend/product completion and production hardening.
+
+## SyllabusVersion Schema Foundation and Disposable PostgreSQL Verification — 2026-08-14
+
+### Scope
+
+Implemented the minimal additive `SyllabusVersion` schema foundation required before Teacher Course Workspace and OBE Course Outline development.
+
+This task intentionally did **not** implement:
+
+- SyllabusVersion CRUD/service/controller APIs;
+- syllabus approval/lifecycle services;
+- Teacher syllabus read APIs;
+- CourseOffering → SyllabusVersion binding;
+- Teacher Course Workspace;
+- Course Outline;
+- Lesson Plan;
+- CLO/PLO workflow;
+- historical syllabus backfill;
+- ordinary runtime PostgreSQL migration.
+
+### Implementation
+
+Files introduced/changed for the foundation:
+
+- `.gitignore`
+- `apps/api/prisma/schema.prisma`
+- `apps/api/prisma/migrations/202608140001_add_syllabus_version_foundation/migration.sql`
+- `apps/api/prisma/syllabus-version-foundation.schema.test.ts`
+
+Migration:
+
+- `202608140001_add_syllabus_version_foundation`
+
+`SyllabusVersion` includes:
+
+- immutable CUID primary key;
+- `departmentId`;
+- owning `curriculumCourseId`;
+- version code;
+- positive `versionNumber`;
+- `AcademicVersionStatus` lifecycle;
+- `effectiveFrom` / `effectiveTo`;
+- `approvedAt`;
+- `archivedAt`;
+- created/updated timestamps.
+
+Lifecycle values use the existing academic version lifecycle:
+
+- `DRAFT`
+- `APPROVED`
+- `ACTIVE`
+- `RETIRED`
+- `ARCHIVED`
+
+Historical syllabus versions coexist as separate rows.
+
+Scoped uniqueness is enforced for:
+
+- `(departmentId, curriculumCourseId, code)`
+- `(departmentId, curriculumCourseId, versionNumber)`
+
+### Department Isolation / Database Integrity
+
+A composite candidate key was added on:
+
+- `CurriculumCourse(id, departmentId)`
+
+`SyllabusVersion` uses a composite foreign key:
+
+- `(curriculum_course_id, department_id)`
+- → `curriculum_courses(id, department_id)`
+
+This provides database-level enforcement that a syllabus version cannot reference a `CurriculumCourse` from another department.
+
+Deletion behavior remains restrictive:
+
+- Department → SyllabusVersion: `ON DELETE RESTRICT`
+- CurriculumCourse → SyllabusVersion: `ON DELETE RESTRICT`
+
+Existing:
+
+- AuthGuard
+- PolicyGuard
+- request context
+- teacher assigned-course authorization
+- student own-resource authorization
+- CourseOffering → CurriculumCourse binding
+
+were not changed.
+
+No Teacher syllabus write authority was introduced.
+
+No existing CourseOffering, Enrollment, Result, Transcript, Attendance, or historical academic record was automatically rebound or backfilled.
+
+### Static / Focused Validation
+
+Focused test result:
+
+- Total focused tests: `59`
+- Passed: `59`
+- Failed: `0`
+
+Coverage included:
+
+- same-department ownership invariant;
+- cross-department ownership rejection design;
+- version code/number uniqueness;
+- historical version coexistence;
+- invalid lifecycle metadata;
+- invalid date ordering;
+- positive version-number enforcement;
+- non-destructive migration behavior;
+- preservation of existing CourseOffering → CurriculumCourse binding.
+
+Additional validation:
+
+- Prisma schema validation: passed
+- Prisma client generation: passed
+- API typecheck: passed
+- API build: passed
+- `git diff --check`: passed
+
+### Disposable PostgreSQL 16 Verification
+
+Verification was performed on the Ubuntu runtime server using an isolated disposable `postgres:16-alpine` Docker container.
+
+Safety boundaries:
+
+- committed repository HEAD used as the exact baseline;
+- transferred review bundle SHA-256 was verified before use;
+- server live repository remained clean;
+- ordinary Lexora PostgreSQL database was not accessed;
+- PM2/Nginx/API were not modified or restarted;
+- no commit or push occurred as part of the verification;
+- disposable PostgreSQL was bound to `127.0.0.1` only;
+- Docker administration remained `sudo`-only.
+
+Verified outcomes:
+
+- committed baseline schema successfully initialized;
+- `202608140001_add_syllabus_version_foundation` applied successfully;
+- `syllabus_versions` table exists with expected schema;
+- exact mapped indexes exist;
+- both foreign keys exist;
+- both foreign keys use `ON DELETE RESTRICT / ON UPDATE CASCADE`;
+- composite `(curriculum_course_id, department_id)` ownership foreign key verified from PostgreSQL catalog;
+- positive-version CHECK constraint verified;
+- effective-date ordering CHECK constraint verified;
+- lifecycle metadata CHECK constraint verified;
+- invalid `versionNumber = 0` rejected at runtime;
+- invalid effective-date range rejected at runtime;
+- `ACTIVE` without `approved_at` rejected at runtime;
+- invalid/missing department and curriculum-course references rejected at runtime;
+- current Prisma schema validation passed after migration verification;
+- live server repository remained unchanged.
+
+Disposable PostgreSQL verdict:
+
+- Migration application: **PASS**
+- PostgreSQL catalog verification: **PASS**
+- Runtime constraint rejection tests: **PASS**
+- Department ownership FK: **PASS**
+- Restrictive FK behavior: **PASS**
+- Lifecycle/date/version constraints: **PASS**
+- Ordinary Lexora database accessed: **NO**
+
+### Current Classification
+
+`SyllabusVersion` status:
+
+- Schema foundation implemented: **Yes**
+- Focused/static tests: **Passed**
+- Disposable PostgreSQL 16 migration verification: **Passed**
+- Ordinary Lexora runtime database migrated: **No**
+- CRUD/lifecycle API runtime verified: **No / not implemented**
+- Teacher Course Workspace integration: **Pending**
+- CourseOffering → SyllabusVersion binding: **Pending**
+- Historical syllabus backfill: **Not performed**
+
+Do not describe the full syllabus workflow as complete.
+
+Approved/active syllabus historical immutability must be enforced by future lifecycle/service logic using create-new-version semantics rather than silent overwrite.
+
+### Runtime Network Note
+
+During this verification cycle the Ubuntu VM was reachable at `192.168.197.129`.
+
+Older checklist entries referencing `192.168.197.130` are historical runtime observations and should not be assumed to represent the VM's current DHCP-assigned address.

@@ -429,6 +429,7 @@ model Department {
   academicPrograms             AcademicProgram[]
   curriculumVersions           CurriculumVersion[]
   curriculumCourses            CurriculumCourse[]
+  syllabusVersions             SyllabusVersion[]
   studentCurriculumAssignments StudentCurriculumAssignment[]
   courseAssessmentTemplates    CourseAssessmentTemplate[]
   assessmentTemplateComponents AssessmentTemplateComponent[]
@@ -816,9 +817,11 @@ model CurriculumCourse {
   curriculumVersion    CurriculumVersion        @relation(fields: [curriculumVersionId], references: [id], onDelete: Restrict)
   course               Course                   @relation(fields: [courseId], references: [id], onDelete: Restrict)
   assessmentTemplate   CourseAssessmentTemplate @relation(fields: [assessmentTemplateId], references: [id], onDelete: Restrict)
+  syllabusVersions     SyllabusVersion[]
   courseOfferings      CourseOffering[]
   enrollments          Enrollment[]
 
+  @@unique([id, departmentId], map: "curriculum_course_id_department_uq")
   @@unique([curriculumVersionId, courseId], map: "curriculum_course_version_course_uq")
   @@unique([curriculumVersionId, academicYearNumber, semesterNumber, displayOrder], map: "curriculum_course_version_term_order_uq")
   @@index([departmentId, curriculumVersionId], map: "curriculum_course_dept_version_idx")
@@ -826,6 +829,29 @@ model CurriculumCourse {
   @@index([departmentId, courseId], map: "curriculum_course_dept_course_idx")
   @@index([departmentId, assessmentTemplateId], map: "curriculum_course_dept_template_idx")
   @@map("curriculum_courses")
+}
+
+model SyllabusVersion {
+  id                 String                @id @default(cuid())
+  departmentId       String                @map("department_id")
+  curriculumCourseId String                @map("curriculum_course_id")
+  code               String                @db.VarChar(64)
+  versionNumber      Int                   @map("version_number") @db.SmallInt
+  status             AcademicVersionStatus @default(DRAFT)
+  effectiveFrom      DateTime?             @map("effective_from")
+  effectiveTo        DateTime?             @map("effective_to")
+  approvedAt         DateTime?             @map("approved_at")
+  archivedAt         DateTime?             @map("archived_at")
+  createdAt          DateTime              @default(now()) @map("created_at")
+  updatedAt          DateTime              @updatedAt @map("updated_at")
+  department         Department            @relation(fields: [departmentId], references: [id], onDelete: Restrict, map: "syllabus_versions_department_id_fkey")
+  curriculumCourse   CurriculumCourse      @relation(fields: [curriculumCourseId, departmentId], references: [id, departmentId], onDelete: Restrict, map: "syllabus_version_dept_curriculum_course_fkey")
+
+  @@unique([departmentId, curriculumCourseId, code], map: "syllabus_version_dept_curriculum_course_code_uq")
+  @@unique([departmentId, curriculumCourseId, versionNumber], map: "syllabus_version_dept_curriculum_course_number_uq")
+  @@index([departmentId, status], map: "syllabus_version_dept_status_idx")
+  @@index([departmentId, curriculumCourseId, status], map: "syllabus_version_dept_curriculum_status_idx")
+  @@map("syllabus_versions")
 }
 
 model CourseOffering {
