@@ -16900,3 +16900,303 @@ Repository after deployment:
 It is **not yet a complete syllabus-management feature**.
 
 The next implementation must continue with the smallest safe application-layer step and must preserve department isolation, object-level authorization, historical syllabus identity, restrictive academic-history relationships and audit-ready lifecycle behavior.
+
+## SyllabusVersion Admin API Ordinary Runtime Verification — 2026-08-14
+
+### Scope and supersession
+
+This checkpoint extends the previously verified `SyllabusVersion` database/schema foundation with the first application/API layer.
+
+It supersedes only the earlier statement that SyllabusVersion CRUD/service/controller APIs were entirely pending.
+
+The previously documented schema, migration, disposable PostgreSQL and ordinary PostgreSQL verification remains valid historical evidence.
+
+### Implementation identity
+
+Implementation commit:
+
+`1c6e25b5a9b82d9671bd75c4175db5f23c3329c2`
+
+Commit:
+
+`Add syllabus version admin API foundation`
+
+Implemented HTTP surface:
+
+- `POST /api/v1/syllabus-versions`;
+- `GET /api/v1/syllabus-versions`;
+- `GET /api/v1/syllabus-versions/:id`.
+
+No generic update, delete or lifecycle-transition route was introduced.
+
+Dedicated governance policy:
+
+`course-management.syllabus-version.manage`
+
+Application behavior implemented:
+
+- Department Admin DRAFT creation;
+- department-scoped list;
+- department-scoped immutable-ID read;
+- server-controlled department;
+- server-controlled `DRAFT` creation status;
+- server-controlled `approvedAt` / `archivedAt`;
+- CurriculumCourse and dependency-chain validation;
+- safe cross-department not-found;
+- duplicate code conflict mapping;
+- duplicate version-number conflict mapping;
+- SyllabusVersion creation success audit in the same database transaction;
+- application validation aligned with PostgreSQL `SMALLINT` version-number range `1..32767`.
+
+### Static validation before runtime deployment
+
+The implementation received independent source review.
+
+The initially identified application validation gap for PostgreSQL `SMALLINT` overflow was corrected before commit:
+
+- DTO maximum: `32767`;
+- service defense-in-depth maximum: `32767`;
+- `32767` accepted;
+- `32768` rejected;
+- substantially larger integers rejected before repository persistence.
+
+Focused academic/SyllabusVersion regression validation reported:
+
+- `157/157` passed.
+
+Post-rebase validation:
+
+- API typecheck: passed;
+- API build: passed;
+- committed diff check: passed.
+
+### Server deployment
+
+The Ubuntu runtime server was fast-forwarded to:
+
+`1c6e25b5a9b82d9671bd75c4175db5f23c3329c2`
+
+Server-side verification before activation:
+
+- API typecheck: passed;
+- API build: passed;
+- Prisma migration status: database schema up to date;
+- no new schema migration required.
+
+The application process was restarted intentionally because this checkpoint introduced executable API/application code.
+
+PM2:
+
+- process: `lexora-api`;
+- PID before restart: `50609`;
+- PID after restart: `108230`;
+- status after restart: online.
+
+After activation:
+
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- API port `4000`: loopback-only;
+- repository: clean and origin-aligned.
+
+### Read-only runtime inventory
+
+Before mutation testing:
+
+- ordinary database: `lexora_lms`;
+- PostgreSQL: `18.4`;
+- Law department `dept_law_test`: active;
+- BUS department `dept_bus_test`: active;
+- canonical Law Admin, Teacher and Student accounts: active;
+- canonical Law Department Admin, Teacher and Student roles: present;
+- permanent exact `course-management.syllabus-version.manage` permission: absent;
+- existing SyllabusVersion rows: `0`;
+- existing successful `course-management.syllabus-version.created` audits: `0`.
+
+Approved reusable Law CurriculumCourse:
+
+`curriculum_course_law_enrollment_runtime_approved`
+
+Its dependency chain was confirmed available for runtime testing.
+
+### Authentication and governance runtime verification
+
+Canonical account credentials were supplied through silent runtime prompts.
+
+Raw passwords and access tokens were not printed or documented.
+
+Before the exact temporary governance grant:
+
+- unauthenticated request: HTTP `401`;
+- Teacher request: HTTP `403`;
+- Student request: HTTP `403`;
+- Department Admin without the exact governance permission: HTTP `403`;
+- denied requests produced `0` successful SyllabusVersion creation audits.
+
+A runtime-only exact department-scoped permission and Department Admin role-permission link were then created.
+
+A fresh Admin login after the temporary grant received the current authority and was able to enter the authorised application path.
+
+### Validation and object-isolation runtime tests
+
+PostgreSQL `SMALLINT` boundary:
+
+- `versionNumber = 32768`: HTTP `400`.
+
+Cross-department CurriculumCourse create attempt:
+
+- result: HTTP `404`.
+
+Cross-department SyllabusVersion direct object read:
+
+- result: HTTP `404`.
+
+The negative tests produced no successful creation audit.
+
+### Valid DRAFT creation and forged-header resistance
+
+A valid Law SyllabusVersion was created while deliberately sending:
+
+`x-department-id: dept_bus_test`
+
+Result:
+
+- HTTP `201`;
+- created object returned successfully;
+- persisted department: `dept_law_test`;
+- forged header did not replace authenticated principal scope;
+- persisted status: `DRAFT`;
+- `approved_at`: `NULL`;
+- `archived_at`: `NULL`.
+
+The API response did not expose a client-controlled department identifier.
+
+### Duplicate handling
+
+After the valid creation:
+
+- duplicate code with a different version number: HTTP `409`;
+- duplicate version number with a different code: HTTP `409`.
+
+Failed conflict requests created no extra SyllabusVersion rows.
+
+Exactly one Law runtime SyllabusVersion existed for the tested creation path before cleanup.
+
+### Department-scoped list/read verification
+
+List request with a forged BUS department header:
+
+- valid Law SyllabusVersion visible;
+- foreign BUS SyllabusVersion fixture not visible;
+- department isolation preserved.
+
+Direct read of the valid Law SyllabusVersion with the same forged BUS header:
+
+- HTTP `200`;
+- record remained scoped to the authenticated Law principal.
+
+Direct read of the foreign BUS SyllabusVersion:
+
+- HTTP `404`.
+
+### Audit verification
+
+The valid creation produced exactly one success audit with:
+
+- action: `course-management.syllabus-version.created`;
+- correct actor;
+- correct Law department;
+- target type: `syllabus_version`;
+- correct created target ID;
+- non-null request ID;
+- correct CurriculumCourse ID;
+- correct syllabus code;
+- correct version number;
+- status `DRAFT`.
+
+Total SyllabusVersion success-audit cardinality during the test:
+
+`1`
+
+Denied and failed mutation requests produced no additional success audit.
+
+### Runtime cleanup
+
+All feature-specific disposable runtime state was removed after verification:
+
+- temporary exact permission: removed;
+- temporary Department Admin role-permission link: removed;
+- disposable BUS CurriculumCourse: removed;
+- disposable BUS SyllabusVersion: removed;
+- valid Law test SyllabusVersion: removed;
+- runtime SyllabusVersion success audit: removed.
+
+Feature-specific SyllabusVersion test residue after cleanup:
+
+`0`
+
+Normal authentication/session/login telemetry generated by legitimate runtime logins was intentionally not deleted through raw SQL because it belongs to the authentication security history rather than the SyllabusVersion test fixtures.
+
+### Final platform verification
+
+After cleanup:
+
+- Prisma database-to-datamodel drift: none;
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- API listener: loopback-only;
+- repository: clean;
+- repository HEAD and `origin/main`: aligned.
+
+### Current verified classification
+
+The SyllabusVersion Admin API foundation is now:
+
+- implemented;
+- independently reviewed;
+- statically validated;
+- committed and pushed;
+- deployed to the ordinary runtime server;
+- ordinary API runtime verified;
+- department-isolation verified;
+- object-level safe-not-found verified;
+- exact-governance fail-closed behavior verified;
+- DRAFT-only creation verified;
+- PostgreSQL/application version-boundary behavior verified;
+- duplicate handling verified;
+- transactional success-audit behavior verified;
+- cleanup verified;
+- runtime health verified.
+
+### Important operational limitation
+
+The exact permission:
+
+`course-management.syllabus-version.manage`
+
+is **not permanently provisioned in the ordinary runtime database**.
+
+The runtime test created the permission and Department Admin role link temporarily and removed both after verification.
+
+Therefore, after cleanup, the canonical Department Admin correctly returns fail-closed `403` for these endpoints.
+
+The SyllabusVersion Admin API is runtime-verified but is **not yet operationally enabled for normal Department Admin use**.
+
+Permanent access must be introduced through the project's reviewed, config-driven permission/role provisioning mechanism rather than by weakening `PolicyGuard`, broadening wildcard access or leaving a manual runtime-only permission grant behind.
+
+### Still pending
+
+- permanent/config-driven SyllabusVersion governance permission provisioning;
+- SyllabusVersion lifecycle transitions;
+- approved/active historical create-new-version enforcement;
+- lifecycle audit events;
+- CourseOffering → SyllabusVersion binding;
+- Teacher syllabus read access;
+- Teacher Course Workspace;
+- Course Outline;
+- Lesson Plan;
+- CLO/PLO workflow;
+- frontend;
+- historical syllabus backfill.
+
+No completion claim should extend beyond the verified Admin create/list/read foundation.
