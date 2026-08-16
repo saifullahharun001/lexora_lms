@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prisma": "prisma",
     "prisma:generate": "prisma generate",
+    "authorization:provision": "pnpm run build && node dist/prisma/authorization/provision-authorization.cli.js",
     "runtime:reset-law-accounts": "pnpm run build && node dist/prisma/reset-runtime-law-accounts.js"
   },
   "dependencies": {

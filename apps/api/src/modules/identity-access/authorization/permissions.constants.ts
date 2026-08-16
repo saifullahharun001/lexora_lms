@@ -49,7 +49,8 @@ export const PERMISSIONS = {
     COURSE_READ_ENROLLED: "course-management.course.read_enrolled",
     COURSE_CREATE_DEPARTMENT: "course-management.course.create_department",
     COURSE_UPDATE_ASSIGNED: "course-management.course.update_assigned",
-    COURSE_ARCHIVE_DEPARTMENT: "course-management.course.archive_department"
+    COURSE_ARCHIVE_DEPARTMENT: "course-management.course.archive_department",
+    SYLLABUS_VERSION_MANAGE: "course-management.syllabus-version.manage"
   },
   ENROLLMENT: {
     ENROLLMENT_READ_DEPARTMENT: "enrollment.enrollment.read_department",
