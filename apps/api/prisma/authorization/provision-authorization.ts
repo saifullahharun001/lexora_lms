@@ -1,6 +1,9 @@
 import { DepartmentStatus, Prisma, type PrismaClient } from "@prisma/client";
 
-import { SYLLABUS_VERSION_MANAGE_PROVISIONING as definition } from "./authorization-provisioning.definition";
+import {
+  AUTHORIZATION_PROVISIONING_DEFINITIONS,
+  type AuthorizationProvisioningDefinition,
+} from "./authorization-provisioning.definition";
 
 type ProvisioningReadClient = Pick<
   Prisma.TransactionClient,
@@ -39,9 +42,7 @@ interface ResolvedPermission {
 
 export type ExistingState = "ABSENT" | "EXACT";
 
-export interface AuthorizationProvisioningPlan {
-  readonly department: Pick<ResolvedDepartment, "id" | "code" | "name">;
-  readonly role: Pick<ResolvedRole, "id" | "code" | "name">;
+export interface AuthorizationProvisioningDefinitionPlan {
   readonly permission: {
     readonly id: string | null;
     readonly code: string;
@@ -61,12 +62,23 @@ export interface AuthorizationProvisioningPlan {
   };
 }
 
-export interface AuthorizationProvisioningResult {
-  readonly plan: AuthorizationProvisioningPlan;
-  readonly applied: boolean;
+export interface AuthorizationProvisioningPlan {
+  readonly department: Pick<ResolvedDepartment, "id" | "code" | "name">;
+  readonly role: Pick<ResolvedRole, "id" | "code" | "name">;
+  readonly definitions: readonly AuthorizationProvisioningDefinitionPlan[];
+}
+
+export interface AuthorizationProvisioningDefinitionResult {
+  readonly permissionCode: string;
   readonly permissionCreated: boolean;
   readonly rolePermissionCreated: boolean;
   readonly auditRecorded: boolean;
+}
+
+export interface AuthorizationProvisioningResult {
+  readonly plan: AuthorizationProvisioningPlan;
+  readonly applied: boolean;
+  readonly definitions: readonly AuthorizationProvisioningDefinitionResult[];
 }
 
 export class AuthorizationProvisioningError extends Error {
@@ -136,11 +148,12 @@ async function resolveDepartment(
 async function resolveRole(
   client: ProvisioningReadClient,
   department: ResolvedDepartment,
+  targetRoleCode: string,
 ): Promise<ResolvedRole> {
   const roles = await client.role.findMany({
     where: {
       departmentId: department.id,
-      code: definition.targetRoleCode,
+      code: targetRoleCode,
     },
     select: {
       id: true,
@@ -161,10 +174,7 @@ async function resolveRole(
   }
 
   const role = roles[0]!;
-  if (
-    role.departmentId !== department.id ||
-    role.code !== definition.targetRoleCode
-  ) {
+  if (role.departmentId !== department.id || role.code !== targetRoleCode) {
     fail(
       "Resolved Department Admin role does not belong to the target department",
     );
@@ -176,7 +186,10 @@ async function resolveRole(
   return role;
 }
 
-function hasExactPermissionSemantics(permission: ResolvedPermission): boolean {
+function hasExactPermissionSemantics(
+  permission: ResolvedPermission,
+  definition: AuthorizationProvisioningDefinition,
+): boolean {
   return (
     permission.resource === definition.permission.resource &&
     permission.action === definition.permission.action &&
@@ -186,6 +199,7 @@ function hasExactPermissionSemantics(permission: ResolvedPermission): boolean {
 
 async function resolvePermission(
   client: ProvisioningReadClient,
+  definition: AuthorizationProvisioningDefinition,
 ): Promise<ResolvedPermission | null> {
   const permissions = await client.permission.findMany({
     where: {
@@ -215,14 +229,14 @@ async function resolvePermission(
   }
 
   const codeMatch = codeMatches[0];
-  if (codeMatch && !hasExactPermissionSemantics(codeMatch)) {
+  if (codeMatch && !hasExactPermissionSemantics(codeMatch, definition)) {
     fail("Permission code exists with conflicting resource, action, or scope");
   }
 
   const incompatibleEquivalent = permissions.find(
     (permission) =>
       permission.code !== definition.permission.code &&
-      hasExactPermissionSemantics(permission),
+      hasExactPermissionSemantics(permission, definition),
   );
   if (incompatibleEquivalent) {
     fail(
@@ -267,15 +281,79 @@ async function resolveRoleLink(
   return link ?? null;
 }
 
+function validateProvisioningDefinitions() {
+  const definitions: readonly AuthorizationProvisioningDefinition[] =
+    AUTHORIZATION_PROVISIONING_DEFINITIONS;
+
+  if (definitions.length === 0) {
+    fail("At least one authorization provisioning definition is required");
+  }
+
+  const permissionCodes = new Set<string>();
+  const permissionSemantics = new Set<string>();
+  const targetRoleCodes = new Set<string>();
+
+  for (const definition of definitions) {
+    if (permissionCodes.has(definition.permission.code)) {
+      fail("Authorization provisioning definitions contain a duplicate code");
+    }
+    permissionCodes.add(definition.permission.code);
+
+    const semantics = [
+      definition.permission.resource,
+      definition.permission.action,
+      definition.permission.scope,
+    ].join("\u0000");
+    if (permissionSemantics.has(semantics)) {
+      fail(
+        "Authorization provisioning definitions contain duplicate permission semantics",
+      );
+    }
+    permissionSemantics.add(semantics);
+    targetRoleCodes.add(definition.targetRoleCode);
+  }
+
+  if (targetRoleCodes.size !== 1) {
+    fail("Authorization provisioning definitions target incompatible roles");
+  }
+
+  return definitions[0]!.targetRoleCode;
+}
+
 async function loadPlan(
   client: ProvisioningReadClient,
   selector: DepartmentSelector,
 ): Promise<AuthorizationProvisioningPlan> {
+  const targetRoleCode = validateProvisioningDefinitions();
   const department = await resolveDepartment(client, selector);
-  const role = await resolveRole(client, department);
-  const permission = await resolvePermission(client);
-  const roleLink = await resolveRoleLink(client, role, permission);
-  const hasChanges = permission === null || roleLink === null;
+  const role = await resolveRole(client, department, targetRoleCode);
+  const definitions: AuthorizationProvisioningDefinitionPlan[] = [];
+
+  for (const definition of AUTHORIZATION_PROVISIONING_DEFINITIONS) {
+    const permission = await resolvePermission(client, definition);
+    const roleLink = await resolveRoleLink(client, role, permission);
+    const hasChanges = permission === null || roleLink === null;
+
+    definitions.push({
+      permission: {
+        id: permission?.id ?? null,
+        code: definition.permission.code,
+        resource: definition.permission.resource,
+        action: definition.permission.action,
+        scope: definition.permission.scope,
+        state: permission ? "EXACT" : "ABSENT",
+      },
+      roleLink: {
+        id: roleLink?.id ?? null,
+        state: roleLink ? "EXACT" : "ABSENT",
+      },
+      changes: {
+        permission: permission ? "UNCHANGED" : "CREATE",
+        rolePermission: roleLink ? "UNCHANGED" : "CREATE",
+        auditLog: hasChanges ? "CREATE" : "UNCHANGED",
+      },
+    });
+  }
 
   return {
     department: {
@@ -284,23 +362,7 @@ async function loadPlan(
       name: department.name,
     },
     role: { id: role.id, code: role.code, name: role.name },
-    permission: {
-      id: permission?.id ?? null,
-      code: definition.permission.code,
-      resource: definition.permission.resource,
-      action: definition.permission.action,
-      scope: definition.permission.scope,
-      state: permission ? "EXACT" : "ABSENT",
-    },
-    roleLink: {
-      id: roleLink?.id ?? null,
-      state: roleLink ? "EXACT" : "ABSENT",
-    },
-    changes: {
-      permission: permission ? "UNCHANGED" : "CREATE",
-      rolePermission: roleLink ? "UNCHANGED" : "CREATE",
-      auditLog: hasChanges ? "CREATE" : "UNCHANGED",
-    },
+    definitions,
   };
 }
 
@@ -351,9 +413,12 @@ export async function planAuthorizationProvisioning(
   return {
     plan: await loadPlan(prisma, selector),
     applied: false,
-    permissionCreated: false,
-    rolePermissionCreated: false,
-    auditRecorded: false,
+    definitions: AUTHORIZATION_PROVISIONING_DEFINITIONS.map((definition) => ({
+      permissionCode: definition.permission.code,
+      permissionCreated: false,
+      rolePermissionCreated: false,
+      auditRecorded: false,
+    })),
   };
 }
 
@@ -364,63 +429,76 @@ export async function applyAuthorizationProvisioning(
   return prisma.$transaction(
     async (tx) => {
       const plan = await loadPlan(tx, selector);
-      if (
-        plan.permission.state === "EXACT" &&
-        plan.roleLink.state === "EXACT"
-      ) {
-        return {
-          plan,
-          applied: true,
-          permissionCreated: false,
-          rolePermissionCreated: false,
-          auditRecorded: false,
-        };
-      }
+      const definitionResults: AuthorizationProvisioningDefinitionResult[] = [];
 
-      const permission =
-        plan.permission.state === "EXACT"
-          ? { id: plan.permission.id! }
-          : await tx.permission.create({
+      for (const [
+        index,
+        definition,
+      ] of AUTHORIZATION_PROVISIONING_DEFINITIONS.entries()) {
+        const definitionPlan = plan.definitions[index]!;
+        const permissionCreated = definitionPlan.permission.state === "ABSENT";
+        const rolePermissionCreated =
+          definitionPlan.roleLink.state === "ABSENT";
+        const hasChanges = permissionCreated || rolePermissionCreated;
+
+        if (!hasChanges) {
+          definitionResults.push({
+            permissionCode: definition.permission.code,
+            permissionCreated: false,
+            rolePermissionCreated: false,
+            auditRecorded: false,
+          });
+          continue;
+        }
+
+        const permission = permissionCreated
+          ? await tx.permission.create({
               data: definition.permission,
               select: { id: true },
-            });
-      const rolePermission =
-        plan.roleLink.state === "EXACT"
-          ? { id: plan.roleLink.id! }
-          : await tx.rolePermission.create({
+            })
+          : { id: definitionPlan.permission.id! };
+        const rolePermission = rolePermissionCreated
+          ? await tx.rolePermission.create({
               data: {
                 roleId: plan.role.id,
                 permissionId: permission.id,
               },
               select: { id: true },
-            });
+            })
+          : { id: definitionPlan.roleLink.id! };
 
-      await tx.auditLog.create({
-        data: {
-          actorUserId: null,
-          actorType: "SERVICE",
-          departmentId: plan.department.id,
-          action: definition.auditAction,
-          targetType: "role_permission",
-          targetId: rolePermission.id,
-          outcome: "SUCCESS",
-          contextJson: {
-            mode: "APPLY",
-            departmentCode: plan.department.code,
-            roleCode: plan.role.code,
-            permissionCode: definition.permission.code,
-            permissionCreated: plan.permission.state === "ABSENT",
-            rolePermissionCreated: plan.roleLink.state === "ABSENT",
+        await tx.auditLog.create({
+          data: {
+            actorUserId: null,
+            actorType: "SERVICE",
+            departmentId: plan.department.id,
+            action: definition.auditAction,
+            targetType: "role_permission",
+            targetId: rolePermission.id,
+            outcome: "SUCCESS",
+            contextJson: {
+              mode: "APPLY",
+              departmentCode: plan.department.code,
+              roleCode: plan.role.code,
+              permissionCode: definition.permission.code,
+              permissionCreated,
+              rolePermissionCreated,
+            },
           },
-        },
-      });
+        });
+
+        definitionResults.push({
+          permissionCode: definition.permission.code,
+          permissionCreated,
+          rolePermissionCreated,
+          auditRecorded: true,
+        });
+      }
 
       return {
         plan,
         applied: true,
-        permissionCreated: plan.permission.state === "ABSENT",
-        rolePermissionCreated: plan.roleLink.state === "ABSENT",
-        auditRecorded: true,
+        definitions: definitionResults,
       };
     },
     {
@@ -434,19 +512,33 @@ export async function applyAuthorizationProvisioning(
 export function sanitizedProvisioningSummary(
   result: AuthorizationProvisioningResult,
 ) {
+  const resultsByCode = new Map(
+    result.definitions.map((definition) => [
+      definition.permissionCode,
+      definition,
+    ]),
+  );
+  const definitions = result.plan.definitions.map((definition) => {
+    const definitionResult = resultsByCode.get(definition.permission.code);
+    return {
+      permission: definition.permission,
+      roleLink: definition.roleLink,
+      changes: definition.changes,
+      permissionCreated: definitionResult?.permissionCreated ?? false,
+      rolePermissionCreated: definitionResult?.rolePermissionCreated ?? false,
+      auditRecorded: definitionResult?.auditRecorded ?? false,
+      noOp:
+        definition.changes.permission === "UNCHANGED" &&
+        definition.changes.rolePermission === "UNCHANGED",
+    };
+  });
+
   return {
     mode: result.applied ? "APPLY" : "DRY_RUN",
     department: result.plan.department,
     role: result.plan.role,
-    permission: result.plan.permission,
-    roleLink: result.plan.roleLink,
-    changes: result.plan.changes,
+    definitions,
     applied: result.applied,
-    permissionCreated: result.permissionCreated,
-    rolePermissionCreated: result.rolePermissionCreated,
-    auditRecorded: result.auditRecorded,
-    noOp:
-      result.plan.changes.permission === "UNCHANGED" &&
-      result.plan.changes.rolePermission === "UNCHANGED",
+    noOp: definitions.every((definition) => definition.noOp),
   };
 }
