@@ -283,6 +283,18 @@ test("creation rejects invalid version/date and forced server-controlled fields"
       versionNumber: 1,
       approvedAt: new Date(),
     },
+    {
+      curriculumCourseId: "course-a",
+      code: "SYL-1",
+      versionNumber: 1,
+      archivedAt: new Date(),
+    },
+    {
+      curriculumCourseId: "course-a",
+      code: "SYL-1",
+      versionNumber: 1,
+      departmentId: "department-b",
+    },
   ]) {
     const h = harness();
     await assert.rejects(

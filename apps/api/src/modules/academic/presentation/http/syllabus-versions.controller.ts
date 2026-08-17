@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Post,
+  Put,
   Query,
   UseGuards,
 } from "@nestjs/common";
@@ -17,6 +18,7 @@ import { ACADEMIC_POLICY_NAMES } from "../../domain/academic.policy-names";
 import { CreateSyllabusVersionDto } from "../dto/create-syllabus-version.dto";
 import { ListSyllabusVersionsQueryDto } from "../dto/list-syllabus-versions-query.dto";
 import { ResourceIdParamDto } from "../dto/resource-id-param.dto";
+import { TransitionSyllabusVersionDto } from "../dto/transition-syllabus-version.dto";
 
 @Controller({ path: "syllabus-versions", version: "1" })
 @UseGuards(AuthGuard, PolicyGuard)
@@ -39,5 +41,41 @@ export class SyllabusVersionsController {
   @RequirePolicy(ACADEMIC_POLICY_NAMES.SYLLABUS_VERSION_MANAGE)
   getById(@Param() params: ResourceIdParamDto) {
     return this.academicService.getSyllabusVersion(params.id);
+  }
+
+  @Put(":id/approve")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.SYLLABUS_VERSION_LIFECYCLE_MANAGE)
+  approve(
+    @Param() params: ResourceIdParamDto,
+    @Body() body: TransitionSyllabusVersionDto,
+  ) {
+    return this.academicService.approveSyllabusVersion(params.id, body);
+  }
+
+  @Put(":id/activate")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.SYLLABUS_VERSION_LIFECYCLE_MANAGE)
+  activate(
+    @Param() params: ResourceIdParamDto,
+    @Body() body: TransitionSyllabusVersionDto,
+  ) {
+    return this.academicService.activateSyllabusVersion(params.id, body);
+  }
+
+  @Put(":id/retire")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.SYLLABUS_VERSION_LIFECYCLE_MANAGE)
+  retire(
+    @Param() params: ResourceIdParamDto,
+    @Body() body: TransitionSyllabusVersionDto,
+  ) {
+    return this.academicService.retireSyllabusVersion(params.id, body);
+  }
+
+  @Put(":id/archive")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.SYLLABUS_VERSION_LIFECYCLE_MANAGE)
+  archive(
+    @Param() params: ResourceIdParamDto,
+    @Body() body: TransitionSyllabusVersionDto,
+  ) {
+    return this.academicService.archiveSyllabusVersion(params.id, body);
   }
 }

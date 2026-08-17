@@ -230,6 +230,39 @@ test("valid same-department creation is forced to DRAFT and audited transactiona
   });
 });
 
+test("creating a distinct new DRAFT version leaves approved historical authority unchanged", async () => {
+  const parent = curriculumCourse();
+  const historical = syllabusRecord(parent, {
+    id: "syllabus-historical",
+    code: "SYL-1",
+    versionNumber: 1,
+    status: AcademicVersionStatus.ACTIVE,
+    approvedAt: new Date("2026-08-01T00:00:00.000Z"),
+    updatedAt: new Date("2026-08-02T00:00:00.000Z"),
+  });
+  const before = structuredClone(historical);
+  const h = harness({ parent, records: [historical] });
+
+  const result = await h.repository.createSyllabusVersion({
+    ...createInput(),
+    code: "SYL-2",
+    versionNumber: 2,
+  });
+
+  assert.equal(result.outcome, "CREATED");
+  if (result.outcome !== "CREATED") return;
+  assert.equal(
+    (result.syllabusVersion as { status: AcademicVersionStatus }).status,
+    AcademicVersionStatus.DRAFT,
+  );
+  assert.deepEqual(historical, before);
+  assert.equal(historical.status, AcademicVersionStatus.ACTIVE);
+  assert.equal(
+    (historical.approvedAt as Date | null)?.toISOString(),
+    "2026-08-01T00:00:00.000Z",
+  );
+});
+
 test("wrong-department parent is safe not-found without create or audit", async () => {
   const h = harness({
     parent: curriculumCourse({ departmentId: "department-b" }),

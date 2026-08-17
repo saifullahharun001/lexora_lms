@@ -11,6 +11,8 @@ export const COURSE_MANAGEMENT_POLICY_NAMES = {
   CURRICULUM_VERSION_LIFECYCLE_MANAGE:
     "course-management.curriculum-version.lifecycle.manage",
   SYLLABUS_VERSION_MANAGE: "course-management.syllabus-version.manage",
+  SYLLABUS_VERSION_LIFECYCLE_MANAGE:
+    "course-management.syllabus-version.lifecycle.manage",
   STUDENT_CURRICULUM_ASSIGNMENT_MANAGE:
     "course-management.student-curriculum-assignment.manage",
   TEACHER_ASSIGNMENT_MANAGE: "course-management.teacher-assignment.manage",

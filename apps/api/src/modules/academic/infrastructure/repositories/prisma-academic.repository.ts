@@ -34,6 +34,7 @@ import type {
   SyllabusVersionListFilters,
   TeacherAssignmentListFilters,
   TransitionCurriculumVersionInput,
+  TransitionSyllabusVersionInput,
   UpdateAcademicTermInput,
   UpdateAcademicYearInput,
   UpdateCourseInput,
@@ -131,6 +132,29 @@ const CURRICULUM_VERSION_TRANSITIONS = {
     expectedStatus: AcademicVersionStatus.RETIRED,
     targetStatus: AcademicVersionStatus.ARCHIVED,
     auditAction: ACADEMIC_AUDIT_EVENTS.CURRICULUM_VERSION_ARCHIVED,
+  },
+} as const;
+
+const SYLLABUS_VERSION_TRANSITIONS = {
+  APPROVE: {
+    expectedStatus: AcademicVersionStatus.DRAFT,
+    targetStatus: AcademicVersionStatus.APPROVED,
+    auditAction: ACADEMIC_AUDIT_EVENTS.SYLLABUS_VERSION_APPROVED,
+  },
+  ACTIVATE: {
+    expectedStatus: AcademicVersionStatus.APPROVED,
+    targetStatus: AcademicVersionStatus.ACTIVE,
+    auditAction: ACADEMIC_AUDIT_EVENTS.SYLLABUS_VERSION_ACTIVATED,
+  },
+  RETIRE: {
+    expectedStatus: AcademicVersionStatus.ACTIVE,
+    targetStatus: AcademicVersionStatus.RETIRED,
+    auditAction: ACADEMIC_AUDIT_EVENTS.SYLLABUS_VERSION_RETIRED,
+  },
+  ARCHIVE: {
+    expectedStatus: AcademicVersionStatus.RETIRED,
+    targetStatus: AcademicVersionStatus.ARCHIVED,
+    auditAction: ACADEMIC_AUDIT_EVENTS.SYLLABUS_VERSION_ARCHIVED,
   },
 } as const;
 
@@ -552,6 +576,25 @@ const syllabusVersionSelect = {
 type SyllabusVersionRecord = Prisma.SyllabusVersionGetPayload<{
   select: typeof syllabusVersionSelect;
 }>;
+
+class InvalidSyllabusVersionLifecycleStateError extends Error {}
+
+function isSyllabusVersionLifecycleStateConsistent(
+  version: Pick<SyllabusVersionRecord, "status" | "approvedAt" | "archivedAt">,
+) {
+  switch (version.status) {
+    case AcademicVersionStatus.DRAFT:
+      return version.approvedAt === null && version.archivedAt === null;
+    case AcademicVersionStatus.APPROVED:
+    case AcademicVersionStatus.ACTIVE:
+    case AcademicVersionStatus.RETIRED:
+      return version.approvedAt !== null && version.archivedAt === null;
+    case AcademicVersionStatus.ARCHIVED:
+      return version.approvedAt !== null && version.archivedAt !== null;
+    default:
+      return false;
+  }
+}
 
 type SyllabusCurriculumCourseRecord = SyllabusVersionRecord["curriculumCourse"];
 
@@ -1766,6 +1809,160 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
     } catch (error) {
       const outcome = syllabusVersionUniqueConflict(error);
       if (outcome) return { outcome } as const;
+      throw error;
+    }
+  }
+
+  async transitionSyllabusVersion(input: TransitionSyllabusVersionInput) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const transition = SYLLABUS_VERSION_TRANSITIONS[input.action];
+        const findScoped = () =>
+          tx.syllabusVersion.findFirst({
+            where: {
+              id: input.syllabusVersionId,
+              departmentId: input.departmentId,
+            },
+            select: syllabusVersionSelect,
+          });
+
+        const existing = await findScoped();
+        if (!existing) {
+          return { outcome: "SYLLABUS_VERSION_NOT_FOUND" } as const;
+        }
+
+        const safeExisting = sanitizeSyllabusVersion(
+          existing,
+          input.departmentId,
+        );
+        if (!safeExisting) {
+          return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+        }
+
+        if (!isSyllabusVersionLifecycleStateConsistent(existing)) {
+          return { outcome: "INVALID_TRANSITION" } as const;
+        }
+
+        if (existing.status === transition.targetStatus) {
+          return {
+            outcome: "ALREADY_TARGET",
+            syllabusVersion: safeExisting,
+          } as const;
+        }
+
+        if (existing.status !== transition.expectedStatus) {
+          return { outcome: "INVALID_TRANSITION" } as const;
+        }
+
+        const updated = await tx.syllabusVersion.updateMany({
+          where: {
+            id: input.syllabusVersionId,
+            departmentId: input.departmentId,
+            curriculumCourseId: existing.curriculumCourseId,
+            status: transition.expectedStatus,
+            ...(input.action === "APPROVE"
+              ? { approvedAt: null }
+              : { approvedAt: { not: null } }),
+            archivedAt: null,
+            curriculumCourse: {
+              is: {
+                id: existing.curriculumCourseId,
+                departmentId: input.departmentId,
+              },
+            },
+          },
+          data: {
+            status: transition.targetStatus,
+            ...(input.action === "APPROVE"
+              ? { approvedAt: input.transitionAt }
+              : {}),
+            ...(input.action === "ARCHIVE"
+              ? { archivedAt: input.transitionAt }
+              : {}),
+          },
+        });
+
+        if (updated.count === 0) {
+          const concurrent = await findScoped();
+          if (!concurrent) {
+            return { outcome: "SYLLABUS_VERSION_NOT_FOUND" } as const;
+          }
+
+          const safeConcurrent = sanitizeSyllabusVersion(
+            concurrent,
+            input.departmentId,
+          );
+          if (!safeConcurrent) {
+            return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+          }
+
+          if (!isSyllabusVersionLifecycleStateConsistent(concurrent)) {
+            return { outcome: "INVALID_TRANSITION" } as const;
+          }
+
+          return concurrent.status === transition.targetStatus
+            ? ({
+                outcome: "ALREADY_TARGET",
+                syllabusVersion: safeConcurrent,
+              } as const)
+            : ({ outcome: "INVALID_TRANSITION" } as const);
+        }
+
+        const transitioned = await findScoped();
+        if (!transitioned) {
+          throw new Error("TRANSITIONED_SYLLABUS_VERSION_NOT_FOUND");
+        }
+        const safeTransitioned = sanitizeSyllabusVersion(
+          transitioned,
+          input.departmentId,
+        );
+        if (!safeTransitioned) {
+          throw new Error("TRANSITIONED_SYLLABUS_VERSION_NOT_FOUND");
+        }
+        if (
+          transitioned.status !== transition.targetStatus ||
+          !isSyllabusVersionLifecycleStateConsistent(transitioned)
+        ) {
+          throw new InvalidSyllabusVersionLifecycleStateError();
+        }
+
+        await tx.auditLog.create({
+          data: {
+            requestId: input.requestId,
+            actorUserId: input.actorUserId,
+            actorType: "USER",
+            departmentId: input.departmentId,
+            action: transition.auditAction,
+            targetType: "syllabus_version",
+            targetId: input.syllabusVersionId,
+            outcome: "SUCCESS",
+            ipAddress: input.ipAddress,
+            userAgent: input.userAgent,
+            occurredAt: input.transitionAt,
+            contextJson: {
+              syllabusVersionId: input.syllabusVersionId,
+              curriculumCourseId: existing.curriculumCourseId,
+              code: existing.code,
+              versionNumber: existing.versionNumber,
+              previousStatus: transition.expectedStatus,
+              newStatus: transition.targetStatus,
+              reason: input.reason,
+              actorUserId: input.actorUserId,
+              departmentId: input.departmentId,
+              transitionTimestamp: input.transitionAt.toISOString(),
+            },
+          },
+        });
+
+        return {
+          outcome: "TRANSITIONED",
+          syllabusVersion: safeTransitioned,
+        } as const;
+      });
+    } catch (error) {
+      if (error instanceof InvalidSyllabusVersionLifecycleStateError) {
+        return { outcome: "INVALID_TRANSITION" } as const;
+      }
       throw error;
     }
   }

@@ -18,6 +18,7 @@ import {
 } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
+import { isPermissionGrantFromLoadedRole } from "@/common/authorization/principal-authority";
 import { PrismaService } from "@/common/prisma/prisma.service";
 import { RequestContextService } from "@/common/request-context/request-context.service";
 
@@ -41,6 +42,7 @@ import type {
   EnrollmentListFilters,
   ProgramListFilters,
   StudentCourseOfferingListFilters,
+  SyllabusVersionLifecycleAction,
   SyllabusVersionListFilters,
   UpdateAcademicTermInput,
   UpdateAcademicYearInput,
@@ -59,6 +61,10 @@ interface CurriculumVersionTransitionMetadata {
   approvalReference?: string;
 }
 
+interface SyllabusVersionTransitionMetadata {
+  reason: string;
+}
+
 const CURRICULUM_VERSION_LIFECYCLE_PERMISSION = {
   resource: "course-management.curriculum-version.lifecycle",
   action: "manage",
@@ -66,6 +72,11 @@ const CURRICULUM_VERSION_LIFECYCLE_PERMISSION = {
 
 const SYLLABUS_VERSION_MANAGE_PERMISSION = {
   resource: "course-management.syllabus-version",
+  action: "manage",
+} as const;
+
+const SYLLABUS_VERSION_LIFECYCLE_PERMISSION = {
+  resource: "course-management.syllabus-version.lifecycle",
   action: "manage",
 } as const;
 
@@ -739,6 +750,86 @@ export class AcademicService {
     }
 
     return syllabusVersion;
+  }
+
+  approveSyllabusVersion(
+    syllabusVersionId: string,
+    input: SyllabusVersionTransitionMetadata,
+  ) {
+    return this.transitionSyllabusVersion(syllabusVersionId, "APPROVE", input);
+  }
+
+  activateSyllabusVersion(
+    syllabusVersionId: string,
+    input: SyllabusVersionTransitionMetadata,
+  ) {
+    return this.transitionSyllabusVersion(syllabusVersionId, "ACTIVATE", input);
+  }
+
+  retireSyllabusVersion(
+    syllabusVersionId: string,
+    input: SyllabusVersionTransitionMetadata,
+  ) {
+    return this.transitionSyllabusVersion(syllabusVersionId, "RETIRE", input);
+  }
+
+  archiveSyllabusVersion(
+    syllabusVersionId: string,
+    input: SyllabusVersionTransitionMetadata,
+  ) {
+    return this.transitionSyllabusVersion(syllabusVersionId, "ARCHIVE", input);
+  }
+
+  private async transitionSyllabusVersion(
+    syllabusVersionId: string,
+    action: SyllabusVersionLifecycleAction,
+    input: SyllabusVersionTransitionMetadata,
+  ) {
+    const departmentId =
+      await this.assertDepartmentAdminCanManageSyllabusLifecycle();
+    const unsafeInput = input as unknown as Record<string, unknown>;
+    if (
+      "status" in unsafeInput ||
+      "approvedAt" in unsafeInput ||
+      "archivedAt" in unsafeInput ||
+      "transitionAt" in unsafeInput ||
+      "departmentId" in unsafeInput
+    ) {
+      throw new BadRequestException(
+        "Syllabus lifecycle timestamps, status, and department are server-controlled",
+      );
+    }
+
+    const reason = typeof input.reason === "string" ? input.reason.trim() : "";
+    if (!reason) {
+      throw new BadRequestException("A non-empty transition reason is required");
+    }
+
+    const requestContext = this.requestContextService.get();
+    const result = await this.repository.transitionSyllabusVersion({
+      departmentId,
+      syllabusVersionId,
+      action,
+      reason,
+      actorUserId: this.getActorId(),
+      transitionAt: new Date(),
+      requestId: requestContext?.requestId,
+      ipAddress: requestContext?.audit.ipAddress,
+      userAgent: requestContext?.audit.userAgent,
+    });
+
+    switch (result.outcome) {
+      case "TRANSITIONED":
+      case "ALREADY_TARGET":
+        return result.syllabusVersion;
+      case "SYLLABUS_VERSION_NOT_FOUND":
+      case "DEPENDENCY_SCOPE_MISMATCH":
+        throw new NotFoundException("Syllabus version not found");
+      case "INVALID_TRANSITION":
+        throw new ConflictException(
+          "Syllabus version cannot perform the requested lifecycle transition",
+        );
+    }
   }
 
   approveCurriculumVersion(
@@ -1532,6 +1623,85 @@ export class AcademicService {
     if (!actor) {
       throw new ForbiddenException(
         "Only active department admins can manage syllabus versions",
+      );
+    }
+
+    return departmentId;
+  }
+
+  private async assertDepartmentAdminCanManageSyllabusLifecycle() {
+    const departmentId = this.getDepartmentId();
+    const actorId = this.getActorId();
+    const principal = this.requestContextService.get()?.principal;
+    const governancePermission = principal?.permissions.find(
+      (permission) =>
+        permission.resource ===
+          SYLLABUS_VERSION_LIFECYCLE_PERMISSION.resource &&
+        permission.action === SYLLABUS_VERSION_LIFECYCLE_PERMISSION.action &&
+        permission.scope === "department" &&
+        isPermissionGrantFromLoadedRole(principal, permission) &&
+        principal.roleAssignments.some(
+          (assignment) =>
+            assignment.role === "department_admin" &&
+            assignment.departmentId === departmentId &&
+            assignment.userRoleId === permission.source?.userRoleId &&
+            assignment.roleId === permission.source?.roleId,
+        ),
+    );
+
+    if (!governancePermission?.source) {
+      throw new ForbiddenException(
+        "Explicit academic governance permission is required to manage syllabus version lifecycle",
+      );
+    }
+    const permissionSource = governancePermission.source;
+
+    const now = new Date();
+    const actor = await this.prisma.user.findFirst({
+      where: {
+        id: actorId,
+        departmentId,
+        status: UserStatus.ACTIVE,
+        archivedAt: null,
+        deletedAt: null,
+        department: {
+          id: departmentId,
+          status: DepartmentStatus.ACTIVE,
+          archivedAt: null,
+          deletedAt: null,
+        },
+        userRoles: {
+          some: {
+            id: permissionSource.userRoleId,
+            departmentId,
+            revokedAt: null,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+            role: {
+              id: permissionSource.roleId,
+              code: "department_admin",
+              departmentId,
+              archivedAt: null,
+              rolePermissions: {
+                some: {
+                  permission: {
+                    is: {
+                      resource: SYLLABUS_VERSION_LIFECYCLE_PERMISSION.resource,
+                      action: SYLLABUS_VERSION_LIFECYCLE_PERMISSION.action,
+                      scope: PermissionScope.DEPARTMENT,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!actor) {
+      throw new ForbiddenException(
+        "Only active department admins can manage syllabus version lifecycle",
       );
     }
 

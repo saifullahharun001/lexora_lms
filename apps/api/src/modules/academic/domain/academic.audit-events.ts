@@ -19,6 +19,10 @@ export const ACADEMIC_AUDIT_EVENTS = {
   CURRICULUM_VERSION_ARCHIVED:
     "course-management.curriculum-version.archived",
   SYLLABUS_VERSION_CREATED: "course-management.syllabus-version.created",
+  SYLLABUS_VERSION_APPROVED: "course-management.syllabus-version.approved",
+  SYLLABUS_VERSION_ACTIVATED: "course-management.syllabus-version.activated",
+  SYLLABUS_VERSION_RETIRED: "course-management.syllabus-version.retired",
+  SYLLABUS_VERSION_ARCHIVED: "course-management.syllabus-version.archived",
   STUDENT_CURRICULUM_ASSIGNED:
     "course-management.student-curriculum-assignment.created",
   TEACHER_ASSIGNMENT_ASSIGNED:

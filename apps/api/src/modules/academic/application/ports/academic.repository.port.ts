@@ -272,6 +272,50 @@ export type TransitionCurriculumVersionResult =
         | "INVALID_TRANSITION";
     };
 
+export type SyllabusVersionLifecycleAction =
+  | "APPROVE"
+  | "ACTIVATE"
+  | "RETIRE"
+  | "ARCHIVE";
+
+export interface SyllabusVersionLifecycleView {
+  id: string;
+  code: string;
+  versionNumber: number;
+  status: AcademicVersionStatus;
+  effectiveFrom: Date | null;
+  effectiveTo: Date | null;
+  approvedAt: Date | null;
+  archivedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  curriculumCourse: unknown;
+}
+
+export interface TransitionSyllabusVersionInput {
+  departmentId: string;
+  syllabusVersionId: string;
+  action: SyllabusVersionLifecycleAction;
+  reason: string;
+  actorUserId: string;
+  transitionAt: Date;
+  requestId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export type TransitionSyllabusVersionResult =
+  | {
+      outcome: "TRANSITIONED" | "ALREADY_TARGET";
+      syllabusVersion: SyllabusVersionLifecycleView;
+    }
+  | {
+      outcome:
+        | "SYLLABUS_VERSION_NOT_FOUND"
+        | "DEPENDENCY_SCOPE_MISMATCH"
+        | "INVALID_TRANSITION";
+    };
+
 export interface CreateStudentCurriculumAssignmentInput {
   departmentId: string;
   studentUserId: string;
@@ -407,6 +451,9 @@ export interface AcademicRepositoryPort {
   transitionCurriculumVersion(
     input: TransitionCurriculumVersionInput,
   ): Promise<TransitionCurriculumVersionResult>;
+  transitionSyllabusVersion(
+    input: TransitionSyllabusVersionInput,
+  ): Promise<TransitionSyllabusVersionResult>;
   createStudentCurriculumAssignment(
     input: CreateStudentCurriculumAssignmentInput,
   ): Promise<CreateStudentCurriculumAssignmentResult>;

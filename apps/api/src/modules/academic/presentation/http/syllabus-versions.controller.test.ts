@@ -16,7 +16,7 @@ import { AuthorizationService } from "@/modules/authorization/services/authoriza
 import { ACADEMIC_POLICY_NAMES } from "../../domain/academic.policy-names";
 import { SyllabusVersionsController } from "./syllabus-versions.controller";
 
-test("syllabus routes use both guards and the exact dedicated policy", () => {
+test("syllabus routes use both guards and their exact dedicated policies", () => {
   assert.deepEqual(
     Reflect.getMetadata(GUARDS_METADATA, SyllabusVersionsController),
     [AuthGuard, PolicyGuard],
@@ -31,9 +31,19 @@ test("syllabus routes use both guards and the exact dedicated policy", () => {
       ACADEMIC_POLICY_NAMES.SYLLABUS_VERSION_MANAGE,
     );
   }
+
+  for (const method of ["approve", "activate", "retire", "archive"] as const) {
+    assert.equal(
+      Reflect.getMetadata(
+        REQUIRE_POLICY_KEY,
+        SyllabusVersionsController.prototype[method],
+      ),
+      ACADEMIC_POLICY_NAMES.SYLLABUS_VERSION_LIFECYCLE_MANAGE,
+    );
+  }
 });
 
-test("HTTP surface contains only create, list, and immutable-id read", () => {
+test("HTTP surface contains create/list/read and only explicit lifecycle mutations", () => {
   const routes = [
     ["create", "/", RequestMethod.POST],
     ["list", "/", RequestMethod.GET],
@@ -57,11 +67,33 @@ test("HTTP surface contains only create, list, and immutable-id read", () => {
     );
   }
 
+  for (const [method, path] of [
+    ["approve", ":id/approve"],
+    ["activate", ":id/activate"],
+    ["retire", ":id/retire"],
+    ["archive", ":id/archive"],
+  ] as const) {
+    assert.equal(
+      Reflect.getMetadata(
+        PATH_METADATA,
+        SyllabusVersionsController.prototype[method],
+      ),
+      path,
+    );
+    assert.equal(
+      Reflect.getMetadata(
+        METHOD_METADATA,
+        SyllabusVersionsController.prototype[method],
+      ),
+      RequestMethod.PUT,
+    );
+  }
+
   assert.deepEqual(
     Object.getOwnPropertyNames(SyllabusVersionsController.prototype).filter(
       (name) => name !== "constructor",
     ),
-    ["create", "list", "getById"],
+    ["create", "list", "getById", "approve", "activate", "retire", "archive"],
   );
 });
 
@@ -113,6 +145,28 @@ test("static policy allows Department Admin and denies Teacher and Student", () 
     authorization.isAllowed(
       principal("student"),
       ACADEMIC_POLICY_NAMES.SYLLABUS_VERSION_MANAGE,
+    ),
+    false,
+  );
+
+  assert.equal(
+    authorization.isAllowed(
+      principal("department_admin"),
+      ACADEMIC_POLICY_NAMES.SYLLABUS_VERSION_LIFECYCLE_MANAGE,
+    ),
+    true,
+  );
+  assert.equal(
+    authorization.isAllowed(
+      principal("teacher"),
+      ACADEMIC_POLICY_NAMES.SYLLABUS_VERSION_LIFECYCLE_MANAGE,
+    ),
+    false,
+  );
+  assert.equal(
+    authorization.isAllowed(
+      principal("student"),
+      ACADEMIC_POLICY_NAMES.SYLLABUS_VERSION_LIFECYCLE_MANAGE,
     ),
     false,
   );
