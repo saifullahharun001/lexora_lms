@@ -18167,3 +18167,453 @@ Existing historical/versioning safety remains:
 - revised syllabus authority remains represented through a separate SyllabusVersion row rather than silent overwrite.
 
 Do not describe the complete syllabus workflow as finished.
+
+## Permanent SyllabusVersion Lifecycle Authorization Provisioning and Ordinary Runtime Verification — 2026-08-17
+
+### Purpose
+
+This checkpoint closes the previously documented operational limitation where the dedicated SyllabusVersion lifecycle permission existed only as a temporary runtime grant during lifecycle API verification.
+
+The dedicated permission is now provisioned through the reviewed, source-controlled authorization provisioning mechanism rather than through a manual runtime-only grant.
+
+Dedicated lifecycle authority:
+
+- permission code: `course-management.syllabus-version.lifecycle.manage`;
+- resource: `course-management.syllabus-version.lifecycle`;
+- action: `manage`;
+- scope: `DEPARTMENT`;
+- target runtime role: Law Department `department_admin`;
+- Law department ID: `dept_law_test`;
+- Law department code: `0421`.
+
+The ordinary create/list/read permission remains separate:
+
+`course-management.syllabus-version.manage`
+
+The lifecycle authorization gate was not broadened or replaced.
+
+### Implementation commit
+
+Permanent lifecycle authorization provisioning implementation:
+
+`f7a1b514ea62c11a0a05bc734dcd2e7db04101d6`
+
+Commit message:
+
+`Provision syllabus lifecycle authorization`
+
+Implementation scope was exactly three files:
+
+- `apps/api/prisma/authorization/authorization-provisioning.definition.ts`;
+- `apps/api/prisma/authorization/provision-authorization.ts`;
+- `apps/api/prisma/authorization/provision-authorization.test.ts`.
+
+The committed patch was independently matched against the runtime-tested transport artifact before commit.
+
+Runtime-tested patch SHA-256:
+
+`55ccbc8974093f516a2c001f9dc01fcd78680bc653c29dab31766b9e4538123e`
+
+### Static verification
+
+Before permanent runtime promotion:
+
+- independent review found no blocking Critical, High, Medium, or Low issue;
+- focused authorization provisioning tests: `22/22` passed;
+- API typecheck passed;
+- API build passed;
+- `git diff --check` passed;
+- exact three-file implementation scope was verified.
+
+### Disposable PostgreSQL verification
+
+The generalized two-definition provisioning engine was verified first against isolated loopback-only disposable PostgreSQL before touching the ordinary `lexora_lms` database.
+
+Disposable database exposure:
+
+- loopback only;
+- ordinary `lexora_lms` database was not accessed or mutated;
+- PM2 was not restarted;
+- Nginx was not restarted;
+- credentials were not printed.
+
+The disposable verification used the current Prisma schema through `prisma db push`; no schema migration was under test because the provisioning implementation changed authorization source files only.
+
+#### Checkpoint A — ordinary-runtime-shaped state
+
+Initial state:
+
+- existing `course-management.syllabus-version.manage` Permission exact;
+- existing Law Department Admin manage RolePermission exact;
+- lifecycle Permission absent;
+- lifecycle RolePermission absent.
+
+Dry run verified:
+
+- manage definition unchanged;
+- lifecycle definition planned for creation;
+- Permission writes: `0`;
+- RolePermission writes: `0`;
+- provisioning audit writes: `0`.
+
+First apply verified:
+
+- existing manage Permission untouched;
+- existing manage RolePermission untouched;
+- lifecycle Permission created exactly once;
+- lifecycle Law Department Admin RolePermission created exactly once;
+- lifecycle provisioning SERVICE audit created exactly once;
+- Teacher lifecycle grant: `0`;
+- Student lifecycle grant: `0`;
+- foreign/BUS Admin lifecycle grant: `0`.
+
+Second apply:
+
+- true no-op;
+- no additional Permission;
+- no additional RolePermission;
+- no additional audit.
+
+#### Checkpoint B — collision fail-closed behavior
+
+Verified against real disposable PostgreSQL:
+
+- lifecycle permission code with wrong semantics failed closed;
+- equivalent lifecycle semantics under an incompatible permission code failed closed;
+- collision attempts committed no provisioning writes;
+- collision attempts produced no provisioning audits;
+- when the earlier manage definition was absent and a later lifecycle collision existed, the earlier manage Permission/link did not persist.
+
+#### Checkpoint C — partial existing lifecycle state
+
+Initial state:
+
+- exact lifecycle Permission already existed;
+- lifecycle Law Department Admin RolePermission was absent.
+
+Apply verified:
+
+- lifecycle Permission was not recreated;
+- lifecycle Permission was not modified;
+- only the missing Law Department Admin RolePermission was created;
+- exactly one lifecycle SERVICE provisioning audit was created;
+- audit recorded `permissionCreated = false`;
+- audit recorded `rolePermissionCreated = true`;
+- existing manage state remained untouched;
+- Teacher/Student/foreign Admin lifecycle grants remained `0`.
+
+#### Checkpoint D — real transactional rollback
+
+Forced PostgreSQL failures verified atomic rollback behavior.
+
+Forced lifecycle RolePermission failure:
+
+- newly created lifecycle Permission rolled back;
+- lifecycle RolePermission did not survive;
+- lifecycle provisioning audit did not survive;
+- pre-existing manage state remained unchanged.
+
+Forced lifecycle audit failure:
+
+- lifecycle Permission rolled back;
+- lifecycle RolePermission rolled back;
+- lifecycle audit did not survive;
+- pre-existing manage state remained unchanged.
+
+Both definitions absent with a forced later lifecycle failure:
+
+- tentative manage Permission rolled back;
+- tentative manage RolePermission rolled back;
+- tentative manage provisioning audit rolled back;
+- tentative lifecycle Permission rolled back;
+- tentative lifecycle RolePermission rolled back;
+- lifecycle audit remained absent.
+
+This verified that the multi-definition apply behaves atomically and fail-closed under the tested failure paths.
+
+#### Checkpoint E — concurrent apply behavior
+
+Two simultaneous `--apply` operations were released against a clean disposable state.
+
+Observed caller behavior:
+
+- one caller succeeded;
+- the competing caller failed closed;
+- PostgreSQL logged:
+  - `could not serialize access due to read/write dependencies among transactions`.
+
+Authoritative final database state:
+
+- manage Permission cardinality: `1`;
+- manage Law Department Admin RolePermission cardinality: `1`;
+- lifecycle Permission cardinality: `1`;
+- lifecycle Law Department Admin RolePermission cardinality: `1`;
+- manage provisioning SERVICE audit cardinality: `1`;
+- lifecycle provisioning SERVICE audit cardinality: `1`;
+- duplicate permission semantics: `0`;
+- duplicate RolePermissions: `0`;
+- duplicate provisioning audits: `0`;
+- Teacher authority leakage: `0`;
+- Student authority leakage: `0`;
+- BUS Admin authority leakage: `0`.
+
+A sequential retry after the concurrent race:
+
+- succeeded;
+- returned a true no-op;
+- produced zero database writes.
+
+Therefore, concurrent final-state convergence is verified for the tested case. Under Serializable contention, a competing caller may fail closed and can safely retry to a true no-op.
+
+### Verification harness corrections
+
+Two verification harness issues were found and corrected without changing the provisioning implementation.
+
+1. Fresh-empty disposable migration bootstrap initially attempted `prisma migrate deploy` and failed because the repository migration history assumes pre-existing core tables. Since this provisioning change contained no migration, the disposable verifier was corrected to bootstrap the current Prisma schema with `prisma db push`.
+
+2. The first concurrency verifier attempted to snapshot `AuditLog.createdAt`. The actual audit timestamp field is `occurredAt`. The verifier was corrected and the complete concurrency checkpoint was rerun successfully.
+
+A later fresh-principal verification harness also initially attempted `chmod` on temporary JSON files before creating them. That run stopped before any login request reached the API. The harness was corrected and the fresh-principal verification was rerun successfully.
+
+These were verifier/harness issues and were not treated as implementation runtime failures.
+
+### Implementation promotion
+
+After disposable PostgreSQL verification passed:
+
+- exact reviewed patch identity was reverified;
+- implementation was committed as `f7a1b514ea62c11a0a05bc734dcd2e7db04101d6`;
+- commit contained exactly the three reviewed authorization provisioning files;
+- commit was pushed to `origin/main`;
+- local Windows repository was clean after push.
+
+Server promotion:
+
+- server fast-forwarded from `f31c399bf30b963750804b3b0ba9dd7f583cd2d0`;
+- server HEAD became `f7a1b514ea62c11a0a05bc734dcd2e7db04101d6`;
+- server repository remained clean;
+- API typecheck passed;
+- API build passed;
+- compiled authorization provisioning CLI was present.
+
+### Ordinary PostgreSQL dry-run verification
+
+Ordinary runtime database target was verified as:
+
+- host: local PostgreSQL;
+- port: `5432`;
+- database: `lexora_lms`;
+- credentials were not printed.
+
+Pre-dry-run state:
+
+- Law department identity exact;
+- Law Department Admin role exact;
+- existing manage Permission exact;
+- existing manage Admin RolePermission exactly one;
+- lifecycle Permission absent;
+- lifecycle equivalent semantic Permission absent;
+- lifecycle provisioning audit cardinality: `0`.
+
+Ordinary dry run verified:
+
+- mode: `DRY_RUN`;
+- existing manage state: exact and unchanged;
+- lifecycle plan: create Permission + RolePermission + audit;
+- actual Permission writes: `0`;
+- actual RolePermission writes: `0`;
+- actual provisioning audit writes: `0`;
+- database state before and after dry run was identical.
+
+No `--apply` was executed until this zero-write dry-run proof passed.
+
+### Permanent ordinary PostgreSQL apply
+
+The source-controlled authorization provisioning command was deliberately applied for Law department code `0421`.
+
+First ordinary apply verified:
+
+- existing manage Permission preserved;
+- existing manage Law Department Admin RolePermission preserved;
+- lifecycle Permission created exactly once;
+- lifecycle Law Department Admin RolePermission created exactly once;
+- lifecycle provisioning SERVICE audit created exactly once;
+- permission semantics exact;
+- audit semantics exact;
+- other-role lifecycle grants: `0`.
+
+Second ordinary apply verified:
+
+- true no-op;
+- Permission writes: `0`;
+- RolePermission writes: `0`;
+- audit writes: `0`;
+- authoritative database state remained identical.
+
+Permanent runtime authority is therefore no longer dependent on a manual or temporary lifecycle grant.
+
+### Fresh-principal verification
+
+Fresh authentication was performed using the canonical Law runtime accounts without recording passwords or raw tokens.
+
+Fresh Law Department Admin principal:
+
+- login: HTTP `201`;
+- role: `department_admin`;
+- department: `dept_law_test`;
+- existing SyllabusVersion manage permission: present;
+- dedicated lifecycle permission: present.
+
+Fresh Law Teacher principal:
+
+- login: HTTP `201`;
+- role: `teacher`;
+- department: `dept_law_test`;
+- lifecycle permission: absent.
+
+Fresh Law Student principal:
+
+- login: HTTP `201`;
+- role: `student`;
+- department: `dept_law_test`;
+- lifecycle permission: absent.
+
+Raw passwords, access tokens, and refresh tokens were not printed or documented.
+
+Normal login/session telemetry generated by legitimate fresh logins was retained.
+
+### Normal lifecycle API verification using the permanent grant
+
+A disposable Law SyllabusVersion DRAFT fixture was created using an existing reusable Law CurriculumCourse solely for focused runtime verification.
+
+Before the Admin mutation:
+
+- unauthenticated APPROVE returned HTTP `401`;
+- fresh Teacher APPROVE returned HTTP `403`;
+- fresh Student APPROVE returned HTTP `403`;
+- fixture remained `DRAFT`;
+- `approvedAt` remained null;
+- negative-case lifecycle success audit cardinality remained `0`.
+
+Normal Law Department Admin APPROVE:
+
+- temporary/manual lifecycle grant: none;
+- authority source: permanently provisioned dedicated lifecycle permission;
+- HTTP result: `200`;
+- transition: `DRAFT -> APPROVED`;
+- `approvedAt`: present;
+- `archivedAt`: null;
+- approval lifecycle USER audit cardinality: exactly `1`;
+- audit actor: canonical Law Department Admin;
+- audit department: `dept_law_test`;
+- audit request ID: present;
+- transition reason: verified.
+
+Idempotent retry:
+
+- request included forged `x-department-id: dept_bus_test`;
+- HTTP result: `200`;
+- authenticated principal department remained Law;
+- forged BUS header did not override principal scope;
+- status remained `APPROVED`;
+- `approvedAt` did not change;
+- duplicate approval audit cardinality: `0`.
+
+### Runtime cleanup
+
+The disposable SyllabusVersion fixture and its lifecycle USER audit were removed after successful verification.
+
+Post-cleanup verification:
+
+- disposable SyllabusVersion: absent;
+- disposable lifecycle audit: absent.
+
+Preserved:
+
+- permanent lifecycle Permission;
+- permanent Law Department Admin lifecycle RolePermission;
+- permanent lifecycle provisioning SERVICE audit;
+- existing create/list/read manage Permission and RolePermission.
+
+Other-role lifecycle grants remained `0`.
+
+Expected login/session telemetry generated during legitimate fresh authentication was intentionally retained.
+
+### Final platform verification
+
+After permanent provisioning and normal API verification:
+
+- repository remained clean;
+- server HEAD remained `f7a1b514ea62c11a0a05bc734dcd2e7db04101d6`;
+- PM2 process `lexora-api` remained online;
+- PM2 PID remained `24097`;
+- PM2 restart during this runtime checkpoint: none;
+- Nginx restart during this runtime checkpoint: none;
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- raw passwords/tokens printed: no.
+
+### Supersession note
+
+This checkpoint supersedes the earlier operational limitation stating that:
+
+`course-management.syllabus-version.lifecycle.manage`
+
+was not permanently provisioned and that normal Department Admin lifecycle mutation therefore remained fail-closed after temporary-grant cleanup.
+
+That earlier statement remains preserved as historical evidence of the state at that time.
+
+The current verified state is now:
+
+- dedicated lifecycle Permission permanently provisioned through the source-controlled authorization provisioning mechanism;
+- permanent Law Department Admin lifecycle RolePermission present;
+- permanent provisioning SERVICE audit present;
+- fresh Law Department Admin principal receives lifecycle authority;
+- fresh Teacher and Student principals do not receive lifecycle authority;
+- normal lifecycle API mutation works without any temporary/manual grant;
+- principal department scope remains authoritative over forged `x-department-id`;
+- provisioning remains idempotent under repeated apply;
+- tested concurrent contention converges to one authoritative state without duplicate grants or audits.
+
+### Current verified classification
+
+Permanent SyllabusVersion lifecycle authorization provisioning is now:
+
+- implemented;
+- independently reviewed;
+- statically tested;
+- disposable PostgreSQL verified;
+- committed and pushed;
+- promoted to the ordinary runtime server;
+- ordinary PostgreSQL dry-run verified;
+- ordinary PostgreSQL permanent apply verified;
+- idempotency verified;
+- provisioning audit verified;
+- fresh Admin authority verified;
+- fresh Teacher exclusion verified;
+- fresh Student exclusion verified;
+- normal lifecycle API runtime verified without a temporary grant;
+- forged-header resistance reverified;
+- runtime cleanup verified;
+- platform non-disruption verified.
+
+The earlier permanent-provisioning operational gap is closed.
+
+This does **not** mean the complete syllabus workflow or complete LMS is finished.
+
+### Still pending syllabus/course work
+
+The following work remains pending unless separately completed and runtime verified later:
+
+- authoritative decision for explicit single-ACTIVE SyllabusVersion semantics, tied to CourseOffering binding design;
+- CourseOffering → SyllabusVersion binding;
+- Teacher syllabus read access;
+- Teacher Course Workspace;
+- Course Outline;
+- Lesson Plan;
+- CLO/PLO workflow;
+- SyllabusVersion frontend management;
+- historical syllabus backfill;
+- formal immutable SyllabusVersion approval-record model only if authoritative academic governance later requires it.
+
+Do not introduce an automatic-retirement rule, single-ACTIVE partial unique index, or mandatory syllabus approval reference without authoritative source support.
