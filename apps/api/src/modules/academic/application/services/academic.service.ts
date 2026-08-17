@@ -21,6 +21,7 @@ import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { isPermissionGrantFromLoadedRole } from "@/common/authorization/principal-authority";
 import { PrismaService } from "@/common/prisma/prisma.service";
 import { RequestContextService } from "@/common/request-context/request-context.service";
+import { PERMISSIONS } from "@/modules/identity-access/authorization/permissions.constants";
 
 import { ACADEMIC_AUDIT_EVENTS } from "../../domain/academic.audit-events";
 import { ACADEMIC_REPOSITORY } from "../../domain/academic.constants";
@@ -77,6 +78,12 @@ const SYLLABUS_VERSION_MANAGE_PERMISSION = {
 
 const SYLLABUS_VERSION_LIFECYCLE_PERMISSION = {
   resource: "course-management.syllabus-version.lifecycle",
+  action: "manage",
+} as const;
+
+const SYLLABUS_BINDING_PERMISSION = {
+  code: PERMISSIONS.COURSE_MANAGEMENT.SYLLABUS_BINDING_MANAGE,
+  resource: "course-management.syllabus-binding",
   action: "manage",
 } as const;
 
@@ -634,6 +641,52 @@ export class AcademicService {
       case "BINDING_CONFLICT":
         throw new ConflictException(
           "Course offering curriculum binding conflicts with an existing offering",
+        );
+    }
+  }
+
+  async bindCourseOfferingSyllabus(
+    courseOfferingId: string,
+    syllabusVersionId: string,
+  ) {
+    const departmentId = await this.assertDepartmentAdminCanBindSyllabus();
+    const requestContext = this.requestContextService.get();
+    const result = await this.repository.bindCourseOfferingSyllabus({
+      departmentId,
+      courseOfferingId,
+      syllabusVersionId,
+      actorUserId: this.getActorId(),
+      requestId: requestContext?.requestId,
+      ipAddress: requestContext?.audit.ipAddress,
+      userAgent: requestContext?.audit.userAgent,
+    });
+
+    switch (result.outcome) {
+      case "BOUND":
+      case "ALREADY_BOUND":
+        return result.offering;
+      case "OFFERING_NOT_FOUND":
+        throw new NotFoundException("Course offering not found");
+      case "OFFERING_CURRICULUM_NOT_BOUND":
+        throw new BadRequestException(
+          "Course offering curriculum must be bound before its syllabus",
+        );
+      case "SYLLABUS_VERSION_NOT_FOUND":
+        throw new NotFoundException("Syllabus version not found");
+      case "SYLLABUS_CURRICULUM_MISMATCH":
+        throw new BadRequestException(
+          "Syllabus version does not match the course offering curriculum",
+        );
+      case "INELIGIBLE_SYLLABUS_VERSION":
+        throw new BadRequestException(
+          "Syllabus version is not eligible for a new binding",
+        );
+      case "MALFORMED_SYLLABUS_VERSION":
+      case "DEPENDENCY_SCOPE_MISMATCH":
+        throw new NotFoundException("Syllabus binding dependency not found");
+      case "BINDING_CONFLICT":
+        throw new ConflictException(
+          "Course offering syllabus binding conflicts with an existing binding",
         );
     }
   }
@@ -1487,6 +1540,84 @@ export class AcademicService {
     if (!actor) {
       throw new ForbiddenException(
         "Only active department admins can manage curriculum bindings",
+      );
+    }
+
+    return departmentId;
+  }
+
+  private async assertDepartmentAdminCanBindSyllabus() {
+    const departmentId = this.getDepartmentId();
+    const actorId = this.getActorId();
+    const principal = this.requestContextService.get()?.principal;
+    const bindingPermission = principal?.permissions.find(
+      (permission) =>
+        permission.resource === SYLLABUS_BINDING_PERMISSION.resource &&
+        permission.action === SYLLABUS_BINDING_PERMISSION.action &&
+        permission.scope === "department" &&
+        isPermissionGrantFromLoadedRole(principal, permission) &&
+        principal.roleAssignments.some(
+          (assignment) =>
+            assignment.role === "department_admin" &&
+            assignment.departmentId === departmentId &&
+            assignment.userRoleId === permission.source?.userRoleId &&
+            assignment.roleId === permission.source?.roleId,
+        ),
+    );
+
+    if (!bindingPermission?.source) {
+      throw new ForbiddenException(
+        "Explicit academic governance permission is required to manage syllabus bindings",
+      );
+    }
+    const permissionSource = bindingPermission.source;
+    const now = new Date();
+    const actor = await this.prisma.user.findFirst({
+      where: {
+        id: actorId,
+        departmentId,
+        status: UserStatus.ACTIVE,
+        archivedAt: null,
+        deletedAt: null,
+        department: {
+          id: departmentId,
+          status: DepartmentStatus.ACTIVE,
+          archivedAt: null,
+          deletedAt: null,
+        },
+        userRoles: {
+          some: {
+            id: permissionSource.userRoleId,
+            departmentId,
+            revokedAt: null,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+            role: {
+              id: permissionSource.roleId,
+              code: "department_admin",
+              departmentId,
+              archivedAt: null,
+              rolePermissions: {
+                some: {
+                  permission: {
+                    is: {
+                      code: SYLLABUS_BINDING_PERMISSION.code,
+                      resource: SYLLABUS_BINDING_PERMISSION.resource,
+                      action: SYLLABUS_BINDING_PERMISSION.action,
+                      scope: PermissionScope.DEPARTMENT,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!actor) {
+      throw new ForbiddenException(
+        "Only active department admins can manage syllabus bindings",
       );
     }
 

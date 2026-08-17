@@ -73,7 +73,6 @@ test("AuthorizationService derives static authority only from active-department 
     );
   }
 });
-
 test("AuthorizationService requires exact loaded-role provenance for dynamic permission", () => {
   const service = new AuthorizationService();
   assert.equal(
@@ -156,6 +155,63 @@ test("AuthorizationService preserves valid wildcard behavior", () => {
       "course-management.curriculum-version.lifecycle.manage"
     ),
     true
+  );
+});
+
+test("syllabus binding is excluded from broad role authority and requires an exact Department Admin grant", () => {
+  const service = new AuthorizationService();
+  const policy = "course-management.syllabus-binding.manage";
+  const adminAssignment = {
+    userRoleId: "admin-assignment",
+    roleId: "admin-role",
+    departmentId: "department-a",
+    role: "department_admin" as const
+  };
+  const exactGrant = grant(
+    {
+      userRoleId: adminAssignment.userRoleId,
+      roleId: adminAssignment.roleId
+    },
+    {
+      resource: "course-management.syllabus-binding",
+      action: "manage",
+      scope: "department"
+    }
+  );
+
+  assert.equal(
+    service.isAllowed(
+      principal({ roleAssignments: [adminAssignment], permissions: [] }),
+      policy
+    ),
+    false
+  );
+  assert.equal(
+    service.isAllowed(
+      principal({
+        roleAssignments: [adminAssignment],
+        permissions: [exactGrant]
+      }),
+      policy
+    ),
+    true
+  );
+  assert.equal(
+    service.isAllowed(
+      principal({
+        roleAssignments: [adminAssignment],
+        permissions: [
+          { ...exactGrant, scope: "self" },
+          { ...exactGrant, resource: "course-management.syllabus-version" }
+        ]
+      }),
+      policy
+    ),
+    false
+  );
+  assert.equal(
+    service.isAllowed(principal({ permissions: [exactGrant] }), policy),
+    false
   );
 });
 

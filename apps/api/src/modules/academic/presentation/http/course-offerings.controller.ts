@@ -7,6 +7,7 @@ import { PolicyGuard } from "@/modules/authorization/guards/policy.guard";
 import { AcademicService } from "../../application/services/academic.service";
 import { ACADEMIC_POLICY_NAMES } from "../../domain/academic.policy-names";
 import { BindCourseOfferingCurriculumDto } from "../dto/bind-course-offering-curriculum.dto";
+import { BindCourseOfferingSyllabusDto } from "../dto/bind-course-offering-syllabus.dto";
 import { CreateCourseOfferingDto } from "../dto/create-course-offering.dto";
 import { CreateTeacherAssignmentDto } from "../dto/create-teacher-assignment.dto";
 import { ListCourseOfferingsQueryDto } from "../dto/list-course-offerings-query.dto";
@@ -61,6 +62,18 @@ export class CourseOfferingsController {
     return this.academicService.bindCourseOfferingCurriculum(
       params.id,
       body.curriculumCourseId,
+    );
+  }
+
+  @Put(":id/syllabus-binding")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.SYLLABUS_BINDING_MANAGE)
+  bindSyllabus(
+    @Param() params: ResourceIdParamDto,
+    @Body() body: BindCourseOfferingSyllabusDto,
+  ) {
+    return this.academicService.bindCourseOfferingSyllabus(
+      params.id,
+      body.syllabusVersionId,
     );
   }
 

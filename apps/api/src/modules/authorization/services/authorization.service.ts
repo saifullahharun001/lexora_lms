@@ -10,6 +10,15 @@ import {
   isPermissionGrantFromLoadedRole,
   isRoleAssignmentInActiveDepartment
 } from "@/common/authorization/principal-authority";
+import { PERMISSIONS } from "@/modules/identity-access/authorization/permissions.constants";
+
+const EXPLICIT_DEPARTMENT_ADMIN_PERMISSION_POLICIES = {
+  [PERMISSIONS.COURSE_MANAGEMENT.SYLLABUS_BINDING_MANAGE]: {
+    resource: "course-management.syllabus-binding",
+    action: "manage",
+    scope: "department"
+  }
+} as const;
 
 const STATIC_ROLE_POLICIES: Record<PlatformRole, string[]> = {
   department_admin: [
@@ -206,6 +215,31 @@ export class AuthorizationService {
   }
 
   isAllowed(principal: PrincipalContext, requiredPolicy: string): boolean {
+    const explicitPermission =
+      EXPLICIT_DEPARTMENT_ADMIN_PERMISSION_POLICIES[
+        requiredPolicy as keyof typeof EXPLICIT_DEPARTMENT_ADMIN_PERMISSION_POLICIES
+      ];
+
+    if (explicitPermission) {
+      return principal.permissions.some(
+        (permission) =>
+          permission.resource === explicitPermission.resource &&
+          permission.action === explicitPermission.action &&
+          permission.scope === explicitPermission.scope &&
+          isPermissionGrantFromLoadedRole(principal, permission) &&
+          principal.roleAssignments.some(
+            (assignment) =>
+              assignment.role === "department_admin" &&
+              isRoleAssignmentInActiveDepartment(
+                principal.activeDepartmentId,
+                assignment
+              ) &&
+              assignment.userRoleId === permission.source?.userRoleId &&
+              assignment.roleId === permission.source?.roleId
+          )
+      );
+    }
+
     const resolvedPolicies = this.resolvePolicies(principal);
 
     if (resolvedPolicies.has("*") || resolvedPolicies.has(requiredPolicy)) {

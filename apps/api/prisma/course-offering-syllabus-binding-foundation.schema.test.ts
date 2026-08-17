@@ -264,15 +264,15 @@ test("migration is additive, status-neutral, and contains no historical backfill
   );
 });
 
-test("CourseOffering create/update DTOs and HTTP surface do not expose syllabus binding", () => {
+test("generic CourseOffering DTOs remain closed while the dedicated binding surface exists", () => {
   assert.doesNotMatch(createDto, /syllabusVersionId/);
   assert.doesNotMatch(updateDto, /syllabusVersionId/);
   assert.equal(
     existsSync(join(dtoRoot, "bind-course-offering-syllabus.dto.ts")),
-    false,
+    true,
   );
-  assert.doesNotMatch(
+  assert.match(
     courseOfferingsController,
-    /syllabus-binding|bindCourseOfferingSyllabus/,
+    /@Put\(":id\/syllabus-binding"\)[\s\S]*bindCourseOfferingSyllabus/,
   );
 });

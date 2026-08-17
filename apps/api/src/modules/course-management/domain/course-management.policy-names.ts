@@ -8,6 +8,7 @@ export const COURSE_MANAGEMENT_POLICY_NAMES = {
   OFFERING_READ: "course-management.offering.read",
   OFFERING_MANAGE: "course-management.offering.manage",
   CURRICULUM_BINDING_MANAGE: "course-management.curriculum-binding.manage",
+  SYLLABUS_BINDING_MANAGE: "course-management.syllabus-binding.manage",
   CURRICULUM_VERSION_LIFECYCLE_MANAGE:
     "course-management.curriculum-version.lifecycle.manage",
   SYLLABUS_VERSION_MANAGE: "course-management.syllabus-version.manage",

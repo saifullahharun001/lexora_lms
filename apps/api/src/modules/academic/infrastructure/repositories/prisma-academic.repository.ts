@@ -17,6 +17,7 @@ import type {
   AcademicTermListFilters,
   AcademicYearListFilters,
   BindCourseOfferingCurriculumInput,
+  BindCourseOfferingSyllabusInput,
   CourseListFilters,
   CourseOfferingListFilters,
   CreateAcademicTermInput,
@@ -111,6 +112,11 @@ const BINDABLE_ACADEMIC_VERSION_STATUSES: readonly AcademicVersionStatus[] = [
 
 const ASSIGNABLE_STUDENT_CURRICULUM_STATUSES: readonly AcademicVersionStatus[] =
   [AcademicVersionStatus.APPROVED, AcademicVersionStatus.ACTIVE];
+
+const BINDABLE_SYLLABUS_VERSION_STATUSES: readonly AcademicVersionStatus[] = [
+  AcademicVersionStatus.APPROVED,
+  AcademicVersionStatus.ACTIVE,
+];
 
 const CURRICULUM_VERSION_TRANSITIONS = {
   APPROVE: {
@@ -689,6 +695,74 @@ function sanitizeSyllabusVersion(
       },
     },
   };
+}
+
+const courseOfferingSyllabusBindingSelect = {
+  id: true,
+  departmentId: true,
+  courseId: true,
+  curriculumCourseId: true,
+  syllabusVersionId: true,
+  course: {
+    select: {
+      id: true,
+      departmentId: true,
+      academicProgramId: true,
+    },
+  },
+  curriculumCourse: {
+    select: syllabusVersionSelect.curriculumCourse.select,
+  },
+} satisfies Prisma.CourseOfferingSelect;
+
+type CourseOfferingSyllabusBindingRecord = Prisma.CourseOfferingGetPayload<{
+  select: typeof courseOfferingSyllabusBindingSelect;
+}>;
+
+function isCourseOfferingCurriculumDependencyConsistent(
+  offering: CourseOfferingSyllabusBindingRecord,
+  departmentId: string,
+) {
+  const curriculumCourse = offering.curriculumCourse;
+
+  return Boolean(
+    offering.departmentId === departmentId &&
+    offering.course.id === offering.courseId &&
+    offering.course.departmentId === departmentId &&
+    offering.course.academicProgramId &&
+    offering.curriculumCourseId &&
+    curriculumCourse &&
+    curriculumCourse.id === offering.curriculumCourseId &&
+    curriculumCourse.courseId === offering.courseId &&
+    curriculumCourse.course.id === offering.courseId &&
+    curriculumCourse.course.academicProgramId ===
+      offering.course.academicProgramId &&
+    isSyllabusCurriculumCourseConsistent(curriculumCourse, departmentId),
+  );
+}
+
+function isSyllabusBindingDependencyConsistent(
+  offering: CourseOfferingSyllabusBindingRecord,
+  syllabusVersion: SyllabusVersionRecord,
+  departmentId: string,
+) {
+  const offeringCurriculum = offering.curriculumCourse;
+  const syllabusCurriculum = syllabusVersion.curriculumCourse;
+
+  return Boolean(
+    offeringCurriculum &&
+    offering.curriculumCourseId &&
+    syllabusVersion.departmentId === departmentId &&
+    syllabusVersion.curriculumCourseId === offering.curriculumCourseId &&
+    syllabusCurriculum.id === syllabusVersion.curriculumCourseId &&
+    syllabusCurriculum.id === offeringCurriculum.id &&
+    syllabusCurriculum.courseId === offering.courseId &&
+    syllabusCurriculum.curriculumVersionId ===
+      offeringCurriculum.curriculumVersionId &&
+    syllabusCurriculum.assessmentTemplateId ===
+      offeringCurriculum.assessmentTemplateId &&
+    isSyllabusCurriculumCourseConsistent(syllabusCurriculum, departmentId),
+  );
 }
 
 function syllabusVersionUniqueConflict(error: unknown) {
@@ -1708,6 +1782,212 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
       }
       throw error;
     }
+  }
+
+  async bindCourseOfferingSyllabus(input: BindCourseOfferingSyllabusInput) {
+    return this.prisma.$transaction(async (tx) => {
+      const offering = await tx.courseOffering.findFirst({
+        where: {
+          id: input.courseOfferingId,
+          departmentId: input.departmentId,
+          archivedAt: null,
+        },
+        select: courseOfferingSyllabusBindingSelect,
+      });
+
+      if (!offering) {
+        return { outcome: "OFFERING_NOT_FOUND" } as const;
+      }
+      if (!offering.curriculumCourseId) {
+        return { outcome: "OFFERING_CURRICULUM_NOT_BOUND" } as const;
+      }
+      if (
+        !isCourseOfferingCurriculumDependencyConsistent(
+          offering,
+          input.departmentId,
+        )
+      ) {
+        return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+      }
+      if (
+        offering.syllabusVersionId &&
+        offering.syllabusVersionId !== input.syllabusVersionId
+      ) {
+        return { outcome: "BINDING_CONFLICT" } as const;
+      }
+
+      const lockedSyllabus = await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`
+          SELECT "id"
+          FROM "syllabus_versions"
+          WHERE "id" = ${input.syllabusVersionId}
+            AND "department_id" = ${input.departmentId}
+          FOR UPDATE
+        `,
+      );
+      if (lockedSyllabus.length !== 1) {
+        return { outcome: "SYLLABUS_VERSION_NOT_FOUND" } as const;
+      }
+
+      const syllabusVersion = await tx.syllabusVersion.findFirst({
+        where: {
+          id: input.syllabusVersionId,
+          departmentId: input.departmentId,
+        },
+        select: syllabusVersionSelect,
+      });
+      if (!syllabusVersion) {
+        return { outcome: "SYLLABUS_VERSION_NOT_FOUND" } as const;
+      }
+      if (syllabusVersion.curriculumCourseId !== offering.curriculumCourseId) {
+        return { outcome: "SYLLABUS_CURRICULUM_MISMATCH" } as const;
+      }
+      if (
+        syllabusVersion.id !== input.syllabusVersionId ||
+        !isSyllabusBindingDependencyConsistent(
+          offering,
+          syllabusVersion,
+          input.departmentId,
+        )
+      ) {
+        return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+      }
+      if (!isSyllabusVersionLifecycleStateConsistent(syllabusVersion)) {
+        return { outcome: "MALFORMED_SYLLABUS_VERSION" } as const;
+      }
+
+      const isEligibleForNewBinding =
+        BINDABLE_SYLLABUS_VERSION_STATUSES.includes(syllabusVersion.status);
+
+      if (offering.syllabusVersionId === input.syllabusVersionId) {
+        const isValidHistoricalTarget =
+          syllabusVersion.status === AcademicVersionStatus.RETIRED ||
+          syllabusVersion.status === AcademicVersionStatus.ARCHIVED;
+        if (!isEligibleForNewBinding && !isValidHistoricalTarget) {
+          return { outcome: "INELIGIBLE_SYLLABUS_VERSION" } as const;
+        }
+
+        const existing = await tx.courseOffering.findFirst({
+          where: {
+            id: offering.id,
+            departmentId: input.departmentId,
+            archivedAt: null,
+          },
+          include: courseOfferingInclude,
+        });
+        const safeExisting = existing
+          ? sanitizeCourseOfferingRead(existing, input.departmentId)
+          : null;
+
+        return safeExisting
+          ? ({ outcome: "ALREADY_BOUND", offering: safeExisting } as const)
+          : ({ outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const);
+      }
+
+      if (!isEligibleForNewBinding) {
+        return { outcome: "INELIGIBLE_SYLLABUS_VERSION" } as const;
+      }
+
+      const updated = await tx.courseOffering.updateMany({
+        where: {
+          id: offering.id,
+          departmentId: input.departmentId,
+          archivedAt: null,
+          curriculumCourseId: offering.curriculumCourseId,
+          syllabusVersionId: null,
+        },
+        data: {
+          syllabusVersionId: syllabusVersion.id,
+        },
+      });
+
+      if (updated.count === 0) {
+        const concurrent = await tx.courseOffering.findFirst({
+          where: {
+            id: offering.id,
+            departmentId: input.departmentId,
+            archivedAt: null,
+          },
+          select: courseOfferingSyllabusBindingSelect,
+        });
+        if (!concurrent) {
+          return { outcome: "OFFERING_NOT_FOUND" } as const;
+        }
+        if (
+          !isCourseOfferingCurriculumDependencyConsistent(
+            concurrent,
+            input.departmentId,
+          )
+        ) {
+          return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+        }
+        if (concurrent.syllabusVersionId !== syllabusVersion.id) {
+          if (concurrent.syllabusVersionId) {
+            return { outcome: "BINDING_CONFLICT" } as const;
+          }
+          throw new Error("SYLLABUS_BINDING_GUARD_MISSED");
+        }
+
+        const existing = await tx.courseOffering.findFirst({
+          where: {
+            id: offering.id,
+            departmentId: input.departmentId,
+            archivedAt: null,
+          },
+          include: courseOfferingInclude,
+        });
+        const safeExisting = existing
+          ? sanitizeCourseOfferingRead(existing, input.departmentId)
+          : null;
+
+        return safeExisting
+          ? ({ outcome: "ALREADY_BOUND", offering: safeExisting } as const)
+          : ({ outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const);
+      }
+
+      await tx.auditLog.create({
+        data: {
+          requestId: input.requestId,
+          actorUserId: input.actorUserId,
+          actorType: "USER",
+          departmentId: input.departmentId,
+          action: ACADEMIC_AUDIT_EVENTS.OFFERING_SYLLABUS_BOUND,
+          targetType: "course_offering",
+          targetId: offering.id,
+          outcome: "SUCCESS",
+          ipAddress: input.ipAddress,
+          userAgent: input.userAgent,
+          contextJson: {
+            courseOfferingId: offering.id,
+            courseId: offering.courseId,
+            curriculumCourseId: offering.curriculumCourseId,
+            syllabusVersionId: syllabusVersion.id,
+            syllabusCode: syllabusVersion.code,
+            syllabusVersionNumber: syllabusVersion.versionNumber,
+            syllabusStatusAtBinding: syllabusVersion.status,
+            previousBindingValue: null,
+            newBindingValue: syllabusVersion.id,
+          },
+        },
+      });
+
+      const bound = await tx.courseOffering.findFirst({
+        where: {
+          id: offering.id,
+          departmentId: input.departmentId,
+          archivedAt: null,
+        },
+        include: courseOfferingInclude,
+      });
+      const safeBound = bound
+        ? sanitizeCourseOfferingRead(bound, input.departmentId)
+        : null;
+      if (!safeBound) {
+        throw new Error("BOUND_COURSE_OFFERING_NOT_FOUND");
+      }
+
+      return { outcome: "BOUND", offering: safeBound } as const;
+    });
   }
 
   async findSyllabusVersions(filters: SyllabusVersionListFilters) {
