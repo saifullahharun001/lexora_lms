@@ -19048,3 +19048,761 @@ The next focused implementation must decide and then implement the application-l
 - Teacher syllabus read only after the binding contract is established.
 
 Do not describe the complete CourseOffering → SyllabusVersion workflow or Teacher Course Workspace as implemented yet.
+
+## CourseOffering → SyllabusVersion Application Binding Ordinary PostgreSQL/API Runtime Verification — 2026-08-17
+
+### Scope and supersession
+
+This checkpoint verifies the implemented application-level, immutable:
+
+`CourseOffering → SyllabusVersion`
+
+binding workflow against the ordinary Lexora PostgreSQL/API runtime.
+
+It supersedes earlier pending wording only for:
+
+- the dedicated CourseOffering → SyllabusVersion binding DTO/API/service/repository workflow;
+- dedicated binding authorization and exact Department Admin authority enforcement;
+- application-level success-audit behavior;
+- binding-time SyllabusVersion lifecycle eligibility;
+- binding immutability and exact-target idempotency;
+- application-level department/object isolation for syllabus binding;
+- same-target and different-target binding concurrency;
+- binding versus SyllabusVersion lifecycle race behavior observed in this runtime cycle;
+- binding mutation/audit transaction atomicity;
+- feature-specific runtime cleanup.
+
+The earlier CourseOffering → SyllabusVersion schema/database foundation remains valid historical evidence and is not replaced.
+
+Existing SyllabusVersion schema, Admin create/list/read, lifecycle and their permanent governance provisioning evidence also remains valid.
+
+This checkpoint does **not** mean the broader syllabus or Teacher Course Workspace workflow is complete.
+
+### Implementation identity
+
+Application-binding implementation commit:
+
+`0f3ba419c0ec1906036641c2cd9f63fe441fc6f0`
+
+Commit message:
+
+`Implement course offering syllabus binding`
+
+Committed implementation scope:
+
+- 16 files;
+- 1483 insertions;
+- 7 deletions.
+
+Implemented route:
+
+`PUT /api/v1/course-offerings/:id/syllabus-binding`
+
+Dedicated binding permission:
+
+`course-management.syllabus-binding.manage`
+
+Permission identity:
+
+- resource: `course-management.syllabus-binding`;
+- action: `manage`;
+- scope: `DEPARTMENT`.
+
+Success audit action:
+
+`course-management.offering.syllabus-bound`
+
+The generic CourseOffering DTOs do not expose `syllabusVersionId`; binding remains a dedicated controlled operation.
+
+### Binding governance model
+
+A normal new binding is eligible only when the target SyllabusVersion is:
+
+- `APPROVED`; or
+- `ACTIVE`.
+
+Normal new binding rejects:
+
+- `DRAFT`;
+- `RETIRED`;
+- `ARCHIVED`;
+- malformed/unknown lifecycle state.
+
+The workflow does not:
+
+- auto-select a SyllabusVersion;
+- auto-retire another SyllabusVersion;
+- introduce a single-`ACTIVE` rule;
+- introduce an effective-date auto-selection rule;
+- backfill historical CourseOfferings automatically.
+
+A legitimately existing exact binding may remain historically valid after the SyllabusVersion later becomes:
+
+- `RETIRED`; or
+- `ARCHIVED`.
+
+An exact retry against such an existing historical binding is idempotent.
+
+A different-target overwrite is rejected.
+
+The historical exact-binding exception does not convert `DRAFT` into a valid normal binding lifecycle state.
+
+### Department and authorization controls
+
+The route preserves:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- exact `@RequirePolicy()` binding authority;
+- authenticated-principal department authority;
+- object-level department filtering;
+- active/non-archived/non-deleted department checks;
+- active Department Admin role-assignment checks;
+- exact loaded permission provenance;
+- live database-backed Department Admin authority revalidation.
+
+The service verifies the current principal against an active:
+
+- User;
+- Department;
+- Department Admin UserRole;
+- Department Admin Role;
+- exact binding Permission relation.
+
+A forged:
+
+`x-department-id`
+
+header cannot replace a valid authenticated principal's real department scope.
+
+Cross-department direct object access remains safe-not-found where appropriate.
+
+Teacher and Student binding writes remain denied.
+
+### Independent implementation review
+
+The exact implementation was independently reviewed before runtime promotion.
+
+Reviewed artifact:
+
+`lexora-syllabus-binding-application-review-20260817-205934.txt`
+
+Reviewed artifact SHA-256:
+
+`0660b39e27689d8d5f3886f7817bdb19143a9076357b606048c6cba2892b2194`
+
+Review result:
+
+- Critical: `0`;
+- High: `0`;
+- Medium: `0`;
+- Low: `1`;
+- blocking findings: `0`.
+
+The Low finding was an authorization architectural asymmetry:
+
+- exact binding authority is specially enforced in `AuthorizationService.isAllowed()`;
+- broader Department Admin wildcard material may still be represented by the general policy-resolution layer;
+- no runtime or reviewed bypass was demonstrated because the exact binding special-case and service-level live authority verification remain enforced.
+
+This is future authorization-hardening work, not a demonstrated binding bypass.
+
+### Server static verification
+
+The promoted implementation commit was verified on the Ubuntu runtime server.
+
+Passed:
+
+- API typecheck;
+- API build;
+- `git diff --check`;
+- repository cleanliness.
+
+Focused compiled application/schema verification used the established CommonJS-compatible runtime test path rather than changing the stable project module configuration.
+
+Focused compiled tests:
+
+- tests: `51`;
+- passed: `51`;
+- failed: `0`.
+
+Covered areas included:
+
+- schema foundation;
+- binding authority;
+- Department Admin provenance;
+- DTO validation;
+- lifecycle eligibility;
+- cross-department behavior;
+- exact-target idempotency;
+- different-target conflict;
+- atomic success audit;
+- row-lock/fresh-read behavior;
+- controller guards/policy;
+- authorization wildcard exclusion for the dedicated permission.
+
+Earlier plain Node TypeScript/ESM test-runner false starts were test-harness/environment issues and did not require an ESM/NodeNext migration.
+
+### Route activation and unauthenticated verification
+
+The implementation was deployed at:
+
+`0f3ba419c0ec1906036641c2cd9f63fe441fc6f0`
+
+The API was intentionally restarted once to activate the new route.
+
+The route then returned:
+
+- unauthenticated binding request: HTTP `401`.
+
+Platform health after activation:
+
+- direct API: HTTP `200`;
+- Nginx API: HTTP `200`;
+- API listener: `127.0.0.1:4000`.
+
+### Pre-grant fail-closed governance verification
+
+Before introducing temporary positive-test authority:
+
+- `course-management.syllabus-binding.manage` Permission rows: `0`;
+- binding RolePermission rows: `0`;
+- SyllabusVersion rows: `0`;
+- bound CourseOfferings: `0`;
+- binding success audits: `0`.
+
+Fresh canonical Law Department Admin login:
+
+- HTTP `201`;
+- role: `department_admin`;
+- principal department: `dept_law_test`;
+- exact binding permission absent from the fresh principal.
+
+Binding attempt before the exact grant:
+
+- normal Law Admin request: HTTP `403`;
+- same request with forged `x-department-id: dept_bus_test`: HTTP `403`.
+
+No product binding mutation or binding success audit occurred.
+
+This verifies that the ordinary Department Admin wildcard does not independently authorise the dedicated binding route.
+
+### Controlled temporary runtime authority
+
+For positive runtime verification only, a temporary exact Permission and Law Department Admin RolePermission were created.
+
+Temporary permission identity:
+
+- code: `course-management.syllabus-binding.manage`;
+- resource: `course-management.syllabus-binding`;
+- action: `manage`;
+- scope: `DEPARTMENT`.
+
+Temporary grant cardinality:
+
+- exact Permission: `1`;
+- Law Department Admin RolePermission: `1`;
+- other-role grants: `0`.
+
+A runtime-only SERVICE audit recorded the temporary grant.
+
+This temporary authority was not intended to remain after verification.
+
+### Disposable runtime fixture preparation
+
+Controlled runtime-only fixtures were created for:
+
+- Law `DRAFT`;
+- Law `APPROVED`;
+- Law `ACTIVE`;
+- Law `RETIRED`;
+- Law `ARCHIVED`;
+- same-target race targets;
+- different-target race targets;
+- wrong-CurriculumCourse target;
+- BUS cross-department target.
+
+Initial binding-test fixture set:
+
+- runtime SyllabusVersions: `9`;
+- runtime CourseOfferings: `14`;
+- binding success audits before API mutation: `0`.
+
+The disposable BUS foundation used only for cross-department verification included:
+
+- one CurriculumVersion;
+- one AssessmentTemplate;
+- one CurriculumCourse.
+
+Reusable Law curriculum foundation rows were not replaced or deleted.
+
+### Fresh-principal authority verification
+
+After the temporary exact grant, fresh canonical principals were verified.
+
+#### Law Department Admin
+
+Fresh login:
+
+- HTTP `201`;
+- role: `department_admin`;
+- department: `dept_law_test`;
+- exact binding permission present.
+
+Login response permission representation was verified as the current `string[]` permission-code shape.
+
+The Admin reached the authorised binding application path.
+
+A DRAFT-target probe returned:
+
+- HTTP `400`.
+
+The DRAFT-target offering remained unbound and no binding success audit was created.
+
+#### Law Teacher
+
+Fresh login:
+
+- HTTP `201`;
+- role: `teacher`;
+- department: `dept_law_test`;
+- exact binding permission absent.
+
+Binding attempt:
+
+- HTTP `403`.
+
+#### Law Student
+
+Fresh login:
+
+- HTTP `201`;
+- role: `student`;
+- department: `dept_law_test`;
+- exact binding permission absent.
+
+Binding attempt:
+
+- HTTP `403`.
+
+### Deterministic binding runtime matrix
+
+The deterministic ordinary API/PostgreSQL matrix verified:
+
+#### Allowed new bindings
+
+`APPROVED` target:
+
+- new binding: HTTP `200`;
+- exact retry: HTTP `200`;
+- final exact target preserved;
+- exact retry created no duplicate success audit.
+
+`ACTIVE` target:
+
+- new binding: HTTP `200`;
+- final exact target preserved.
+
+#### Rejected new lifecycle states
+
+`DRAFT` target:
+
+- HTTP `400`.
+
+`RETIRED` target:
+
+- HTTP `400`.
+
+`ARCHIVED` target:
+
+- HTTP `400`.
+
+Rejected lifecycle requests did not create binding success audits.
+
+#### Curriculum dependency enforcement
+
+CourseOffering without a CurriculumCourse binding:
+
+- HTTP `400`.
+
+Target SyllabusVersion belonging to a different CurriculumCourse within the same Law department:
+
+- HTTP `400`.
+
+No invalid binding was stored.
+
+#### Department/object isolation
+
+Law Admin using a BUS SyllabusVersion direct ID:
+
+- HTTP `404`.
+
+Law Admin using a BUS CourseOffering direct ID:
+
+- HTTP `404`.
+
+The BUS CourseOffering remained unchanged.
+
+#### Forged department header
+
+A fresh authorised Law Department Admin sent:
+
+`x-department-id: dept_bus_test`
+
+while binding a Law CourseOffering to a valid Law SyllabusVersion.
+
+Result:
+
+- HTTP `200`;
+- final object remained Law-scoped;
+- success audit department remained `dept_law_test`.
+
+The forged BUS header did not replace authenticated-principal Law authority.
+
+#### Historical exact binding idempotency
+
+Pre-existing exact binding to a `RETIRED` SyllabusVersion:
+
+- retry: HTTP `200`;
+- binding preserved;
+- no new success audit.
+
+Pre-existing exact binding to an `ARCHIVED` SyllabusVersion:
+
+- retry: HTTP `200`;
+- binding preserved;
+- no new success audit.
+
+#### Immutable different-target conflict
+
+A CourseOffering already bound to one valid SyllabusVersion was requested against a different target.
+
+Result:
+
+- HTTP `409`;
+- original target preserved;
+- no overwrite;
+- no additional binding success audit.
+
+### Deterministic audit verification
+
+After deterministic positive binding cases, exact first-bind success-audit cardinality was:
+
+`3`
+
+The three success audits belonged only to:
+
+- APPROVED first bind;
+- ACTIVE first bind;
+- forged-header Law-scoped first bind.
+
+Verified binding success audits contained:
+
+- correct canonical Admin actor;
+- actor type `USER`;
+- Law department;
+- target type `course_offering`;
+- correct CourseOffering identity;
+- correct CurriculumCourse identity;
+- correct SyllabusVersion identity;
+- syllabus code;
+- syllabus version number;
+- lifecycle state at binding;
+- previous binding value;
+- new binding value.
+
+The APPROVED exact retry did not create a duplicate audit.
+
+Teacher, Student, lifecycle-rejected, cross-department, wrong-curriculum, curriculum-unbound, historical-idempotent and different-target-conflict paths created no binding success audit.
+
+### Real same-target concurrency verification
+
+Two real concurrent HTTP requests attempted to bind the same unbound CourseOffering to the same eligible APPROVED SyllabusVersion.
+
+Observed results:
+
+- request A: HTTP `200`;
+- request B: HTTP `200`.
+
+Authoritative final DB target:
+
+`sv_law_race_a_syllabus_binding_runtime`
+
+Success audit cardinality for the same-target race:
+
+`1`
+
+This verifies ordinary PostgreSQL/API same-target convergence:
+
+- one first binding becomes authoritative;
+- the concurrent exact observer converges safely as idempotent success;
+- no duplicate success audit is created.
+
+### Real different-target concurrency verification
+
+Two real concurrent HTTP requests attempted to bind the same unbound CourseOffering to two different eligible SyllabusVersions.
+
+Observed results:
+
+- target A request: HTTP `200`;
+- target B request: HTTP `409`.
+
+Observed winner:
+
+`sv_law_race_a_syllabus_binding_runtime`
+
+Authoritative DB state matched the HTTP winner.
+
+Success audit cardinality for the different-target race:
+
+`1`
+
+The losing request did not overwrite the winning target.
+
+After both real binding-concurrency cases, total binding success-audit cardinality was:
+
+`5`
+
+This verifies real ordinary PostgreSQL/API immutable winner preservation under concurrent different-target requests.
+
+### Binding versus lifecycle transition race
+
+A separate disposable SyllabusVersion was created in:
+
+`ACTIVE`
+
+state with a matching unbound CourseOffering.
+
+Two real concurrent requests were issued:
+
+- CourseOffering → SyllabusVersion binding;
+- SyllabusVersion `ACTIVE → RETIRED`.
+
+Observed runtime serialization:
+
+`RETIREMENT_FIRST`
+
+Observed HTTP results:
+
+- binding: HTTP `400`;
+- retirement: HTTP `200`.
+
+Authoritative final state:
+
+- SyllabusVersion: `RETIRED`;
+- CourseOffering syllabus binding: `NULL`;
+- binding success audits for the race offering: `0`;
+- retirement success audits for the race SyllabusVersion: `1`.
+
+No stale `ACTIVE` eligibility binding was observed after retirement became authoritative.
+
+Important evidence boundary:
+
+This runtime cycle directly observed only the:
+
+`RETIREMENT_FIRST`
+
+serialization.
+
+The opposite:
+
+`BINDING_FIRST`
+
+serialization remains covered by the implementation/static concurrency model but was not separately forced and observed in this runtime cycle.
+
+Do not claim both lifecycle-race orderings were runtime-observed.
+
+### Transactional audit-failure rollback verification
+
+A narrowly scoped temporary PostgreSQL trigger was installed only to force failure of the:
+
+`course-management.offering.syllabus-bound`
+
+audit insert for one controlled runtime CourseOffering.
+
+The target SyllabusVersion was valid:
+
+`APPROVED`
+
+The binding request reached the authorised application path.
+
+Forced audit-failure result:
+
+- HTTP `500`.
+
+Authoritative post-failure verification:
+
+- CourseOffering `syllabusVersionId`: `NULL`;
+- rollback-target binding success audits: `0`;
+- total binding success audits: remained `5`.
+
+Therefore the attempted CourseOffering mutation did not survive the audit failure.
+
+This runtime verifies mutation + success-audit transaction atomicity for the binding operation.
+
+The temporary failure-injection trigger and function were removed immediately after the test.
+
+Post-test failure-injector residue:
+
+`0`
+
+### Runtime cleanup
+
+All feature-specific disposable binding verification state was removed after successful testing.
+
+Pre-cleanup disposable state included:
+
+- CourseOfferings: `15`;
+- SyllabusVersions: `10`;
+- binding success audits: `5`;
+- lifecycle-race retirement audit: `1`;
+- temporary binding-grant SERVICE audit: `1`;
+- temporary binding RolePermission: `1`;
+- temporary binding Permission: `1`;
+- disposable BUS CurriculumVersion: `1`;
+- disposable BUS AssessmentTemplate: `1`;
+- disposable BUS CurriculumCourse: `1`.
+
+Cleanup was performed transactionally with exact row-count assertions.
+
+Post-cleanup feature-specific residue:
+
+- disposable CourseOfferings: `0`;
+- disposable SyllabusVersions: `0`;
+- binding success audits: `0`;
+- lifecycle-race audit: `0`;
+- temporary grant SERVICE audit: `0`;
+- temporary binding RolePermission: `0`;
+- temporary binding Permission: `0`;
+- disposable BUS curriculum foundation: `0`;
+- audit-failure trigger/function: `0`.
+
+Preserved:
+
+- permanent `course-management.syllabus-version.manage` authority;
+- permanent `course-management.syllabus-version.lifecycle.manage` authority;
+- reusable Law curriculum foundation;
+- normal authentication/session/login telemetry generated by legitimate runtime logins.
+
+### Post-cleanup fail-closed verification
+
+After temporary binding authority cleanup, a fresh canonical Law Department Admin login returned:
+
+- HTTP `201`;
+- role: `department_admin`;
+- department: `dept_law_test`;
+- `course-management.syllabus-binding.manage`: absent;
+- permanent SyllabusVersion manage permission: present;
+- permanent SyllabusVersion lifecycle permission: present.
+
+A fresh binding request after cleanup returned:
+
+- HTTP `403`.
+
+Therefore no manual/runtime-only syllabus-binding authority was left in the ordinary database.
+
+### Platform non-disruption
+
+Final runtime state after cleanup:
+
+- repository: clean;
+- repository HEAD: `0f3ba419c0ec1906036641c2cd9f63fe441fc6f0`;
+- repository aligned with `origin/main`;
+- PM2 process remained online;
+- PM2 PID during the verified final cycle: `1624`;
+- direct API: HTTP `200`;
+- Nginx API: HTTP `200`;
+- API listener: `127.0.0.1:4000`;
+- raw passwords printed: no;
+- raw access/refresh tokens printed: no;
+- raw passwords/tokens persisted by the verification scripts: no;
+- database credentials printed/documented: no.
+
+### Current verified classification
+
+The CourseOffering → SyllabusVersion application-binding layer is now:
+
+- implemented;
+- independently reviewed;
+- committed and pushed;
+- deployed to the ordinary Ubuntu runtime server;
+- API typecheck verified;
+- API build verified;
+- focused compiled tests passed `51/51`;
+- unauthenticated route protection runtime verified;
+- pre-grant fail-closed behavior runtime verified;
+- exact Department Admin governance runtime verified using a controlled temporary grant;
+- fresh-principal authority loading verified;
+- Teacher exclusion runtime verified;
+- Student exclusion runtime verified;
+- authenticated-principal department authority runtime verified;
+- forged-header resistance runtime verified;
+- same-department CurriculumCourse identity enforcement runtime verified;
+- cross-department safe-not-found runtime verified;
+- APPROVED new binding runtime verified;
+- ACTIVE new binding runtime verified;
+- DRAFT new binding rejection runtime verified;
+- RETIRED new binding rejection runtime verified;
+- ARCHIVED new binding rejection runtime verified;
+- exact-target idempotency runtime verified;
+- historical RETIRED exact-binding idempotency runtime verified;
+- historical ARCHIVED exact-binding idempotency runtime verified;
+- different-target immutability runtime verified;
+- success-audit cardinality/context runtime verified;
+- real same-target PostgreSQL/API concurrency runtime verified;
+- real different-target PostgreSQL/API concurrency runtime verified;
+- RETIREMENT_FIRST binding-versus-lifecycle serialization runtime observed;
+- transactional audit-failure rollback runtime verified;
+- feature-specific cleanup runtime verified;
+- platform non-disruption runtime verified.
+
+### Important operational limitation
+
+The exact binding permission:
+
+`course-management.syllabus-binding.manage`
+
+is **not permanently provisioned** in the ordinary runtime database after this checkpoint.
+
+The exact Permission and Law Department Admin RolePermission used for positive binding runtime verification were temporary and were removed during cleanup.
+
+Therefore the canonical Law Department Admin correctly returns fail-closed HTTP `403` for the binding endpoint after cleanup.
+
+This is intentional.
+
+Permanent operational access must be introduced through Lexora's reviewed, source-controlled, config-driven authorization provisioning mechanism.
+
+Do not:
+
+- leave a manual database grant;
+- broaden the generic Department Admin wildcard to bypass the dedicated permission;
+- weaken `PolicyGuard`;
+- remove exact permission provenance verification;
+- remove service-level live Department Admin authority verification.
+
+### Still pending
+
+The immediate next binding-governance task is:
+
+- permanent/config-driven `course-management.syllabus-binding.manage` provisioning;
+- source-controlled Law Department Admin binding RolePermission provisioning;
+- provisioning dry-run/apply/idempotency/collision/rollback/concurrency verification;
+- fresh-principal permanent-grant verification;
+- Teacher/Student permanent exclusion verification;
+- forged-header regression verification after permanent provisioning.
+
+Broader syllabus/teacher work remains pending, including:
+
+- Teacher syllabus read access;
+- Teacher Course Workspace;
+- Course Outline;
+- Lesson Plan;
+- CLO/PLO workflow;
+- SyllabusVersion frontend management;
+- historical syllabus backfill where separately authorised and designed.
+
+The authorization-review Low finding concerning exact binding authority special-casing versus the broader general policy-resolution representation remains a future hardening item unless separately redesigned and verified.
+
+No automatic single-`ACTIVE` SyllabusVersion rule, automatic retirement rule, automatic syllabus selection, effective-date auto-binding or historical syllabus backfill is introduced by this checkpoint.
+
+Do not describe the complete syllabus workflow as finished.
