@@ -17200,3 +17200,409 @@ Permanent access must be introduced through the project's reviewed, config-drive
 - historical syllabus backfill.
 
 No completion claim should extend beyond the verified Admin create/list/read foundation.
+
+## Permanent SyllabusVersion Governance Provisioning Runtime Verification — 2026-08-17
+
+### Supersession and scope
+
+This checkpoint supersedes only the earlier SyllabusVersion Admin API operational limitation that:
+
+- `course-management.syllabus-version.manage` was not permanently provisioned in the ordinary runtime database;
+- the canonical Law Department Admin therefore returned fail-closed HTTP `403` after temporary runtime-test permission cleanup;
+- permanent/config-driven SyllabusVersion governance permission provisioning remained pending.
+
+The earlier SyllabusVersion schema, Admin create/list/read implementation, object-isolation, DRAFT-only creation, duplicate handling, audit, PostgreSQL boundary and temporary-grant runtime evidence remains valid historical evidence.
+
+This checkpoint does not claim completion of the broader SyllabusVersion lifecycle or Teacher syllabus workflow.
+
+### Implementation identity
+
+Authorization provisioning implementation commit:
+
+`67ca27d97a65c9b740f38a8337622820da87e6b4`
+
+Commit message:
+
+`Add authorization provisioning command`
+
+Reviewed implementation scope:
+
+- `apps/api/package.json`;
+- `apps/api/prisma/authorization/authorization-provisioning.definition.ts`;
+- `apps/api/prisma/authorization/provision-authorization.cli.ts`;
+- `apps/api/prisma/authorization/provision-authorization.test.ts`;
+- `apps/api/prisma/authorization/provision-authorization.ts`;
+- `apps/api/src/modules/identity-access/authorization/permissions.constants.ts`.
+
+Permanent SyllabusVersion governance definition:
+
+- permission code: `course-management.syllabus-version.manage`;
+- resource: `course-management.syllabus-version`;
+- action: `manage`;
+- scope: `DEPARTMENT`;
+- target role: `department_admin`;
+- provisioning audit action: `authorization.syllabus-version-manage.provisioned`.
+
+No schema migration was required.
+
+### Provisioning security model
+
+The source-controlled provisioning mechanism was verified to:
+
+- default to dry-run;
+- require exactly one explicit department selector;
+- require explicit `--apply` for mutations;
+- select only an active, non-archived, non-deleted department;
+- select only the exact same-department non-archived `department_admin` role;
+- fail closed on permission-code semantic collisions;
+- fail closed when equivalent permission semantics exist under an incompatible code;
+- reuse an exact existing permission safely;
+- reuse an exact existing RolePermission safely;
+- create permission, RolePermission and audit inside one Serializable Prisma transaction;
+- write a SERVICE audit without fabricating a user actor;
+- return a true no-op when the exact state is already provisioned;
+- not grant Teacher, Student or another department's Department Admin role;
+- not print database credentials, password hashes or tokens.
+
+Existing `AuthGuard`, `PolicyGuard`, `@RequirePolicy()`, authenticated-principal department scope and object-level authorization were not weakened.
+
+### Static and focused verification
+
+Final focused authorization provisioning tests:
+
+- total: `21`;
+- passed: `21`;
+- failed: `0`.
+
+Server-side validation at implementation commit:
+
+- API typecheck: passed;
+- API build: passed;
+- compiled authorization provisioning tests: `21/21` passed;
+- `git diff --check`: passed.
+
+The runtime server did not have the optional `tsx` package available for direct TypeScript test execution.
+
+The initial `node --test --import tsx ...` verification attempt therefore failed before test execution with `ERR_MODULE_NOT_FOUND`.
+
+No application or database failure occurred.
+
+The built CommonJS-compatible JavaScript test artifact was then executed directly and passed `21/21`.
+
+No ESM, NodeNext or TypeScript module-system migration was introduced.
+
+### Disposable PostgreSQL core verification
+
+The reviewed uncommitted implementation was first packaged from committed baseline:
+
+`9176de4a0515baf70049fe9eaec9b619d74802f0`
+
+Bundle SHA-256:
+
+`a33a826f68c08b7d61c5628c9429e68224a0a976b8b7217ac31fea4e3145ff00`
+
+The exact bundle hash and all six reviewed file hashes were verified after transfer to the Ubuntu runtime server.
+
+Verification used an isolated disposable `postgres:16-alpine` container:
+
+- Docker administration: sudo-only;
+- PostgreSQL exposure: `127.0.0.1` only;
+- ordinary `lexora_lms` database: not accessed;
+- live repository: not modified;
+- PM2/Nginx/API: not restarted or reconfigured;
+- credentials: not printed.
+
+Real PostgreSQL verification confirmed:
+
+- package CLI dry-run executed successfully;
+- dry-run wrote zero Permission rows;
+- dry-run wrote zero RolePermission rows;
+- dry-run wrote zero provisioning audit rows;
+- first APPLY created exactly one permission with the intended semantics;
+- exactly one Law Department Admin RolePermission was created;
+- Teacher received no grant;
+- Student received no grant;
+- BUS Department Admin received no grant;
+- exactly one SERVICE provisioning audit was created;
+- `actorUserId` was NULL;
+- `actorType` was SERVICE;
+- audit context matched the intended department, role and permission;
+- repeated APPLY was a true no-op;
+- final permission / RolePermission / provisioning-audit cardinality was `1 / 1 / 1`.
+
+An initial verification command used an unnecessary standalone pnpm `--` separator.
+
+The strict CLI parser rejected that unsupported argument before any database write.
+
+This was a verification invocation issue rather than a product authorization failure.
+
+The canonical package-script usage was corrected without weakening the parser.
+
+### Disposable PostgreSQL adversarial verification
+
+A second isolated disposable PostgreSQL verification exercised adversarial cases.
+
+Verified results:
+
+- same permission code with conflicting resource/action/scope: blocked;
+- equivalent resource/action/scope under incompatible permission code: blocked;
+- collision attempts produced no unintended RolePermission or provisioning audit;
+- a PostgreSQL trigger deliberately forced provisioning audit insertion to fail;
+- the forced audit failure caused the permission creation and RolePermission creation to roll back;
+- no partial permission, RolePermission or audit state survived;
+- transaction atomicity therefore passed against real PostgreSQL.
+
+Concurrent execution:
+
+- two APPLY processes were started simultaneously;
+- both processes completed successfully in the observed run;
+- final effective permission cardinality: `1`;
+- final effective Law Department Admin RolePermission cardinality: `1`;
+- final provisioning audit cardinality: `1`;
+- Teacher grant: `0`;
+- Student grant: `0`;
+- BUS Department Admin grant: `0`;
+- duplicate authority: none.
+
+Disposable PostgreSQL container and temporary verification files were removed after verification.
+
+Live API/Nginx health remained HTTP `200`.
+
+### Server deployment and ordinary database dry-run
+
+The Ubuntu runtime repository was fast-forwarded to:
+
+`67ca27d97a65c9b740f38a8337622820da87e6b4`
+
+Repository remained clean and aligned with `origin/main`.
+
+Ordinary runtime database:
+
+`lexora_lms`
+
+Prisma migration status:
+
+- migrations found: `9`;
+- schema up to date: yes.
+
+Before permanent provisioning:
+
+- active Law department `0421`: exactly one;
+- active Law `department_admin` role: exactly one;
+- target permanent permission: absent;
+- equivalent semantic permission: absent;
+- target Law Admin RolePermission: absent;
+- provisioning audit: absent.
+
+A real ordinary-database dry-run targeted:
+
+- department code: `0421`;
+- role: `department_admin`;
+- permission: `course-management.syllabus-version.manage`.
+
+Dry-run plan:
+
+- Permission: CREATE;
+- RolePermission: CREATE;
+- provisioning audit: CREATE.
+
+Post-dry-run verification confirmed:
+
+- Permission writes: `0`;
+- RolePermission writes: `0`;
+- provisioning audit writes: `0`.
+
+PM2 was not restarted.
+
+API listener remained loopback-only.
+
+Direct API and Nginx health remained HTTP `200`.
+
+### Permanent ordinary-runtime provisioning
+
+Permanent provisioning was deliberately applied to the ordinary:
+
+`lexora_lms`
+
+database for:
+
+- department ID: `dept_law_test`;
+- department code: `0421`;
+- role: Law `department_admin`.
+
+Verified permanent result:
+
+- exact permission cardinality: `1`;
+- exact Law Department Admin RolePermission cardinality: `1`;
+- Teacher grant: `0`;
+- Student grant: `0`;
+- other-department Department Admin grant: `0`;
+- SERVICE provisioning audit cardinality: `1`;
+- audit `actorUserId`: NULL;
+- audit `actorType`: SERVICE;
+- audit context: verified.
+
+A second ordinary-runtime APPLY was executed.
+
+Result:
+
+- true no-op;
+- no additional permission;
+- no additional RolePermission;
+- no additional provisioning audit.
+
+Final ordinary-runtime cardinality remained:
+
+`1 / 1 / 1`
+
+for permission / Law Department Admin RolePermission / provisioning audit.
+
+### Fresh-principal runtime authorization verification
+
+Fresh canonical authentication was performed after permanent provisioning.
+
+Raw passwords and raw access/refresh tokens were not printed or documented.
+
+Login response source inspection confirmed that current authority is represented under:
+
+- `user.roles`;
+- `user.departmentId`;
+- `user.permissions`.
+
+The initial verification harness incorrectly inspected top-level `roles`.
+
+It was stopped and corrected after read-only source inspection.
+
+No product authorization defect was found.
+
+Corrected fresh-login verification:
+
+#### Unauthenticated
+
+`GET /api/v1/syllabus-versions`
+
+- HTTP `401`.
+
+#### Law Department Admin
+
+Fresh login:
+
+- HTTP `201`;
+- role: `department_admin`;
+- department: `dept_law_test`;
+- `user.permissions` contained `course-management.syllabus-version.manage`.
+
+`GET /api/v1/syllabus-versions`:
+
+- HTTP `200`.
+
+This verifies that permanent database provisioning is loaded into a fresh authenticated principal and reaches the authorised SyllabusVersion application path.
+
+#### Law Teacher
+
+Fresh login:
+
+- HTTP `201`;
+- role: `teacher`;
+- department: `dept_law_test`;
+- SyllabusVersion management permission absent.
+
+`GET /api/v1/syllabus-versions`:
+
+- HTTP `403`.
+
+#### Law Student
+
+Fresh login:
+
+- HTTP `201`;
+- role: `student`;
+- department: `dept_law_test`;
+- SyllabusVersion management permission absent.
+
+`GET /api/v1/syllabus-versions`:
+
+- HTTP `403`.
+
+### Forged department-header regression
+
+The fresh authorised Law Department Admin requested:
+
+`GET /api/v1/syllabus-versions`
+
+while sending:
+
+`x-department-id: dept_bus_test`
+
+Result:
+
+- HTTP `200`;
+- response was unchanged from the normal authenticated Law-scoped list;
+- the forged BUS department header did not replace the authenticated principal's Law department;
+- no BUS department data appeared.
+
+Authenticated-principal department scope therefore remains authoritative.
+
+### Platform non-disruption and sensitive-data handling
+
+After permanent provisioning and fresh-principal verification:
+
+- repository: clean;
+- repository HEAD and `origin/main`: aligned;
+- PM2 restart: not performed;
+- PM2 PID remained unchanged during each provisioning/auth verification block;
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- API port `4000`: loopback-only;
+- academic SyllabusVersion mutation during permanent-governance auth verification: none;
+- normal authentication/session telemetry generated by legitimate fresh logins: expected;
+- raw passwords: not printed;
+- raw access/refresh tokens: not printed;
+- database credentials: not printed or documented.
+
+### Current verified classification
+
+The permanent SyllabusVersion governance provisioning layer is now:
+
+- source-controlled;
+- config-driven;
+- independently reviewed;
+- statically validated;
+- transactionally fail-closed;
+- real-PostgreSQL core verified;
+- real-PostgreSQL collision verified;
+- real-PostgreSQL forced-rollback verified;
+- concurrent-apply verified;
+- idempotency verified;
+- committed and pushed;
+- deployed to the Ubuntu runtime server;
+- ordinary-database dry-run verified;
+- permanently applied to the Law department;
+- SERVICE-audited;
+- fresh-principal runtime verified;
+- department-isolation verified;
+- Teacher/Student exclusion verified;
+- forged-header resistance verified;
+- runtime-health verified.
+
+The previous operational limitation stating that the canonical Department Admin receives HTTP `403` because the permanent SyllabusVersion governance permission is absent is now superseded.
+
+The canonical Law Department Admin is now operationally authorised for the existing SyllabusVersion Admin create/list/read foundation through the reviewed permanent provisioning mechanism.
+
+### Still pending
+
+This checkpoint does not implement or verify:
+
+- SyllabusVersion lifecycle transitions;
+- approved/active historical create-new-version enforcement;
+- SyllabusVersion lifecycle audit events;
+- CourseOffering → SyllabusVersion binding;
+- Teacher syllabus read access;
+- Teacher Course Workspace;
+- Course Outline;
+- Lesson Plan;
+- CLO/PLO workflow;
+- SyllabusVersion frontend management;
+- historical syllabus backfill.
+
+No completion claim should extend beyond the verified SyllabusVersion schema foundation, Admin create/list/read foundation and permanent Department Admin governance provisioning described by the current and earlier checkpoints.
