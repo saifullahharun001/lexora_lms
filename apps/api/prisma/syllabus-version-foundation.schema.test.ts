@@ -179,7 +179,7 @@ test("migration is non-destructive and leaves CourseOffering curriculum binding 
     courseOffering,
     /curriculumCourse\s+CurriculumCourse\?\s+@relation\(fields: \[curriculumCourseId\], references: \[id\], onDelete: Restrict\)/,
   );
-  assert.doesNotMatch(courseOffering, /syllabusVersionId|syllabusVersion/);
+  assert.doesNotMatch(migration, /ADD COLUMN "syllabus_version_id"/);
 });
 
 test("foundation exposes immutable syllabus identity without adding an API or academic content", () => {

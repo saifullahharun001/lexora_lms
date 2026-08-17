@@ -846,7 +846,9 @@ model SyllabusVersion {
   updatedAt          DateTime              @updatedAt @map("updated_at")
   department         Department            @relation(fields: [departmentId], references: [id], onDelete: Restrict, map: "syllabus_versions_department_id_fkey")
   curriculumCourse   CurriculumCourse      @relation(fields: [curriculumCourseId, departmentId], references: [id, departmentId], onDelete: Restrict, map: "syllabus_version_dept_curriculum_course_fkey")
+  courseOfferings    CourseOffering[]
 
+  @@unique([id, departmentId, curriculumCourseId], map: "syllabus_version_id_department_curriculum_course_uq")
   @@unique([departmentId, curriculumCourseId, code], map: "syllabus_version_dept_curriculum_course_code_uq")
   @@unique([departmentId, curriculumCourseId, versionNumber], map: "syllabus_version_dept_curriculum_course_number_uq")
   @@index([departmentId, status], map: "syllabus_version_dept_status_idx")
@@ -860,6 +862,7 @@ model CourseOffering {
   courseId                String                    @map("course_id")
   academicTermId          String                    @map("academic_term_id")
   curriculumCourseId      String?                   @map("curriculum_course_id")
+  syllabusVersionId       String?                   @map("syllabus_version_id")
   sectionCode             String                    @map("section_code")
   capacity                Int?
   status                  CourseOfferingStatus      @default(PLANNED)
@@ -872,6 +875,7 @@ model CourseOffering {
   course                  Course                    @relation(fields: [courseId], references: [id])
   academicTerm            AcademicTerm              @relation(fields: [academicTermId], references: [id])
   curriculumCourse        CurriculumCourse?         @relation(fields: [curriculumCourseId], references: [id], onDelete: Restrict)
+  syllabusVersion         SyllabusVersion?          @relation(fields: [syllabusVersionId, departmentId, curriculumCourseId], references: [id, departmentId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "course_offering_syllabus_identity_fkey")
   teacherAssignments      TeacherCourseAssignment[]
   enrollments             Enrollment[]
   classSessions           ClassSession[]
@@ -890,6 +894,7 @@ model CourseOffering {
   @@index([courseId])
   @@index([academicTermId])
   @@index([departmentId, curriculumCourseId], map: "course_offering_dept_curriculum_course_idx")
+  @@index([departmentId, syllabusVersionId], map: "course_offering_dept_syllabus_version_idx")
   @@map("course_offerings")
 }
 
