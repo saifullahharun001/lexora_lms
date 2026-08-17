@@ -18617,3 +18617,434 @@ The following work remains pending unless separately completed and runtime verif
 - formal immutable SyllabusVersion approval-record model only if authoritative academic governance later requires it.
 
 Do not introduce an automatic-retirement rule, single-ACTIVE partial unique index, or mandatory syllabus approval reference without authoritative source support.
+
+## CourseOffering → SyllabusVersion Schema Binding Foundation and Ordinary PostgreSQL Verification — 2026-08-17
+
+### Scope and supersession
+
+This checkpoint implements and runtime-verifies the **database/schema foundation** required for a future controlled, immutable:
+
+`CourseOffering → SyllabusVersion`
+
+binding.
+
+It supersedes earlier pending wording only for the **schema/database foundation** of that relationship.
+
+It does **not** mean the application-level CourseOffering → SyllabusVersion binding workflow is complete.
+
+Still pending after this checkpoint:
+
+- dedicated CourseOffering → SyllabusVersion binding DTO/API/service/repository workflow;
+- binding authorization/policy and any required permanent provisioning;
+- application-level binding audit event;
+- binding-time SyllabusVersion lifecycle eligibility rule;
+- Teacher syllabus read access;
+- Teacher Course Workspace;
+- Course Outline;
+- Lesson Plan;
+- CLO/PLO workflow;
+- SyllabusVersion frontend management;
+- historical syllabus backfill.
+
+No automatic single-`ACTIVE` SyllabusVersion rule, automatic retirement rule, automatic syllabus selection, or historical syllabus backfill was introduced.
+
+### Implementation identity
+
+Implementation commit:
+
+`c510dc4958cd9f89a45509d922a83c14ffe8d45f`
+
+Commit message:
+
+`Add course offering syllabus binding foundation`
+
+Migration:
+
+`202608170001_add_course_offering_syllabus_binding_foundation`
+
+Implementation file scope:
+
+- `.gitignore`;
+- `apps/api/prisma/schema.prisma`;
+- `apps/api/prisma/course-offering-syllabus-binding-foundation.schema.test.ts`;
+- `apps/api/prisma/migrations/202608170001_add_course_offering_syllabus_binding_foundation/migration.sql`;
+- `apps/api/prisma/syllabus-version-foundation.schema.test.ts`.
+
+### Schema foundation
+
+`CourseOffering` now has nullable:
+
+`syllabusVersionId`
+
+mapped to:
+
+`syllabus_version_id`
+
+The field remains intentionally nullable so that:
+
+- historical existing CourseOfferings remain valid;
+- curriculum-bound but syllabus-unbound CourseOfferings remain valid;
+- no automatic historical backfill is required.
+
+No generic CourseOffering create/update DTO exposes `syllabusVersionId`.
+
+No syllabus-binding HTTP endpoint was introduced in this schema-only checkpoint.
+
+### Composite academic identity
+
+A composite candidate key was added on:
+
+`SyllabusVersion(id, departmentId, curriculumCourseId)`
+
+The CourseOffering syllabus relation uses the exact composite foreign key:
+
+`CourseOffering(syllabusVersionId, departmentId, curriculumCourseId)`
+
+→
+
+`SyllabusVersion(id, departmentId, curriculumCourseId)`
+
+This database-level relationship prevents a CourseOffering from referencing a SyllabusVersion belonging to:
+
+- another department; or
+- another CurriculumCourse.
+
+The exact SyllabusVersion identity therefore cannot silently cross either the department boundary or the already-bound CurriculumCourse boundary.
+
+### Required CurriculumCourse binding
+
+The migration adds the explicit PostgreSQL CHECK constraint:
+
+`course_offering_syllabus_requires_curriculum`
+
+with the semantic requirement:
+
+`syllabus_version_id IS NULL OR curriculum_course_id IS NOT NULL`
+
+Therefore a CourseOffering cannot hold a SyllabusVersion identity unless it is also bound to a CurriculumCourse.
+
+This does not require all CourseOfferings to have syllabus bindings.
+
+### Restrictive identity behavior
+
+The composite CourseOffering → SyllabusVersion foreign key is:
+
+`course_offering_syllabus_identity_fkey`
+
+with:
+
+- `ON DELETE RESTRICT`;
+- `ON UPDATE RESTRICT`.
+
+This was deliberately hardened during independent review.
+
+An earlier implementation draft used `ON UPDATE CASCADE`.
+
+Independent review identified that cascading a referenced composite identity could allow a SyllabusVersion identity update to propagate department or CurriculumCourse identity changes into a historical CourseOffering.
+
+The implementation was corrected before commit.
+
+Final reviewed/runtime-verified behavior is fail-closed:
+
+- referenced SyllabusVersion deletion is blocked while referenced;
+- referenced composite identity updates are blocked while referenced;
+- no department/curriculum identity cascade into CourseOffering occurs.
+
+### Lookup index
+
+A non-unique department-scoped lookup index was added:
+
+`course_offering_dept_syllabus_version_idx`
+
+on:
+
+`(department_id, syllabus_version_id)`
+
+The index is intentionally non-unique.
+
+The same legitimate SyllabusVersion may be referenced by multiple CourseOfferings across valid terms/sections.
+
+Existing CourseOffering curriculum-identity partial unique indexes were not removed or redesigned.
+
+### Static and focused verification
+
+Before commit:
+
+- new focused schema tests passed `8/8`;
+- direct schema regressions passed `12/12`;
+- affected Academic regressions passed `66/66`;
+- total relevant local tests passed `86/86`;
+- Prisma validation passed;
+- Prisma Client generation passed;
+- API typecheck passed;
+- API build passed;
+- `git diff --check` passed.
+
+Independent review classification after the referential-action correction:
+
+- Critical: `0`;
+- High: `0`;
+- Medium: `0` blocking;
+- Low: `0` blocking.
+
+Server-side validation after fast-forward to the implementation commit also passed:
+
+- Prisma validate;
+- Prisma generate;
+- API typecheck;
+- API build;
+- focused schema tests `8/8`.
+
+The focused Node.js test emitted the already-known module-type detection warning because the test uses module syntax in the existing CommonJS-compatible package.
+
+No `"type": "module"`, NodeNext, Node16 module-resolution, full ESM, or TypeScript module-system migration was performed.
+
+### Disposable PostgreSQL verification
+
+The exact independently reviewed five-file artifact was transferred to the Ubuntu server.
+
+Reviewed bundle SHA-256:
+
+`0cfc16575fb52cd419257d0597d0c7b379d7f72f6a798add353296fbff62529a`
+
+The bundle was verified byte-for-byte before the implementation commit.
+
+Disposable verification used:
+
+- PostgreSQL `16-alpine`;
+- loopback-only exposure;
+- random host port;
+- no use of ordinary PostgreSQL port `5432`;
+- credentials not printed;
+- ordinary Lexora database URL not read;
+- ordinary Lexora database not accessed.
+
+A committed-baseline schema was initialized in the disposable PostgreSQL database and the exact reviewed migration was then applied.
+
+Real PostgreSQL catalog verification confirmed:
+
+- `syllabus_version_id` nullable;
+- composite SyllabusVersion candidate key exact;
+- department/syllabus lookup index non-unique and exact;
+- requires-curriculum CHECK present;
+- composite child foreign-key columns exact;
+- composite parent foreign-key columns exact;
+- `ON DELETE RESTRICT`;
+- `ON UPDATE RESTRICT`.
+
+Real constraint behavior verified:
+
+- syllabus identity without CurriculumCourse rejected;
+- cross-department syllabus identity rejected;
+- wrong-CurriculumCourse syllabus identity rejected;
+- rejected bindings persisted zero writes;
+- correct same-department/same-CurriculumCourse identity accepted;
+- same SyllabusVersion referenced successfully by two valid CourseOfferings;
+- referenced SyllabusVersion delete rejected;
+- referenced SyllabusVersion composite-identity update rejected;
+- CourseOffering identity remained unchanged;
+- no cascade occurred.
+
+The disposable synthetic parent SyllabusVersion used status `DRAFT`.
+
+That verified only that the **database schema is lifecycle-status-neutral**.
+
+It does **not** establish that application-level future binding should permit `DRAFT`.
+
+Binding-time lifecycle eligibility remains a separate pending governance/application decision.
+
+Legacy compatibility was also verified:
+
+- fully unbound CourseOffering remained valid;
+- CurriculumCourse-bound but syllabus-unbound CourseOffering remained valid.
+
+Disposable PostgreSQL container and temporary verification artifacts were removed after successful verification.
+
+### Ordinary PostgreSQL pre-deployment safety
+
+The implementation commit was fast-forwarded to the Ubuntu runtime server before ordinary database deployment.
+
+Verified ordinary database:
+
+- database: `lexora_lms`;
+- PostgreSQL: `18.4`.
+
+Before migration:
+
+- `course_offerings.syllabus_version_id`: absent;
+- requires-curriculum CHECK: absent;
+- composite syllabus foreign key: absent;
+- syllabus lookup index: absent;
+- SyllabusVersion composite candidate key: absent;
+- target Prisma migration history row: absent.
+
+Prisma reported exactly one pending migration:
+
+`202608170001_add_course_offering_syllabus_binding_foundation`
+
+A preflight helper initially failed after correctly reading the pending migration because its migration-name regex expected an incorrect timestamp length.
+
+That was a verifier parsing defect only.
+
+No migration or product failure occurred.
+
+No ordinary database schema mutation had occurred at that point.
+
+The verifier was corrected before deployment.
+
+### Validated private pre-migration backup
+
+Before ordinary deployment, a private PostgreSQL custom-format backup was created and retained:
+
+`/home/sh002/lexora-private-backups/lexora_lms-before-202608170001_add_course_offering_syllabus_binding_foundation-20260817T135150Z.dump`
+
+Backup SHA-256:
+
+`24b89ce991d8ad164557c07efbc1b77b75413625e4cdd0e525c71ee20ec58b7a`
+
+Backup validation:
+
+- archive non-empty;
+- `pg_restore --list` passed;
+- private backup directory mode: `0700`;
+- backup file mode: `0600`;
+- credentials not printed.
+
+### Ordinary database migration
+
+The migration was deployed using Prisma migration deployment.
+
+Migration:
+
+`202608170001_add_course_offering_syllabus_binding_foundation`
+
+Deployment result:
+
+- migration applied successfully;
+- Prisma subsequently reported the database schema up to date;
+- exactly one completed target migration history row exists;
+- no incomplete target migration row exists;
+- no rolled-back target migration row exists.
+
+A second `prisma migrate deploy` was executed and reported:
+
+`No pending migrations to apply.`
+
+The second deployment created no additional target migration history row.
+
+### Live PostgreSQL catalog verification
+
+After ordinary migration deployment, live PostgreSQL verification confirmed:
+
+- `course_offerings.syllabus_version_id` exists and is nullable;
+- `course_offering_syllabus_requires_curriculum` exists with the intended CHECK semantics;
+- `course_offering_syllabus_identity_fkey` exists;
+- child composite identity is exactly:
+  - `syllabus_version_id`;
+  - `department_id`;
+  - `curriculum_course_id`;
+- parent composite identity is exactly:
+  - `id`;
+  - `department_id`;
+  - `curriculum_course_id`;
+- foreign-key delete action is `RESTRICT`;
+- foreign-key update action is `RESTRICT`;
+- `syllabus_version_id_department_curriculum_course_uq` exists and is unique;
+- `course_offering_dept_syllabus_version_idx` exists and is non-unique.
+
+Prisma database-to-datamodel drift verification reported:
+
+`No difference detected.`
+
+### Ordinary academic/business row preservation
+
+Immediate pre-deployment counts:
+
+- `academic_programs`: `4`;
+- `courses`: `63`;
+- `curriculum_versions`: `8`;
+- `curriculum_courses`: `61`;
+- `syllabus_versions`: `0`;
+- `course_offerings`: `14`;
+- `teacher_course_assignments`: `5`;
+- `enrollments`: `12`;
+- `result_records`: `1`;
+- `transcript_records`: `2`;
+- `users`: `11`.
+
+Immediate post-deployment counts were identical.
+
+Therefore the additive schema migration caused no selected academic/business row-count change.
+
+No SyllabusVersion row was automatically created.
+
+No CourseOffering was automatically syllabus-bound.
+
+No Enrollment, Result, Transcript, Teacher assignment, Course, CurriculumCourse, CurriculumVersion, Program, or User row was automatically created/deleted by this migration.
+
+### Runtime platform non-disruption
+
+Before and after disposable verification and ordinary deployment:
+
+- server repository remained clean and origin-aligned;
+- implementation HEAD remained:
+  `c510dc4958cd9f89a45509d922a83c14ffe8d45f`;
+- PM2 process `lexora-api` remained online;
+- PM2 PID remained `24097`;
+- PM2 restart was not required;
+- Nginx restart was not required;
+- direct API health remained HTTP `200`;
+- Nginx API health remained HTTP `200`;
+- API port `4000` remained bound to `127.0.0.1` only.
+
+### Current verified classification
+
+The CourseOffering → SyllabusVersion **schema/database binding foundation** is now:
+
+- implemented;
+- statically verified;
+- independently reviewed;
+- referential-action hardened;
+- disposable PostgreSQL verified;
+- committed and pushed;
+- deployed to the Ubuntu runtime server;
+- migrated into the ordinary `lexora_lms` PostgreSQL database;
+- live migration-history verified;
+- live catalog verified;
+- department-isolation identity enforced at database level;
+- same-CurriculumCourse identity enforced at database level;
+- restrictive delete behavior verified;
+- restrictive update behavior verified;
+- cascade identity mutation blocked;
+- legacy unbound compatibility verified;
+- CurriculumCourse-only compatibility verified;
+- historical automatic backfill absent;
+- selected business-row preservation verified;
+- Prisma drift-free;
+- second deployment verified as a safe no-op;
+- platform non-disruption verified;
+- validated private pre-migration backup retained.
+
+### Remaining limitation / next application-layer work
+
+This checkpoint does **not** implement the actual immutable CourseOffering → SyllabusVersion binding workflow.
+
+The next focused implementation must decide and then implement the application-layer binding contract, including:
+
+- exact binding-time eligible SyllabusVersion lifecycle state(s), based on authoritative academic rules rather than assumption;
+- dedicated binding DTO;
+- dedicated Admin-controlled binding route;
+- Department-scoped object authorization;
+- exact CourseOffering department validation;
+- requirement that CourseOffering is already bound to the same CurriculumCourse;
+- same-target idempotency;
+- different-target overwrite rejection;
+- safe not-found behavior for cross-department direct IDs;
+- transactional mutation plus audit;
+- race/concurrency behavior;
+- Teacher/Student write exclusion;
+- forged `x-department-id` resistance;
+- runtime negative tests;
+- Teacher syllabus read only after the binding contract is established.
+
+Do not describe the complete CourseOffering → SyllabusVersion workflow or Teacher Course Workspace as implemented yet.
