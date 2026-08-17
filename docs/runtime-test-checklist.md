@@ -17606,3 +17606,564 @@ This checkpoint does not implement or verify:
 - historical syllabus backfill.
 
 No completion claim should extend beyond the verified SyllabusVersion schema foundation, Admin create/list/read foundation and permanent Department Admin governance provisioning described by the current and earlier checkpoints.
+
+## SyllabusVersion Lifecycle Ordinary PostgreSQL Runtime Verification — 2026-08-17
+
+### Scope and supersession
+
+This checkpoint verifies the dedicated `SyllabusVersion` lifecycle implementation against the ordinary Lexora PostgreSQL/API runtime.
+
+It supersedes earlier pending wording only for:
+
+- controlled SyllabusVersion lifecycle transitions;
+- dedicated lifecycle authorization enforcement;
+- lifecycle transition audit events;
+- lifecycle idempotency;
+- lifecycle concurrency behavior;
+- lifecycle department-isolation runtime evidence.
+
+Earlier SyllabusVersion schema, migration, Admin create/list/read, permanent create/list/read governance provisioning and related runtime evidence remains valid historical evidence.
+
+This checkpoint does not provision the new lifecycle permission permanently.
+
+### Implementation identity
+
+Implementation commit:
+
+`aa6fc83cb6c13c90154acc25a9d8181ed3ad7852`
+
+Commit message:
+
+`Add syllabus version lifecycle controls`
+
+Implementation scope:
+
+- 15 files;
+- 11 modified;
+- 4 new;
+- no Prisma migration.
+
+Added lifecycle routes:
+
+- `PUT /api/v1/syllabus-versions/:id/approve`;
+- `PUT /api/v1/syllabus-versions/:id/activate`;
+- `PUT /api/v1/syllabus-versions/:id/retire`;
+- `PUT /api/v1/syllabus-versions/:id/archive`.
+
+Dedicated lifecycle permission:
+
+`course-management.syllabus-version.lifecycle.manage`
+
+Permission semantics:
+
+- resource: `course-management.syllabus-version.lifecycle`;
+- action: `manage`;
+- scope: `DEPARTMENT`.
+
+The existing:
+
+`course-management.syllabus-version.manage`
+
+permission remains the separate create/list/read governance permission.
+
+### Lifecycle model
+
+The implemented transition graph is strictly:
+
+`DRAFT → APPROVED → ACTIVE → RETIRED → ARCHIVED`
+
+Skipped and backward transitions fail closed.
+
+`ARCHIVED` is terminal.
+
+Lifecycle metadata invariants:
+
+- DRAFT: `approvedAt = null`, `archivedAt = null`;
+- APPROVED: `approvedAt != null`, `archivedAt = null`;
+- ACTIVE: `approvedAt != null`, `archivedAt = null`;
+- RETIRED: `approvedAt != null`, `archivedAt = null`;
+- ARCHIVED: `approvedAt != null`, `archivedAt != null`.
+
+APPROVE sets `approvedAt` once.
+
+ACTIVATE and RETIRE preserve the original `approvedAt`.
+
+ARCHIVE preserves `approvedAt` and sets `archivedAt` once.
+
+Malformed lifecycle metadata fails closed rather than being silently repaired.
+
+### Authorization and isolation
+
+Lifecycle operations retain:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- exact `@RequirePolicy()` lifecycle policy;
+- authenticated-principal department authority;
+- DB-backed active user validation;
+- active Department validation;
+- exact same-department `department_admin` role;
+- non-revoked UserRole;
+- non-expired UserRole;
+- non-archived Role;
+- exact dedicated DEPARTMENT lifecycle permission;
+- permission provenance validation.
+
+The existing `course-management.syllabus-version.manage` permission alone is insufficient for lifecycle mutation.
+
+Generic wildcard authority is not accepted by the lifecycle application-level authorization gate.
+
+Teacher and Student do not receive lifecycle authority.
+
+A forged `x-department-id` cannot replace the authenticated principal's department scope.
+
+Cross-department direct SyllabusVersion identifiers use safe not-found behavior.
+
+### Transition persistence and concurrency
+
+Lifecycle mutation uses guarded conditional persistence rather than an unchecked read-then-update sequence.
+
+The mutation is guarded by authoritative values including:
+
+- immutable SyllabusVersion ID;
+- authenticated department ID;
+- expected current lifecycle state;
+- lifecycle timestamp invariants.
+
+If the guarded mutation loses a race, authoritative state is reread.
+
+A valid exact target may resolve as idempotent.
+
+Malformed or unexpected resulting state fails closed.
+
+The lifecycle state mutation and success audit are written in the same Prisma transaction.
+
+Audit failure therefore rolls back the lifecycle mutation.
+
+Exact-target idempotent retries do not create duplicate success audits.
+
+### Lifecycle audit events
+
+Implemented success audit actions:
+
+- `course-management.syllabus-version.approved`;
+- `course-management.syllabus-version.activated`;
+- `course-management.syllabus-version.retired`;
+- `course-management.syllabus-version.archived`.
+
+Verified lifecycle audit context includes:
+
+- SyllabusVersion ID;
+- CurriculumCourse ID;
+- syllabus code;
+- version number;
+- previous lifecycle status;
+- new lifecycle status;
+- transition reason;
+- request ID;
+- actor identity;
+- authenticated department identity.
+
+No formal SyllabusVersion-specific immutable approval-reference model was introduced because no authoritative current source established that requirement.
+
+### Independent source review
+
+The implementation was reviewed from the exact 15-file diff before commit.
+
+Review result:
+
+- Critical findings: `0`;
+- High findings: `0`;
+- Medium findings: `0`;
+- blocking Low findings: `0`.
+
+One non-blocking future-hardening suggestion was noted around explicit service-boundary rejection of unsupported approval metadata.
+
+No correction cycle was required.
+
+### Independent static validation
+
+Independent validation was executed before commit.
+
+Results:
+
+- reviewed file scope: exact `15`;
+- API typecheck: passed;
+- API build: passed;
+- compiled Academic test files: `19`;
+- compiled Academic tests: `176/176` passed;
+- failed: `0`;
+- skipped: `0`;
+- `git diff --check`: passed;
+- migration: none.
+
+The lifecycle implementation was then committed and pushed as:
+
+`aa6fc83cb6c13c90154acc25a9d8181ed3ad7852`
+
+The local repository was verified clean and aligned with `origin/main`.
+
+### Server deployment
+
+The Ubuntu runtime repository was fast-forwarded from:
+
+`08c6779ba6474d8e4c196acf658c5bf3dd62061c`
+
+to:
+
+`aa6fc83cb6c13c90154acc25a9d8181ed3ad7852`
+
+Server-side validation:
+
+- API typecheck: passed;
+- API build: passed;
+- `git diff --check`: passed;
+- migration required: no.
+
+The API process was intentionally restarted to activate the new executable lifecycle routes.
+
+PM2 PID changed from the earlier process to the newly started process as expected during that deployment restart.
+
+After activation:
+
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- port `4000`: loopback-only.
+
+### Pre-grant governance verification
+
+Before temporary runtime lifecycle authority was introduced:
+
+- ordinary database: `lexora_lms`;
+- permanent lifecycle permission: absent;
+- equivalent lifecycle permission semantics: absent;
+- permanent create/list/read SyllabusVersion manage permission: present.
+
+Fresh canonical Law Department Admin login:
+
+- HTTP `201`;
+- role: `department_admin`;
+- department: `dept_law_test`;
+- existing `course-management.syllabus-version.manage`: present;
+- `course-management.syllabus-version.lifecycle.manage`: absent.
+
+Existing:
+
+`GET /api/v1/syllabus-versions`
+
+returned HTTP `200`.
+
+Lifecycle request without the dedicated lifecycle permission returned HTTP `403`.
+
+Unauthenticated lifecycle request returned HTTP `401`.
+
+This verifies that the existing create/list/read permission does not silently authorize lifecycle mutations.
+
+No academic mutation occurred during the pre-grant verification.
+
+### Read-only ordinary database inventory
+
+Before lifecycle mutation testing:
+
+- Law department: active;
+- BUS department: active;
+- valid Law CurriculumCourses: `61`;
+- selected Law CurriculumCourse:
+  `curriculum_course_law_enrollment_runtime_approved`;
+- BUS AcademicProgram:
+  `program_bus_runtime_bba`;
+- BUS Course:
+  `course_bus_101_runtime`;
+- BUS CurriculumVersions: `0`;
+- BUS AssessmentTemplates: `0`;
+- BUS CurriculumCourses: `0`;
+- existing SyllabusVersion rows: `0`;
+- existing lifecycle success audits: `0`;
+- lifecycle permission: absent.
+
+The absence of a BUS CurriculumCourse was consistent with earlier disposable-runtime fixture cleanup.
+
+### Disposable runtime fixture preparation
+
+Disposable runtime-only BUS foundation created:
+
+- CurriculumVersion:
+  `cv_bus_syllabus_lifecycle_runtime_20260817`;
+- AssessmentTemplate:
+  `assessment_template_bus_syllabus_lifecycle_runtime_v1`;
+- CurriculumCourse:
+  `curriculum_course_bus_syllabus_lifecycle_runtime`.
+
+Disposable SyllabusVersion fixtures:
+
+- Law sequential lifecycle fixture:
+  `sv_law_syllabus_lifecycle_sequence_runtime`;
+- Law concurrency fixture:
+  `sv_law_syllabus_lifecycle_concurrency_runtime`;
+- BUS cross-department fixture:
+  `sv_bus_syllabus_lifecycle_crossdept_runtime`.
+
+All three SyllabusVersion fixtures began in valid DRAFT state:
+
+- `approvedAt = null`;
+- `archivedAt = null`.
+
+Fixture creation generated no lifecycle success audits and introduced no lifecycle permission.
+
+Existing canonical Law academic rows were not modified.
+
+### Temporary lifecycle authority
+
+For positive runtime testing only, an exact temporary lifecycle permission and Law Department Admin role link were created.
+
+Temporary permission semantics:
+
+- code:
+  `course-management.syllabus-version.lifecycle.manage`;
+- resource:
+  `course-management.syllabus-version.lifecycle`;
+- action:
+  `manage`;
+- scope:
+  `DEPARTMENT`.
+
+A temporary SERVICE audit recorded the runtime-only grant.
+
+This authority was deliberately temporary and was removed after verification.
+
+It is not a permanent governance configuration.
+
+### Fresh-principal runtime authorization
+
+Fresh canonical logins were performed after the temporary exact lifecycle grant.
+
+Raw passwords and access/refresh tokens were not printed.
+
+Law Department Admin:
+
+- login: HTTP `201`;
+- lifecycle permission: present.
+
+Law Teacher:
+
+- login: HTTP `201`;
+- lifecycle permission: absent;
+- lifecycle mutation request: HTTP `403`.
+
+Law Student:
+
+- login: HTTP `201`;
+- lifecycle permission: absent;
+- lifecycle mutation request: HTTP `403`.
+
+Direct Law Admin lifecycle access to the BUS SyllabusVersion fixture:
+
+- HTTP `404`.
+
+This verifies object-level department isolation in the lifecycle path.
+
+### Sequential ordinary API lifecycle verification
+
+The Law sequential fixture was transitioned through the full lifecycle using the ordinary API.
+
+Verified:
+
+- `DRAFT → APPROVED`: HTTP `200`;
+- exact APPROVE retry: HTTP `200`, idempotent;
+- `APPROVED → ACTIVE`: HTTP `200`;
+- exact ACTIVATE retry: HTTP `200`, idempotent;
+- backward `ACTIVE → APPROVE`: HTTP `409`;
+- `ACTIVE → RETIRED`: HTTP `200`;
+- exact RETIRE retry: HTTP `200`, idempotent;
+- `RETIRED → ARCHIVED`: HTTP `200`;
+- exact ARCHIVE retry: HTTP `200`, idempotent;
+- terminal `ARCHIVED → ACTIVATE`: HTTP `409`.
+
+The first APPROVE request deliberately supplied:
+
+`x-department-id: dept_bus_test`
+
+The authenticated principal remained Law-scoped.
+
+The Law fixture transitioned successfully within `dept_law_test`.
+
+The forged BUS header did not replace authenticated-principal department authority.
+
+The original `approvedAt` value was preserved across exact-target retries and later lifecycle transitions.
+
+### Real concurrent PostgreSQL/API verification
+
+Two real ordinary-API APPROVE requests were issued concurrently against the same pristine Law DRAFT fixture.
+
+Results:
+
+- concurrent request A: HTTP `200`;
+- concurrent request B: HTTP `200`.
+
+Authoritative PostgreSQL state after both requests:
+
+- final status: `APPROVED`;
+- valid `approvedAt`: present;
+- `archivedAt`: null.
+
+Success audit cardinality for the concurrent fixture:
+
+`1`
+
+This verifies that two concurrent same-action requests converge to one real lifecycle transition and one success audit, while the losing observer resolves safely as an idempotent success.
+
+### Authoritative audit verification
+
+Final sequential fixture state before cleanup:
+
+`ARCHIVED`
+
+Sequential lifecycle success audit cardinality:
+
+`4`
+
+Exactly one success audit existed for each:
+
+- APPROVED;
+- ACTIVATED;
+- RETIRED;
+- ARCHIVED.
+
+Concurrent fixture final state:
+
+`APPROVED`
+
+Concurrent fixture success audit cardinality:
+
+`1`
+
+BUS cross-department fixture:
+
+- remained `DRAFT`;
+- `approvedAt = null`;
+- `archivedAt = null`;
+- lifecycle audit cardinality: `0`.
+
+Lifecycle audits were verified for:
+
+- correct Admin actor;
+- actor type USER;
+- Law department;
+- non-empty request ID;
+- correct SyllabusVersion target;
+- CurriculumCourse identity;
+- syllabus code;
+- version number;
+- previous status;
+- new status;
+- non-empty reason.
+
+### Runtime cleanup
+
+All feature-specific disposable lifecycle state was removed after successful verification.
+
+Removed:
+
+- four sequential lifecycle audits;
+- one concurrency lifecycle audit;
+- temporary lifecycle-grant SERVICE audit;
+- Law sequential SyllabusVersion fixture;
+- Law concurrency SyllabusVersion fixture;
+- BUS cross-department SyllabusVersion fixture;
+- disposable BUS CurriculumCourse;
+- disposable BUS AssessmentTemplate;
+- disposable BUS CurriculumVersion;
+- temporary Law Department Admin lifecycle RolePermission;
+- temporary lifecycle Permission.
+
+Post-cleanup verification:
+
+- feature-specific SyllabusVersion rows: `0`;
+- feature-specific lifecycle audits: `0`;
+- temporary lifecycle permission: absent;
+- temporary lifecycle RolePermission: absent;
+- disposable BUS curriculum foundation: absent.
+
+Preserved:
+
+- reusable Law CurriculumCourse;
+- permanent `course-management.syllabus-version.manage` permission;
+- permanent Law Department Admin SyllabusVersion manage RolePermission.
+
+Normal authentication/session telemetry generated by legitimate fresh logins was intentionally retained.
+
+### Final platform verification
+
+After runtime cleanup:
+
+- repository: clean;
+- repository HEAD: `aa6fc83cb6c13c90154acc25a9d8181ed3ad7852`;
+- repository aligned with `origin/main`;
+- PM2 restart during the lifecycle verification itself: none;
+- PM2 PID changed during lifecycle verification: no;
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- API port `4000`: loopback-only;
+- raw passwords/tokens printed: no.
+
+### Current verified classification
+
+The SyllabusVersion lifecycle foundation is now:
+
+- implemented;
+- independently source-reviewed;
+- statically validated;
+- committed and pushed;
+- deployed to the ordinary runtime server;
+- ordinary PostgreSQL/API runtime verified;
+- strict forward transition graph verified;
+- backward/terminal transition rejection verified;
+- lifecycle timestamp behavior verified;
+- exact-target idempotency verified;
+- dedicated lifecycle privilege separation verified;
+- Teacher exclusion verified;
+- Student exclusion verified;
+- cross-department safe-not-found verified;
+- forged-header resistance verified;
+- lifecycle success-audit behavior verified;
+- transactional mutation/audit behavior statically covered;
+- real concurrent same-action behavior verified against ordinary PostgreSQL;
+- runtime cleanup verified;
+- platform non-disruption verified.
+
+### Important operational limitation
+
+The exact lifecycle permission:
+
+`course-management.syllabus-version.lifecycle.manage`
+
+is **not permanently provisioned** in the ordinary runtime database.
+
+The permission and Law Department Admin role link used for positive lifecycle runtime verification were temporary and were removed after verification.
+
+Therefore, after cleanup, normal Department Admin lifecycle mutation remains fail-closed until the dedicated permission is introduced through the reviewed config-driven authorization provisioning mechanism.
+
+Do not weaken `PolicyGuard`, broaden wildcard access, reuse the ordinary SyllabusVersion create/list/read permission as lifecycle authority, or leave a manual runtime-only role grant behind.
+
+### Still pending
+
+- permanent/config-driven `course-management.syllabus-version.lifecycle.manage` provisioning;
+- source-controlled permanent Law Department Admin lifecycle RolePermission provisioning;
+- formal immutable SyllabusVersion approval-record model, if later required by authoritative academic governance;
+- explicit single-ACTIVE SyllabusVersion semantics, if later established by authoritative source;
+- CourseOffering → SyllabusVersion binding;
+- Teacher syllabus read access;
+- Teacher Course Workspace;
+- Course Outline;
+- Lesson Plan;
+- CLO/PLO workflow;
+- SyllabusVersion frontend management;
+- historical syllabus backfill.
+
+Existing historical/versioning safety remains:
+
+- there is no generic SyllabusVersion update/delete endpoint;
+- lifecycle state may change only through the explicit guarded lifecycle routes;
+- revised syllabus authority remains represented through a separate SyllabusVersion row rather than silent overwrite.
+
+Do not describe the complete syllabus workflow as finished.
