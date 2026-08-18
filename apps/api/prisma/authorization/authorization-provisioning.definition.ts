@@ -33,9 +33,23 @@ export const SYLLABUS_VERSION_LIFECYCLE_MANAGE_PROVISIONING = {
   auditAction: "authorization.syllabus-version-lifecycle-manage.provisioned",
 } as const;
 
+export const SYLLABUS_BINDING_MANAGE_PROVISIONING = {
+  permission: {
+    code: PERMISSIONS.COURSE_MANAGEMENT.SYLLABUS_BINDING_MANAGE,
+    resource: "course-management.syllabus-binding",
+    action: "manage",
+    scope: PermissionScope.DEPARTMENT,
+    description:
+      "Manage syllabus bindings within the active department governance scope",
+  },
+  targetRoleCode: PLATFORM_ROLES.DEPARTMENT_ADMIN,
+  auditAction: "authorization.syllabus-binding-manage.provisioned",
+} as const;
+
 export const AUTHORIZATION_PROVISIONING_DEFINITIONS = [
   SYLLABUS_VERSION_MANAGE_PROVISIONING,
   SYLLABUS_VERSION_LIFECYCLE_MANAGE_PROVISIONING,
+  SYLLABUS_BINDING_MANAGE_PROVISIONING,
 ] as const;
 
 export type AuthorizationProvisioningDefinition =
