@@ -86,6 +86,55 @@ test("syllabus binding route forwards only the dedicated DTO target", async () =
   assert.deepEqual(calls, [["offering-a", "syllabus-a"]]);
 });
 
+test("bound syllabus read is a guarded GET using offering read policy", () => {
+  const guards = Reflect.getMetadata(
+    GUARDS_METADATA,
+    CourseOfferingsController,
+  ) as unknown[];
+  assert.deepEqual(guards, [AuthGuard, PolicyGuard]);
+  assert.equal(
+    Reflect.getMetadata(
+      PATH_METADATA,
+      CourseOfferingsController.prototype.getSyllabus,
+    ),
+    ":id/syllabus",
+  );
+  assert.equal(
+    Reflect.getMetadata(
+      METHOD_METADATA,
+      CourseOfferingsController.prototype.getSyllabus,
+    ),
+    RequestMethod.GET,
+  );
+  assert.equal(
+    Reflect.getMetadata(
+      REQUIRE_POLICY_KEY,
+      CourseOfferingsController.prototype.getSyllabus,
+    ),
+    ACADEMIC_POLICY_NAMES.OFFERING_READ,
+  );
+});
+
+test("bound syllabus read accepts only params and forwards only offering id", async () => {
+  const calls: unknown[] = [];
+  const controller = new CourseOfferingsController({
+    getCourseOfferingSyllabus: async (...args: unknown[]) => {
+      calls.push(args);
+      return { id: "syllabus-a" };
+    },
+  } as never);
+
+  assert.equal(CourseOfferingsController.prototype.getSyllabus.length, 1);
+  assert.deepEqual(
+    await controller.getSyllabus({
+      id: "offering-a",
+      syllabusVersionId: "attacker-syllabus",
+    } as never),
+    { id: "syllabus-a" },
+  );
+  assert.deepEqual(calls, [["offering-a"]]);
+});
+
 test("unauthenticated requests are rejected by AuthGuard", async () => {
   const guard = new AuthGuard({} as never, {} as never, {} as never);
   const context = {
@@ -202,4 +251,38 @@ test("syllabus binding requires exact Department Admin permission provenance", (
       false,
     );
   }
+});
+
+test("offering read permits Teacher but does not grant Student broad access", () => {
+  const authorization = new AuthorizationService();
+  const principal = (role: "teacher" | "student") =>
+    ({
+      actorId: `${role}-a`,
+      isAuthenticated: true,
+      activeDepartmentId: "department-a",
+      roleAssignments: [
+        {
+          userRoleId: `${role}-assignment-a`,
+          roleId: `${role}-role-a`,
+          departmentId: "department-a",
+          role,
+        },
+      ],
+      permissions: [],
+    }) as never;
+
+  assert.equal(
+    authorization.isAllowed(
+      principal("teacher"),
+      ACADEMIC_POLICY_NAMES.OFFERING_READ,
+    ),
+    true,
+  );
+  assert.equal(
+    authorization.isAllowed(
+      principal("student"),
+      ACADEMIC_POLICY_NAMES.OFFERING_READ,
+    ),
+    false,
+  );
 });

@@ -455,6 +455,15 @@ export interface AcademicRepositoryPort {
     id: string,
     teacherUserId: string,
   ): Promise<unknown | null>;
+  findBoundSyllabusVersionForCourseOffering(
+    departmentId: string,
+    courseOfferingId: string,
+  ): Promise<unknown | null>;
+  findBoundSyllabusVersionForCourseOfferingForTeacher(
+    departmentId: string,
+    courseOfferingId: string,
+    teacherUserId: string,
+  ): Promise<unknown | null>;
   createCourseOffering(input: CreateCourseOfferingInput): Promise<unknown>;
   updateCourseOffering(
     departmentId: string,

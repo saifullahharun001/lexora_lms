@@ -1336,6 +1336,60 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
     return offering ? sanitizeCourseOfferingRead(offering, departmentId) : null;
   }
 
+  async findBoundSyllabusVersionForCourseOffering(
+    departmentId: string,
+    courseOfferingId: string,
+  ) {
+    const offering = await this.prisma.courseOffering.findFirst({
+      where: {
+        id: courseOfferingId,
+        departmentId,
+        archivedAt: null,
+        syllabusVersionId: { not: null },
+        syllabusVersion: { isNot: null },
+      },
+      select: {
+        syllabusVersion: { select: syllabusVersionSelect },
+      },
+    });
+
+    return offering?.syllabusVersion
+      ? sanitizeSyllabusVersion(offering.syllabusVersion, departmentId)
+      : null;
+  }
+
+  async findBoundSyllabusVersionForCourseOfferingForTeacher(
+    departmentId: string,
+    courseOfferingId: string,
+    teacherUserId: string,
+  ) {
+    const offering = await this.prisma.courseOffering.findFirst({
+      where: {
+        id: courseOfferingId,
+        departmentId,
+        archivedAt: null,
+        syllabusVersionId: { not: null },
+        syllabusVersion: { isNot: null },
+        teacherAssignments: {
+          some: {
+            departmentId,
+            teacherUserId,
+            status: "ACTIVE",
+            unassignedAt: null,
+            archivedAt: null,
+          },
+        },
+      },
+      select: {
+        syllabusVersion: { select: syllabusVersionSelect },
+      },
+    });
+
+    return offering?.syllabusVersion
+      ? sanitizeSyllabusVersion(offering.syllabusVersion, departmentId)
+      : null;
+  }
+
   async createCourseOffering(input: CreateCourseOfferingInput) {
     const offering = await this.prisma.courseOffering.create({
       data: {

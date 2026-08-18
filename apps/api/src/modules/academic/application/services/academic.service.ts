@@ -540,6 +540,35 @@ export class AcademicService {
     return offering;
   }
 
+  async getCourseOfferingSyllabus(courseOfferingId: string) {
+    let syllabusVersion: unknown | null;
+
+    if (this.hasRole("department_admin")) {
+      syllabusVersion =
+        await this.repository.findBoundSyllabusVersionForCourseOffering(
+          this.getDepartmentId(),
+          courseOfferingId,
+        );
+    } else if (this.hasRole("teacher")) {
+      syllabusVersion =
+        await this.repository.findBoundSyllabusVersionForCourseOfferingForTeacher(
+          this.getDepartmentId(),
+          courseOfferingId,
+          this.getActorId(),
+        );
+    } else {
+      throw new ForbiddenException(
+        "Course offering syllabus access is forbidden",
+      );
+    }
+
+    if (!syllabusVersion) {
+      throw new NotFoundException("Syllabus version not found");
+    }
+
+    return syllabusVersion;
+  }
+
   async createCourseOffering(
     input: Omit<CreateCourseOfferingInput, "departmentId">,
   ) {

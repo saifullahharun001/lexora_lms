@@ -47,6 +47,12 @@ export class CourseOfferingsController {
     return this.academicService.getCourseOffering(params.id);
   }
 
+  @Get(":id/syllabus")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.OFFERING_READ)
+  getSyllabus(@Param() params: ResourceIdParamDto) {
+    return this.academicService.getCourseOfferingSyllabus(params.id);
+  }
+
   @Patch(":id")
   @RequirePolicy(ACADEMIC_POLICY_NAMES.OFFERING_MANAGE)
   update(@Param() params: ResourceIdParamDto, @Body() body: UpdateCourseOfferingDto) {
