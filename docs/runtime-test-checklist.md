@@ -21161,3 +21161,302 @@ The following remain pending unless separately completed and runtime verified:
 No automatic syllabus selection, automatic retirement, single-`ACTIVE` partial unique index or historical syllabus backfill was introduced by this feature.
 
 Do not describe the full Teacher Course Workspace or complete syllabus workflow as finished.
+
+## Teacher Assigned-Course Workspace Read-Only Frontend Runtime Verification — 2026-08-18
+
+### Scope and classification
+
+This checkpoint implements and browser-runtime verifies the first read-only Teacher assigned-course workspace surface.
+
+It supersedes earlier pending wording only for:
+
+- the read-only Teacher course workspace foundation;
+- navigation from the Teacher assigned-course surface into an assigned CourseOffering workspace;
+- display of existing authorised CourseOffering context;
+- display of the exact bound SyllabusVersion when available;
+- safe assigned-but-syllabus-unbound frontend handling.
+
+This checkpoint does **not** claim completion of:
+
+- the complete Teacher Course Workspace;
+- enrolled-student roster;
+- Course Outline;
+- Lesson Plan;
+- class-session workspace integration;
+- attendance workspace integration;
+- formative assessment workspace integration;
+- CLO/PLO workflow;
+- Course File;
+- SyllabusVersion frontend management.
+
+### Implementation identity
+
+Primary implementation commit:
+
+`5ec4044aebd05bf3e154932f96b52764eaccb1a0`
+
+Commit message:
+
+`Add teacher course workspace foundation`
+
+Implementation scope:
+
+- `apps/web/src/app/(dashboard)/teacher/courses/[courseOfferingId]/page.tsx`;
+- `apps/web/src/components/teacher/teacher-course-workspace.tsx`;
+- `apps/web/src/components/teacher/teacher-assigned-courses-panel.tsx`;
+- `apps/web/src/lib/api-client.ts`.
+
+Responsive correction commit:
+
+`9d0be208aeb55c7e8881bea36f7001c30cfc4e31`
+
+Commit message:
+
+`Improve teacher assigned courses responsiveness`
+
+Correction scope:
+
+- exactly one frontend file:
+  `apps/web/src/components/teacher/teacher-assigned-courses-panel.tsx`.
+
+### Frontend route and API usage
+
+Added Teacher workspace route:
+
+`/teacher/courses/[courseOfferingId]`
+
+The workspace consumes existing authorised backend reads:
+
+- `GET /api/v1/course-offerings/:id`;
+- `GET /api/v1/course-offerings/:id/syllabus`.
+
+The existing Teacher assigned-course surface continues to use:
+
+- `GET /api/v1/course-offerings`.
+
+No generic Teacher access to:
+
+`GET /api/v1/syllabus-versions/:id`
+
+was introduced.
+
+No new backend endpoint, policy, permission, Prisma schema, migration or academic write workflow was introduced.
+
+### Workspace behavior
+
+Runtime/browser verification confirmed that an assigned Teacher can open the LAW-101 workspace and see read-only CourseOffering context including:
+
+- course code;
+- course title;
+- section;
+- academic term;
+- offering status;
+- term status;
+- term dates;
+- capacity;
+- credit hours;
+- lecture hours;
+- lab hours;
+- visibility window.
+
+The workspace shell exposes only the Overview section as available.
+
+Future sections remain visibly disabled and labelled as not yet available:
+
+- Course Outline;
+- Lesson Plan;
+- Sessions;
+- Attendance;
+- Assessments;
+- Course File.
+
+No fake data or fake completed workflow was introduced.
+
+### Exact syllabus behavior
+
+The workspace uses only the exact nested bound-syllabus read:
+
+`GET /api/v1/course-offerings/:id/syllabus`
+
+No automatic:
+
+- latest syllabus selection;
+- ACTIVE syllabus fallback;
+- effective-date syllabus selection;
+- historical backfill
+
+was introduced.
+
+Ordinary runtime data had no bound SyllabusVersion for the tested LAW-101 CourseOffering.
+
+Browser runtime verification displayed the neutral expected state:
+
+`No syllabus is currently bound to this course offering.`
+
+The workspace remained functional and did not crash.
+
+### Assigned-course list responsive correction
+
+Initial browser verification found a real UX defect:
+
+- the newly added Workspace action was pushed outside the visible area;
+- horizontal scrolling was required to reach it at the tested laptop/browser width.
+
+A focused one-file correction replaced the wide table with a responsive course-card layout.
+
+Post-correction browser runtime verification confirmed:
+
+- no horizontal scrolling is required to access the course action;
+- LAW-101 remains clearly visible;
+- Section remains visible;
+- Academic Term remains visible;
+- Status remains visible;
+- Capacity and Visibility remain available as secondary metadata;
+- `Open workspace` remains directly visible;
+- the workspace link continues to use the encoded CourseOffering ID.
+
+The correction did not change API, authentication, authorization, department isolation or workspace domain behavior.
+
+### Local validation
+
+Primary implementation local validation:
+
+- web typecheck: PASS;
+- ordinary Windows web production build: PASS;
+- `git diff --check`: PASS.
+
+Responsive correction local validation:
+
+- exact correction scope: one frontend file;
+- ordinary Windows web production build: PASS;
+- `git diff --check`: PASS;
+- generated `apps/web/tsconfig.tsbuildinfo` restored and not committed.
+
+A Codex sandbox `spawn EPERM` build limitation was observed during development, but the ordinary Windows build completed successfully and superseded that environment-specific limitation.
+
+### Ubuntu server validation
+
+Primary implementation was promoted to the Ubuntu runtime server at:
+
+`5ec4044aebd05bf3e154932f96b52764eaccb1a0`
+
+Verified:
+
+- web typecheck: PASS;
+- web production build: PASS;
+- `/teacher/courses/[courseOfferingId]` included in the Next.js build;
+- Direct API health: HTTP 200;
+- Nginx API health: HTTP 200;
+- repository clean/origin-aligned.
+
+Responsive correction was then promoted to:
+
+`9d0be208aeb55c7e8881bea36f7001c30cfc4e31`
+
+Verified:
+
+- Ubuntu web production build: PASS;
+- `/teacher` route built successfully;
+- `/teacher/courses/[courseOfferingId]` remained present;
+- Direct API health: HTTP 200;
+- Nginx API health: HTTP 200;
+- repository clean/origin-aligned.
+
+### Browser runtime verification
+
+Frontend runtime:
+
+`http://192.168.197.129:3000`
+
+Next.js dev runtime successfully served:
+
+- `/teacher`;
+- `/sign-in`;
+- `/teacher/courses/[courseOfferingId]`.
+
+Browser verification confirmed:
+
+- canonical Teacher session reached `/teacher`;
+- assigned LAW-101 CourseOffering rendered;
+- corrected card layout rendered without the previous horizontal-scroll dependency;
+- `Open workspace` was directly visible;
+- opening the action navigated to the assigned LAW-101 workspace;
+- the workspace rendered the expected read-only course context;
+- the ordinary syllabus-unbound state rendered correctly;
+- back-navigation to assigned courses was available.
+
+### Security and architecture preservation
+
+This frontend checkpoint did not modify:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- `@RequirePolicy()`;
+- request context;
+- backend department scoping;
+- object-level authorization;
+- Teacher assigned-course backend enforcement;
+- CourseOffering → SyllabusVersion binding rules;
+- SyllabusVersion lifecycle rules;
+- enrollment authorization;
+- any academic write workflow.
+
+The existing authenticated frontend API helper remains in use.
+
+No new:
+
+- `localStorage` token persistence;
+- `sessionStorage` token persistence;
+- raw token logging;
+- generic Teacher SyllabusVersion management access;
+- broad Teacher enrollment/roster access
+
+was introduced.
+
+Backend authorization remains the source of truth.
+
+This frontend/browser checkpoint relies on the previously runtime-verified backend Teacher assignment and nested syllabus authorization boundaries; it does not claim that those backend security matrices were newly re-executed by this frontend-only task.
+
+### Development warning
+
+The Next.js development runtime emitted a cross-origin development warning for LAN access to `/_next/*`.
+
+The warning did not block:
+
+- sign-in;
+- `/teacher`;
+- workspace navigation;
+- course rendering.
+
+This remains an optional development-environment cleanup item (`allowedDevOrigins`) and is not treated as a production blocker.
+
+### Current verified classification
+
+Teacher Assigned-Course Workspace read-only foundation is now:
+
+- implemented;
+- independently reviewed;
+- local web validation passed;
+- committed and pushed;
+- promoted to Ubuntu runtime;
+- Ubuntu web production build verified;
+- existing API health preserved;
+- browser runtime verified;
+- assigned-course navigation verified;
+- read-only CourseOffering context verified;
+- syllabus-unbound frontend state verified;
+- initial responsive UX defect identified;
+- focused responsive correction implemented;
+- responsive correction independently reviewed;
+- responsive correction committed/pushed/promoted;
+- responsive correction browser-runtime verified.
+
+The complete Teacher Course Workspace remains **pending**.
+
+### Next logical development area
+
+The target academic specification places OBE Course Outline and Lesson Planning after the Teacher Course Workspace foundation.
+
+Before implementation, inspect current source and dependencies and choose one coherent next checkpoint.
+
+Do not combine Course Outline, Lesson Plan, roster, attendance, formative assessment, CLO/PLO and Course File into one giant task.
