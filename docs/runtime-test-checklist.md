@@ -20576,3 +20576,588 @@ No automatic:
 is introduced by this authorization-provisioning checkpoint.
 
 Do not describe the complete syllabus workflow as finished.
+
+## Teacher Assigned-Course Bound SyllabusVersion Read Ordinary PostgreSQL/API Runtime Verification — 2026-08-18
+
+### Scope and supersession
+
+This checkpoint implements and ordinary-runtime verifies the dedicated read path that allows an authorised Teacher to read the exact `SyllabusVersion` bound to a `CourseOffering` only when that Teacher has the required active assignment to that offering.
+
+It supersedes earlier pending wording only for:
+
+- Teacher assigned-course bound `SyllabusVersion` read access;
+- Teacher object-level isolation for that read path;
+- historical exact bound `RETIRED` / `ARCHIVED` syllabus read behavior;
+- Department Admin department-scoped access through the same nested read path.
+
+Earlier SyllabusVersion schema, governance, lifecycle, CourseOffering binding, authorization provisioning, migration, runtime and historical evidence remains valid.
+
+This checkpoint does **not** claim completion of:
+
+- Teacher Course Workspace;
+- Course Outline;
+- Lesson Plan;
+- CLO/PLO workflow;
+- SyllabusVersion frontend management;
+- historical syllabus backfill;
+- automatic syllabus selection;
+- automatic single-`ACTIVE` SyllabusVersion semantics;
+- automatic SyllabusVersion retirement.
+
+### Implementation identity
+
+Implementation commit:
+
+`c69084649507d24911fccc6c56579bd877804d66`
+
+Commit message:
+
+`Add teacher assigned-course syllabus read`
+
+Implementation scope:
+
+- 7 files;
+- 5 modified;
+- 2 new;
+- 559 insertions;
+- no Prisma migration;
+- no permission-provisioning change;
+- no frontend change.
+
+Files:
+
+- `apps/api/src/modules/academic/application/ports/academic.repository.port.ts`;
+- `apps/api/src/modules/academic/application/services/academic.service.ts`;
+- `apps/api/src/modules/academic/application/services/course-offering-syllabus-read.service.test.ts`;
+- `apps/api/src/modules/academic/infrastructure/repositories/prisma-academic.repository.ts`;
+- `apps/api/src/modules/academic/infrastructure/repositories/course-offering-syllabus-read.repository.test.ts`;
+- `apps/api/src/modules/academic/presentation/http/course-offerings.controller.test.ts`;
+- `apps/api/src/modules/academic/presentation/http/course-offerings.controller.ts`.
+
+### HTTP contract
+
+Added:
+
+`GET /api/v1/course-offerings/:id/syllabus`
+
+Authorization policy:
+
+`course-management.offering.read`
+
+The route remains protected by the existing controller-level:
+
+- `AuthGuard`;
+- `PolicyGuard`.
+
+No new generic Teacher SyllabusVersion permission was introduced.
+
+The generic Admin SyllabusVersion management surface remains separately governed and was not broadened to Teachers.
+
+### Application authorization model
+
+The service boundary now fails closed by actor role:
+
+- Department Admin:
+  - uses department-scoped CourseOffering → bound SyllabusVersion lookup;
+- Teacher:
+  - uses explicit Teacher-assignment-scoped lookup;
+- Student or unsupported role:
+  - receives `ForbiddenException` before bound-syllabus repository access.
+
+A Teacher lookup requires the exact authenticated:
+
+- department;
+- CourseOffering ID;
+- Teacher user ID.
+
+The repository additionally requires an assignment with:
+
+- matching department;
+- matching `teacherUserId`;
+- `ACTIVE` status;
+- `unassignedAt = null`;
+- `archivedAt = null`.
+
+A generic Teacher role alone therefore does not grant access to every department CourseOffering.
+
+### Object-resolution and safe-not-found behavior
+
+Syllabus resolution begins from the authorised `CourseOffering`.
+
+The endpoint does not accept caller-authoritative `syllabusVersionId`.
+
+Teacher reads fail with safe not-found behavior when the CourseOffering is:
+
+- not assigned to that Teacher;
+- syllabus-unbound;
+- in another department;
+- nonexistent.
+
+No fallback selects:
+
+- latest SyllabusVersion;
+- ACTIVE SyllabusVersion;
+- effective-date SyllabusVersion;
+- any other SyllabusVersion.
+
+The exact bound version is the only readable target.
+
+### Historical exact-binding behavior
+
+The existing binding model intentionally preserves historical exact bindings.
+
+Ordinary runtime verification confirmed that an assigned Teacher can read an exact bound:
+
+- `APPROVED` SyllabusVersion;
+- `RETIRED` SyllabusVersion;
+- `ARCHIVED` SyllabusVersion.
+
+The nested Teacher read path does not hide an exact historical binding merely because its lifecycle status is no longer `ACTIVE`.
+
+This does not create any automatic historical backfill or automatic syllabus-selection rule.
+
+### Safe response representation
+
+The nested CourseOffering syllabus read reuses the existing safe SyllabusVersion selection/sanitization model.
+
+Ordinary runtime response inspection verified:
+
+- expected SyllabusVersion identity;
+- expected lifecycle status;
+- safe curriculum-course representation;
+- no `departmentId` leakage in the returned SyllabusVersion representation.
+
+No raw authorization, token, audit-internal or database-internal field was intentionally exposed by this feature.
+
+### Independent local static validation
+
+The implementation was independently reviewed after the initial Codex implementation.
+
+One Medium defense-in-depth issue was identified in the initial service role branch:
+
+- unsupported non-Teacher roles could otherwise reach the department-scoped service lookup if the HTTP PolicyGuard boundary were bypassed internally.
+
+The implementation was corrected so that:
+
+- Department Admin uses department scope;
+- Teacher uses assignment scope;
+- Student/unsupported roles fail closed before repository access;
+- dual Teacher + Department Admin authority follows the Admin branch.
+
+After correction and reconciliation to the latest source baseline:
+
+- API typecheck: PASS;
+- API build: PASS;
+- focused/relevant academic regression tests: `118/118` PASS;
+- `git diff --check`: PASS;
+- exact feature scope remained 7 files.
+
+### Pre-commit staged review
+
+Before implementation commit:
+
+- staged files: exactly 7;
+- unstaged tracked drift: none;
+- remaining untracked files: none;
+- cached diff check: PASS;
+- binary content: none;
+- staged secret scan: PASS;
+- security-critical route/policy/Teacher-assignment markers: present.
+
+### Commit and deployment
+
+Implementation commit:
+
+`c69084649507d24911fccc6c56579bd877804d66`
+
+was pushed to `origin/main`.
+
+The Ubuntu runtime server was then fast-forwarded from:
+
+`21aa16e4c1317b7b420c7fefac3ef8a2979e78b7`
+
+to:
+
+`c69084649507d24911fccc6c56579bd877804d66`
+
+The incoming implementation commit was independently confirmed to contain exactly the reviewed 7 files.
+
+No migration was present.
+
+### Server-side static/runtime promotion verification
+
+On the Ubuntu runtime server:
+
+- repository clean and origin-aligned;
+- API typecheck: PASS;
+- API build: PASS;
+- compiled focused test inventory: 8 files;
+- focused/relevant server regression tests: `118/118` PASS;
+- `git diff --check`: PASS.
+
+Before PM2 restart:
+
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`.
+
+The verified build was restarted under PM2.
+
+After restart:
+
+- PM2 process `lexora-api`: online;
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`.
+
+No database access or academic mutation was required for this deployment/static-validation phase.
+
+### Ordinary database pre-runtime inventory
+
+A strict read-only transaction against ordinary:
+
+`lexora_lms`
+
+confirmed:
+
+- Law department `dept_law_test`: ACTIVE;
+- BUS department `dept_bus_test`: ACTIVE;
+- canonical Law Department Admin: ACTIVE;
+- canonical Law Teacher: ACTIVE;
+- canonical Law Student: ACTIVE;
+- canonical Teacher had an existing ACTIVE assignment to the existing LAW-101 CourseOffering;
+- ordinary SyllabusVersion row count before disposable verification: `0`;
+- no existing positive Teacher + syllabus-bound candidate existed;
+- no existing RETIRED/ARCHIVED bound syllabus candidate existed.
+
+Because no ordinary SyllabusVersion row existed, positive and historical runtime cases could not be verified safely from existing records alone.
+
+### Disposable ordinary-runtime fixture preparation
+
+Controlled disposable academic fixtures were therefore created transactionally.
+
+Baseline → fixture-state counts:
+
+- `SyllabusVersion`: `0 → 4`;
+- `CourseOffering`: `14 → 18`;
+- `TeacherCourseAssignment`: `5 → 8`.
+
+Created fixture matrix:
+
+- assigned APPROVED:
+  - CourseOffering `offering_law_teacher_read_approved_runtime`;
+  - SyllabusVersion `sv_law_teacher_read_approved_runtime`;
+- assigned RETIRED:
+  - CourseOffering `offering_law_teacher_read_retired_runtime`;
+  - SyllabusVersion `sv_law_teacher_read_retired_runtime`;
+- assigned ARCHIVED:
+  - CourseOffering `offering_law_teacher_read_archived_runtime`;
+  - SyllabusVersion `sv_law_teacher_read_archived_runtime`;
+- bound ACTIVE but Teacher-unassigned:
+  - CourseOffering `offering_law_teacher_read_unassigned_runtime`;
+  - SyllabusVersion `sv_law_teacher_read_unassigned_runtime`.
+
+Three disposable ACTIVE Teacher assignments linked the canonical:
+
+`teacher.law@cu.ac.bd`
+
+to the APPROVED, RETIRED and ARCHIVED CourseOfferings.
+
+The unassigned negative fixture had zero active Teacher assignments.
+
+Existing CourseOffering, SyllabusVersion and academic rows were not modified.
+
+### Runtime-harness correction evidence
+
+The first full HTTP verification attempt did not reach feature endpoint verification because the runtime harness incorrectly expected the fresh-login role array at top-level:
+
+`roles`
+
+instead of the actual current auth response contract:
+
+`user.roles`
+
+The failed harness attempt triggered emergency fixture cleanup successfully.
+
+Post-failure verification confirmed:
+
+- application failure: no evidence;
+- fixture residue: `0`;
+- SyllabusVersion total restored to `0`;
+- CourseOffering total restored to `14`;
+- TeacherAssignment total restored to `5`;
+- repository clean/origin-aligned;
+- direct API health HTTP `200`;
+- Nginx API health HTTP `200`.
+
+Current source was then inspected and confirmed the auth response contract:
+
+- top-level `user`;
+- top-level `accessToken`;
+- `user.roles`;
+- `user.permissions`.
+
+The runtime harness was corrected rather than changing application authentication behavior.
+
+### Collision protection during fixture re-preparation
+
+After the fixtures were intentionally recreated, a duplicate fixture-preparation attempt was safely refused with exact collision counts:
+
+- SyllabusVersion collisions: `4`;
+- CourseOffering collisions: `4`;
+- TeacherAssignment collisions: `3`.
+
+No duplicate fixture row was created.
+
+A subsequent read-only readiness verification confirmed the existing disposable fixture identities, lifecycle states, exact CourseOffering → SyllabusVersion bindings, canonical Teacher assignments and bound-but-unassigned negative case were all intact.
+
+### Fresh canonical principal verification
+
+Fresh login runtime verification succeeded for:
+
+- `admin.law@cu.ac.bd`;
+- `teacher.law@cu.ac.bd`;
+- `student.law@cu.ac.bd`.
+
+Each login returned HTTP `201`.
+
+For each fresh principal the runtime harness verified:
+
+- expected email;
+- authenticated `departmentId = dept_law_test`;
+- exact expected active role;
+- permissions array present;
+- top-level access token present.
+
+Raw passwords and raw access tokens were not printed.
+
+Normal authentication/session telemetry from legitimate fresh logins was intentionally preserved.
+
+### Authorization gate runtime verification
+
+Against:
+
+`GET /api/v1/course-offerings/:id/syllabus`
+
+runtime behavior was:
+
+- unauthenticated request:
+  - HTTP `401`;
+- canonical Student:
+  - HTTP `403`.
+
+This confirms the new nested read path did not broaden Student offering authority.
+
+### Assigned Teacher positive runtime verification
+
+Canonical Law Teacher assigned-course reads:
+
+APPROVED exact bound syllabus:
+
+- HTTP `200`;
+- returned:
+  `sv_law_teacher_read_approved_runtime`;
+- lifecycle:
+  `APPROVED`.
+
+RETIRED exact historical bound syllabus:
+
+- HTTP `200`;
+- returned:
+  `sv_law_teacher_read_retired_runtime`;
+- lifecycle:
+  `RETIRED`.
+
+ARCHIVED exact historical bound syllabus:
+
+- HTTP `200`;
+- returned:
+  `sv_law_teacher_read_archived_runtime`;
+- lifecycle:
+  `ARCHIVED`.
+
+All three responses passed safe-response inspection with no `departmentId` leakage.
+
+### Teacher object-level negative runtime verification
+
+Canonical Law Teacher received HTTP `404` for:
+
+- bound but Teacher-unassigned Law CourseOffering;
+- assigned but syllabus-unbound existing LAW-101 CourseOffering;
+- BUS cross-department direct CourseOffering ID;
+- nonexistent CourseOffering ID.
+
+The safe error fingerprints for:
+
+- unassigned;
+- unbound;
+- cross-department;
+- nonexistent
+
+were identical.
+
+Therefore direct object probing did not reveal whether the hidden resource was foreign, unassigned, unbound or nonexistent.
+
+### Forged department-header resistance
+
+The canonical Law Teacher requested the assigned APPROVED Law syllabus while sending:
+
+`x-department-id: dept_bus_test`
+
+Runtime result:
+
+- HTTP `200`;
+- returned the same exact Law SyllabusVersion;
+- response fingerprint matched the ordinary authenticated Law request;
+- authenticated Law scope was not overridden.
+
+The request header therefore did not replace the valid authenticated principal department.
+
+### Department Admin nested-read semantics
+
+Canonical Law Department Admin received:
+
+- assigned APPROVED bound read:
+  HTTP `200`;
+- Teacher-unassigned ACTIVE bound read:
+  HTTP `200`.
+
+This confirms the Admin branch remains department-scoped and is not incorrectly restricted by Teacher assignment rules.
+
+### Generic SyllabusVersion management surface preserved
+
+Canonical Teacher direct request to the generic Admin management surface:
+
+`GET /api/v1/syllabus-versions/:id`
+
+returned:
+
+- HTTP `403`.
+
+Canonical Law Department Admin request to the same generic SyllabusVersion resource returned:
+
+- HTTP `200`.
+
+Therefore this feature did not broaden generic Teacher SyllabusVersion management/read governance.
+
+### GET-path non-mutation verification
+
+Before the HTTP matrix, exact database fingerprints were captured for the disposable:
+
+- SyllabusVersion rows;
+- CourseOffering rows;
+- TeacherCourseAssignment rows.
+
+After all GET runtime cases:
+
+- SyllabusVersion fingerprint: unchanged;
+- CourseOffering fingerprint: unchanged;
+- TeacherCourseAssignment fingerprint: unchanged.
+
+Fixture-target audit count:
+
+- before GET matrix: `0`;
+- after GET matrix: `0`.
+
+Therefore the Teacher/Admin nested read path caused:
+
+- no academic mutation;
+- no fixture-target audit write.
+
+Normal authentication/session telemetry remained outside this feature-target audit check and was intentionally preserved.
+
+### Exact transactional cleanup
+
+After successful HTTP verification, exact transactional cleanup removed:
+
+- 3 disposable TeacherCourseAssignment rows;
+- 4 disposable CourseOffering rows;
+- 4 disposable SyllabusVersion rows.
+
+Post-cleanup residue:
+
+- disposable TeacherCourseAssignment rows: `0`;
+- disposable CourseOffering rows: `0`;
+- disposable SyllabusVersion rows: `0`.
+
+Ordinary database totals returned exactly to the pre-fixture baseline:
+
+- SyllabusVersion: `0`;
+- CourseOffering: `14`;
+- TeacherCourseAssignment: `5`.
+
+No feature-specific runtime fixture was left behind.
+
+### Final platform verification
+
+After cleanup:
+
+- implementation HEAD:
+  `c69084649507d24911fccc6c56579bd877804d66`;
+- repository clean;
+- repository aligned with `origin/main`;
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- API port `4000`: loopback-only;
+- raw passwords/tokens printed: no;
+- authentication/session telemetry: preserved.
+
+### Current verified classification
+
+Teacher assigned-course bound SyllabusVersion read is now:
+
+- implemented;
+- independently reviewed;
+- defense-in-depth corrected;
+- independently statically validated;
+- API typecheck verified;
+- API build verified;
+- `118/118` relevant local regression tests passed;
+- committed and pushed;
+- deployed to the Ubuntu runtime server;
+- `118/118` relevant server regression tests passed;
+- ordinary PostgreSQL/API runtime verified;
+- fresh Admin principal verified;
+- fresh Teacher principal verified;
+- fresh Student principal verified;
+- Teacher assignment scoping verified;
+- Student exclusion verified;
+- unauthenticated exclusion verified;
+- cross-department direct-object safe-not-found verified;
+- nonexistent direct-object safe-not-found verified;
+- assigned-but-unbound safe-not-found verified;
+- bound-but-unassigned safe-not-found verified;
+- safe-not-found response consistency verified;
+- forged `x-department-id` resistance verified;
+- APPROVED exact-binding read verified;
+- RETIRED historical exact-binding read verified;
+- ARCHIVED historical exact-binding read verified;
+- Department Admin department-scoped nested read verified;
+- generic Teacher SyllabusVersion management exclusion preserved;
+- response department identifier non-leakage verified;
+- GET-path academic non-mutation verified;
+- feature-target audit delta verified zero;
+- disposable runtime cleanup verified;
+- post-cleanup ordinary database baseline restoration verified;
+- final API health verified;
+- loopback-only application listener preserved.
+
+### Remaining syllabus / Teacher workspace work
+
+This checkpoint supersedes earlier pending wording only for:
+
+**Teacher assigned-course bound SyllabusVersion read access.**
+
+The following remain pending unless separately completed and runtime verified:
+
+- complete Teacher Course Workspace;
+- Course Outline;
+- Lesson Plan;
+- CLO/PLO workflow;
+- SyllabusVersion frontend management;
+- historical syllabus backfill;
+- any authoritative future single-`ACTIVE` SyllabusVersion rule;
+- any authoritative future automatic retirement rule;
+- any formal immutable SyllabusVersion approval-record model if later required by academic governance.
+
+No automatic syllabus selection, automatic retirement, single-`ACTIVE` partial unique index or historical syllabus backfill was introduced by this feature.
+
+Do not describe the full Teacher Course Workspace or complete syllabus workflow as finished.
