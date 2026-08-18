@@ -406,15 +406,15 @@ enum NoticePriority {
 }
 
 model Department {
-  id                           String                        @id @default(cuid())
-  code                         String                        @unique
-  slug                         String                        @unique
+  id                           String                            @id @default(cuid())
+  code                         String                            @unique
+  slug                         String                            @unique
   name                         String
-  status                       DepartmentStatus              @default(ACTIVE)
-  archivedAt                   DateTime?                     @map("archived_at")
-  deletedAt                    DateTime?                     @map("deleted_at")
-  createdAt                    DateTime                      @default(now()) @map("created_at")
-  updatedAt                    DateTime                      @updatedAt @map("updated_at")
+  status                       DepartmentStatus                  @default(ACTIVE)
+  archivedAt                   DateTime?                         @map("archived_at")
+  deletedAt                    DateTime?                         @map("deleted_at")
+  createdAt                    DateTime                          @default(now()) @map("created_at")
+  updatedAt                    DateTime                          @updatedAt @map("updated_at")
   users                        User[]
   roles                        Role[]
   userRoles                    UserRole[]
@@ -429,6 +429,9 @@ model Department {
   academicPrograms             AcademicProgram[]
   curriculumVersions           CurriculumVersion[]
   curriculumCourses            CurriculumCourse[]
+  programLearningOutcomes      ProgramLearningOutcome[]
+  courseLearningOutcomes       CourseLearningOutcome[]
+  cloPloMappings               CourseLearningOutcomePloMapping[]
   syllabusVersions             SyllabusVersion[]
   studentCurriculumAssignments StudentCurriculumAssignment[]
   courseAssessmentTemplates    CourseAssessmentTemplate[]
@@ -683,39 +686,43 @@ model Course {
 }
 
 model CurriculumVersion {
-  id                           String                        @id @default(cuid())
-  departmentId                 String                        @map("department_id")
-  academicProgramId            String                        @map("academic_program_id")
-  code                         String                        @db.VarChar(64)
-  name                         String                        @db.VarChar(255)
+  id                           String                            @id @default(cuid())
+  departmentId                 String                            @map("department_id")
+  academicProgramId            String                            @map("academic_program_id")
+  code                         String                            @db.VarChar(64)
+  name                         String                            @db.VarChar(255)
   description                  String?
-  status                       AcademicVersionStatus         @default(DRAFT)
-  effectiveAcademicSessionCode String                        @map("effective_academic_session_code") @db.VarChar(64)
-  effectiveFrom                DateTime?                     @map("effective_from")
-  effectiveTo                  DateTime?                     @map("effective_to")
-  durationYears                Int                           @map("duration_years") @db.SmallInt
-  totalSemesters               Int                           @map("total_semesters") @db.SmallInt
-  creditsOffered               Decimal                       @map("credits_offered") @db.Decimal(6, 2)
-  minimumCreditsRequired       Decimal                       @map("minimum_credits_required") @db.Decimal(6, 2)
-  totalCourses                 Int                           @map("total_courses") @db.SmallInt
-  totalProgrammeMarks          Decimal                       @map("total_programme_marks") @db.Decimal(8, 2)
-  coreCredits                  Decimal                       @map("core_credits") @db.Decimal(6, 2)
-  gedCredits                   Decimal                       @map("ged_credits") @db.Decimal(6, 2)
-  capstoneCredits              Decimal                       @map("capstone_credits") @db.Decimal(6, 2)
-  coreCourseCount              Int                           @map("core_course_count") @db.SmallInt
-  gedCourseCount               Int                           @map("ged_course_count") @db.SmallInt
-  capstoneCourseCount          Int                           @map("capstone_course_count") @db.SmallInt
-  teachingWeeksPerSemester     Int?                          @map("teaching_weeks_per_semester") @db.SmallInt
-  notionalHoursPerCredit       Int?                          @map("notional_hours_per_credit") @db.SmallInt
-  approvedAt                   DateTime?                     @map("approved_at")
-  archivedAt                   DateTime?                     @map("archived_at")
-  createdAt                    DateTime                      @default(now()) @map("created_at")
-  updatedAt                    DateTime                      @updatedAt @map("updated_at")
-  department                   Department                    @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  academicProgram              AcademicProgram               @relation(fields: [academicProgramId], references: [id], onDelete: Restrict)
+  status                       AcademicVersionStatus             @default(DRAFT)
+  effectiveAcademicSessionCode String                            @map("effective_academic_session_code") @db.VarChar(64)
+  effectiveFrom                DateTime?                         @map("effective_from")
+  effectiveTo                  DateTime?                         @map("effective_to")
+  durationYears                Int                               @map("duration_years") @db.SmallInt
+  totalSemesters               Int                               @map("total_semesters") @db.SmallInt
+  creditsOffered               Decimal                           @map("credits_offered") @db.Decimal(6, 2)
+  minimumCreditsRequired       Decimal                           @map("minimum_credits_required") @db.Decimal(6, 2)
+  totalCourses                 Int                               @map("total_courses") @db.SmallInt
+  totalProgrammeMarks          Decimal                           @map("total_programme_marks") @db.Decimal(8, 2)
+  coreCredits                  Decimal                           @map("core_credits") @db.Decimal(6, 2)
+  gedCredits                   Decimal                           @map("ged_credits") @db.Decimal(6, 2)
+  capstoneCredits              Decimal                           @map("capstone_credits") @db.Decimal(6, 2)
+  coreCourseCount              Int                               @map("core_course_count") @db.SmallInt
+  gedCourseCount               Int                               @map("ged_course_count") @db.SmallInt
+  capstoneCourseCount          Int                               @map("capstone_course_count") @db.SmallInt
+  teachingWeeksPerSemester     Int?                              @map("teaching_weeks_per_semester") @db.SmallInt
+  notionalHoursPerCredit       Int?                              @map("notional_hours_per_credit") @db.SmallInt
+  approvedAt                   DateTime?                         @map("approved_at")
+  archivedAt                   DateTime?                         @map("archived_at")
+  createdAt                    DateTime                          @default(now()) @map("created_at")
+  updatedAt                    DateTime                          @updatedAt @map("updated_at")
+  department                   Department                        @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  academicProgram              AcademicProgram                   @relation(fields: [academicProgramId], references: [id], onDelete: Restrict)
   curriculumCourses            CurriculumCourse[]
+  programLearningOutcomes      ProgramLearningOutcome[]
+  courseLearningOutcomes       CourseLearningOutcome[]
+  cloPloMappings               CourseLearningOutcomePloMapping[]
   studentCurriculumAssignments StudentCurriculumAssignment[]
 
+  @@unique([id, departmentId], map: "curriculum_version_id_department_uq")
   @@unique([departmentId, academicProgramId, code], map: "curriculum_version_dept_program_code_uq")
   @@index([departmentId, status], map: "curriculum_version_dept_status_idx")
   @@index([departmentId, effectiveAcademicSessionCode], map: "curriculum_version_dept_session_idx")
@@ -820,8 +827,10 @@ model CurriculumCourse {
   syllabusVersions     SyllabusVersion[]
   courseOfferings      CourseOffering[]
   enrollments          Enrollment[]
+  learningOutcomes     CourseLearningOutcome[]
 
   @@unique([id, departmentId], map: "curriculum_course_id_department_uq")
+  @@unique([id, departmentId, curriculumVersionId], map: "curriculum_course_id_department_version_uq")
   @@unique([curriculumVersionId, courseId], map: "curriculum_course_version_course_uq")
   @@unique([curriculumVersionId, academicYearNumber, semesterNumber, displayOrder], map: "curriculum_course_version_term_order_uq")
   @@index([departmentId, curriculumVersionId], map: "curriculum_course_dept_version_idx")
@@ -829,6 +838,64 @@ model CurriculumCourse {
   @@index([departmentId, courseId], map: "curriculum_course_dept_course_idx")
   @@index([departmentId, assessmentTemplateId], map: "curriculum_course_dept_template_idx")
   @@map("curriculum_courses")
+}
+
+model ProgramLearningOutcome {
+  id                  String                            @id @default(cuid())
+  departmentId        String                            @map("department_id")
+  curriculumVersionId String                            @map("curriculum_version_id")
+  code                String                            @db.VarChar(64)
+  statement           String
+  displayOrder        Int                               @map("display_order") @db.SmallInt
+  createdAt           DateTime                          @default(now()) @map("created_at")
+  updatedAt           DateTime                          @updatedAt @map("updated_at")
+  department          Department                        @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "program_learning_outcome_department_fkey")
+  curriculumVersion   CurriculumVersion                 @relation(fields: [curriculumVersionId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "program_learning_outcome_dept_version_fkey")
+  cloMappings         CourseLearningOutcomePloMapping[]
+
+  @@unique([id, departmentId, curriculumVersionId], map: "program_learning_outcome_id_dept_version_uq")
+  @@unique([departmentId, curriculumVersionId, code], map: "program_learning_outcome_dept_version_code_uq")
+  @@unique([departmentId, curriculumVersionId, displayOrder], map: "program_learning_outcome_dept_version_order_uq")
+  @@map("program_learning_outcomes")
+}
+
+model CourseLearningOutcome {
+  id                  String                            @id @default(cuid())
+  departmentId        String                            @map("department_id")
+  curriculumVersionId String                            @map("curriculum_version_id")
+  curriculumCourseId  String                            @map("curriculum_course_id")
+  code                String                            @db.VarChar(64)
+  statement           String
+  displayOrder        Int                               @map("display_order") @db.SmallInt
+  createdAt           DateTime                          @default(now()) @map("created_at")
+  updatedAt           DateTime                          @updatedAt @map("updated_at")
+  department          Department                        @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "course_learning_outcome_department_fkey")
+  curriculumVersion   CurriculumVersion                 @relation(fields: [curriculumVersionId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "course_learning_outcome_dept_version_fkey")
+  curriculumCourse    CurriculumCourse                  @relation(fields: [curriculumCourseId, departmentId, curriculumVersionId], references: [id, departmentId, curriculumVersionId], onDelete: Restrict, onUpdate: Restrict, map: "course_learning_outcome_course_identity_fkey")
+  ploMappings         CourseLearningOutcomePloMapping[]
+
+  @@unique([id, departmentId, curriculumVersionId], map: "course_learning_outcome_id_dept_version_uq")
+  @@unique([departmentId, curriculumVersionId, curriculumCourseId, code], map: "course_learning_outcome_dept_version_course_code_uq")
+  @@unique([departmentId, curriculumVersionId, curriculumCourseId, displayOrder], map: "course_learning_outcome_dept_version_course_order_uq")
+  @@map("course_learning_outcomes")
+}
+
+model CourseLearningOutcomePloMapping {
+  id                       String                 @id @default(cuid())
+  departmentId             String                 @map("department_id")
+  curriculumVersionId      String                 @map("curriculum_version_id")
+  courseLearningOutcomeId  String                 @map("course_learning_outcome_id")
+  programLearningOutcomeId String                 @map("program_learning_outcome_id")
+  createdAt                DateTime               @default(now()) @map("created_at")
+  department               Department             @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "clo_plo_mapping_department_fkey")
+  curriculumVersion        CurriculumVersion      @relation(fields: [curriculumVersionId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "clo_plo_mapping_dept_version_fkey")
+  courseLearningOutcome    CourseLearningOutcome  @relation(fields: [courseLearningOutcomeId, departmentId, curriculumVersionId], references: [id, departmentId, curriculumVersionId], onDelete: Restrict, onUpdate: Restrict, map: "clo_plo_mapping_clo_identity_fkey")
+  programLearningOutcome   ProgramLearningOutcome @relation(fields: [programLearningOutcomeId, departmentId, curriculumVersionId], references: [id, departmentId, curriculumVersionId], onDelete: Restrict, onUpdate: Restrict, map: "clo_plo_mapping_plo_identity_fkey")
+
+  @@unique([departmentId, curriculumVersionId, courseLearningOutcomeId, programLearningOutcomeId], map: "clo_plo_mapping_dept_version_pair_uq")
+  @@index([courseLearningOutcomeId, departmentId, curriculumVersionId], map: "clo_plo_mapping_clo_identity_idx")
+  @@index([programLearningOutcomeId, departmentId, curriculumVersionId], map: "clo_plo_mapping_plo_identity_idx")
+  @@map("course_learning_outcome_plo_mappings")
 }
 
 model SyllabusVersion {
