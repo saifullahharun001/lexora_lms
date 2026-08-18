@@ -69,63 +69,85 @@ export function TeacherAssignedCoursesPanel() {
       ) : null}
 
       {assignedCoursesQuery.isSuccess && assignedCoursesQuery.data.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-slate-200">
-          <table className="min-w-[860px] text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Course</th>
-                <th className="px-4 py-3 font-semibold">Section</th>
-                <th className="px-4 py-3 font-semibold">Term</th>
-                <th className="px-4 py-3 font-semibold">Capacity</th>
-                <th className="px-4 py-3 font-semibold">Status</th>
-                <th className="px-4 py-3 font-semibold">Visibility</th>
-                <th className="px-4 py-3 text-right font-semibold">Workspace</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 bg-white">
-              {assignedCoursesQuery.data.map((offering) => (
-                <tr key={offering.id}>
-                  <td className="px-4 py-3">
+        <ul className="grid min-w-0 gap-3">
+          {assignedCoursesQuery.data.map((offering) => (
+            <li
+              key={offering.id}
+              className="min-w-0 rounded-lg border border-slate-200 bg-white p-4"
+            >
+              <article className="min-w-0">
+                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
                     <p className="font-semibold text-slate-950">
                       {formatCourseCode(offering)}
                     </p>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                    <p className="mt-1 text-sm leading-5 text-slate-600">
                       {formatCourseTitle(offering)}
                     </p>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">
-                    {formatValue(offering.sectionCode)}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {formatAcademicTerm(offering)}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">
-                    {formatCapacity(offering.capacity)}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3">
-                    <StatusPill label={formatStatus(offering.status)} />
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {formatVisibilityRange(
-                      offering.visibilityStartAt,
-                      offering.visibilityEndAt
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-right">
+                  </div>
+                  <div className="shrink-0">
                     <Link
                       href={`/teacher/courses/${encodeURIComponent(offering.id)}`}
-                      className="inline-flex rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-900 transition hover:border-teal-300 hover:bg-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-300"
+                      className="inline-flex w-full justify-center rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-900 transition hover:border-teal-300 hover:bg-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-300 sm:w-auto"
                     >
                       Open workspace
                     </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                </div>
+
+                <dl className="mt-4 grid min-w-0 gap-3 sm:grid-cols-3">
+                  <CourseMetadata
+                    label="Section"
+                    value={formatValue(offering.sectionCode)}
+                  />
+                  <CourseMetadata
+                    label="Academic term"
+                    value={formatAcademicTerm(offering)}
+                  />
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Status
+                    </dt>
+                    <dd className="mt-1">
+                      <StatusPill label={formatStatus(offering.status)} />
+                    </dd>
+                  </div>
+                </dl>
+
+                <dl className="mt-4 flex min-w-0 flex-wrap gap-x-6 gap-y-2 border-t border-slate-200 pt-3 text-xs text-slate-600">
+                  <div className="flex min-w-0 gap-1.5">
+                    <dt className="font-semibold text-slate-700">Capacity:</dt>
+                    <dd>{formatCapacity(offering.capacity)}</dd>
+                  </div>
+                  <div className="flex min-w-0 gap-1.5">
+                    <dt className="shrink-0 font-semibold text-slate-700">
+                      Visibility:
+                    </dt>
+                    <dd className="min-w-0">
+                      {formatVisibilityRange(
+                        offering.visibilityStartAt,
+                        offering.visibilityEndAt
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+            </li>
+          ))}
+        </ul>
       ) : null}
     </SectionCard>
+  );
+}
+
+function CourseMetadata({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </dt>
+      <dd className="mt-1 text-sm font-medium text-slate-700">{value}</dd>
+    </div>
   );
 }
 
