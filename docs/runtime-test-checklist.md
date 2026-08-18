@@ -19806,3 +19806,773 @@ The authorization-review Low finding concerning exact binding authority special-
 No automatic single-`ACTIVE` SyllabusVersion rule, automatic retirement rule, automatic syllabus selection, effective-date auto-binding or historical syllabus backfill is introduced by this checkpoint.
 
 Do not describe the complete syllabus workflow as finished.
+
+## Permanent CourseOffering → SyllabusVersion Binding Authorization Provisioning Ordinary Runtime Verification — 2026-08-18
+
+### Scope and supersession
+
+This checkpoint implements, promotes, provisions and runtime-verifies the permanent/config-driven authorization required for the existing controlled:
+
+`CourseOffering → SyllabusVersion`
+
+binding workflow.
+
+Dedicated permission:
+
+`course-management.syllabus-binding.manage`
+
+Exact permission semantics:
+
+- resource: `course-management.syllabus-binding`;
+- action: `manage`;
+- scope: `DEPARTMENT`.
+
+Target permanent role:
+
+- department: Law / `dept_law_test` / code `0421`;
+- role: `department_admin`.
+
+This checkpoint supersedes the earlier application-binding runtime checkpoint's **Important operational limitation** and **Still pending** wording only for:
+
+- permanent/config-driven `course-management.syllabus-binding.manage` provisioning;
+- permanent Law Department Admin RolePermission provisioning;
+- provisioning dry-run/apply/idempotency verification;
+- provisioning collision and transaction rollback verification;
+- real PostgreSQL concurrent provisioning convergence;
+- fresh-principal permanent permission loading;
+- Teacher and Student permanent exclusion;
+- forged `x-department-id` regression after permanent provisioning.
+
+The earlier application-binding runtime checkpoint remains valid historical evidence for:
+
+- binding DTO/API/service/repository behavior;
+- exact binding policy enforcement;
+- Department Admin live-authority revalidation;
+- binding lifecycle eligibility;
+- object/department isolation;
+- immutable different-target behavior;
+- exact-target idempotency;
+- application success auditing;
+- application-level PostgreSQL/API concurrency;
+- binding-versus-lifecycle race behavior;
+- transactional application audit rollback;
+- feature-specific runtime cleanup.
+
+Historical evidence must not be interpreted as having been deleted or replaced.
+
+This checkpoint does **not** mean the broader syllabus workflow or Teacher Course Workspace is complete.
+
+### Implementation identity
+
+Permanent provisioning implementation commit:
+
+`50ebd3cde77aa28d5510e24fc75f46f78af8353f`
+
+Commit message:
+
+`Provision syllabus binding authority`
+
+Implementation baseline:
+
+`15e0a84b2f00ccd655b5c3fee164e8c705693a1e`
+
+Committed implementation scope was exactly two files:
+
+- `apps/api/prisma/authorization/authorization-provisioning.definition.ts`;
+- `apps/api/prisma/authorization/provision-authorization.test.ts`.
+
+No schema migration, controller, route, service, environment, deployment or documentation file was part of the implementation commit.
+
+Reviewed patch SHA-256:
+
+`4567dd1e948f711cd290266c45524a0f5eb17f7e260166f15c804604d1e4c0de`
+
+Reviewed post-image Git blobs:
+
+- provisioning definition: `cde324d06780d3dabb2da172cc0f0bfd61d81848`;
+- provisioning test: `54ea7f461445c75041acdbcaab509b302aea4b31`.
+
+The provisioning definition adds the exact binding authority to the existing source-controlled ordered authorization provisioning set after the existing SyllabusVersion manage and lifecycle authorities.
+
+The generic provisioning engine was not weakened or bypassed.
+
+### Source-controlled provisioning definition
+
+The source-controlled binding definition targets:
+
+- permission code: `course-management.syllabus-binding.manage`;
+- resource: `course-management.syllabus-binding`;
+- action: `manage`;
+- scope: `DEPARTMENT`;
+- target role: `department_admin`;
+- provisioning audit action: `authorization.syllabus-binding-manage.provisioned`.
+
+The permanent authority was not introduced by:
+
+- manual long-lived database grant;
+- Department Admin wildcard broadening;
+- `PolicyGuard` weakening;
+- `@RequirePolicy()` removal;
+- authenticated department override;
+- bypassing permission provenance checks.
+
+### Independent review and static verification
+
+The exact two-file implementation was independently reviewed before promotion.
+
+Review findings:
+
+- Critical: `0`;
+- High: `0`;
+- Medium: `0`;
+- blocking Low: `0`.
+
+One non-blocking observation remained:
+
+- the mocked simultaneous logical-apply test is not a substitute for real PostgreSQL concurrency evidence.
+
+Real PostgreSQL concurrency was therefore tested separately.
+
+Focused compiled provisioning verification:
+
+- tests: `23`;
+- passed: `23`;
+- failed: `0`;
+- skipped: `0`.
+
+Covered static cases included:
+
+- existing authority preservation;
+- exact binding authority ordering;
+- default CLI dry-run and explicit apply;
+- strict CLI argument rejection;
+- ordinary-runtime-shaped binding-only dry-run;
+- ordinary-runtime-shaped binding-only apply;
+- exact provisioning audit;
+- second-apply true no-op;
+- partial-state missing-link repair;
+- all-three-definition provisioning in one Serializable transaction;
+- exact-code semantic mismatch fail-closed behavior;
+- equivalent-semantics incompatible-code fail-closed behavior;
+- later binding collision before earlier writes;
+- ambiguity fail-closed behavior;
+- missing/inactive/archived/deleted department safety;
+- missing/ambiguous/archived/wrong-department Admin role safety;
+- exact selected-department Admin targeting;
+- unrelated-authority preservation;
+- binding RolePermission failure rollback;
+- binding audit failure rollback;
+- later-binding failure rollback of earlier tentative definitions and audits;
+- logical repeated-apply cardinality;
+- deterministic secret-safe summary output.
+
+Backend validation passed:
+
+- `pnpm --filter @lexora/api typecheck`;
+- `pnpm --filter @lexora/api build`;
+- `git diff --check`.
+
+### Disposable PostgreSQL verification
+
+Before ordinary-database provisioning, the exact reviewed implementation was tested against isolated disposable PostgreSQL.
+
+Disposable database controls included:
+
+- PostgreSQL `16-alpine`;
+- loopback-only random host port;
+- no persistent volume;
+- no ordinary `lexora_lms` database access;
+- ordinary live repository left clean and unchanged.
+
+Disposable verification covered:
+
+#### Default dry-run
+
+With existing SyllabusVersion manage/lifecycle authorities and binding authority absent:
+
+- existing manage: exact / unchanged;
+- existing lifecycle: exact / unchanged;
+- binding plan: `CREATE / CREATE / CREATE`;
+- Permission writes: `0`;
+- RolePermission writes: `0`;
+- audit writes: `0`.
+
+#### First apply
+
+The first apply created only the missing binding authority:
+
+- exact binding Permission: `1`;
+- Law Department Admin binding RolePermission: `1`;
+- Teacher binding grant: `0`;
+- Student binding grant: `0`;
+- BUS Department Admin binding grant: `0`;
+- binding provisioning SERVICE audit: `1`.
+
+Existing manage/lifecycle authority remained unchanged.
+
+#### Second apply
+
+A repeated apply was a true no-op:
+
+- Permission creation: none;
+- RolePermission creation: none;
+- audit creation: none;
+- binding Permission/link/audit cardinality remained `1 / 1 / 1`.
+
+#### Partial-state repair
+
+With the exact binding Permission preserved but its Law Department Admin RolePermission removed:
+
+- existing Permission was reused;
+- only the missing RolePermission was created;
+- exactly one repair provisioning audit was recorded;
+- unrelated authority remained unchanged.
+
+#### Same-code / wrong-semantics collision
+
+A controlled row using the exact binding permission code with incompatible semantics caused provisioning to fail closed.
+
+Verified:
+
+- no valid binding authority was committed;
+- no binding RolePermission was committed;
+- no provisioning audit was committed;
+- unrelated existing authority remained unchanged.
+
+#### Equivalent-semantics / incompatible-code collision
+
+A controlled permission with binding-equivalent resource/action/scope but an incompatible permission code also caused provisioning to fail closed.
+
+Verified:
+
+- exact binding Permission was not created;
+- binding RolePermission remained absent;
+- binding provisioning audit remained absent;
+- unrelated authority remained unchanged.
+
+#### Binding RolePermission failure rollback
+
+A disposable PostgreSQL failure injector forced failure during binding RolePermission insertion.
+
+Verified transaction rollback:
+
+- tentative binding Permission rolled back;
+- binding RolePermission absent;
+- binding provisioning audit absent;
+- earlier authorities preserved;
+- failure injector removed with zero residue.
+
+#### Binding audit failure rollback
+
+A disposable PostgreSQL failure injector forced failure during binding provisioning-audit insertion.
+
+Verified transaction rollback:
+
+- tentative binding Permission rolled back;
+- tentative binding RolePermission rolled back;
+- binding provisioning audit absent;
+- earlier authorities preserved;
+- failure injector removed with zero residue.
+
+#### Multi-definition later-stage atomic rollback
+
+All three provisioning definitions were made absent in the disposable database.
+
+A strengthened later-binding failure injector required the same transaction to have already tentatively reached:
+
+- SyllabusVersion manage Permission/link/audit;
+- SyllabusVersion lifecycle Permission/link/audit;
+- binding Permission;
+
+before forcing failure at the binding RolePermission insertion stage.
+
+Observed:
+
+- earlier manage writes/audit were reached tentatively;
+- earlier lifecycle writes/audit were reached tentatively;
+- later binding failure was forced;
+- the complete Serializable transaction rolled back.
+
+Authoritative final cardinality after failure:
+
+- manage Permission/link/audit: `0 / 0 / 0`;
+- lifecycle Permission/link/audit: `0 / 0 / 0`;
+- binding Permission/link/audit: `0 / 0 / 0`.
+
+Unrelated authority remained preserved.
+
+Failure-injector residue:
+
+`0`
+
+#### Real PostgreSQL concurrent provisioning convergence
+
+Two independent provisioning apply processes were armed behind a common release gate and started against the same clean all-absent disposable PostgreSQL state.
+
+Observed process results:
+
+- concurrent workers: `2`;
+- committed workers: `1`;
+- safely blocked workers: `1`.
+
+PostgreSQL server logs classified the blocked worker as:
+
+`SERIALIZATION / CONCURRENT-WRITE`
+
+The CLI intentionally did not expose internal database error detail.
+
+Authoritative converged database state:
+
+- manage Permission/link/audit: `1 / 1 / 1`;
+- lifecycle Permission/link/audit: `1 / 1 / 1`;
+- binding Permission/link/audit: `1 / 1 / 1`;
+- duplicate Permission/RolePermission: none;
+- duplicate provisioning audit: none;
+- partial committed state: none;
+- non-Law provisioning grants: `0`;
+- unrelated Teacher authority: preserved.
+
+A sequential operator retry after convergence was a true no-op.
+
+This is documented as:
+
+**real PostgreSQL concurrent convergence PASS with observed serialization contention**.
+
+It must not be rewritten as "both concurrent workers succeeded."
+
+### Disposable environment cleanup
+
+After disposable verification:
+
+- final reviewed patch identity remained exact;
+- implementation scope remained exactly two files;
+- final disposable authority/audit cardinality remained exact;
+- failure-injector residue was `0`;
+- disposable PostgreSQL container was removed;
+- no persistent disposable volume existed;
+- disposable Git worktree was removed;
+- ordinary `lexora_lms` had not been accessed during disposable testing;
+- live repository remained clean;
+- direct API remained HTTP `200`;
+- Nginx API remained HTTP `200`.
+
+### Implementation commit and promotion
+
+The exact reviewed patch was reverified on Windows before commit.
+
+Verified before commit:
+
+- branch: `main`;
+- local baseline: `15e0a84b2f00ccd655b5c3fee164e8c705693a1e`;
+- `origin/main`: same baseline;
+- changed files: exactly two;
+- staged files before staging: none;
+- definition blob: exact;
+- test blob: exact;
+- patch SHA-256: exact;
+- `git diff --check`: pass.
+
+After staging:
+
+- staged scope: exactly two reviewed files;
+- unstaged drift: none;
+- staged patch identity: exact.
+
+Implementation commit:
+
+`50ebd3cde77aa28d5510e24fc75f46f78af8353f`
+
+Push:
+
+- successful;
+- local `HEAD` and `origin/main` aligned;
+- working tree clean.
+
+### Ubuntu server promotion and static verification
+
+The Ubuntu runtime repository was safely fast-forwarded:
+
+- before: `15e0a84b2f00ccd655b5c3fee164e8c705693a1e`;
+- after: `50ebd3cde77aa28d5510e24fc75f46f78af8353f`.
+
+Verified after promotion:
+
+- committed scope: exactly two files;
+- provisioning definition blob: exact;
+- provisioning test blob: exact;
+- API typecheck: pass;
+- API build: pass;
+- compiled provisioning tests: `23 / 23` pass;
+- repository clean and origin-aligned;
+- direct API: HTTP `200`;
+- Nginx API: HTTP `200`.
+
+No ordinary database provisioning occurred during this source-promotion/static-verification stage.
+
+No PM2 restart was performed during this provisioning implementation promotion.
+
+### Ordinary PostgreSQL read-only preflight
+
+The ordinary runtime database was then inspected inside an explicit:
+
+`REPEATABLE READ / READ ONLY`
+
+transaction.
+
+Runtime database:
+
+`lexora_lms`
+
+Observed PostgreSQL runtime:
+
+`18.4 (Ubuntu 18.4-0ubuntu0.26.04.1)`
+
+Verified pre-provisioning state:
+
+- Law department `dept_law_test` / `0421`: exact and active;
+- canonical Law Department Admin role: exact and active;
+- `course-management.syllabus-version.manage`: exact permanent authority;
+- `course-management.syllabus-version.lifecycle.manage`: exact permanent authority;
+- binding Permission: absent;
+- binding-equivalent semantic clash: absent;
+- binding RolePermission: absent;
+- binding provisioning audit: absent;
+- unexpected syllabus-governance role grants: none.
+
+The transaction remained read-only and was rolled back.
+
+No database write occurred.
+
+PM2 PID remained unchanged.
+
+Direct and Nginx health remained HTTP `200`.
+
+### Ordinary database canonical dry-run
+
+The ordinary runtime `DATABASE_URL` target was loaded without printing credentials.
+
+Verified target:
+
+`lexora_lms`
+
+The canonical provisioning CLI was executed without `--apply`.
+
+Observed summary:
+
+- mode: `DRY_RUN`;
+- department: `dept_law_test` / `0421`;
+- role: `department_admin`;
+- existing manage: exact / unchanged;
+- existing lifecycle: exact / unchanged;
+- binding Permission state: absent;
+- binding RolePermission state: absent;
+- binding plan: `CREATE / CREATE / CREATE`;
+- overall applied: `false`.
+
+Authoritative post-dry-run verification showed:
+
+- binding Permission writes: `0`;
+- binding RolePermission writes: `0`;
+- binding provisioning audit writes: `0`;
+- governance fingerprint: unchanged;
+- existing authorities: preserved.
+
+No PM2 restart occurred.
+
+### First permanent ordinary-database apply
+
+The provisioning CLI was then deliberately executed with explicit:
+
+`--apply`
+
+against the verified ordinary:
+
+`lexora_lms`
+
+database.
+
+Observed first-apply result:
+
+- mode: `APPLY`;
+- applied: `true`;
+- overall no-op: `false`;
+- existing manage: unchanged;
+- existing lifecycle: unchanged;
+- binding plan/result: `CREATE / CREATE / CREATE`;
+- binding Permission created: true;
+- binding RolePermission created: true;
+- binding provisioning audit recorded: true.
+
+Authoritative ordinary PostgreSQL verification:
+
+- existing manage Permission identity: preserved;
+- existing manage RolePermission identity: preserved;
+- existing lifecycle Permission identity: preserved;
+- existing lifecycle RolePermission identity: preserved;
+- exact binding Permission: `1`;
+- Law Department Admin binding RolePermission: `1`;
+- other-role binding grants: `0`;
+- exact binding provisioning SERVICE audit: `1`.
+
+The binding audit was verified as:
+
+- action: `authorization.syllabus-binding-manage.provisioned`;
+- actor type: `SERVICE`;
+- actor user: null;
+- department: `dept_law_test`;
+- target type: `role_permission`;
+- outcome: `SUCCESS`;
+- mode: `APPLY`;
+- department code: `0421`;
+- role code: `department_admin`;
+- permission code: `course-management.syllabus-binding.manage`;
+- permission created: true;
+- role permission created: true.
+
+No manual long-lived database grant was used.
+
+### Second permanent ordinary-database apply
+
+The exact provisioning command was executed again.
+
+Observed:
+
+- mode: `APPLY`;
+- applied: `true`;
+- overall no-op: `true`.
+
+For all three provisioning definitions:
+
+- Permission state: exact;
+- RolePermission state: exact;
+- Permission change: unchanged;
+- RolePermission change: unchanged;
+- audit change: unchanged;
+- Permission created: false;
+- RolePermission created: false;
+- audit recorded: false;
+- definition no-op: true.
+
+Authoritative identity verification confirmed that all existing IDs remained unchanged.
+
+Permanent binding cardinality remained:
+
+- binding Permission: `1`;
+- Law Department Admin binding link: `1`;
+- binding provisioning audit: `1`;
+- other-role binding grants: `0`.
+
+No duplicate write occurred.
+
+### Fresh-principal permanent authority verification
+
+Fresh canonical Law principals were then authenticated after permanent provisioning.
+
+Raw passwords were entered interactively and were not printed.
+
+Raw access tokens were not printed or written to files.
+
+#### Law Department Admin
+
+Fresh login:
+
+- HTTP `201`;
+- role: `department_admin`;
+- principal department: `dept_law_test`;
+- permanent binding permission: present.
+
+The fresh Admin reached the binding-authorised path.
+
+A deliberately nonexistent CourseOffering/SyllabusVersion probe returned:
+
+- HTTP `404`.
+
+This demonstrates that the request passed authentication/policy authorization and reached the department/object-safe not-found path.
+
+#### Law Teacher
+
+Fresh login:
+
+- HTTP `201`;
+- role: `teacher`;
+- department: `dept_law_test`;
+- permanent binding permission: absent.
+
+Binding endpoint probe:
+
+- HTTP `403`.
+
+#### Law Student
+
+Fresh login:
+
+- HTTP `201`;
+- role: `student`;
+- department: `dept_law_test`;
+- permanent binding permission: absent.
+
+Binding endpoint probe:
+
+- HTTP `403`.
+
+#### Unauthenticated request
+
+Binding endpoint probe:
+
+- HTTP `401`.
+
+### Forged department-header regression
+
+A fresh permanently-authorised Law Department Admin sent the binding probe with:
+
+`x-department-id: dept_bus_test`
+
+Result:
+
+- HTTP `404`;
+- authenticated Law authority remained authoritative.
+
+A separate existing Law CourseOffering read was performed:
+
+- normal Law-scoped Admin read: HTTP `200`;
+- same read with forged `x-department-id: dept_bus_test`: HTTP `200`;
+- response identity: unchanged.
+
+Therefore the forged BUS header did not replace the authenticated principal's:
+
+`dept_law_test`
+
+scope.
+
+### Zero-product-mutation verification
+
+The permanent-authority regression deliberately avoided creating or changing academic binding state.
+
+Before/after fingerprint verification confirmed:
+
+- CourseOffering syllabus-binding state: unchanged;
+- binding success-audit state: unchanged.
+
+Permanent authorization state remained:
+
+- exact binding Permission: `1`;
+- Law Department Admin binding RolePermission: `1`;
+- other-role binding grants: `0`;
+- provisioning SERVICE audit: `1`.
+
+No raw password or access token was persisted in verification artifacts.
+
+### Platform non-disruption
+
+Throughout permanent ordinary-runtime provisioning and fresh-principal verification:
+
+- repository remained clean and origin-aligned at implementation commit `50ebd3cde77aa28d5510e24fc75f46f78af8353f`;
+- PM2 PID remained unchanged;
+- no PM2 restart was performed;
+- direct API remained HTTP `200`;
+- Nginx API remained HTTP `200`.
+
+### Runtime verdict
+
+Permanent binding authorization provisioning is now:
+
+- implemented;
+- independently reviewed;
+- statically verified;
+- disposable PostgreSQL adversarially verified;
+- disposable PostgreSQL transaction-rollback verified;
+- real PostgreSQL concurrent-convergence verified;
+- committed and pushed;
+- promoted to the Ubuntu runtime source tree;
+- ordinary PostgreSQL dry-run verified;
+- permanently applied to the ordinary runtime database;
+- ordinary-runtime idempotency verified;
+- fresh-principal loading verified;
+- Teacher exclusion verified;
+- Student exclusion verified;
+- unauthenticated denial verified;
+- authenticated-principal department authority verified;
+- forged-header resistance verified;
+- audit-ready;
+- source-controlled and config-driven.
+
+The earlier statement that:
+
+`course-management.syllabus-binding.manage`
+
+is not permanently provisioned in ordinary runtime is now **superseded by this checkpoint**.
+
+The earlier immediate-next-task list for permanent binding authorization provisioning is also superseded.
+
+### Current permanent ordinary-runtime binding authority
+
+Current verified ordinary-runtime state:
+
+- exact Permission:
+  - `course-management.syllabus-binding.manage`;
+- resource:
+  - `course-management.syllabus-binding`;
+- action:
+  - `manage`;
+- scope:
+  - `DEPARTMENT`;
+- Law Department Admin RolePermission:
+  - exactly `1`;
+- Teacher grant:
+  - `0`;
+- Student grant:
+  - `0`;
+- other-role grant:
+  - `0`;
+- provisioning SERVICE audit:
+  - exactly `1`.
+
+### Remaining limitation / future hardening
+
+A real simultaneous provisioning run produced PostgreSQL serialization contention:
+
+- one process committed;
+- one process safely failed;
+- final state converged exactly;
+- no duplicate/partial state occurred;
+- a sequential operator retry was a true no-op.
+
+The CLI intentionally sanitized the internal database error.
+
+The current provisioning workflow does not automatically retry that contention inside the CLI.
+
+A future hardening task may consider a **bounded retry only for positively identified retryable PostgreSQL/Prisma serialization conflicts**.
+
+Do not introduce generic automatic retries for unknown errors.
+
+The earlier authorization-review Low observation also remains future hardening:
+
+- exact binding authority receives dedicated special-case enforcement;
+- the broader general policy-resolution representation has architectural asymmetry;
+- no reviewed/runtime binding bypass has been demonstrated.
+
+Neither item blocks the currently verified permanent binding authority.
+
+### Broader syllabus work still pending
+
+The following broader work remains pending unless separately implemented and runtime verified:
+
+- Teacher syllabus read access;
+- Teacher Course Workspace;
+- Course Outline;
+- Lesson Plan;
+- CLO/PLO workflow;
+- SyllabusVersion frontend management;
+- historical syllabus backfill where separately authorised and designed.
+
+No automatic:
+
+- single-`ACTIVE` SyllabusVersion rule;
+- automatic SyllabusVersion retirement;
+- automatic syllabus selection;
+- effective-date auto-binding;
+- historical syllabus backfill
+
+is introduced by this authorization-provisioning checkpoint.
+
+Do not describe the complete syllabus workflow as finished.
