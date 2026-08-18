@@ -21460,3 +21460,578 @@ The target academic specification places OBE Course Outline and Lesson Planning 
 Before implementation, inspect current source and dependencies and choose one coherent next checkpoint.
 
 Do not combine Course Outline, Lesson Plan, roster, attendance, formative assessment, CLO/PLO and Course File into one giant task.
+
+## OBE Approved CLO/PLO Schema Foundation Ordinary Runtime Verification — 2026-08-19
+
+### Scope and classification
+
+This checkpoint establishes and runtime-verifies the canonical database/schema foundation for approved Outcome-Based Education learning outcomes:
+
+- Program Learning Outcomes (PLOs);
+- Course Learning Outcomes (CLOs);
+- CLO-to-PLO mappings.
+
+This checkpoint supersedes earlier wording only to the extent that the canonical approved CLO/PLO **schema foundation** was still pending.
+
+It does **not** claim completion of:
+
+- PLO/CLO administration APIs;
+- approved-outcome authoring or approval workflow;
+- Teacher-facing CLO/PLO read APIs;
+- Course Outline;
+- Lesson Plan;
+- assessment-to-CLO mapping;
+- CLO/PLO attainment calculation;
+- attainment thresholds or weights;
+- CQI workflow;
+- OBE reporting UI;
+- complete Teacher Course Workspace.
+
+Those application and academic-workflow layers remain pending.
+
+### Implementation identity
+
+Implementation commit:
+
+`3c51a0cb837fc2b342e75758893e9eb2bc539c09`
+
+Commit message:
+
+`Add OBE learning outcomes schema foundation`
+
+Implementation parent:
+
+`17b0f654e5b33b78a550fe9f369f99768f2e0395`
+
+Migration:
+
+`202608190001_add_obe_learning_outcomes_foundation`
+
+The implementation commit changed exactly four files:
+
+- `.gitignore`;
+- `apps/api/prisma/schema.prisma`;
+- `apps/api/prisma/migrations/202608190001_add_obe_learning_outcomes_foundation/migration.sql`;
+- `apps/api/prisma/obe-learning-outcomes-foundation.schema.test.ts`.
+
+No controller, DTO, application service, repository, frontend, authentication, authorization, request-context, environment, PM2 or Nginx behavior was changed by this implementation commit.
+
+### Schema foundation
+
+Three new department-scoped academic models are present:
+
+- `ProgramLearningOutcome`;
+- `CourseLearningOutcome`;
+- `CourseLearningOutcomePloMapping`.
+
+The foundation uses `CurriculumVersion` as the approved academic-version boundary.
+
+Program Learning Outcomes are bound to the exact:
+
+- Department;
+- CurriculumVersion.
+
+Course Learning Outcomes are bound to the exact:
+
+- Department;
+- CurriculumVersion;
+- CurriculumCourse.
+
+CLO-to-PLO mappings are constrained to the exact same:
+
+- Department;
+- CurriculumVersion;
+- CourseLearningOutcome identity;
+- ProgramLearningOutcome identity.
+
+This prevents database-level cross-department and cross-CurriculumVersion outcome mixing.
+
+### Candidate identities and scoped uniqueness
+
+Verified candidate identities include:
+
+- `CurriculumVersion(id, departmentId)`;
+- `CurriculumCourse(id, departmentId, curriculumVersionId)`;
+- `ProgramLearningOutcome(id, departmentId, curriculumVersionId)`;
+- `CourseLearningOutcome(id, departmentId, curriculumVersionId)`.
+
+Verified scoped uniqueness:
+
+- PLO code is unique within a CurriculumVersion;
+- PLO display order is unique within a CurriculumVersion;
+- CLO code is unique within a CurriculumCourse;
+- CLO display order is unique within a CurriculumCourse;
+- a CLO/PLO pair can be mapped only once within its Department/CurriculumVersion identity.
+
+The same PLO/CLO code may be reused legitimately in another CurriculumVersion or department.
+
+### Referential and historical safety
+
+Nine new OBE foreign keys were runtime verified.
+
+All nine use:
+
+- `ON DELETE RESTRICT`;
+- `ON UPDATE RESTRICT`.
+
+Database runtime probes verified that referenced:
+
+- ProgramLearningOutcome identities;
+- CourseLearningOutcome identities;
+- CurriculumCourse identities
+
+cannot be deleted or identity-mutated while protected OBE relationships exist.
+
+Positive display-order CHECK constraints were verified for:
+
+- `program_learning_outcomes`;
+- `course_learning_outcomes`.
+
+Both require:
+
+`display_order > 0`
+
+### Existing academic schema preservation
+
+The migration remained additive.
+
+It did not change the existing verified semantics of:
+
+- `CourseOffering.sectionCode`;
+- `CourseOffering.capacity`;
+- Enrollment;
+- CourseOffering-to-SyllabusVersion binding.
+
+Disposable verification specifically confirmed:
+
+- `section_code` remains required;
+- `capacity` remains nullable;
+- Enrollment remains present and unchanged.
+
+No ordinary-data backfill was introduced.
+
+### Focused and static verification
+
+Before commit, the implementation received independent review and focused static validation.
+
+Verified results included:
+
+- exact intended four-file implementation scope;
+- Prisma schema format/validation/generation passed;
+- focused OBE schema test passed `13/13`;
+- curriculum/SyllabusVersion/CourseOffering-binding regression checks passed;
+- API typecheck passed;
+- API build passed;
+- `git diff --check` passed;
+- migration is additive;
+- no destructive SQL or CASCADE behavior was introduced.
+
+The focused OBE test verifies:
+
+- the three OBE foundation models;
+- Department/CurriculumVersion identity binding;
+- exact CurriculumCourse identity binding;
+- same-version CLO/PLO mapping;
+- scoped PLO uniqueness;
+- scoped CLO uniqueness;
+- duplicate mapping prevention;
+- restrictive historical relationships;
+- positive display-order checks;
+- additive/no-backfill migration behavior;
+- preservation of existing CourseOffering/SyllabusVersion binding;
+- preservation of section, capacity and Enrollment semantics.
+
+### Reviewed artifact and source-identity notes
+
+An exact reviewed implementation artifact was transferred to the Ubuntu verification server before commit.
+
+The reviewed migration, Prisma schema and focused test retained exact SHA-256 identity through disposable PostgreSQL verification.
+
+A Windows working-tree `.gitignore` SHA differed from its later committed Linux raw-file SHA because of text checkout/index representation.
+
+This was investigated rather than treated as a product failure.
+
+Post-commit Git identity verification confirmed:
+
+- server HEAD equals `origin/main`;
+- commit scope is exactly the expected four files;
+- all four HEAD blob IDs equal the corresponding `origin/main` blob IDs;
+- Linux worktree bytes equal the committed Git blobs;
+- index and working tree match HEAD;
+- implementation parent is correct.
+
+Therefore committed Git object identity is the authoritative cross-platform source identity.
+
+### Verification-harness corrections
+
+Several verification-harness issues were encountered and corrected without changing the implementation:
+
+1. An initial transferred SHA-file comparison was line-ending-sensitive.
+   The reviewed archive itself remained SHA-256 correct.
+
+2. An initial Prisma drift command used an unsupported CLI option.
+   The corrected Prisma 6.19.3-compatible database-to-datamodel drift check passed.
+
+3. The failed drift command exposed only a generated disposable PostgreSQL connection URL in failed temporary evidence.
+   The disposable container had already been removed, and the failed evidence directory containing that ephemeral value was explicitly deleted.
+
+4. An initial ordinary preflight migration-history query used a psql variable expression that was not substituted in that invocation.
+   The query failed at syntax parsing before any database write.
+   A corrected read-only query was then used.
+
+None of these harness issues changed:
+
+- the reviewed implementation;
+- ordinary application data;
+- ordinary schema before intended deployment;
+- PM2;
+- Nginx;
+- API runtime behavior.
+
+### Disposable PostgreSQL runtime verification
+
+The exact reviewed migration was tested against isolated disposable PostgreSQL 16 using:
+
+- `postgres:16-alpine`;
+- loopback-only random host-port publication;
+- no persistent volume;
+- generated ephemeral credentials that were not retained;
+- exact committed pre-implementation Prisma schema as the baseline;
+- no ordinary `lexora_lms` database access.
+
+Verified disposable results:
+
+- baseline initialization: PASS;
+- three target OBE tables absent before migration;
+- new candidate indexes absent before migration;
+- exact reviewed migration application: PASS;
+- three OBE tables created;
+- nine OBE foreign keys created;
+- all nine OBE foreign keys verified `RESTRICT / RESTRICT`;
+- two positive display-order CHECK constraints verified;
+- eleven exact mapped target indexes verified;
+- database-to-reviewed-Prisma-datamodel drift: NONE;
+- valid same-version PLO writes: PASS;
+- valid same-version CLO writes: PASS;
+- valid same-version CLO-to-PLO mapping: PASS;
+- code reuse across CurriculumVersions: PASS;
+- code reuse across departments: PASS;
+- cross-department PLO rejection: PASS;
+- cross-department CLO rejection: PASS;
+- cross-CurriculumVersion CLO rejection: PASS;
+- cross-CurriculumVersion mapping rejection: PASS;
+- duplicate PLO code rejection: PASS;
+- duplicate PLO display-order rejection: PASS;
+- duplicate CLO code rejection: PASS;
+- duplicate CLO display-order rejection: PASS;
+- duplicate CLO/PLO mapping rejection: PASS;
+- restrictive referenced delete/update probes: PASS;
+- rejected-write residue: ZERO;
+- second raw migration application rejected safely;
+- existing valid synthetic OBE data remained preserved;
+- section/capacity/Enrollment semantics remained unchanged;
+- live repository and API runtime remained unchanged.
+
+Disposable runtime evidence:
+
+`/home/sh002/lexora-runtime-evidence/obe-learning-outcomes-disposable-20260818T191143Z/runtime-verification.txt`
+
+Evidence file mode was verified as `0600`.
+
+Evidence secret scan passed.
+
+The disposable PostgreSQL container, temporary work directory and transferred review artifacts were removed after successful verification.
+
+### Server promotion and validation
+
+The Ubuntu repository was fast-forwarded to implementation commit:
+
+`3c51a0cb837fc2b342e75758893e9eb2bc539c09`
+
+Repository state was verified:
+
+- clean;
+- `main`;
+- exact `origin/main` alignment.
+
+Server validation passed:
+
+- Prisma schema validation;
+- Prisma Client generation using Prisma `6.19.3`;
+- focused OBE test `13/13`;
+- API typecheck;
+- API build.
+
+The focused Node test emitted the existing module-type warning for direct TypeScript test execution.
+
+No API TypeScript module-system migration was performed or required.
+
+### Ordinary PostgreSQL pre-deployment safety
+
+Ordinary database identity was explicitly verified as:
+
+`lexora_lms`
+
+Ordinary PostgreSQL version:
+
+`18.4 (Ubuntu 18.4-0ubuntu0.26.04.1)`
+
+Before migration:
+
+- incomplete Prisma migrations: `0`;
+- target migration-history record: absent;
+- target OBE tables: absent;
+- target OBE indexes: absent;
+- target OBE foreign keys: absent;
+- target OBE CHECK constraints: absent;
+- Prisma reported the target migration pending.
+
+Selected pre-migration business counts were:
+
+- academic programs: `4`;
+- course offerings: `14`;
+- courses: `63`;
+- curriculum courses: `61`;
+- curriculum versions: `8`;
+- enrollments: `12`;
+- result records: `1`;
+- syllabus versions: `0`;
+- teacher course assignments: `5`;
+- transcript records: `2`;
+- users: `11`.
+
+### Private pre-migration backup
+
+Before ordinary migration application, a private PostgreSQL custom-format backup was created and validated.
+
+Backup path:
+
+`/home/sh002/lexora-private-backups/lexora_lms-before-202608190001_add_obe_learning_outcomes_foundation-20260818T192534Z.dump`
+
+Backup SHA-256:
+
+`1b60be61f144728edab4704b677f54a2fb860498f05bcd246ad576dc70c73854`
+
+Verified backup controls:
+
+- private backup directory mode: `0700`;
+- backup file mode: `0600`;
+- backup non-empty;
+- SHA-256 revalidated immediately before deployment;
+- `pg_restore --list` passed;
+- backup retained after successful migration.
+
+No database credentials or secrets are recorded in this checkpoint.
+
+### Ordinary PostgreSQL deployment
+
+Prisma discovered `11` migrations.
+
+The only pending target migration was:
+
+`202608190001_add_obe_learning_outcomes_foundation`
+
+`prisma migrate deploy` successfully applied it to ordinary:
+
+`lexora_lms`
+
+Migration-history verification after deployment:
+
+- target migration-history rows: `1`;
+- completed rows: `1`;
+- rolled-back rows: `0`;
+- incomplete migrations: `0`.
+
+### Live ordinary PostgreSQL catalog verification
+
+After deployment, ordinary PostgreSQL contained exactly:
+
+- OBE tables: `3`;
+- OBE foreign keys: `9`;
+- OBE foreign keys with `RESTRICT / RESTRICT`: `9`;
+- positive display-order CHECK constraints: `2`;
+- exact mapped target indexes: `11`.
+
+Composite catalog definitions runtime-confirmed the intended identity chains for:
+
+- PLO → Department/CurriculumVersion;
+- CLO → Department/CurriculumVersion;
+- CLO → exact CurriculumCourse identity;
+- mapping → Department/CurriculumVersion;
+- mapping → exact CLO identity;
+- mapping → exact PLO identity.
+
+### No automatic OBE business data
+
+Immediately after ordinary deployment:
+
+- `program_learning_outcomes`: `0`;
+- `course_learning_outcomes`: `0`;
+- `course_learning_outcome_plo_mappings`: `0`.
+
+Therefore the schema migration did not invent, backfill or automatically create academic outcomes.
+
+Approved curriculum outcome data remains a separate controlled application/data-governance workflow.
+
+### Existing business-data preservation
+
+The selected existing business row counts were identical before and after deployment:
+
+- academic programs: `4`;
+- course offerings: `14`;
+- courses: `63`;
+- curriculum courses: `61`;
+- curriculum versions: `8`;
+- enrollments: `12`;
+- result records: `1`;
+- syllabus versions: `0`;
+- teacher course assignments: `5`;
+- transcript records: `2`;
+- users: `11`.
+
+No selected existing academic/business row-count drift was observed.
+
+### Prisma post-deployment verification
+
+After ordinary migration:
+
+- `prisma migrate status` reported:
+  `Database schema is up to date!`
+- database-to-Prisma-datamodel diff reported:
+  `No difference detected.`
+- Prisma drift status: NONE.
+
+A second:
+
+`prisma migrate deploy`
+
+reported:
+
+`No pending migrations to apply.`
+
+The target migration-history cardinality remained exactly `1`.
+
+Selected business row counts remained unchanged.
+
+This verifies safe Prisma deployment idempotency for the completed migration.
+
+### Live runtime non-disruption
+
+No PM2 restart was required for this schema-only foundation checkpoint.
+
+Before and after ordinary migration:
+
+- PM2 process ID remained `53367`;
+- Direct API health returned HTTP `200`;
+- Nginx-proxied API health returned HTTP `200`;
+- repository remained clean and origin-aligned.
+
+The pre-migration database backup remained present and SHA-verified after deployment.
+
+No PM2, Nginx, environment or API route configuration was changed.
+
+### Security and academic-integrity preservation
+
+This checkpoint did not weaken or modify:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- `@RequirePolicy()`;
+- request/principal context;
+- authenticated department scope;
+- `x-department-id` safety;
+- object-level authorization;
+- Teacher assigned-course enforcement;
+- Student own-resource enforcement;
+- result publication locks;
+- result amendment flow;
+- controlled GPA/CGPA recalculation;
+- transcript snapshot immutability;
+- transcript token hashing/expiry/revocation;
+- attendance active-session rules;
+- attendance override reasons;
+- eligibility override reasons;
+- notification isolation;
+- critical-locked preferences;
+- sensitive audit behavior.
+
+Database-level OBE identities are department-scoped and CurriculumVersion-scoped.
+
+Cross-department and cross-version outcome relationships fail closed at the relational layer.
+
+### Current verified classification
+
+The OBE Approved CLO/PLO Schema Foundation is now:
+
+- implemented;
+- independently reviewed;
+- focused/static validated;
+- exact reviewed migration verified on disposable PostgreSQL;
+- committed and pushed;
+- promoted to Ubuntu runtime source;
+- Prisma validated/generated on server;
+- focused server OBE test passed `13/13`;
+- API typecheck/build passed on server;
+- ordinary PostgreSQL preflight passed;
+- private pre-migration backup created, validated and retained;
+- ordinary PostgreSQL migration deployed successfully;
+- migration history verified complete;
+- live PostgreSQL catalog verified;
+- department/version relational rejection behavior verified;
+- database-to-Prisma datamodel drift verified absent;
+- selected existing business counts verified preserved;
+- automatic OBE business data creation verified zero;
+- second Prisma deployment verified safe no-op;
+- PM2/API/Nginx runtime verified non-disrupted.
+
+This closes the **OBE Approved CLO/PLO database/schema foundation checkpoint**.
+
+It does **not** close the broader OBE academic workflow.
+
+### Pending OBE application work
+
+Still pending:
+
+- controlled Admin/authorized curriculum-management API for approved PLOs;
+- controlled Admin/authorized curriculum-management API for approved CLOs;
+- controlled CLO-to-PLO mapping management;
+- lifecycle/governance rules for outcome authoring and approval;
+- safe read contracts for approved outcomes;
+- Teacher assigned-course read access to applicable approved CLO/PLO data;
+- Course Outline foundation and workflow;
+- Lesson Plan foundation and workflow;
+- assessment-to-CLO mapping;
+- CLO/PLO attainment calculation;
+- configurable attainment thresholds/weights;
+- CQI workflow;
+- OBE reporting and frontend integration.
+
+Approved curriculum-owned CLO text and CLO/PLO mappings must not become ordinary Teacher-editable data.
+
+### Next safe development step
+
+Before implementing Course Outline or Lesson Plan, perform a focused source/runtime audit for the **approved CLO/PLO read contract**.
+
+The next checkpoint should determine the narrowest secure read model for:
+
+- Department Admin or other explicitly authorized curriculum-management roles;
+- assigned Teachers through CourseOffering context;
+- exact CurriculumVersion/CurriculumCourse identity;
+- approved curriculum-owned PLO/CLO/mapping data.
+
+Do not expose a broad generic Teacher outcome-management endpoint.
+
+Do not allow Teacher access to arbitrary CurriculumVersions or another department's outcomes.
+
+Do not introduce Teacher mutation of approved curriculum-owned CLO/PLO data.
+
+Do not combine:
+
+- outcome management;
+- Course Outline;
+- Lesson Plan;
+- attainment;
+- CQI;
+- frontend editing
+
+into one implementation checkpoint.
