@@ -55,6 +55,12 @@ export type CourseOfferingStatus =
   | "COMPLETED"
   | "CANCELED"
   | "ARCHIVED";
+export type AcademicVersionStatus =
+  | "DRAFT"
+  | "APPROVED"
+  | "ACTIVE"
+  | "RETIRED"
+  | "ARCHIVED";
 export type TeacherAssignmentStatus = "ACTIVE" | "INACTIVE";
 export type ManagedUserRoleCode = "student" | "teacher";
 export type ManagedUserStatus =
@@ -165,6 +171,58 @@ export interface CourseOffering {
   visibilityEndAt?: string | null;
   course?: Partial<AcademicCourse> | null;
   academicTerm?: Partial<AcademicTerm> | null;
+  curriculumCourse?: CourseOfferingCurriculumSummary | null;
+}
+
+export interface CurriculumVersionSummary {
+  id: string;
+  code: string;
+  name: string;
+  status: AcademicVersionStatus;
+  effectiveAcademicSessionCode: string;
+}
+
+export interface AssessmentTemplateSummary {
+  id: string;
+  code: string;
+  versionNumber: number;
+  name: string;
+  status: AcademicVersionStatus;
+  totalMarks: string | number;
+}
+
+export interface CourseOfferingCurriculumSummary {
+  id: string;
+  categoryCode: string;
+  academicYearNumber: number;
+  semesterNumber: number;
+  displayOrder: number;
+  courseCodeSnapshot: string;
+  courseTitleSnapshot: string;
+  creditHoursSnapshot: string | number;
+  totalMarksSnapshot: string | number;
+  isRequired: boolean;
+  curriculumVersion: CurriculumVersionSummary;
+  assessmentTemplate: AssessmentTemplateSummary;
+}
+
+export interface BoundSyllabusVersion {
+  id: string;
+  code: string;
+  versionNumber: number;
+  status: AcademicVersionStatus;
+  effectiveFrom: string | null;
+  effectiveTo: string | null;
+  approvedAt: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  curriculumCourse: Omit<
+    CourseOfferingCurriculumSummary,
+    "displayOrder" | "isRequired"
+  > & {
+    course: Pick<AcademicCourse, "id" | "code" | "title">;
+  };
 }
 
 export interface CourseOfferingPayload {
@@ -481,6 +539,26 @@ export function updateCourse(
 
 export function getCourseOfferings(authContext: ApiAuthContext) {
   return apiAuthenticatedGet<CourseOffering[]>("/course-offerings", authContext);
+}
+
+export function getCourseOffering(
+  authContext: ApiAuthContext,
+  courseOfferingId: string
+) {
+  return apiAuthenticatedGet<CourseOffering>(
+    `/course-offerings/${encodeURIComponent(courseOfferingId)}`,
+    authContext
+  );
+}
+
+export function getCourseOfferingSyllabus(
+  authContext: ApiAuthContext,
+  courseOfferingId: string
+) {
+  return apiAuthenticatedGet<BoundSyllabusVersion>(
+    `/course-offerings/${encodeURIComponent(courseOfferingId)}/syllabus`,
+    authContext
+  );
 }
 
 export function createCourseOffering(
