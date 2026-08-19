@@ -22,6 +22,17 @@ function model(name: string) {
   );
 }
 
+function canonicalMigrationHash(contents: string) {
+  const normalizedContents = contents
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+
+  return createHash("sha256")
+    .update(Buffer.from(normalizedContents, "utf8"))
+    .digest("hex")
+    .toUpperCase();
+}
+
 const courseOffering = model("CourseOffering");
 
 test("CourseOffering schema delegates nullable uniqueness to PostgreSQL partial indexes", () => {
@@ -80,7 +91,7 @@ test("migration creates the exact unbound and bound partial unique indexes", () 
 test("all prior migration files retain their reviewed hashes", () => {
   const expected = {
     "20260521_add_notice_foundation":
-      "3EE2075200DB8D86E0ADB53AC60C5CA0D314020826EF2C418232168A8918F587",
+      "A332164758A2E49BF0D1B9DC4AE47194C76FED27A501725FA0F1F030A5CA6B2B",
     "20260805_add_file_malware_scan_job_ledger":
       "628E852605F01340B9A982374321266C47BEF383D62BEFF545903170F9AFEEB3",
     "202608060001_add_curriculum_assessment_foundation":
@@ -98,10 +109,22 @@ test("all prior migration files retain their reviewed hashes", () => {
   for (const [directory, hash] of Object.entries(expected)) {
     const contents = readFileSync(
       join(prismaRoot, "migrations", directory, "migration.sql"),
+      "utf8",
     );
-    assert.equal(
-      createHash("sha256").update(contents).digest("hex").toUpperCase(),
-      hash,
-    );
+    assert.equal(canonicalMigrationHash(contents), hash);
   }
+});
+
+test("historical migration hashes tolerate only line-ending representation", () => {
+  const lf = "BEGIN;\nSELECT 1;\nCOMMIT;\n";
+  const crlf = lf.replace(/\n/g, "\r\n");
+  const loneCr = lf.replace(/\n/g, "\r");
+  const contentMutation = "BEGIN;\nSELECT 2;\nCOMMIT;\n";
+
+  assert.equal(canonicalMigrationHash(lf), canonicalMigrationHash(crlf));
+  assert.equal(canonicalMigrationHash(lf), canonicalMigrationHash(loneCr));
+  assert.notEqual(
+    canonicalMigrationHash(lf),
+    canonicalMigrationHash(contentMutation),
+  );
 });
