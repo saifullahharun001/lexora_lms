@@ -182,7 +182,7 @@ test("migration is non-destructive and leaves CourseOffering curriculum binding 
   assert.doesNotMatch(migration, /ADD COLUMN "syllabus_version_id"/);
 });
 
-test("foundation exposes immutable syllabus identity without adding an API or academic content", () => {
+test("original foundation migration exposes immutable syllabus identity without adding academic content", () => {
   assert.match(
     migration,
     /CONSTRAINT "syllabus_versions_pkey" PRIMARY KEY \("id"\)/,
@@ -194,14 +194,6 @@ test("foundation exposes immutable syllabus identity without adding an API or ac
   assert.match(
     syllabusVersion,
     /^\s*courseOutlineVersions\s+CourseOutlineVersion\[\]\s*$/m,
-  );
-  const syllabusWithoutCourseOutlineBackrelation = syllabusVersion.replace(
-    /^\s*courseOutlineVersions\s+CourseOutlineVersion\[\]\s*\r?\n?/m,
-    "",
-  );
-  assert.doesNotMatch(
-    syllabusWithoutCourseOutlineBackrelation,
-    /courseOutline|lessonPlan|courseContent|courseObjective|clo|plo/i,
   );
   assert.doesNotMatch(
     migration,

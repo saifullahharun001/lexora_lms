@@ -416,83 +416,87 @@ enum NoticePriority {
 }
 
 model Department {
-  id                           String                            @id @default(cuid())
-  code                         String                            @unique
-  slug                         String                            @unique
-  name                         String
-  status                       DepartmentStatus                  @default(ACTIVE)
-  archivedAt                   DateTime?                         @map("archived_at")
-  deletedAt                    DateTime?                         @map("deleted_at")
-  createdAt                    DateTime                          @default(now()) @map("created_at")
-  updatedAt                    DateTime                          @updatedAt @map("updated_at")
-  users                        User[]
-  roles                        Role[]
-  userRoles                    UserRole[]
-  sessions                     Session[]
-  emailVerifications           EmailVerification[]
-  passwordResets               PasswordReset[]
-  loginAttempts                LoginAttempt[]
-  stepUpRequirements           StepUpRequirement[]
-  suspiciousLoginEvents        SuspiciousLoginEvent[]
-  twoFactorMethods             TwoFactorMethod[]
-  academicConfig               DepartmentAcademicConfig?
-  academicPrograms             AcademicProgram[]
-  curriculumVersions           CurriculumVersion[]
-  curriculumCourses            CurriculumCourse[]
-  programLearningOutcomes      ProgramLearningOutcome[]
-  courseLearningOutcomes       CourseLearningOutcome[]
-  cloPloMappings               CourseLearningOutcomePloMapping[]
-  syllabusVersions             SyllabusVersion[]
-  courseOutlineVersions        CourseOutlineVersion[]
-  studentCurriculumAssignments StudentCurriculumAssignment[]
-  courseAssessmentTemplates    CourseAssessmentTemplate[]
-  assessmentTemplateComponents AssessmentTemplateComponent[]
-  academicYears                AcademicYear[]
-  academicTerms                AcademicTerm[]
-  courses                      Course[]
-  courseOfferings              CourseOffering[]
-  teacherAssignments           TeacherCourseAssignment[]
-  enrollments                  Enrollment[]
-  classSessions                ClassSession[]
-  attendanceRecords            AttendanceRecord[]
-  attendanceImportBatches      AttendanceImportBatch[]
-  eligibilityRuleDefinitions   EligibilityRuleDefinition[]
-  eligibilityRuleBindings      EligibilityRuleBinding[]
-  assignments                  Assignment[]
-  assignmentSubmissions        AssignmentSubmission[]
-  submissionFiles              SubmissionFile[]
-  quizzes                      Quiz[]
-  quizQuestions                QuizQuestion[]
-  quizOptions                  QuizOption[]
-  quizAttempts                 QuizAttempt[]
-  quizResponses                QuizResponse[]
-  gradingRecords               GradingRecord[]
-  gradeScales                  GradeScale[]
-  resultRecords                ResultRecord[]
-  resultComponents             ResultComponent[]
-  gpaRecords                   GPARecord[]
-  cgpaRecords                  CGPARecord[]
-  resultPublicationBatches     ResultPublicationBatch[]
-  resultAmendmentRecords       ResultAmendmentRecord[]
-  transcriptRecords            TranscriptRecord[]
-  transcriptVersions           TranscriptVersion[]
-  transcriptTermSummaries      TranscriptTermSummary[]
-  transcriptCourseLines        TranscriptCourseLine[]
-  transcriptVerificationTokens TranscriptVerificationToken[]
-  transcriptRevocationRecords  TranscriptRevocationRecord[]
-  transcriptSealMetadatas      TranscriptSealMetadata[]
-  notificationEvents           NotificationEvent[]
-  notifications                Notification[]
-  notificationDeliveries       NotificationDelivery[]
-  notificationTemplates        NotificationTemplate[]
-  notificationPreferences      NotificationPreference[]
-  notices                      Notice[]
-  pushSubscriptions            PushSubscription[]
-  settings                     DepartmentSetting[]
-  auditLogs                    AuditLog[]
-  overrideActions              OverrideAction[]
-  fileObjects                  FileObject[]
-  fileMalwareScanJobs          FileMalwareScanJob[]
+  id                            String                            @id @default(cuid())
+  code                          String                            @unique
+  slug                          String                            @unique
+  name                          String
+  status                        DepartmentStatus                  @default(ACTIVE)
+  archivedAt                    DateTime?                         @map("archived_at")
+  deletedAt                     DateTime?                         @map("deleted_at")
+  createdAt                     DateTime                          @default(now()) @map("created_at")
+  updatedAt                     DateTime                          @updatedAt @map("updated_at")
+  users                         User[]
+  roles                         Role[]
+  userRoles                     UserRole[]
+  sessions                      Session[]
+  emailVerifications            EmailVerification[]
+  passwordResets                PasswordReset[]
+  loginAttempts                 LoginAttempt[]
+  stepUpRequirements            StepUpRequirement[]
+  suspiciousLoginEvents         SuspiciousLoginEvent[]
+  twoFactorMethods              TwoFactorMethod[]
+  academicConfig                DepartmentAcademicConfig?
+  academicPrograms              AcademicProgram[]
+  curriculumVersions            CurriculumVersion[]
+  curriculumCourses             CurriculumCourse[]
+  programLearningOutcomes       ProgramLearningOutcome[]
+  courseLearningOutcomes        CourseLearningOutcome[]
+  cloPloMappings                CourseLearningOutcomePloMapping[]
+  syllabusVersions              SyllabusVersion[]
+  syllabusObjectives            SyllabusObjective[]
+  syllabusContentTopics         SyllabusContentTopic[]
+  syllabusLearningResources     SyllabusLearningResource[]
+  curriculumCoursePrerequisites CurriculumCoursePrerequisite[]
+  courseOutlineVersions         CourseOutlineVersion[]
+  studentCurriculumAssignments  StudentCurriculumAssignment[]
+  courseAssessmentTemplates     CourseAssessmentTemplate[]
+  assessmentTemplateComponents  AssessmentTemplateComponent[]
+  academicYears                 AcademicYear[]
+  academicTerms                 AcademicTerm[]
+  courses                       Course[]
+  courseOfferings               CourseOffering[]
+  teacherAssignments            TeacherCourseAssignment[]
+  enrollments                   Enrollment[]
+  classSessions                 ClassSession[]
+  attendanceRecords             AttendanceRecord[]
+  attendanceImportBatches       AttendanceImportBatch[]
+  eligibilityRuleDefinitions    EligibilityRuleDefinition[]
+  eligibilityRuleBindings       EligibilityRuleBinding[]
+  assignments                   Assignment[]
+  assignmentSubmissions         AssignmentSubmission[]
+  submissionFiles               SubmissionFile[]
+  quizzes                       Quiz[]
+  quizQuestions                 QuizQuestion[]
+  quizOptions                   QuizOption[]
+  quizAttempts                  QuizAttempt[]
+  quizResponses                 QuizResponse[]
+  gradingRecords                GradingRecord[]
+  gradeScales                   GradeScale[]
+  resultRecords                 ResultRecord[]
+  resultComponents              ResultComponent[]
+  gpaRecords                    GPARecord[]
+  cgpaRecords                   CGPARecord[]
+  resultPublicationBatches      ResultPublicationBatch[]
+  resultAmendmentRecords        ResultAmendmentRecord[]
+  transcriptRecords             TranscriptRecord[]
+  transcriptVersions            TranscriptVersion[]
+  transcriptTermSummaries       TranscriptTermSummary[]
+  transcriptCourseLines         TranscriptCourseLine[]
+  transcriptVerificationTokens  TranscriptVerificationToken[]
+  transcriptRevocationRecords   TranscriptRevocationRecord[]
+  transcriptSealMetadatas       TranscriptSealMetadata[]
+  notificationEvents            NotificationEvent[]
+  notifications                 Notification[]
+  notificationDeliveries        NotificationDelivery[]
+  notificationTemplates         NotificationTemplate[]
+  notificationPreferences       NotificationPreference[]
+  notices                       Notice[]
+  pushSubscriptions             PushSubscription[]
+  settings                      DepartmentSetting[]
+  auditLogs                     AuditLog[]
+  overrideActions               OverrideAction[]
+  fileObjects                   FileObject[]
+  fileMalwareScanJobs           FileMalwareScanJob[]
 
   @@map("departments")
 }
@@ -697,41 +701,42 @@ model Course {
 }
 
 model CurriculumVersion {
-  id                           String                            @id @default(cuid())
-  departmentId                 String                            @map("department_id")
-  academicProgramId            String                            @map("academic_program_id")
-  code                         String                            @db.VarChar(64)
-  name                         String                            @db.VarChar(255)
-  description                  String?
-  status                       AcademicVersionStatus             @default(DRAFT)
-  effectiveAcademicSessionCode String                            @map("effective_academic_session_code") @db.VarChar(64)
-  effectiveFrom                DateTime?                         @map("effective_from")
-  effectiveTo                  DateTime?                         @map("effective_to")
-  durationYears                Int                               @map("duration_years") @db.SmallInt
-  totalSemesters               Int                               @map("total_semesters") @db.SmallInt
-  creditsOffered               Decimal                           @map("credits_offered") @db.Decimal(6, 2)
-  minimumCreditsRequired       Decimal                           @map("minimum_credits_required") @db.Decimal(6, 2)
-  totalCourses                 Int                               @map("total_courses") @db.SmallInt
-  totalProgrammeMarks          Decimal                           @map("total_programme_marks") @db.Decimal(8, 2)
-  coreCredits                  Decimal                           @map("core_credits") @db.Decimal(6, 2)
-  gedCredits                   Decimal                           @map("ged_credits") @db.Decimal(6, 2)
-  capstoneCredits              Decimal                           @map("capstone_credits") @db.Decimal(6, 2)
-  coreCourseCount              Int                               @map("core_course_count") @db.SmallInt
-  gedCourseCount               Int                               @map("ged_course_count") @db.SmallInt
-  capstoneCourseCount          Int                               @map("capstone_course_count") @db.SmallInt
-  teachingWeeksPerSemester     Int?                              @map("teaching_weeks_per_semester") @db.SmallInt
-  notionalHoursPerCredit       Int?                              @map("notional_hours_per_credit") @db.SmallInt
-  approvedAt                   DateTime?                         @map("approved_at")
-  archivedAt                   DateTime?                         @map("archived_at")
-  createdAt                    DateTime                          @default(now()) @map("created_at")
-  updatedAt                    DateTime                          @updatedAt @map("updated_at")
-  department                   Department                        @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  academicProgram              AcademicProgram                   @relation(fields: [academicProgramId], references: [id], onDelete: Restrict)
-  curriculumCourses            CurriculumCourse[]
-  programLearningOutcomes      ProgramLearningOutcome[]
-  courseLearningOutcomes       CourseLearningOutcome[]
-  cloPloMappings               CourseLearningOutcomePloMapping[]
-  studentCurriculumAssignments StudentCurriculumAssignment[]
+  id                            String                            @id @default(cuid())
+  departmentId                  String                            @map("department_id")
+  academicProgramId             String                            @map("academic_program_id")
+  code                          String                            @db.VarChar(64)
+  name                          String                            @db.VarChar(255)
+  description                   String?
+  status                        AcademicVersionStatus             @default(DRAFT)
+  effectiveAcademicSessionCode  String                            @map("effective_academic_session_code") @db.VarChar(64)
+  effectiveFrom                 DateTime?                         @map("effective_from")
+  effectiveTo                   DateTime?                         @map("effective_to")
+  durationYears                 Int                               @map("duration_years") @db.SmallInt
+  totalSemesters                Int                               @map("total_semesters") @db.SmallInt
+  creditsOffered                Decimal                           @map("credits_offered") @db.Decimal(6, 2)
+  minimumCreditsRequired        Decimal                           @map("minimum_credits_required") @db.Decimal(6, 2)
+  totalCourses                  Int                               @map("total_courses") @db.SmallInt
+  totalProgrammeMarks           Decimal                           @map("total_programme_marks") @db.Decimal(8, 2)
+  coreCredits                   Decimal                           @map("core_credits") @db.Decimal(6, 2)
+  gedCredits                    Decimal                           @map("ged_credits") @db.Decimal(6, 2)
+  capstoneCredits               Decimal                           @map("capstone_credits") @db.Decimal(6, 2)
+  coreCourseCount               Int                               @map("core_course_count") @db.SmallInt
+  gedCourseCount                Int                               @map("ged_course_count") @db.SmallInt
+  capstoneCourseCount           Int                               @map("capstone_course_count") @db.SmallInt
+  teachingWeeksPerSemester      Int?                              @map("teaching_weeks_per_semester") @db.SmallInt
+  notionalHoursPerCredit        Int?                              @map("notional_hours_per_credit") @db.SmallInt
+  approvedAt                    DateTime?                         @map("approved_at")
+  archivedAt                    DateTime?                         @map("archived_at")
+  createdAt                     DateTime                          @default(now()) @map("created_at")
+  updatedAt                     DateTime                          @updatedAt @map("updated_at")
+  department                    Department                        @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  academicProgram               AcademicProgram                   @relation(fields: [academicProgramId], references: [id], onDelete: Restrict)
+  curriculumCourses             CurriculumCourse[]
+  programLearningOutcomes       ProgramLearningOutcome[]
+  courseLearningOutcomes        CourseLearningOutcome[]
+  cloPloMappings                CourseLearningOutcomePloMapping[]
+  curriculumCoursePrerequisites CurriculumCoursePrerequisite[]
+  studentCurriculumAssignments  StudentCurriculumAssignment[]
 
   @@unique([id, departmentId], map: "curriculum_version_id_department_uq")
   @@unique([departmentId, academicProgramId, code], map: "curriculum_version_dept_program_code_uq")
@@ -815,31 +820,33 @@ model AssessmentTemplateComponent {
 }
 
 model CurriculumCourse {
-  id                    String                   @id @default(cuid())
-  departmentId          String                   @map("department_id")
-  curriculumVersionId   String                   @map("curriculum_version_id")
-  courseId              String                   @map("course_id")
-  assessmentTemplateId  String                   @map("assessment_template_id")
-  categoryCode          String                   @map("category_code") @db.VarChar(64)
-  academicYearNumber    Int                      @map("academic_year_number") @db.SmallInt
-  semesterNumber        Int                      @map("semester_number") @db.SmallInt
-  displayOrder          Int                      @map("display_order") @db.SmallInt
-  courseCodeSnapshot    String                   @map("course_code_snapshot") @db.VarChar(64)
-  courseTitleSnapshot   String                   @map("course_title_snapshot") @db.VarChar(255)
-  creditHoursSnapshot   Decimal                  @map("credit_hours_snapshot") @db.Decimal(6, 2)
-  totalMarksSnapshot    Decimal                  @map("total_marks_snapshot") @db.Decimal(6, 2)
-  isRequired            Boolean                  @default(true) @map("is_required")
-  createdAt             DateTime                 @default(now()) @map("created_at")
-  updatedAt             DateTime                 @updatedAt @map("updated_at")
-  department            Department               @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  curriculumVersion     CurriculumVersion        @relation(fields: [curriculumVersionId], references: [id], onDelete: Restrict)
-  course                Course                   @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  assessmentTemplate    CourseAssessmentTemplate @relation(fields: [assessmentTemplateId], references: [id], onDelete: Restrict)
+  id                    String                         @id @default(cuid())
+  departmentId          String                         @map("department_id")
+  curriculumVersionId   String                         @map("curriculum_version_id")
+  courseId              String                         @map("course_id")
+  assessmentTemplateId  String                         @map("assessment_template_id")
+  categoryCode          String                         @map("category_code") @db.VarChar(64)
+  academicYearNumber    Int                            @map("academic_year_number") @db.SmallInt
+  semesterNumber        Int                            @map("semester_number") @db.SmallInt
+  displayOrder          Int                            @map("display_order") @db.SmallInt
+  courseCodeSnapshot    String                         @map("course_code_snapshot") @db.VarChar(64)
+  courseTitleSnapshot   String                         @map("course_title_snapshot") @db.VarChar(255)
+  creditHoursSnapshot   Decimal                        @map("credit_hours_snapshot") @db.Decimal(6, 2)
+  totalMarksSnapshot    Decimal                        @map("total_marks_snapshot") @db.Decimal(6, 2)
+  isRequired            Boolean                        @default(true) @map("is_required")
+  createdAt             DateTime                       @default(now()) @map("created_at")
+  updatedAt             DateTime                       @updatedAt @map("updated_at")
+  department            Department                     @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  curriculumVersion     CurriculumVersion              @relation(fields: [curriculumVersionId], references: [id], onDelete: Restrict)
+  course                Course                         @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  assessmentTemplate    CourseAssessmentTemplate       @relation(fields: [assessmentTemplateId], references: [id], onDelete: Restrict)
   syllabusVersions      SyllabusVersion[]
   courseOutlineVersions CourseOutlineVersion[]
   courseOfferings       CourseOffering[]
   enrollments           Enrollment[]
   learningOutcomes      CourseLearningOutcome[]
+  prerequisites         CurriculumCoursePrerequisite[] @relation("CurriculumCoursePrerequisites")
+  prerequisiteFor       CurriculumCoursePrerequisite[] @relation("PrerequisiteCurriculumCourses")
 
   @@unique([id, departmentId], map: "curriculum_course_id_department_uq")
   @@unique([id, departmentId, curriculumVersionId], map: "curriculum_course_id_department_version_uq")
@@ -911,20 +918,24 @@ model CourseLearningOutcomePloMapping {
 }
 
 model SyllabusVersion {
-  id                    String                 @id @default(cuid())
-  departmentId          String                 @map("department_id")
-  curriculumCourseId    String                 @map("curriculum_course_id")
-  code                  String                 @db.VarChar(64)
-  versionNumber         Int                    @map("version_number") @db.SmallInt
-  status                AcademicVersionStatus  @default(DRAFT)
-  effectiveFrom         DateTime?              @map("effective_from")
-  effectiveTo           DateTime?              @map("effective_to")
-  approvedAt            DateTime?              @map("approved_at")
-  archivedAt            DateTime?              @map("archived_at")
-  createdAt             DateTime               @default(now()) @map("created_at")
-  updatedAt             DateTime               @updatedAt @map("updated_at")
-  department            Department             @relation(fields: [departmentId], references: [id], onDelete: Restrict, map: "syllabus_versions_department_id_fkey")
-  curriculumCourse      CurriculumCourse       @relation(fields: [curriculumCourseId, departmentId], references: [id, departmentId], onDelete: Restrict, map: "syllabus_version_dept_curriculum_course_fkey")
+  id                    String                     @id @default(cuid())
+  departmentId          String                     @map("department_id")
+  curriculumCourseId    String                     @map("curriculum_course_id")
+  code                  String                     @db.VarChar(64)
+  versionNumber         Int                        @map("version_number") @db.SmallInt
+  courseDescription     String?                    @map("course_description")
+  status                AcademicVersionStatus      @default(DRAFT)
+  effectiveFrom         DateTime?                  @map("effective_from")
+  effectiveTo           DateTime?                  @map("effective_to")
+  approvedAt            DateTime?                  @map("approved_at")
+  archivedAt            DateTime?                  @map("archived_at")
+  createdAt             DateTime                   @default(now()) @map("created_at")
+  updatedAt             DateTime                   @updatedAt @map("updated_at")
+  department            Department                 @relation(fields: [departmentId], references: [id], onDelete: Restrict, map: "syllabus_versions_department_id_fkey")
+  curriculumCourse      CurriculumCourse           @relation(fields: [curriculumCourseId, departmentId], references: [id, departmentId], onDelete: Restrict, map: "syllabus_version_dept_curriculum_course_fkey")
+  objectives            SyllabusObjective[]
+  contentTopics         SyllabusContentTopic[]
+  learningResources     SyllabusLearningResource[]
   courseOfferings       CourseOffering[]
   courseOutlineVersions CourseOutlineVersion[]
 
@@ -934,6 +945,73 @@ model SyllabusVersion {
   @@index([departmentId, status], map: "syllabus_version_dept_status_idx")
   @@index([departmentId, curriculumCourseId, status], map: "syllabus_version_dept_curriculum_status_idx")
   @@map("syllabus_versions")
+}
+
+model SyllabusObjective {
+  id                 String          @id @default(cuid())
+  departmentId       String          @map("department_id")
+  curriculumCourseId String          @map("curriculum_course_id")
+  syllabusVersionId  String          @map("syllabus_version_id")
+  statement          String
+  displayOrder       Int             @map("display_order") @db.SmallInt
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+  department         Department      @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "syllabus_objective_department_fkey")
+  syllabusVersion    SyllabusVersion @relation(fields: [syllabusVersionId, departmentId, curriculumCourseId], references: [id, departmentId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "syllabus_objective_syllabus_identity_fkey")
+
+  @@unique([departmentId, syllabusVersionId, displayOrder], map: "syllabus_objective_dept_syllabus_order_uq")
+  @@map("syllabus_objectives")
+}
+
+model SyllabusContentTopic {
+  id                 String          @id @default(cuid())
+  departmentId       String          @map("department_id")
+  curriculumCourseId String          @map("curriculum_course_id")
+  syllabusVersionId  String          @map("syllabus_version_id")
+  title              String
+  content            String?
+  displayOrder       Int             @map("display_order") @db.SmallInt
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+  department         Department      @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "syllabus_content_topic_department_fkey")
+  syllabusVersion    SyllabusVersion @relation(fields: [syllabusVersionId, departmentId, curriculumCourseId], references: [id, departmentId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "syllabus_content_topic_syllabus_identity_fkey")
+
+  @@unique([departmentId, syllabusVersionId, displayOrder], map: "syllabus_content_topic_dept_syllabus_order_uq")
+  @@map("syllabus_content_topics")
+}
+
+model SyllabusLearningResource {
+  id                 String          @id @default(cuid())
+  departmentId       String          @map("department_id")
+  curriculumCourseId String          @map("curriculum_course_id")
+  syllabusVersionId  String          @map("syllabus_version_id")
+  resourceTypeCode   String          @map("resource_type_code") @db.VarChar(64)
+  citationText       String          @map("citation_text")
+  displayOrder       Int             @map("display_order") @db.SmallInt
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+  department         Department      @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "syllabus_learning_resource_department_fkey")
+  syllabusVersion    SyllabusVersion @relation(fields: [syllabusVersionId, departmentId, curriculumCourseId], references: [id, departmentId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "syllabus_learning_resource_syllabus_identity_fkey")
+
+  @@unique([departmentId, syllabusVersionId, displayOrder], map: "syllabus_learning_resource_dept_syllabus_order_uq")
+  @@map("syllabus_learning_resources")
+}
+
+model CurriculumCoursePrerequisite {
+  id                             String            @id @default(cuid())
+  departmentId                   String            @map("department_id")
+  curriculumVersionId            String            @map("curriculum_version_id")
+  curriculumCourseId             String            @map("curriculum_course_id")
+  prerequisiteCurriculumCourseId String            @map("prerequisite_curriculum_course_id")
+  createdAt                      DateTime          @default(now()) @map("created_at")
+  department                     Department        @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "curriculum_course_prerequisite_department_fkey")
+  curriculumVersion              CurriculumVersion @relation(fields: [curriculumVersionId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "curriculum_course_prerequisite_dept_version_fkey")
+  curriculumCourse               CurriculumCourse  @relation("CurriculumCoursePrerequisites", fields: [curriculumCourseId, departmentId, curriculumVersionId], references: [id, departmentId, curriculumVersionId], onDelete: Restrict, onUpdate: Restrict, map: "curriculum_course_prerequisite_course_identity_fkey")
+  prerequisiteCurriculumCourse   CurriculumCourse  @relation("PrerequisiteCurriculumCourses", fields: [prerequisiteCurriculumCourseId, departmentId, curriculumVersionId], references: [id, departmentId, curriculumVersionId], onDelete: Restrict, onUpdate: Restrict, map: "curriculum_course_prerequisite_required_course_fkey")
+
+  @@unique([departmentId, curriculumVersionId, curriculumCourseId, prerequisiteCurriculumCourseId], map: "curriculum_course_prerequisite_pair_uq")
+  @@index([departmentId, curriculumVersionId, prerequisiteCurriculumCourseId], map: "curriculum_course_prerequisite_required_idx")
+  @@map("curriculum_course_prerequisites")
 }
 
 model CourseOffering {
