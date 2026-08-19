@@ -23555,3 +23555,826 @@ Do not combine that ownership decision with:
 - unrelated production hardening.
 
 Work one focused academic checkpoint at a time.
+
+## Canonical Approved Syllabus Content Schema Foundation and Ordinary PostgreSQL Verification — 2026-08-20
+
+### Scope and classification
+
+This checkpoint closes the narrow **Canonical Approved Syllabus Content Schema Foundation**.
+
+It establishes the canonical, version-aware persistence boundary required for approved course-syllabus content and structured CurriculumCourse prerequisites.
+
+This checkpoint is intentionally a **schema foundation only**.
+
+It does not claim completion of:
+
+- syllabus content-management HTTP APIs;
+- syllabus content create/update service workflows;
+- approved/active syllabus content immutability enforcement at the application layer;
+- syllabus amendment/new-version workflow;
+- Course Outline create/read/update APIs;
+- Teacher Course Outline write workflow;
+- coordinator review;
+- return-for-correction workflow;
+- Course Outline approval or activation;
+- Course Outline audit events;
+- Course Outline frontend;
+- Lesson Plan;
+- weekly planning;
+- complete Teacher Course Workspace.
+
+Existing canonical CLO/PLO ownership remains unchanged.
+
+No approved CLO/PLO statement or mapping was duplicated into the new syllabus-content records.
+
+### Ownership decision
+
+Direct repository inspection before implementation confirmed:
+
+- `Course` is the reusable/master course identity;
+- `Course.description` is generic and not version-specific;
+- `CurriculumVersion` owns programme/curriculum-version identity;
+- `CurriculumCourse` owns structural course placement and curriculum snapshots;
+- `SyllabusVersion` is the correct exact version root for approved course-specific syllabus content;
+- `CourseLearningOutcome`, `ProgramLearningOutcome`, and `CourseLearningOutcomePloMapping` remain the canonical OBE outcome authorities;
+- `CourseOutlineVersion` remains offering/Teacher planning identity/version/lifecycle foundation and must not become the owner of approved curriculum/syllabus academic facts.
+
+Final ownership established by this foundation:
+
+- approved version-specific course description → `SyllabusVersion`;
+- approved ordered course objectives → `SyllabusObjective`;
+- approved ordered course content/topics → `SyllabusContentTopic`;
+- approved textbooks/references/Bare Acts/case reports/journals/online or other learning resources → `SyllabusLearningResource`;
+- structured prerequisite relationships → `CurriculumCoursePrerequisite`;
+- CLO/PLO statements and mappings → existing OBE models, unchanged.
+
+Prerequisites are modeled structurally at CurriculumCourse/CurriculumVersion scope rather than as free-text syllabus fields.
+
+### Implementation identity
+
+Implementation commit:
+
+`063365d92fd41f4ee4932893ce2ea0c8032dde30`
+
+Commit message:
+
+`Add canonical syllabus content foundation`
+
+Implementation parent:
+
+`55b5b6f42a24e9f7ce09024db9a589aa2fdc744e`
+
+Migration:
+
+`202608200001_add_canonical_syllabus_content_foundation`
+
+Reviewed migration SHA-256:
+
+`1AEE495E8229FEA37D31922A3ECAF3462EF167928446B39D9D250DEBB33845BA`
+
+Implementation scope:
+
+- `.gitignore`;
+- `apps/api/prisma/schema.prisma`;
+- `apps/api/prisma/syllabus-version-foundation.schema.test.ts`;
+- `apps/api/prisma/canonical-syllabus-content-foundation.schema.test.ts`;
+- `apps/api/prisma/migrations/202608200001_add_canonical_syllabus_content_foundation/migration.sql`.
+
+Committed scope:
+
+- exactly 5 files;
+- 664 insertions;
+- 155 deletions.
+
+The implementation was pushed successfully and local `main` was verified aligned with `origin/main`.
+
+### Schema additions
+
+`SyllabusVersion` now includes nullable:
+
+`courseDescription`
+
+mapped to:
+
+`course_description`
+
+No existing `Course.description` value was copied automatically.
+
+New canonical child models:
+
+- `SyllabusObjective`;
+- `SyllabusContentTopic`;
+- `SyllabusLearningResource`.
+
+New structured prerequisite model:
+
+- `CurriculumCoursePrerequisite`.
+
+`SyllabusLearningResource.resourceTypeCode` intentionally uses open `VARCHAR(64)` storage instead of a fixed Prisma enum.
+
+This allows controlled resource classifications without requiring schema migrations merely to add a new approved resource category.
+
+### Exact syllabus-content ownership
+
+Each syllabus-owned child contains:
+
+- `departmentId`;
+- `curriculumCourseId`;
+- `syllabusVersionId`.
+
+Each child binds through exact composite identity:
+
+`(syllabus_version_id, department_id, curriculum_course_id)`
+
+to:
+
+`syllabus_versions(id, department_id, curriculum_course_id)`.
+
+This prevents:
+
+- cross-department syllabus substitution;
+- same-department wrong-CurriculumCourse substitution;
+- attaching approved child content to a syllabus belonging to another exact academic chain.
+
+All syllabus-content academic foreign keys use:
+
+- `ON DELETE RESTRICT`;
+- `ON UPDATE RESTRICT`.
+
+### Ordered syllabus-content constraints
+
+The following use PostgreSQL `SMALLINT` `display_order` with positive CHECK constraints:
+
+- syllabus objectives;
+- syllabus content topics;
+- syllabus learning resources.
+
+Deterministic ordering is enforced by unique ordering within the exact department/syllabus scope.
+
+The implementation intentionally removed four redundant forward indexes during independent review because the corresponding unique B-tree indexes already cover those leftmost-prefix lookup patterns.
+
+The required reverse prerequisite lookup index remains present.
+
+### Structured prerequisite identity
+
+`CurriculumCoursePrerequisite` stores:
+
+- `departmentId`;
+- `curriculumVersionId`;
+- `curriculumCourseId`;
+- `prerequisiteCurriculumCourseId`.
+
+Both sides bind through exact CurriculumCourse candidate identity:
+
+`(id, department_id, curriculum_version_id)`.
+
+The model therefore structurally prevents:
+
+- cross-department prerequisite substitution;
+- cross-CurriculumVersion prerequisite substitution.
+
+Additional rules:
+
+- duplicate prerequisite pairs are rejected;
+- a CurriculumCourse cannot be its own prerequisite;
+- explicit graph-cycle prevention is intentionally deferred to later application governance;
+- academic parent delete/update actions are restrictive.
+
+No prerequisite rows were automatically generated.
+
+### Independent source review
+
+Independent review found:
+
+- Critical findings: none;
+- High findings: none;
+- Medium findings: none.
+
+A Low-level indexing refinement was identified and corrected before commit.
+
+Removed redundant indexes:
+
+- `syllabus_objective_dept_syllabus_idx`;
+- `syllabus_content_topic_dept_syllabus_idx`;
+- `syllabus_learning_resource_dept_syllabus_idx`;
+- `curriculum_course_prerequisite_course_idx`.
+
+Preserved reverse prerequisite lookup index:
+
+`curriculum_course_prerequisite_required_idx`
+
+The historical `syllabus-version-foundation.schema.test.ts` was narrowly corrected so that it continues to verify the historical SyllabusVersion migration itself did not introduce academic content, while no longer incorrectly forbidding legitimate later schema additions.
+
+No historical migration SQL was modified.
+
+Historical migration hash verification remained passing.
+
+### Static validation
+
+Local implementation verification reported:
+
+- focused canonical syllabus-content schema test: `11/11` passed;
+- affected schema/integrity regression suite: `78/78` passed;
+- Prisma format: passed;
+- Prisma validate: passed;
+- Prisma generate: passed;
+- API typecheck: passed;
+- API build: passed;
+- historical migration hashes: passed;
+- `git diff --check`: passed.
+
+Server promotion later reverified:
+
+- Prisma validate: passed;
+- API typecheck: passed;
+- API build: passed.
+
+No Node16, NodeNext, full ESM or unrelated TypeScript configuration migration was introduced.
+
+### Reviewed artifact identity
+
+Before disposable verification, the exact reviewed uncommitted implementation was packaged into a private review artifact.
+
+Private review root:
+
+`/home/sh002/lexora-private-review/canonical-syllabus-content-20260820`
+
+Reviewed bundle SHA-256:
+
+`434AB42CE51F00671E60C4419DD66996C3208260030C41C72689B60292BEA7D7`
+
+Reviewed migration SHA-256:
+
+`1AEE495E8229FEA37D31922A3ECAF3462EF167928446B39D9D250DEBB33845BA`
+
+Server transfer verification confirmed:
+
+- bundle hash: PASS;
+- migration hash: PASS;
+- private review root mode: `0700`;
+- review bundle was subsequently hardened to mode `0600`.
+
+No repository, PostgreSQL, PM2, Nginx or environment configuration was changed by artifact transfer.
+
+### Exact-current ordinary baseline snapshot
+
+Before disposable PostgreSQL verification, an exact-current read-only ordinary database baseline was captured.
+
+Ordinary PostgreSQL:
+
+`18.4 (Ubuntu 18.4-0ubuntu0.26.04.1)`
+
+At baseline:
+
+- target migration: absent;
+- `syllabus_versions.course_description`: absent;
+- four target tables: absent.
+
+Selected ordinary row counts:
+
+- `curriculum_versions`: `8`;
+- `curriculum_courses`: `61`;
+- `syllabus_versions`: `0`;
+- `course_offerings`: `14`;
+- `course_outline_versions`: `0`;
+- `enrollments`: `12`.
+
+Private exact-current snapshot:
+
+`/home/sh002/lexora-private-review/canonical-syllabus-content-20260820/ordinary-baseline.dump`
+
+Snapshot size:
+
+`772226` bytes
+
+Snapshot TOC entries:
+
+`724`
+
+Snapshot SHA-256:
+
+`669774442BAC64B3E3AF767F22D43CCD9783E5D21665CB352CB6CA5016BCF53C`
+
+Snapshot mode:
+
+`0600`
+
+No ordinary database write occurred while preparing this snapshot.
+
+### Disposable PostgreSQL 18.4 verification
+
+The exact-current ordinary snapshot was restored into isolated PostgreSQL:
+
+`postgres:18.4-alpine3.23`
+
+Host publication was loopback-only.
+
+The reviewed migration applied successfully.
+
+Verified after migration:
+
+- exactly one completed target migration;
+- zero incomplete target migrations;
+- zero rolled-back target migrations;
+- nullable `syllabus_versions.course_description` exists;
+- all four new tables exist;
+- all ten new academic foreign keys exist;
+- all ten use `RESTRICT / RESTRICT`;
+- all required CHECK constraints exist and are validated;
+- all required unique/index structures exist;
+- the four independently reviewed redundant indexes are absent;
+- three `display_order` columns are PostgreSQL `SMALLINT`;
+- learning-resource type code is `VARCHAR(64)`;
+- automatic syllabus content rows: zero;
+- automatic prerequisite rows: zero;
+- selected existing business row counts preserved.
+
+### Disposable syllabus-child behavior
+
+Transactional PostgreSQL behavior verification passed for:
+
+- version-specific `courseDescription` storage;
+- valid syllabus objective insertion;
+- valid syllabus topic insertion;
+- valid syllabus learning-resource insertion;
+- open/custom learning-resource type code;
+- same-department wrong-CurriculumCourse rejection;
+- cross-department exact syllabus-identity rejection;
+- positive objective display-order enforcement;
+- positive topic display-order enforcement;
+- positive resource display-order enforcement;
+- duplicate objective ordering rejection;
+- duplicate topic ordering rejection;
+- duplicate resource ordering rejection.
+
+Observed SQLSTATEs:
+
+- wrong exact syllabus chain: `23503`;
+- cross-department exact syllabus chain: `23503`;
+- positive-order CHECK violation: `23514`;
+- duplicate ordering: `23505`.
+
+All synthetic syllabus/content rows were rolled back.
+
+Transactional residue after verification:
+
+zero.
+
+### Disposable prerequisite behavior
+
+The ordinary runtime contains no BUS CurriculumCourse foundation.
+
+Disposable prerequisite verification therefore used existing Law CurriculumCourses while testing cross-department substitution through exact composite identity.
+
+Verified:
+
+- valid same-department/same-CurriculumVersion prerequisite: PASS;
+- duplicate prerequisite pair rejected: `23505`;
+- self-prerequisite rejected: `23514`;
+- cross-CurriculumVersion prerequisite rejected: `23503`;
+- cross-department exact-identity prerequisite rejected: `23503`;
+- referenced prerequisite-parent DELETE rejected by `RESTRICT`: `23001`;
+- referenced requiring-course DELETE rejected by `RESTRICT`: `23001`;
+- referenced prerequisite-parent identity UPDATE rejected by `RESTRICT`: `23001`.
+
+PostgreSQL explicit `RESTRICT` parent-operation SQLSTATE `23001` is intentionally preserved in this evidence.
+
+All synthetic prerequisite records were rolled back.
+
+Transactional prerequisite residue:
+
+zero.
+
+### Disposable final closure
+
+Disposable database-to-reviewed-datamodel drift:
+
+`No difference detected.`
+
+Therefore:
+
+- Prisma drift: none.
+
+A second disposable:
+
+`prisma migrate deploy`
+
+reported:
+
+`No pending migrations to apply.`
+
+Migration history remained:
+
+- target records: `1`;
+- completed: `1`;
+- incomplete: `0`;
+- rolled back: `0`.
+
+`prisma migrate status` reported:
+
+`Database schema is up to date!`
+
+Ordinary PostgreSQL was explicitly rechecked before disposable teardown and remained unmigrated at that point.
+
+The disposable container and stale disposable state file were removed after successful verification.
+
+The exact-current baseline snapshot and private reviewed worktree were retained.
+
+### Verification-harness corrections
+
+Several verification-harness issues occurred during this checkpoint.
+
+They are preserved here so they are not later misclassified as implementation defects.
+
+1. An initial prerequisite verifier assumed the existing BUS department also had a BUS `CurriculumCourse`.
+
+   Actual runtime inventory showed:
+
+   - `dept_bus_test`: present;
+   - BUS CurriculumVersions: `0`;
+   - BUS CurriculumCourses: `0`.
+
+   The failed transaction did not change persistent data.
+
+2. A subsequent retained-container check used non-interactive `sudo -n` after SSH sudo authentication had expired.
+
+   This produced a false-negative container-state result.
+
+   The disposable PostgreSQL container was later directly verified as still running and healthy.
+
+3. A recovery attempt again encountered expired sudo authentication before container creation.
+
+   No recovery container or database was created.
+
+4. Runtime verification was then resumed against the original healthy disposable PostgreSQL container after explicit `sudo -v`.
+
+5. An initial Windows commit-precondition comparison treated the untracked migration directory representation from `git status --porcelain` differently from the expected exact migration-file list and falsely reported unexpected working-tree scope.
+
+   Later exact staged-file and committed-file checks both proved the final commit contained exactly the reviewed five files.
+
+None of these harness issues required a schema or migration implementation change.
+
+None changed:
+
+- ordinary application data before intended deployment;
+- ordinary schema before intended deployment;
+- PM2;
+- Nginx;
+- API runtime behavior;
+- historical migration SQL.
+
+### Implementation commit and server promotion
+
+Implementation commit:
+
+`063365d92fd41f4ee4932893ce2ea0c8032dde30`
+
+was pushed to `origin/main`.
+
+Local repository after push:
+
+- clean;
+- `main`;
+- exact `origin/main` alignment.
+
+Ubuntu repository was then fast-forwarded from:
+
+`55b5b6f42a24e9f7ce09024db9a589aa2fdc744e`
+
+to:
+
+`063365d92fd41f4ee4932893ce2ea0c8032dde30`
+
+Server promotion verified:
+
+- exact fast-forward;
+- clean repository;
+- exact origin alignment;
+- reviewed migration SHA-256 unchanged;
+- Prisma validation passed;
+- API typecheck passed;
+- API build passed.
+
+Ordinary PostgreSQL was not modified during source promotion.
+
+### Validated ordinary rollback backup
+
+Immediately before ordinary migration deployment, the target migration, column and tables were confirmed absent and selected ordinary business counts were rechecked.
+
+Private rollback backup:
+
+`/home/sh002/lexora-private-backups/lexora_lms-before-202608200001_add_canonical_syllabus_content_foundation-20260819T185740Z.dump`
+
+Backup size:
+
+`772226` bytes
+
+Archive TOC entries:
+
+`724`
+
+Backup SHA-256:
+
+`B4FEC231F6BCC616EAA83F7AFC25C0048724AEE65DA162F3979DA5BD0AB44275`
+
+Backup file mode:
+
+`0600`
+
+Backup directory mode:
+
+`0700`
+
+Archive validation:
+
+PASS.
+
+This backup is retained for rollback and should not be deleted casually.
+
+### Ordinary PostgreSQL migration deployment
+
+Ordinary database:
+
+`lexora_lms`
+
+PostgreSQL:
+
+`18.4`
+
+The migration:
+
+`202608200001_add_canonical_syllabus_content_foundation`
+
+was applied successfully through:
+
+`prisma migrate deploy`.
+
+Live migration history after deployment:
+
+- target records: `1`;
+- completed: `1`;
+- incomplete: `0`;
+- rolled back: `0`.
+
+Live catalog verification passed.
+
+Verified live:
+
+- nullable `syllabus_versions.course_description`;
+- four new canonical-content/prerequisite tables;
+- ten academic FKs;
+- all ten FKs validated `RESTRICT / RESTRICT`;
+- four required CHECK constraints;
+- required unique/index structures;
+- reviewed redundant indexes absent.
+
+### Ordinary no-backfill and data preservation
+
+After ordinary deployment:
+
+- `syllabus_objectives`: `0`;
+- `syllabus_content_topics`: `0`;
+- `syllabus_learning_resources`: `0`;
+- `curriculum_course_prerequisites`: `0`.
+
+No synthetic or automatic approved academic content was generated.
+
+Selected existing ordinary business row counts remained:
+
+- `curriculum_versions`: `8`;
+- `curriculum_courses`: `61`;
+- `syllabus_versions`: `0`;
+- `course_offerings`: `14`;
+- `course_outline_versions`: `0`;
+- `enrollments`: `12`.
+
+Existing measured business data was preserved.
+
+### Final live Prisma drift and idempotency
+
+Live ordinary PostgreSQL:
+
+`prisma migrate diff`
+
+reported:
+
+`No difference detected.`
+
+A second ordinary:
+
+`prisma migrate deploy`
+
+reported:
+
+`No pending migrations to apply.`
+
+`prisma migrate status`
+
+reported:
+
+`Database schema is up to date!`
+
+Final migration history remained:
+
+- exactly one target migration record;
+- exactly one completed;
+- zero incomplete;
+- zero rolled back.
+
+### Runtime non-disruption
+
+This was a schema-only deployment.
+
+PM2 restart was not performed.
+
+PM2 process:
+
+`lexora-api`
+
+PM2 PID before migration:
+
+`1670`
+
+PM2 PID after migration:
+
+`1670`
+
+Direct API health:
+
+`HTTP 200`
+
+Nginx-proxied API health:
+
+`HTTP 200`
+
+NestJS API listener:
+
+`127.0.0.1:4000`
+
+Exposure:
+
+loopback-only.
+
+Repository after final verification:
+
+- clean;
+- `main`;
+- exact `origin/main` alignment.
+
+Nginx configuration was not changed.
+
+No environment file was modified.
+
+### Security and architecture preservation
+
+This schema-only checkpoint did not weaken or remove:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- `@RequirePolicy()`;
+- authenticated request context;
+- principal department scope;
+- department isolation;
+- object-level authorization;
+- Teacher assigned-course checks;
+- Student own-resource checks;
+- safe cross-department object behavior;
+- result publication locking;
+- result amendment flow;
+- controlled GPA/CGPA recalculation;
+- transcript immutable/versioned snapshots;
+- transcript token hashing/expiry/revocation;
+- minimal public transcript verification;
+- attendance active-session requirements;
+- Teacher-only attendance capture;
+- mandatory override reasons;
+- notification isolation;
+- locked critical preferences;
+- audit foundations.
+
+No new:
+
+- HTTP route;
+- policy grant;
+- role grant;
+- browser token storage;
+- public verification response;
+- file-handling path;
+- authentication behavior
+
+was introduced by this checkpoint.
+
+No raw access token, refresh token, email-verification token, transcript token, password hash, database password, connection string, production secret or fingerprint template is documented here.
+
+### Current verified classification
+
+The **Canonical Approved Syllabus Content Schema Foundation** is now:
+
+- source-audited;
+- ownership boundary decided;
+- repository schema inspected directly;
+- implemented;
+- independently reviewed;
+- statically verified;
+- focused tests passed;
+- regression/integrity tests passed;
+- Prisma format/validate/generate verified;
+- API typecheck/build verified;
+- historical migration integrity verified;
+- committed and pushed;
+- promoted to Ubuntu;
+- reviewed migration identity verified;
+- exact-current ordinary snapshot captured;
+- disposable PostgreSQL `18.4` migration verified;
+- disposable catalog verified;
+- disposable no-backfill verified;
+- disposable existing-data preservation verified;
+- disposable exact syllabus ownership verified;
+- disposable cross-department rejection verified;
+- disposable wrong-course rejection verified;
+- disposable ordering checks verified;
+- disposable ordering uniqueness verified;
+- disposable open resource-type behavior verified;
+- disposable prerequisite pair uniqueness verified;
+- disposable self-prerequisite rejection verified;
+- disposable cross-CurriculumVersion rejection verified;
+- disposable prerequisite cross-department rejection verified;
+- disposable parent DELETE/UPDATE `RESTRICT` verified;
+- disposable transactional cleanup verified;
+- disposable Prisma drift verified as none;
+- disposable migration idempotency verified;
+- validated ordinary rollback backup created and retained;
+- ordinary PostgreSQL `18.4` deployed;
+- ordinary migration history verified exact;
+- ordinary live catalog verified;
+- ordinary no-backfill verified;
+- ordinary existing-data preservation verified;
+- live Prisma drift verified as none;
+- ordinary migration idempotency verified;
+- Prisma migration status verified up to date;
+- PM2 non-disruption verified;
+- Direct API health verified;
+- Nginx API health verified;
+- API listener loopback-only verified;
+- repository cleanliness/origin alignment verified.
+
+The **Canonical Approved Syllabus Content Schema Foundation** is technically complete and runtime verified.
+
+This documentation checkpoint closes only this narrow schema foundation.
+
+### What remains pending
+
+This checkpoint does not implement or close:
+
+- SyllabusObjective/content/resource management APIs;
+- syllabus-content application services/repositories;
+- governance permissions for canonical content management;
+- completeness validation before syllabus approval;
+- post-approval canonical-content immutability enforcement;
+- new-SyllabusVersion amendment workflow;
+- prerequisite graph-cycle validation;
+- prerequisite eligibility enforcement;
+- Course Outline content storage;
+- Course Outline create/read/update API;
+- Teacher Course Outline write workflow;
+- coordinator review;
+- return-for-correction workflow;
+- Course Outline approval;
+- Course Outline activation;
+- Course Outline amendment/new-version workflow;
+- exact active CourseOutlineVersion binding;
+- Course Outline audit events;
+- Course Outline Teacher frontend;
+- coordinator/admin Course Outline frontend;
+- weekly plan;
+- Lesson Plan;
+- complete Teacher Course Workspace.
+
+Approved CLO/PLO statements and mappings remain canonical in the existing OBE models and must not be copied into mutable Teacher-owned Course Outline content.
+
+### Next logical checkpoint
+
+With the canonical approved syllabus-content storage boundary now established and runtime verified, the next focused development checkpoint should be:
+
+**Teacher assigned-course Course Outline create/read contract and its minimum content-storage boundary audit.**
+
+Before implementation:
+
+1. inspect the current `CourseOutlineVersion` schema and latest ordinary runtime state;
+2. inspect current Teacher assigned-course workspace/read contracts;
+3. determine exactly which offering-owned Teacher-editable Course Outline fields require storage;
+4. keep canonical syllabus content read-only/reference-based;
+5. keep approved CLO/PLO read-only/reference-based;
+6. determine whether Course Outline topic/CLO alignment needs a separate normalized mapping;
+7. design department-scoped and assigned-course object authorization before mutation endpoints;
+8. do not mix Course Outline with Lesson Plan, attendance, formative assessment, summative assessment, attainment analytics or Course File.
+
+Work one focused academic checkpoint at a time.
+
+### Formal checkpoint status
+
+> **Canonical Approved Syllabus Content Schema Foundation = DOCUMENTED / CLOSED**
+
+This means only the canonical approved syllabus-content and structured prerequisite **schema foundation** is closed.
+
+It does not mean the complete Syllabus management feature, Course Outline feature, Lesson Plan, or Teacher Course Workspace is complete.
