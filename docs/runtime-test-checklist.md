@@ -22610,3 +22610,948 @@ The prerequisite approved CLO/PLO assigned-course read contract is now runtime v
 Before implementation of the next OBE feature, perform a focused source/runtime audit for the smallest safe **Course Outline** foundation slice.
 
 Do not combine Course Outline, Lesson Plan, attendance, roster, formative assessment, CLO/PLO attainment and Course File into one implementation checkpoint.
+
+## Course Outline Versioning Schema Foundation and Ordinary PostgreSQL Verification — 2026-08-19
+
+### Scope and classification
+
+This checkpoint implements, independently reviews, statically verifies, disposable-PostgreSQL verifies, deploys to the ordinary PostgreSQL runtime, and live-verifies the minimal **Course Outline versioning schema foundation**.
+
+It supersedes earlier pending wording only for the **Course Outline versioning database/schema foundation**.
+
+This checkpoint does **not** claim completion of:
+
+- Course Outline academic content storage;
+- Course Outline create/read/update API;
+- Course Outline lifecycle transition service/API;
+- coordinator review workflow;
+- return-for-correction workflow;
+- approval/activation workflow;
+- exact active-outline binding workflow;
+- Course Outline Teacher frontend;
+- Course Outline coordinator/admin frontend;
+- Lesson Plan;
+- weekly lesson planning;
+- roster;
+- attendance;
+- formative assessment;
+- summative assessment;
+- CLO/PLO attainment;
+- Course File;
+- complete Teacher Course Workspace.
+
+Course Outline and Lesson Plan remain separate development areas.
+
+No Course Outline content JSON or duplicated approved CLO/PLO text was introduced by this foundation.
+
+### Implementation identity
+
+Primary Course Outline schema implementation commit:
+
+`0c8ff49b4e09f7a8d0c77c3b1212935b10845f8a`
+
+Commit message:
+
+`Add course outline version foundation`
+
+Implementation parent:
+
+`21e65ab7d3373cc3112a0d1fd9b5dabf09d5712b`
+
+Migration:
+
+`202608190002_add_course_outline_version_foundation`
+
+Reviewed migration SHA-256:
+
+`1B481118BFD7B410FA16C60547F1FE73D54A4DB2379E02CD9F7DE02E14919D68`
+
+Primary implementation scope:
+
+- `.gitignore`;
+- `apps/api/prisma/schema.prisma`;
+- `apps/api/prisma/course-outline-version-foundation.schema.test.ts`;
+- `apps/api/prisma/course-offering-syllabus-binding-foundation.schema.test.ts`;
+- `apps/api/prisma/obe-learning-outcomes-foundation.schema.test.ts`;
+- `apps/api/prisma/syllabus-version-foundation.schema.test.ts`;
+- `apps/api/prisma/migrations/202608190002_add_course_outline_version_foundation/migration.sql`.
+
+The implementation commit contained:
+
+- 7 files;
+- 563 insertions;
+- 42 deletions.
+
+### Cross-platform historical migration-hash correction
+
+A later Linux regression run exposed a pre-existing portability defect in:
+
+`apps/api/prisma/course-offering-multi-curriculum-uniqueness.schema.test.ts`
+
+The issue was not migration corruption.
+
+One protected historical migration had originally been reviewed using a CRLF-specific raw-byte SHA-256 representation, while the Git blob and Linux working representation used LF line endings.
+
+The relevant historical migration SQL itself was unchanged.
+
+The correction made historical migration hash verification line-ending independent while preserving substantive-content sensitivity.
+
+Correction commit:
+
+`877cc92d0aa5fd8611f84e118642617d54acd7d1`
+
+Commit message:
+
+`Make migration hash checks line-ending independent`
+
+Correction parent:
+
+`0c8ff49b4e09f7a8d0c77c3b1212935b10845f8a`
+
+Correction scope:
+
+- exactly one test file;
+- `apps/api/prisma/course-offering-multi-curriculum-uniqueness.schema.test.ts`;
+- 28 insertions;
+- 5 deletions;
+- zero historical migration SQL changes.
+
+The corrected verifier:
+
+- normalizes CRLF to LF;
+- normalizes lone CR to LF;
+- hashes the normalized UTF-8 representation;
+- continues to reject substantive SQL mutations;
+- does not trim content;
+- does not normalize spaces or tabs;
+- does not parse or semantically rewrite SQL.
+
+### CourseOutlineStatus foundation
+
+The dedicated Course Outline lifecycle enum is:
+
+- `DRAFT`;
+- `SUBMITTED_BY_TEACHER`;
+- `COORDINATOR_REVIEW`;
+- `RETURNED_FOR_CORRECTION`;
+- `APPROVED`;
+- `ACTIVE`;
+- `ARCHIVED`.
+
+This is a Course Outline-specific workflow enum and does not reuse `AcademicVersionStatus`.
+
+### CourseOutlineVersion identity and lifecycle foundation
+
+`CourseOutlineVersion` contains only the required identity/version/lifecycle foundation.
+
+Required academic identity:
+
+- `departmentId`;
+- `courseOfferingId`;
+- `curriculumCourseId`;
+- `syllabusVersionId`.
+
+Version/lifecycle metadata includes:
+
+- positive `versionNumber`;
+- `status`;
+- `submittedAt`;
+- `approvedAt`;
+- `activatedAt`;
+- `archivedAt`;
+- creation/update timestamps.
+
+The foundation does not store:
+
+- Course Outline description;
+- objectives;
+- approved CLO copies;
+- approved PLO copies;
+- topic sequence;
+- teaching strategies;
+- assessment techniques;
+- evaluation plan;
+- make-up policy;
+- textbooks;
+- references;
+- weekly plan;
+- Lesson Plan.
+
+Those remain future, separately governed application/content work.
+
+### Exact CourseOffering identity binding
+
+`CourseOffering` remains intentionally nullable for:
+
+- `curriculumCourseId`;
+- `syllabusVersionId`.
+
+Existing/historical syllabus-unbound CourseOfferings therefore remain valid.
+
+A `CourseOutlineVersion`, however, requires a fully bound exact academic identity.
+
+The migration adds the CourseOffering candidate identity:
+
+`(id, department_id, curriculum_course_id, syllabus_version_id)`
+
+and the CourseOutlineVersion foreign key:
+
+`(course_offering_id, department_id, curriculum_course_id, syllabus_version_id)`
+
+→
+
+`course_offerings(id, department_id, curriculum_course_id, syllabus_version_id)`
+
+This prevents a CourseOutlineVersion from substituting:
+
+- another SyllabusVersion;
+- another CurriculumCourse;
+- another valid same-department academic chain;
+- another department;
+- an unbound CourseOffering.
+
+### Additional exact academic foreign keys
+
+The foundation also enforces:
+
+CourseOutlineVersion:
+
+`(curriculum_course_id, department_id)`
+
+→
+
+CurriculumCourse:
+
+`(id, department_id)`
+
+and:
+
+CourseOutlineVersion:
+
+`(syllabus_version_id, department_id, curriculum_course_id)`
+
+→
+
+SyllabusVersion:
+
+`(id, department_id, curriculum_course_id)`
+
+A separate Department foreign key is also present.
+
+Exactly four new Course Outline academic foreign keys are therefore present.
+
+All four are:
+
+- validated;
+- `ON DELETE RESTRICT`;
+- `ON UPDATE RESTRICT`.
+
+No Course Outline cascade delete/update behavior was introduced.
+
+### Version and lookup constraints
+
+The migration enforces:
+
+- positive Course Outline version number;
+- `version_number` stored as required PostgreSQL `SMALLINT`;
+- unique `(department_id, course_offering_id, version_number)`;
+- candidate unique `(id, department_id, course_offering_id)` for a possible future exact binding.
+
+The foundation also adds lookup indexes for:
+
+- `(department_id, course_offering_id, status)`;
+- `(department_id, syllabus_version_id)`.
+
+No automatic active-outline pointer was added to CourseOffering.
+
+No automatic latest-outline selection was introduced.
+
+No automatic historical Course Outline backfill was introduced.
+
+### Independent static review
+
+Independent pre-commit review of the Course Outline foundation found:
+
+- Critical: 0;
+- High: 0;
+- Medium: 1;
+- Low: 1.
+
+The findings were test-boundary hardening observations, not schema/migration defects.
+
+Corrections ensured:
+
+- OBE regression tests permit the new `CourseOutlineVersion` foundation while still rejecting a plain `CourseOutline` model and `LessonPlan`;
+- SyllabusVersion boundary tests permit only the exact `courseOutlineVersions CourseOutlineVersion[]` back-relation;
+- unrelated `courseOutline*`, LessonPlan, content, objective, CLO and PLO expansion remains rejected by the existing foundation boundary tests.
+
+The reviewed schema and migration were unchanged by those test corrections.
+
+### Windows static verification
+
+After the Course Outline implementation commit, Windows verification passed:
+
+- exact implementation scope verified;
+- reviewed schema/migration hashes verified;
+- Prisma validation passed;
+- API typecheck passed;
+- API build passed;
+- focused Course Outline schema tests: `20/20` passed;
+- all compiled Prisma schema regression tests: `66/66` passed at that checkpoint;
+- committed patch check passed;
+- repository clean;
+- repository origin-aligned.
+
+No ordinary database deployment was performed by that Windows verification.
+
+### Linux portability-correction verification
+
+After the migration-hash portability correction was committed and pushed, Ubuntu server promotion fast-forwarded exactly to:
+
+`877cc92d0aa5fd8611f84e118642617d54acd7d1`
+
+The correction commit contained exactly one test file.
+
+Historical migration changes:
+
+`0`
+
+Ubuntu verification passed:
+
+- API typecheck;
+- API build;
+- affected portability tests: `5/5`;
+- complete compiled Prisma schema regression suite: `67/67`;
+- repository clean;
+- repository origin-aligned.
+
+The API remained healthy.
+
+PM2 PID remained:
+
+`1670`
+
+No PM2 restart was performed.
+
+Direct API:
+
+`HTTP 200`
+
+Nginx API:
+
+`HTTP 200`
+
+API listener remained loopback-only.
+
+### Exact-current ordinary snapshot restore verification
+
+Before testing the new migration, the ordinary PostgreSQL runtime database was used only as a read-only snapshot source.
+
+Ordinary database:
+
+`lexora_lms`
+
+PostgreSQL:
+
+`18.4`
+
+Before migration:
+
+- target migration history record: absent;
+- `course_outline_versions`: absent;
+- `CourseOutlineStatus`: absent;
+- CourseOffering outline candidate index: absent.
+
+An exact-current custom-format snapshot was streamed into disposable PostgreSQL `18.4`.
+
+The first restore harness attempt incorrectly passed `-` as a literal `pg_restore` input filename and stopped before migration application.
+
+That was a verification-harness issue, not a product/schema failure.
+
+The corrected stdin restore invocation omitted the filename argument.
+
+Corrected restore verification passed:
+
+- disposable PostgreSQL: `18.4`;
+- exact-current snapshot restore: passed;
+- target migration before apply: absent;
+- target table before apply: absent;
+- selected business-table row counts: exact match;
+- ordinary database mutation: none;
+- disposable environment removed after the check.
+
+### Disposable migration application
+
+The exact reviewed migration was then applied only to an exact-current disposable PostgreSQL `18.4` copy.
+
+Prisma reported:
+
+- 12 repository migrations;
+- `202608190002_add_course_outline_version_foundation` applied successfully;
+- all migrations successfully applied.
+
+Target migration history after disposable apply:
+
+- complete: `1`;
+- incomplete: `0`;
+- rolled back: `0`.
+
+Immediately after migration:
+
+- automatic CourseOutlineVersion rows: `0`;
+- selected existing business-row counts: preserved.
+
+### Disposable PostgreSQL catalog verification
+
+The disposable PostgreSQL catalog verified:
+
+- `CourseOutlineStatus` exact values and order;
+- `version_number` required `SMALLINT`;
+- all four academic identity columns required;
+- positive version CHECK present;
+- all expected unique/lookup indexes exact;
+- exactly four Course Outline academic foreign keys;
+- all four foreign keys validated;
+- all four foreign keys `RESTRICT/RESTRICT`.
+
+The verified index identities included:
+
+- `course_offering_outline_identity_uq`;
+- `course_outline_version_dept_offering_number_uq`;
+- `course_outline_version_id_dept_offering_uq`;
+- `course_outline_version_dept_offering_status_idx`;
+- `course_outline_version_dept_syllabus_idx`.
+
+### Disposable fixture correction
+
+The ordinary runtime baseline had:
+
+`SyllabusVersion count = 0`
+
+Therefore, an early disposable behavioural verifier incorrectly assumed an already fully syllabus-bound CourseOffering existed.
+
+The verifier stopped before behavioural assertions.
+
+That was a test-fixture assumption error, not a migration failure.
+
+The corrected verifier derived a valid existing curriculum-bound offering identity and created prerequisite SyllabusVersion/CourseOffering rows only inside the disposable database and only for the verification transaction.
+
+Synthetic fixture data was never written to the ordinary database.
+
+### Disposable adversarial relational verification
+
+The corrected disposable relational verification proved:
+
+- exact matching CourseOutlineVersion academic identity: accepted;
+- wrong valid SyllabusVersion for the offering: rejected;
+- different valid same-department academic chain: rejected;
+- cross-department academic identity: rejected;
+- syllabus-unbound CourseOffering used as if fully bound: rejected;
+- `version_number = 0`: rejected;
+- duplicate offering/version number: rejected.
+
+Rejected writes did not persist unexpected CourseOutlineVersion rows.
+
+Synthetic fixture rows were transactionally cleaned up.
+
+### PostgreSQL RESTRICT exception-semantics correction
+
+A later behavioural verifier reached the parent CourseOffering update test and PostgreSQL correctly blocked the operation because the exact CourseOutlineVersion foreign key uses `RESTRICT`.
+
+The harness initially attempted to catch that parent restriction as `foreign_key_violation`.
+
+PostgreSQL reports an explicit RESTRICT action violation as SQLSTATE:
+
+`23001`
+
+rather than ordinary foreign-key violation SQLSTATE:
+
+`23503`.
+
+The test therefore stopped even though the database constraint was operating correctly.
+
+This was a verification-harness exception-classification error, not a schema failure.
+
+A focused corrected verifier then tested only the parent CourseOffering restriction behavior.
+
+Verified parent UPDATE result:
+
+- blocked;
+- SQLSTATE: `23001`;
+- exact constraint: `course_outline_version_offering_identity_fkey`.
+
+Verified parent DELETE result:
+
+- blocked;
+- SQLSTATE: `23001`;
+- exact constraint: `course_outline_version_offering_identity_fkey`.
+
+The transaction was rolled back.
+
+Fixture residue:
+
+`0`
+
+Ordinary database migration remained absent during this disposable test.
+
+### Disposable Prisma drift and migration idempotency
+
+A final isolated disposable checkpoint verified:
+
+Prisma database/datamodel diff:
+
+`No difference detected.`
+
+Therefore:
+
+- Prisma database/datamodel drift: none.
+
+A second disposable:
+
+`prisma migrate deploy`
+
+reported:
+
+`No pending migrations to apply.`
+
+Target migration history remained:
+
+- exactly one record;
+- exactly one completed record.
+
+`prisma migrate status` reported:
+
+`Database schema is up to date!`
+
+The disposable environment was removed.
+
+The ordinary database was still unmigrated at the end of disposable verification.
+
+### Disposable verification classification
+
+The Course Outline schema foundation was therefore verified against an exact-current disposable PostgreSQL `18.4` snapshot for:
+
+- migration applicability;
+- migration-history completion;
+- no automatic Course Outline backfill;
+- preservation of existing business-row counts;
+- exact enum;
+- exact table identity requirements;
+- positive version CHECK;
+- exact indexes;
+- exact validated academic foreign keys;
+- same-department identity integrity;
+- cross-department identity rejection;
+- wrong-SyllabusVersion rejection;
+- unbound-offering rejection;
+- version uniqueness;
+- parent update restriction;
+- parent delete restriction;
+- transactional fixture cleanup;
+- Prisma database/datamodel drift;
+- second migration deployment idempotency.
+
+### Validated pre-migration rollback backup
+
+Before ordinary PostgreSQL deployment, a private custom-format rollback backup was created and validated.
+
+Backup:
+
+`/home/sh002/lexora-private-backups/lexora_lms-before-202608190002_add_course_outline_version_foundation-20260819T164541Z.dump`
+
+Backup size:
+
+`758524 bytes`
+
+Backup directory permission:
+
+`0700`
+
+Backup file permission:
+
+`0600`
+
+Archive validation:
+
+- `pg_restore --list`: passed;
+- restore TOC entries: `696`.
+
+Backup SHA-256:
+
+`78e5a1410f9950860121077b502e2afc8bc0ffea1d3cf2d9927d0b0052274a1c`
+
+SHA-256 verification passed before deployment.
+
+The backup remains retained for rollback.
+
+No database credential, password, raw token, or database URL is recorded here.
+
+### Ordinary PostgreSQL deployment precondition
+
+Immediately before ordinary deployment:
+
+Repository:
+
+- clean;
+- origin-aligned;
+- HEAD `877cc92d0aa5fd8611f84e118642617d54acd7d1`.
+
+Migration artifact:
+
+- reviewed SHA-256 reverified.
+
+Rollback backup:
+
+- present;
+- SHA-256 reverified;
+- archive listing passed;
+- file mode `0600`;
+- directory mode `0700`.
+
+Ordinary PostgreSQL:
+
+`18.4 (Ubuntu 18.4-0ubuntu0.26.04.1)`
+
+Ordinary database:
+
+`lexora_lms`
+
+Pre-deployment target state:
+
+- migration record absent;
+- Course Outline table absent;
+- CourseOutlineStatus enum absent;
+- CourseOffering outline identity index absent.
+
+Existing selected business-row counts were captured.
+
+PM2 PID:
+
+`1670`
+
+Direct API:
+
+`HTTP 200`
+
+Nginx API:
+
+`HTTP 200`
+
+Prisma migration status reported exactly one pending migration:
+
+`202608190002_add_course_outline_version_foundation`
+
+### Ordinary PostgreSQL migration deployment
+
+The ordinary runtime migration was applied using:
+
+`prisma migrate deploy`
+
+Prisma applied exactly:
+
+`202608190002_add_course_outline_version_foundation`
+
+and reported successful completion.
+
+Post-deployment target migration history:
+
+- complete: `1`;
+- incomplete: `0`;
+- rolled back: `0`;
+- total target records: `1`.
+
+Immediate live schema verification confirmed:
+
+- `course_outline_versions`: present;
+- `CourseOutlineStatus`: exact;
+- CourseOffering outline identity index: present;
+- automatic CourseOutlineVersion rows: `0`.
+
+Selected existing business-row counts remained unchanged.
+
+`prisma migrate status` reported:
+
+`Database schema is up to date!`
+
+No PM2 restart was performed for this schema-only deployment.
+
+PM2 PID remained:
+
+`1670`
+
+Direct API remained:
+
+`HTTP 200`
+
+Nginx API remained:
+
+`HTTP 200`
+
+API listener remained loopback-only.
+
+Repository remained clean and origin-aligned.
+
+### Final live PostgreSQL catalog verification
+
+After ordinary deployment, live PostgreSQL catalog verification confirmed:
+
+CourseOutlineStatus:
+
+- exact lifecycle values;
+- exact lifecycle order.
+
+CourseOutlineVersion:
+
+- `version_number`: required `SMALLINT`;
+- required academic identity columns: `4`;
+- positive-version CHECK: present;
+- current CourseOutlineVersion rows: `0`.
+
+Live indexes were verified as exact:
+
+- CourseOffering candidate identity;
+- Course Outline offering/version uniqueness;
+- future CourseOutlineVersion candidate binding identity;
+- offering/status lookup;
+- syllabus lookup.
+
+Live foreign-key verification confirmed:
+
+- exactly four Course Outline academic foreign keys;
+- all four validated;
+- all four delete action `RESTRICT`;
+- all four update action `RESTRICT`;
+- exact CourseOffering four-column academic identity;
+- exact CurriculumCourse department identity;
+- exact SyllabusVersion department/curriculum identity.
+
+### Final live Prisma drift and idempotency
+
+Live ordinary PostgreSQL:
+
+`prisma migrate diff`
+
+reported:
+
+`No difference detected.`
+
+Therefore:
+
+- live Prisma database/datamodel drift: none.
+
+A second ordinary:
+
+`prisma migrate deploy`
+
+reported:
+
+`No pending migrations to apply.`
+
+Migration history remained:
+
+- exactly one target record;
+- exactly one completed target record.
+
+`prisma migrate status` reported:
+
+`Database schema is up to date!`
+
+### Final runtime non-disruption
+
+No PM2 restart was required.
+
+PM2 PID remained:
+
+`1670`
+
+Direct API:
+
+`HTTP 200`
+
+Nginx API:
+
+`HTTP 200`
+
+API listener:
+
+- loopback-only;
+- no wildcard NestJS listener introduced.
+
+Repository remained:
+
+- clean;
+- origin-aligned;
+- source HEAD `877cc92d0aa5fd8611f84e118642617d54acd7d1`.
+
+The validated rollback backup remains retained.
+
+### Verification-harness issue summary
+
+Several verifier/harness issues occurred during this checkpoint.
+
+They are preserved here to avoid misclassifying them later as product defects.
+
+1. A PowerShell staged-diff verifier treated an array returned by `git diff --cached` as a scalar match result and falsely rejected an otherwise valid portability correction stage.
+
+2. The same earlier verifier would also have matched an old hash on a removed diff line rather than verifying staged file content.
+
+3. A disposable `pg_restore` command incorrectly supplied `-` as a literal filename when stdin input required no filename argument.
+
+4. An early behavioural verifier read a `current_setting()` value before establishing that session setting.
+
+5. An early fixture selector assumed an exact-current fully SyllabusVersion-bound CourseOffering existed, while the ordinary baseline intentionally contained zero SyllabusVersion rows.
+
+6. The parent CourseOffering `RESTRICT` test initially attempted to catch SQLSTATE `23001` as ordinary `foreign_key_violation` SQLSTATE `23503`.
+
+Each issue was corrected in the verification harness.
+
+None required a Course Outline schema/migration implementation change.
+
+No historical migration SQL was altered to resolve these verifier issues.
+
+### Security and architecture preservation
+
+This schema foundation did not weaken or remove:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- `@RequirePolicy()`;
+- authenticated request context;
+- department isolation;
+- object-level authorization;
+- Teacher assigned-course authorization;
+- Student own-resource authorization;
+- safe cross-department object handling;
+- CourseOffering → SyllabusVersion controlled binding rules;
+- result publication lock;
+- result amendment rules;
+- GPA/CGPA controls;
+- transcript immutability;
+- transcript token safety;
+- attendance active-session rules;
+- eligibility override requirements;
+- notification isolation;
+- audit-log requirements.
+
+This schema-only checkpoint introduced no new HTTP route, policy grant, role grant, browser token storage, authentication behavior, file handling, or public verification behavior.
+
+Department identity is structurally retained in the CourseOutlineVersion academic relationships.
+
+Cross-department academic-chain substitution was explicitly rejected by disposable PostgreSQL verification.
+
+### Current verified classification
+
+Course Outline Versioning Schema Foundation is now:
+
+- source-audited;
+- dependency-scoped;
+- implemented;
+- independently reviewed;
+- statically tested;
+- API typecheck verified;
+- API build verified;
+- Windows regression verified;
+- Linux regression verified;
+- cross-platform migration-hash verification corrected;
+- committed and pushed;
+- promoted to Ubuntu;
+- exact-current snapshot restore verified;
+- disposable PostgreSQL `18.4` migration verified;
+- disposable no-backfill verified;
+- disposable existing-data preservation verified;
+- disposable catalog verified;
+- disposable exact academic identity verified;
+- disposable same-department substitution rejection verified;
+- disposable cross-department rejection verified;
+- disposable unbound-offering rejection verified;
+- disposable version constraint verified;
+- disposable parent `RESTRICT` behavior verified;
+- disposable transactional cleanup verified;
+- disposable Prisma drift verified as none;
+- disposable migration idempotency verified;
+- validated rollback backup created and retained;
+- ordinary PostgreSQL `18.4` deployed;
+- ordinary migration history verified;
+- ordinary no-backfill verified;
+- ordinary existing-data preservation verified;
+- live PostgreSQL catalog verified;
+- live academic foreign keys verified;
+- live Prisma drift verified as none;
+- ordinary migration idempotency verified;
+- Prisma migration status verified up to date;
+- PM2 non-disruption verified;
+- Direct API health verified;
+- Nginx API health verified;
+- API loopback-only exposure verified;
+- repository cleanliness/origin alignment verified.
+
+The **Course Outline Versioning Schema Foundation** is technically complete and runtime verified.
+
+This documentation checkpoint closes only that foundation.
+
+### Still pending Course Outline work
+
+The following remain pending unless separately implemented and runtime verified later:
+
+- authoritative canonical ownership/storage design for approved curriculum/syllabus content needed by Course Outline, including description, objectives, content, prerequisite, textbooks, references and resources;
+- Course Outline content schema/storage after that ownership decision;
+- Teacher Course Outline create/read contract;
+- department-scoped and assigned-course object authorization for Course Outline APIs;
+- DTO validation;
+- Course Outline lifecycle transition implementation;
+- submission by Teacher;
+- coordinator review;
+- return for correction;
+- approval;
+- activation;
+- post-approval immutability;
+- new-version amendment flow;
+- exact active CourseOutlineVersion binding if/when designed;
+- Course Outline audit events;
+- Course Outline Teacher frontend;
+- coordinator/admin review frontend;
+- weekly plan;
+- Lesson Plan;
+- complete Teacher Course Workspace integration.
+
+Approved CLO/PLO text and mappings must not be copied into mutable Teacher-owned Course Outline data.
+
+Canonical curriculum/syllabus fields must not be invented or duplicated merely to unblock UI work.
+
+### Next logical checkpoint
+
+Before implementing Course Outline create/read/content APIs, perform a focused source and architecture checkpoint for **canonical approved curriculum/syllabus Course Outline content ownership**.
+
+The next design must determine the authoritative source of:
+
+- course description;
+- objectives;
+- approved content/topics;
+- prerequisite;
+- textbooks;
+- references;
+- resources.
+
+Preserve existing:
+
+- CurriculumVersion;
+- CurriculumCourse;
+- SyllabusVersion;
+- CourseOffering exact binding;
+- approved CLO/PLO ownership;
+- department isolation;
+- assigned-course authorization;
+- historical/version identity.
+
+Do not combine that ownership decision with:
+
+- Lesson Plan;
+- roster;
+- attendance;
+- formative assessment;
+- summative assessment;
+- CLO/PLO attainment;
+- Course File;
+- unrelated production hardening.
+
+Work one focused academic checkpoint at a time.
