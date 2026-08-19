@@ -22035,3 +22035,578 @@ Do not combine:
 - frontend editing
 
 into one implementation checkpoint.
+
+## Approved CLO/PLO Assigned-Course Read Ordinary PostgreSQL/API Runtime Verification — 2026-08-19
+
+### Scope and supersession
+
+This checkpoint implements and ordinary-runtime verifies the dedicated Teacher/Department Admin read contract for the approved CLO/PLO graph attached to the exact `CurriculumCourse` bound to an authorised `CourseOffering`.
+
+HTTP contract:
+
+`GET /api/v1/course-offerings/:id/learning-outcomes`
+
+This checkpoint supersedes earlier pending wording only for:
+
+- Teacher assigned-course read access to applicable approved CLO/PLO data;
+- Department Admin department-scoped access through the same nested CourseOffering read;
+- lifecycle-consistent historical `RETIRED` / `ARCHIVED` outcome reads;
+- zero-CLO read semantics for an otherwise valid readable CurriculumVersion;
+- object-level and department-isolation behavior of this exact read contract.
+
+It does **not** claim completion of:
+
+- the complete Teacher Course Workspace;
+- Course Outline;
+- Lesson Plan;
+- Teacher editing of canonical CLO/PLO data;
+- CLO/PLO attainment analytics;
+- CQI;
+- formative/summative CLO mapping workflows;
+- Course File;
+- generic curriculum-management APIs for creating/editing approved CLO/PLO definitions.
+
+Approved curriculum-owned CLO text and CLO-PLO mappings remain read-only to the ordinary Course Teacher.
+
+### Implementation identity
+
+Implementation commit:
+
+`eb2812614997b1159812effbd03f3b28af0f3b59`
+
+Commit message:
+
+`Add assigned-course learning outcomes read`
+
+Implementation parent:
+
+`d2f5b515ec206653d0924858b89ed9cef18b2f8f`
+
+Implementation scope:
+
+- exactly 7 files;
+- 5 modified;
+- 2 new;
+- 1078 insertions;
+- 1 deletion;
+- no Prisma schema change;
+- no migration;
+- no authorization-role mapping/provisioning change;
+- no frontend change;
+- no environment/deployment configuration change;
+- no documentation change in the implementation commit.
+
+Files:
+
+- `apps/api/src/modules/academic/application/ports/academic.repository.port.ts`;
+- `apps/api/src/modules/academic/application/services/academic.service.ts`;
+- `apps/api/src/modules/academic/application/services/course-offering-learning-outcomes-read.service.test.ts`;
+- `apps/api/src/modules/academic/infrastructure/repositories/prisma-academic.repository.ts`;
+- `apps/api/src/modules/academic/infrastructure/repositories/course-offering-learning-outcomes-read.repository.test.ts`;
+- `apps/api/src/modules/academic/presentation/http/course-offerings.controller.test.ts`;
+- `apps/api/src/modules/academic/presentation/http/course-offerings.controller.ts`.
+
+### Authorization and object-access contract
+
+The endpoint reuses:
+
+`course-management.offering.read`
+
+Controller protection remains:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- `@RequirePolicy(ACADEMIC_POLICY_NAMES.OFFERING_READ)`.
+
+No new generic Teacher curriculum/CLO/PLO management permission was introduced.
+
+Authority resolution:
+
+- Department Admin uses a department-scoped CourseOffering-rooted repository path;
+- Teacher uses a separate exact active-assignment-scoped CourseOffering-rooted repository path;
+- Teacher + Department Admin uses the Department Admin branch;
+- Student and unsupported roles are rejected at the service boundary before repository access.
+
+The request accepts only the CourseOffering ID.
+
+Caller-supplied:
+
+- department ID;
+- CurriculumVersion ID;
+- CurriculumCourse ID;
+- SyllabusVersion ID;
+- CLO ID;
+- PLO ID
+
+are not authoritative inputs for this endpoint.
+
+The authenticated principal's department remains authoritative.
+
+### Outcome ownership and lifecycle semantics
+
+The read resolves the exact:
+
+`CourseOffering → CurriculumCourse → CurriculumVersion → CLO → CLO/PLO mapping → PLO`
+
+chain.
+
+No SyllabusVersion binding is required for this read because canonical CLO/PLO ownership is curriculum-based.
+
+Readable parent CurriculumVersion lifecycle states:
+
+- `APPROVED`;
+- `ACTIVE`;
+- `RETIRED`;
+- valid `ARCHIVED`.
+
+`DRAFT` fails closed.
+
+Lifecycle state must also satisfy the existing CurriculumVersion timestamp consistency rules:
+
+- `APPROVED`, `ACTIVE`, `RETIRED`: `approvedAt` present and `archivedAt` absent;
+- `ARCHIVED`: `approvedAt` present and `archivedAt` present.
+
+Malformed or unknown lifecycle state fails closed.
+
+No fallback to:
+
+- another CurriculumVersion;
+- latest CurriculumVersion;
+- active CurriculumVersion;
+- another CurriculumCourse
+
+is performed.
+
+### Defense-in-depth read sanitization
+
+The repository validates the complete returned identity chain before exposing data.
+
+Validated relationships include:
+
+- CourseOffering department;
+- CourseOffering → Course identity;
+- Course → AcademicProgram identity;
+- CourseOffering → exact CurriculumCourse;
+- CurriculumCourse department/course/version identity;
+- CurriculumVersion department/program identity;
+- CurriculumVersion lifecycle consistency;
+- CLO department/version/CurriculumCourse identity;
+- mapping department/version/CLO identity;
+- mapped PLO department/version identity.
+
+Any malformed dependency causes the read to fail closed rather than return a partial graph.
+
+### Safe response contract
+
+The compact response exposes:
+
+- CourseOffering ID;
+- CurriculumCourse ID;
+- course code/title snapshots;
+- CurriculumVersion ID/code/name/status/effective academic session;
+- CLO ID/code/statement/display order;
+- mapped PLO ID/code/statement/display order.
+
+The runtime response validation confirmed that the API does not expose:
+
+- `departmentId`;
+- duplicate curriculum foreign-key fields;
+- CLO/PLO mapping IDs;
+- Teacher user/assignment identity;
+- SyllabusVersion identity;
+- creation/update timestamps;
+- internal authorization/audit metadata.
+
+CLOs and mapped PLOs are deterministically ordered by display order with stable tie-breakers.
+
+### Empty collection semantics
+
+A valid readable CurriculumCourse with zero CLO rows returns:
+
+- HTTP `200`;
+- `courseLearningOutcomes: []`.
+
+A CLO with zero mapped PLO rows returns an empty mapped-PLO collection.
+
+The read layer does not invent a requirement that every CLO must have at least one PLO mapping.
+
+### Independent source/security review
+
+The uncommitted implementation candidate was independently reviewed before commit.
+
+Findings:
+
+- Critical: 0;
+- High: 0;
+- Medium: 0;
+- Low: 0.
+
+Review confirmed:
+
+- exact principal-derived department scope;
+- exact Teacher assignment scoping;
+- Admin-first role precedence;
+- no caller-authoritative academic identity;
+- lifecycle fail-closed behavior;
+- no SyllabusVersion dependency;
+- no fallback selection;
+- defensive identity sanitization;
+- safe response minimization;
+- valid empty collection behavior;
+- no unrelated schema/policy/frontend/documentation changes.
+
+### Independent static verification
+
+Reviewed source SHA-256 identity was revalidated before static testing.
+
+Server and local validation passed:
+
+- API typecheck: PASS;
+- API build: PASS;
+- new contract/controller test group: `43/43` PASS;
+- assigned-course/syllabus regression group: `75/75` PASS;
+- total focused/regression tests: `118/118` PASS;
+- `git diff --check`: PASS.
+
+No Node/TypeScript/module configuration change was introduced.
+
+### Commit and promotion
+
+The exact reviewed 7-file candidate was committed and pushed as:
+
+`eb2812614997b1159812effbd03f3b28af0f3b59`
+
+Local repository after push:
+
+- clean;
+- `HEAD == origin/main`;
+- left/right divergence `0/0`.
+
+Ubuntu server source was then fast-forwarded from:
+
+`d2f5b515ec206653d0924858b89ed9cef18b2f8f`
+
+to:
+
+`eb2812614997b1159812effbd03f3b28af0f3b59`.
+
+Server validation again passed:
+
+- exact 7-file implementation scope;
+- API typecheck;
+- API build;
+- 43 new tests;
+- 75 regression tests;
+- 118 total tests;
+- repository clean/origin-aligned;
+- Direct API health HTTP 200;
+- Nginx API health HTTP 200.
+
+### Commit-scope verifier harness correction
+
+The first server commit-scope preflight stopped before promotion because the verifier compared:
+
+- an alphabetically sorted actual file list;
+- against a hard-coded expected list that was not sorted identically.
+
+The seven files themselves were correct.
+
+No source promotion, DB write, PM2 restart, build or runtime test had occurred before that harness stop.
+
+The verifier was corrected to sort both expected and actual sets consistently.
+
+The corrected exact-set verification passed.
+
+Classification:
+
+- harness defect only;
+- product/source defect: none demonstrated.
+
+### Deployment and runtime inventory
+
+After successful server source validation, `lexora-api` was deliberately restarted so the new route was loaded.
+
+Observed deployment-stage PM2 transition:
+
+`1575 → 11157`
+
+After restart:
+
+- Direct API: HTTP 200;
+- Nginx API: HTTP 200;
+- API listener: `127.0.0.1:4000` only;
+- no direct `0.0.0.0:4000` / `[::]:4000` exposure.
+
+Ordinary PostgreSQL version:
+
+`18.4 (Ubuntu 18.4-0ubuntu0.26.04.1)`
+
+Read-only inventory confirmed pre-fixture counts:
+
+- `program_learning_outcomes`: 0;
+- `course_learning_outcomes`: 0;
+- `course_learning_outcome_plo_mappings`: 0;
+- `course_offerings`: 14;
+- `curriculum_courses`: 61;
+- `curriculum_versions`: 8;
+- `teacher_course_assignments`: 5.
+
+The ordinary database already contained usable lifecycle dependencies for:
+
+- DRAFT;
+- APPROVED;
+- ACTIVE;
+- RETIRED;
+- valid ARCHIVED;
+- deliberately malformed ARCHIVED runtime state.
+
+No production/canonical CLO/PLO rows existed before this runtime matrix.
+
+### Disposable runtime fixture design
+
+Disposable runtime fixture IDs used the isolated prefix:
+
+`obe_read_rt_`
+
+Pre-fixture collision count:
+
+0
+
+Temporary fixture cardinality:
+
+- CurriculumCourse rows: 3;
+- CourseOffering rows: 8;
+- TeacherCourseAssignment rows: 7;
+- ProgramLearningOutcome rows: 6;
+- CourseLearningOutcome rows: 6;
+- CLO/PLO mapping rows: 6;
+- SyllabusVersion bindings: 0.
+
+The fixtures were used only to exercise the approved CLO/PLO read contract.
+
+### First final-matrix login harness failure and recovery
+
+The first final-matrix attempt successfully created the disposable fixtures but stopped before any login request was sent.
+
+Cause:
+
+the shell helper attempted to pipe login fields to `python3 -` while simultaneously supplying the Python program through a heredoc.
+
+The heredoc owned standard input, so Python did not receive the piped login values and stopped with:
+
+`Login input incomplete.`
+
+This was a runtime-test harness defect, not an API/product failure.
+
+The EXIT cleanup trap executed.
+
+A dedicated recovery verification then confirmed:
+
+- fixture residue: 0;
+- ordinary academic baseline restored exactly to `0|0|0|14|61|8|5`;
+- fixture-target audit residue: 0;
+- Direct API: HTTP 200;
+- Nginx API: HTTP 200;
+- repository clean/origin-aligned;
+- no login request had been sent by the failed harness.
+
+The corrected rerun moved password entry, JSON construction, login, access-token handling and HTTP response validation into one in-memory Python process.
+
+Raw passwords and access tokens were not printed.
+
+### Fresh canonical principal verification
+
+Fresh login/runtime principals were verified:
+
+- Law Department Admin: HTTP 201;
+- Law Teacher: HTTP 201;
+- Law Student: HTTP 201.
+
+For each principal, runtime validation confirmed:
+
+- expected email;
+- department `dept_law_test`;
+- exact expected role;
+- permissions list present;
+- valid access token present.
+
+No raw password or raw access token was printed into the runtime evidence.
+
+### Final ordinary PostgreSQL/API runtime matrix
+
+Final runtime matrix results:
+
+- unauthenticated request: HTTP `401`;
+- Student request: HTTP `403`;
+- assigned Teacher + APPROVED CurriculumVersion: HTTP `200`;
+- assigned Teacher + ACTIVE CurriculumVersion: HTTP `200`;
+- assigned Teacher + RETIRED CurriculumVersion: HTTP `200`;
+- assigned Teacher + valid ARCHIVED CurriculumVersion: HTTP `200`;
+- assigned Teacher + valid zero-CLO CurriculumCourse: HTTP `200` with empty CLO collection;
+- Department Admin + APPROVED CurriculumVersion: HTTP `200`;
+- Department Admin + Teacher-unassigned APPROVED offering: HTTP `200`;
+- Teacher + bound but unassigned offering: HTTP `404`;
+- Teacher + DRAFT CurriculumVersion: HTTP `404`;
+- Department Admin + DRAFT CurriculumVersion: HTTP `404`;
+- Teacher + malformed ARCHIVED lifecycle: HTTP `404`;
+- Department Admin + malformed ARCHIVED lifecycle: HTTP `404`;
+- Teacher + BUS cross-department direct CourseOffering ID: HTTP `404`;
+- Department Admin + BUS cross-department direct CourseOffering ID: HTTP `404`;
+- Teacher + nonexistent CourseOffering ID: HTTP `404`.
+
+The safe-not-found response fingerprints for the tested inaccessible/malformed cases were identical.
+
+### Forged department-header verification
+
+Assigned Law Teacher read of the APPROVED fixture was repeated with:
+
+`x-department-id: dept_bus_test`
+
+Result:
+
+- HTTP `200`;
+- response remained the exact Law-department result;
+- canonical response hash matched the non-forged request.
+
+Therefore the forged department header did not override the authenticated principal's department scope.
+
+### Runtime response verification
+
+Runtime payload validation confirmed:
+
+- correct exact bound CurriculumCourse;
+- correct exact CurriculumVersion;
+- correct lifecycle status;
+- exact CLO set;
+- exact mapped PLO set;
+- CLO deterministic ordering;
+- mapped PLO deterministic ordering;
+- valid zero-CLO empty collection behavior;
+- no forbidden internal identity/timestamp fields.
+
+Historical RETIRED/ARCHIVED exact reads were verified without fallback selection.
+
+### GET non-mutation and audit behavior
+
+Before and after the HTTP GET matrix, a fingerprint of all disposable academic fixture rows was compared.
+
+Result:
+
+- academic fixture fingerprint unchanged;
+- fixture cardinality unchanged;
+- feature-target audit delta: 0.
+
+Authentication/session telemetry was not deleted or suppressed.
+
+No feature-target business mutation was produced by the learning-outcomes GET route.
+
+### Exact cleanup and ordinary baseline restoration
+
+Disposable fixture cleanup was performed transactionally.
+
+Post-cleanup:
+
+- fixture residue: 0;
+- original academic baseline: `0|0|0|14|61|8|5`;
+- restored academic baseline: `0|0|0|14|61|8|5`.
+
+Therefore the ordinary academic state was restored exactly for the measured tables.
+
+No disposable CLO/PLO runtime rows remain.
+
+### PM2 evidence nuance
+
+An earlier deployment/inventory step observed PM2 PID:
+
+`11157`
+
+At the start of the final successful rerun, the observed PM2 PID was:
+
+`1670`
+
+The cause of that intervening process lifecycle change was not established by this checkpoint and no causal claim is made.
+
+During the final successful runtime matrix itself:
+
+- PM2 PID remained unchanged at `1670`;
+- Direct API remained HTTP 200;
+- Nginx API remained HTTP 200;
+- API remained loopback-only on `127.0.0.1:4000`.
+
+### Security properties runtime verified
+
+This checkpoint runtime verified:
+
+- `AuthGuard` boundary;
+- `PolicyGuard` / offering-read policy boundary;
+- Department Admin department scoping;
+- Teacher exact active-assignment scoping;
+- Student exclusion;
+- object-level authorization;
+- safe cross-department direct-object handling;
+- safe nonexistent-object handling;
+- authenticated principal department authority over forged header input;
+- DRAFT fail-closed behavior;
+- malformed lifecycle fail-closed behavior;
+- historical RETIRED/ARCHIVED exact read support;
+- no SyllabusVersion dependency;
+- no automatic/fallback CurriculumVersion selection;
+- compact response minimization;
+- deterministic CLO/PLO ordering;
+- valid zero-CLO behavior;
+- GET business non-mutation;
+- zero feature-target audit delta;
+- exact disposable fixture cleanup.
+
+### Final technical classification
+
+The **Approved CLO/PLO Assigned-Course Read** checkpoint is now:
+
+- implemented;
+- independently source/security reviewed;
+- independently statically verified;
+- committed;
+- pushed;
+- promoted to Ubuntu server;
+- server typecheck/build verified;
+- server focused/regression tests verified;
+- deployed to the running API;
+- ordinary PostgreSQL/API runtime verified;
+- department isolation runtime verified;
+- object-level authorization runtime verified;
+- lifecycle behavior runtime verified;
+- response minimization runtime verified;
+- non-mutation/audit behavior runtime verified;
+- disposable fixtures fully removed;
+- measured ordinary academic baseline restored.
+
+This closes the narrow:
+
+**Approved CLO/PLO Assigned-Course Read checkpoint.**
+
+### Broader OBE/Teacher work still pending
+
+This checkpoint does not close the complete OBE or Teacher Course Workspace scope.
+
+Still pending unless separately implemented and runtime verified:
+
+- Course Outline data/workflow;
+- Course Outline approval/versioning;
+- Lesson Plan;
+- constructive alignment workflows;
+- formative assessment CLO mappings;
+- summative question-metadata CLO mappings;
+- CLO/PLO attainment;
+- CQI;
+- Course File;
+- broader Teacher Course Workspace composition.
+
+The target specification continues to require approved curriculum-owned CLO/PLO data to remain read-only to the Course Teacher.
+
+### Next logical checkpoint
+
+The prerequisite approved CLO/PLO assigned-course read contract is now runtime verified.
+
+Before implementation of the next OBE feature, perform a focused source/runtime audit for the smallest safe **Course Outline** foundation slice.
+
+Do not combine Course Outline, Lesson Plan, attendance, roster, formative assessment, CLO/PLO attainment and Course File into one implementation checkpoint.
