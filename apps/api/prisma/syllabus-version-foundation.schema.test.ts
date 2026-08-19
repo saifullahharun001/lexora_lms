@@ -191,8 +191,16 @@ test("foundation exposes immutable syllabus identity without adding an API or ac
     migration,
     /CONSTRAINT "syllabus_versions_department_id_fkey"[\s\S]*?ON DELETE RESTRICT ON UPDATE CASCADE;/,
   );
-  assert.doesNotMatch(
+  assert.match(
     syllabusVersion,
+    /^\s*courseOutlineVersions\s+CourseOutlineVersion\[\]\s*$/m,
+  );
+  const syllabusWithoutCourseOutlineBackrelation = syllabusVersion.replace(
+    /^\s*courseOutlineVersions\s+CourseOutlineVersion\[\]\s*\r?\n?/m,
+    "",
+  );
+  assert.doesNotMatch(
+    syllabusWithoutCourseOutlineBackrelation,
     /courseOutline|lessonPlan|courseContent|courseObjective|clo|plo/i,
   );
   assert.doesNotMatch(

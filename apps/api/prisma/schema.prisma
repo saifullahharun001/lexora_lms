@@ -128,6 +128,16 @@ enum AcademicVersionStatus {
   ARCHIVED
 }
 
+enum CourseOutlineStatus {
+  DRAFT
+  SUBMITTED_BY_TEACHER
+  COORDINATOR_REVIEW
+  RETURNED_FOR_CORRECTION
+  APPROVED
+  ACTIVE
+  ARCHIVED
+}
+
 enum AcademicYearStatus {
   PLANNED
   ACTIVE
@@ -433,6 +443,7 @@ model Department {
   courseLearningOutcomes       CourseLearningOutcome[]
   cloPloMappings               CourseLearningOutcomePloMapping[]
   syllabusVersions             SyllabusVersion[]
+  courseOutlineVersions        CourseOutlineVersion[]
   studentCurriculumAssignments StudentCurriculumAssignment[]
   courseAssessmentTemplates    CourseAssessmentTemplate[]
   assessmentTemplateComponents AssessmentTemplateComponent[]
@@ -804,30 +815,31 @@ model AssessmentTemplateComponent {
 }
 
 model CurriculumCourse {
-  id                   String                   @id @default(cuid())
-  departmentId         String                   @map("department_id")
-  curriculumVersionId  String                   @map("curriculum_version_id")
-  courseId             String                   @map("course_id")
-  assessmentTemplateId String                   @map("assessment_template_id")
-  categoryCode         String                   @map("category_code") @db.VarChar(64)
-  academicYearNumber   Int                      @map("academic_year_number") @db.SmallInt
-  semesterNumber       Int                      @map("semester_number") @db.SmallInt
-  displayOrder         Int                      @map("display_order") @db.SmallInt
-  courseCodeSnapshot   String                   @map("course_code_snapshot") @db.VarChar(64)
-  courseTitleSnapshot  String                   @map("course_title_snapshot") @db.VarChar(255)
-  creditHoursSnapshot  Decimal                  @map("credit_hours_snapshot") @db.Decimal(6, 2)
-  totalMarksSnapshot   Decimal                  @map("total_marks_snapshot") @db.Decimal(6, 2)
-  isRequired           Boolean                  @default(true) @map("is_required")
-  createdAt            DateTime                 @default(now()) @map("created_at")
-  updatedAt            DateTime                 @updatedAt @map("updated_at")
-  department           Department               @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  curriculumVersion    CurriculumVersion        @relation(fields: [curriculumVersionId], references: [id], onDelete: Restrict)
-  course               Course                   @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  assessmentTemplate   CourseAssessmentTemplate @relation(fields: [assessmentTemplateId], references: [id], onDelete: Restrict)
-  syllabusVersions     SyllabusVersion[]
-  courseOfferings      CourseOffering[]
-  enrollments          Enrollment[]
-  learningOutcomes     CourseLearningOutcome[]
+  id                    String                   @id @default(cuid())
+  departmentId          String                   @map("department_id")
+  curriculumVersionId   String                   @map("curriculum_version_id")
+  courseId              String                   @map("course_id")
+  assessmentTemplateId  String                   @map("assessment_template_id")
+  categoryCode          String                   @map("category_code") @db.VarChar(64)
+  academicYearNumber    Int                      @map("academic_year_number") @db.SmallInt
+  semesterNumber        Int                      @map("semester_number") @db.SmallInt
+  displayOrder          Int                      @map("display_order") @db.SmallInt
+  courseCodeSnapshot    String                   @map("course_code_snapshot") @db.VarChar(64)
+  courseTitleSnapshot   String                   @map("course_title_snapshot") @db.VarChar(255)
+  creditHoursSnapshot   Decimal                  @map("credit_hours_snapshot") @db.Decimal(6, 2)
+  totalMarksSnapshot    Decimal                  @map("total_marks_snapshot") @db.Decimal(6, 2)
+  isRequired            Boolean                  @default(true) @map("is_required")
+  createdAt             DateTime                 @default(now()) @map("created_at")
+  updatedAt             DateTime                 @updatedAt @map("updated_at")
+  department            Department               @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  curriculumVersion     CurriculumVersion        @relation(fields: [curriculumVersionId], references: [id], onDelete: Restrict)
+  course                Course                   @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  assessmentTemplate    CourseAssessmentTemplate @relation(fields: [assessmentTemplateId], references: [id], onDelete: Restrict)
+  syllabusVersions      SyllabusVersion[]
+  courseOutlineVersions CourseOutlineVersion[]
+  courseOfferings       CourseOffering[]
+  enrollments           Enrollment[]
+  learningOutcomes      CourseLearningOutcome[]
 
   @@unique([id, departmentId], map: "curriculum_course_id_department_uq")
   @@unique([id, departmentId, curriculumVersionId], map: "curriculum_course_id_department_version_uq")
@@ -899,21 +911,22 @@ model CourseLearningOutcomePloMapping {
 }
 
 model SyllabusVersion {
-  id                 String                @id @default(cuid())
-  departmentId       String                @map("department_id")
-  curriculumCourseId String                @map("curriculum_course_id")
-  code               String                @db.VarChar(64)
-  versionNumber      Int                   @map("version_number") @db.SmallInt
-  status             AcademicVersionStatus @default(DRAFT)
-  effectiveFrom      DateTime?             @map("effective_from")
-  effectiveTo        DateTime?             @map("effective_to")
-  approvedAt         DateTime?             @map("approved_at")
-  archivedAt         DateTime?             @map("archived_at")
-  createdAt          DateTime              @default(now()) @map("created_at")
-  updatedAt          DateTime              @updatedAt @map("updated_at")
-  department         Department            @relation(fields: [departmentId], references: [id], onDelete: Restrict, map: "syllabus_versions_department_id_fkey")
-  curriculumCourse   CurriculumCourse      @relation(fields: [curriculumCourseId, departmentId], references: [id, departmentId], onDelete: Restrict, map: "syllabus_version_dept_curriculum_course_fkey")
-  courseOfferings    CourseOffering[]
+  id                    String                 @id @default(cuid())
+  departmentId          String                 @map("department_id")
+  curriculumCourseId    String                 @map("curriculum_course_id")
+  code                  String                 @db.VarChar(64)
+  versionNumber         Int                    @map("version_number") @db.SmallInt
+  status                AcademicVersionStatus  @default(DRAFT)
+  effectiveFrom         DateTime?              @map("effective_from")
+  effectiveTo           DateTime?              @map("effective_to")
+  approvedAt            DateTime?              @map("approved_at")
+  archivedAt            DateTime?              @map("archived_at")
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+  department            Department             @relation(fields: [departmentId], references: [id], onDelete: Restrict, map: "syllabus_versions_department_id_fkey")
+  curriculumCourse      CurriculumCourse       @relation(fields: [curriculumCourseId, departmentId], references: [id, departmentId], onDelete: Restrict, map: "syllabus_version_dept_curriculum_course_fkey")
+  courseOfferings       CourseOffering[]
+  courseOutlineVersions CourseOutlineVersion[]
 
   @@unique([id, departmentId, curriculumCourseId], map: "syllabus_version_id_department_curriculum_course_uq")
   @@unique([departmentId, curriculumCourseId, code], map: "syllabus_version_dept_curriculum_course_code_uq")
@@ -943,6 +956,7 @@ model CourseOffering {
   academicTerm            AcademicTerm              @relation(fields: [academicTermId], references: [id])
   curriculumCourse        CurriculumCourse?         @relation(fields: [curriculumCourseId], references: [id], onDelete: Restrict)
   syllabusVersion         SyllabusVersion?          @relation(fields: [syllabusVersionId, departmentId, curriculumCourseId], references: [id, departmentId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "course_offering_syllabus_identity_fkey")
+  courseOutlineVersions   CourseOutlineVersion[]
   teacherAssignments      TeacherCourseAssignment[]
   enrollments             Enrollment[]
   classSessions           ClassSession[]
@@ -957,12 +971,39 @@ model CourseOffering {
   notices                 Notice[]
 
   /// Uniqueness is enforced by PostgreSQL partial unique indexes because Prisma 6.x cannot represent them.
+  @@unique([id, departmentId, curriculumCourseId, syllabusVersionId], map: "course_offering_outline_identity_uq")
   @@index([departmentId])
   @@index([courseId])
   @@index([academicTermId])
   @@index([departmentId, curriculumCourseId], map: "course_offering_dept_curriculum_course_idx")
   @@index([departmentId, syllabusVersionId], map: "course_offering_dept_syllabus_version_idx")
   @@map("course_offerings")
+}
+
+model CourseOutlineVersion {
+  id                 String              @id @default(cuid())
+  departmentId       String              @map("department_id")
+  courseOfferingId   String              @map("course_offering_id")
+  curriculumCourseId String              @map("curriculum_course_id")
+  syllabusVersionId  String              @map("syllabus_version_id")
+  versionNumber      Int                 @map("version_number") @db.SmallInt
+  status             CourseOutlineStatus @default(DRAFT)
+  submittedAt        DateTime?           @map("submitted_at")
+  approvedAt         DateTime?           @map("approved_at")
+  activatedAt        DateTime?           @map("activated_at")
+  archivedAt         DateTime?           @map("archived_at")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+  department         Department          @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_department_fkey")
+  courseOffering     CourseOffering      @relation(fields: [courseOfferingId, departmentId, curriculumCourseId, syllabusVersionId], references: [id, departmentId, curriculumCourseId, syllabusVersionId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_offering_identity_fkey")
+  curriculumCourse   CurriculumCourse    @relation(fields: [curriculumCourseId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_curriculum_course_fkey")
+  syllabusVersion    SyllabusVersion     @relation(fields: [syllabusVersionId, departmentId, curriculumCourseId], references: [id, departmentId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_syllabus_identity_fkey")
+
+  @@unique([departmentId, courseOfferingId, versionNumber], map: "course_outline_version_dept_offering_number_uq")
+  @@unique([id, departmentId, courseOfferingId], map: "course_outline_version_id_dept_offering_uq")
+  @@index([departmentId, courseOfferingId, status], map: "course_outline_version_dept_offering_status_idx")
+  @@index([departmentId, syllabusVersionId], map: "course_outline_version_dept_syllabus_idx")
+  @@map("course_outline_versions")
 }
 
 model TeacherCourseAssignment {

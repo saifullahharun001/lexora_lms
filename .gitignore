@@ -38,6 +38,8 @@ apps/api/prisma/migrations/*
 !apps/api/prisma/migrations/202608170001_add_course_offering_syllabus_binding_foundation/migration.sql
 !apps/api/prisma/migrations/202608190001_add_obe_learning_outcomes_foundation/
 !apps/api/prisma/migrations/202608190001_add_obe_learning_outcomes_foundation/migration.sql
+!apps/api/prisma/migrations/202608190002_add_course_outline_version_foundation/
+!apps/api/prisma/migrations/202608190002_add_course_outline_version_foundation/migration.sql
 *.log
 
 

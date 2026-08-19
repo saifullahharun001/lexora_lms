@@ -177,7 +177,8 @@ test("migration is additive and contains no ordinary-data backfill", () => {
 });
 
 test("foundation introduces no later workflow models or invented outcome semantics", () => {
-  assert.doesNotMatch(schema, /model (?:CourseOutline|LessonPlan)\b/);
+  assert.doesNotMatch(schema, /model (?:CourseOutline|LessonPlan)\s*\{/);
+  assert.doesNotMatch(migration, /course_outline|lesson_plan/i);
   assert.doesNotMatch(schema, /model \w*(?:Clo|Plo)Attainment\b/i);
 
   for (const value of [

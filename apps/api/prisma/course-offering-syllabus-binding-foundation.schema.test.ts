@@ -204,7 +204,14 @@ test("department-scoped lookup is indexed without making syllabus use unique", (
       `CREATE INDEX "${indexName}"\\s+ON "course_offerings"\\("department_id", "syllabus_version_id"\\);`,
     ),
   );
-  assert.doesNotMatch(courseOffering, /@@unique\(\[[^\]]*syllabusVersionId/);
+  const syllabusCandidateKeys = [
+    ...courseOffering.matchAll(
+      /@@unique\(\[([^\]]*syllabusVersionId[^\]]*)\], map: "[^"]+"\)/g,
+    ),
+  ].map((match) => match[1]);
+  assert.deepEqual(syllabusCandidateKeys, [
+    "id, departmentId, curriculumCourseId, syllabusVersionId",
+  ]);
   assert.doesNotMatch(
     migration,
     /CREATE UNIQUE INDEX "course_offering[^"]*syllabus/i,
