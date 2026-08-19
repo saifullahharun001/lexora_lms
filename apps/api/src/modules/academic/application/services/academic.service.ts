@@ -29,6 +29,7 @@ import type {
   AcademicRepositoryPort,
   AcademicTermListFilters,
   AcademicYearListFilters,
+  CourseOfferingLearningOutcomesView,
   CourseListFilters,
   CourseOfferingListFilters,
   CreateAcademicTermInput,
@@ -567,6 +568,37 @@ export class AcademicService {
     }
 
     return syllabusVersion;
+  }
+
+  async getCourseOfferingLearningOutcomes(courseOfferingId: string) {
+    let learningOutcomes: CourseOfferingLearningOutcomesView | null;
+
+    if (this.hasRole("department_admin")) {
+      learningOutcomes =
+        await this.repository.findApprovedLearningOutcomesForCourseOffering(
+          this.getDepartmentId(),
+          courseOfferingId,
+        );
+    } else if (this.hasRole("teacher")) {
+      learningOutcomes =
+        await this.repository.findApprovedLearningOutcomesForCourseOfferingForTeacher(
+          this.getDepartmentId(),
+          courseOfferingId,
+          this.getActorId(),
+        );
+    } else {
+      throw new ForbiddenException(
+        "Course offering learning outcomes access is forbidden",
+      );
+    }
+
+    if (!learningOutcomes) {
+      throw new NotFoundException(
+        "Course offering learning outcomes not found",
+      );
+    }
+
+    return learningOutcomes;
   }
 
   async createCourseOffering(

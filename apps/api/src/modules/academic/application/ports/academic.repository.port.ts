@@ -65,6 +65,38 @@ export interface TeacherAssignmentListFilters {
   courseOfferingId: string;
 }
 
+export interface ProgramLearningOutcomeReadView {
+  id: string;
+  code: string;
+  statement: string;
+  displayOrder: number;
+}
+
+export interface CourseLearningOutcomeReadView {
+  id: string;
+  code: string;
+  statement: string;
+  displayOrder: number;
+  mappedProgramLearningOutcomes: ProgramLearningOutcomeReadView[];
+}
+
+export interface CourseOfferingLearningOutcomesView {
+  courseOfferingId: string;
+  curriculumCourse: {
+    id: string;
+    courseCodeSnapshot: string;
+    courseTitleSnapshot: string;
+    curriculumVersion: {
+      id: string;
+      code: string;
+      name: string;
+      status: AcademicVersionStatus;
+      effectiveAcademicSessionCode: string;
+    };
+  };
+  courseLearningOutcomes: CourseLearningOutcomeReadView[];
+}
+
 export interface EnrollmentListFilters {
   departmentId: string;
   academicTermId?: string;
@@ -464,6 +496,15 @@ export interface AcademicRepositoryPort {
     courseOfferingId: string,
     teacherUserId: string,
   ): Promise<unknown | null>;
+  findApprovedLearningOutcomesForCourseOffering(
+    departmentId: string,
+    courseOfferingId: string,
+  ): Promise<CourseOfferingLearningOutcomesView | null>;
+  findApprovedLearningOutcomesForCourseOfferingForTeacher(
+    departmentId: string,
+    courseOfferingId: string,
+    teacherUserId: string,
+  ): Promise<CourseOfferingLearningOutcomesView | null>;
   createCourseOffering(input: CreateCourseOfferingInput): Promise<unknown>;
   updateCourseOffering(
     departmentId: string,

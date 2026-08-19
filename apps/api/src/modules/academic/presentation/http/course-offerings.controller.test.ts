@@ -135,12 +135,72 @@ test("bound syllabus read accepts only params and forwards only offering id", as
   assert.deepEqual(calls, [["offering-a"]]);
 });
 
+test("learning-outcomes read is a guarded GET using offering read policy", () => {
+  const guards = Reflect.getMetadata(
+    GUARDS_METADATA,
+    CourseOfferingsController,
+  ) as unknown[];
+  assert.deepEqual(guards, [AuthGuard, PolicyGuard]);
+  assert.equal(
+    Reflect.getMetadata(
+      PATH_METADATA,
+      CourseOfferingsController.prototype.getLearningOutcomes,
+    ),
+    ":id/learning-outcomes",
+  );
+  assert.equal(
+    Reflect.getMetadata(
+      METHOD_METADATA,
+      CourseOfferingsController.prototype.getLearningOutcomes,
+    ),
+    RequestMethod.GET,
+  );
+  assert.equal(
+    Reflect.getMetadata(
+      REQUIRE_POLICY_KEY,
+      CourseOfferingsController.prototype.getLearningOutcomes,
+    ),
+    ACADEMIC_POLICY_NAMES.OFFERING_READ,
+  );
+});
+
+test("learning-outcomes read accepts only params and forwards only offering id", async () => {
+  const calls: unknown[] = [];
+  const controller = new CourseOfferingsController({
+    getCourseOfferingLearningOutcomes: async (...args: unknown[]) => {
+      calls.push(args);
+      return { courseOfferingId: "offering-a" };
+    },
+  } as never);
+
+  assert.equal(
+    CourseOfferingsController.prototype.getLearningOutcomes.length,
+    1,
+  );
+  assert.deepEqual(
+    await controller.getLearningOutcomes({
+      id: "offering-a",
+      departmentId: "attacker-department",
+      curriculumVersionId: "attacker-version",
+      curriculumCourseId: "attacker-course",
+      syllabusVersionId: "attacker-syllabus",
+      courseLearningOutcomeId: "attacker-clo",
+      programLearningOutcomeId: "attacker-plo",
+    } as never),
+    { courseOfferingId: "offering-a" },
+  );
+  assert.deepEqual(calls, [["offering-a"]]);
+});
+
 test("unauthenticated requests are rejected by AuthGuard", async () => {
   const guard = new AuthGuard({} as never, {} as never, {} as never);
   const context = {
     switchToHttp: () => ({ getRequest: () => ({ headers: {} }) }),
   };
-  await assert.rejects(guard.canActivate(context as never), UnauthorizedException);
+  await assert.rejects(
+    guard.canActivate(context as never),
+    UnauthorizedException,
+  );
 });
 
 test("Department Admin wildcard permits binding but Teacher offering.manage does not", () => {

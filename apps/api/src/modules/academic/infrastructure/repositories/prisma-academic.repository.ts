@@ -18,6 +18,7 @@ import type {
   AcademicYearListFilters,
   BindCourseOfferingCurriculumInput,
   BindCourseOfferingSyllabusInput,
+  CourseOfferingLearningOutcomesView,
   CourseListFilters,
   CourseOfferingListFilters,
   CreateAcademicTermInput,
@@ -109,6 +110,14 @@ const BINDABLE_ACADEMIC_VERSION_STATUSES: readonly AcademicVersionStatus[] = [
   AcademicVersionStatus.APPROVED,
   AcademicVersionStatus.ACTIVE,
 ];
+
+const READABLE_LEARNING_OUTCOME_CURRICULUM_STATUSES: readonly AcademicVersionStatus[] =
+  [
+    AcademicVersionStatus.APPROVED,
+    AcademicVersionStatus.ACTIVE,
+    AcademicVersionStatus.RETIRED,
+    AcademicVersionStatus.ARCHIVED,
+  ];
 
 const ASSIGNABLE_STUDENT_CURRICULUM_STATUSES: readonly AcademicVersionStatus[] =
   [AcademicVersionStatus.APPROVED, AcademicVersionStatus.ACTIVE];
@@ -507,6 +516,212 @@ function sanitizeCourseOfferingRead(
         totalMarks: template.totalMarks,
       },
     },
+  };
+}
+
+const courseOfferingLearningOutcomesSelect = {
+  id: true,
+  departmentId: true,
+  courseId: true,
+  curriculumCourseId: true,
+  course: {
+    select: {
+      id: true,
+      departmentId: true,
+      academicProgramId: true,
+    },
+  },
+  curriculumCourse: {
+    select: {
+      id: true,
+      departmentId: true,
+      curriculumVersionId: true,
+      courseId: true,
+      courseCodeSnapshot: true,
+      courseTitleSnapshot: true,
+      course: {
+        select: {
+          id: true,
+          departmentId: true,
+          academicProgramId: true,
+        },
+      },
+      curriculumVersion: {
+        select: {
+          id: true,
+          departmentId: true,
+          academicProgramId: true,
+          code: true,
+          name: true,
+          status: true,
+          effectiveAcademicSessionCode: true,
+          approvedAt: true,
+          archivedAt: true,
+          academicProgram: {
+            select: { id: true, departmentId: true },
+          },
+        },
+      },
+      learningOutcomes: {
+        select: {
+          id: true,
+          departmentId: true,
+          curriculumVersionId: true,
+          curriculumCourseId: true,
+          code: true,
+          statement: true,
+          displayOrder: true,
+          ploMappings: {
+            select: {
+              departmentId: true,
+              curriculumVersionId: true,
+              courseLearningOutcomeId: true,
+              programLearningOutcomeId: true,
+              programLearningOutcome: {
+                select: {
+                  id: true,
+                  departmentId: true,
+                  curriculumVersionId: true,
+                  code: true,
+                  statement: true,
+                  displayOrder: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+} satisfies Prisma.CourseOfferingSelect;
+
+type CourseOfferingLearningOutcomesRecord = Prisma.CourseOfferingGetPayload<{
+  select: typeof courseOfferingLearningOutcomesSelect;
+}>;
+
+function byDisplayOrderCodeAndId(
+  left: { displayOrder: number; code: string; id: string },
+  right: { displayOrder: number; code: string; id: string },
+) {
+  return (
+    left.displayOrder - right.displayOrder ||
+    left.code.localeCompare(right.code) ||
+    left.id.localeCompare(right.id)
+  );
+}
+
+function sanitizeCourseOfferingLearningOutcomes(
+  offering: CourseOfferingLearningOutcomesRecord,
+  departmentId: string,
+): CourseOfferingLearningOutcomesView | null {
+  const curriculumCourse = offering.curriculumCourse;
+  const offeringCourse = offering.course;
+
+  if (
+    offering.departmentId !== departmentId ||
+    offeringCourse.id !== offering.courseId ||
+    offeringCourse.departmentId !== departmentId ||
+    !offeringCourse.academicProgramId ||
+    !offering.curriculumCourseId ||
+    !curriculumCourse ||
+    curriculumCourse.id !== offering.curriculumCourseId ||
+    curriculumCourse.departmentId !== departmentId ||
+    curriculumCourse.courseId !== offering.courseId ||
+    curriculumCourse.course.id !== curriculumCourse.courseId ||
+    curriculumCourse.course.departmentId !== departmentId ||
+    curriculumCourse.course.academicProgramId !==
+      offeringCourse.academicProgramId
+  ) {
+    return null;
+  }
+
+  const curriculumVersion = curriculumCourse.curriculumVersion;
+  if (
+    curriculumVersion.id !== curriculumCourse.curriculumVersionId ||
+    curriculumVersion.departmentId !== departmentId ||
+    curriculumVersion.academicProgramId !== offeringCourse.academicProgramId ||
+    curriculumVersion.academicProgram.id !==
+      curriculumVersion.academicProgramId ||
+    curriculumVersion.academicProgram.departmentId !== departmentId ||
+    !READABLE_LEARNING_OUTCOME_CURRICULUM_STATUSES.includes(
+      curriculumVersion.status,
+    ) ||
+    !isCurriculumVersionLifecycleStateConsistent(curriculumVersion)
+  ) {
+    return null;
+  }
+
+  const courseLearningOutcomes = curriculumCourse.learningOutcomes.map(
+    (courseLearningOutcome) => {
+      if (
+        courseLearningOutcome.departmentId !== departmentId ||
+        courseLearningOutcome.curriculumVersionId !== curriculumVersion.id ||
+        courseLearningOutcome.curriculumCourseId !== curriculumCourse.id
+      ) {
+        return null;
+      }
+
+      const mappedProgramLearningOutcomes =
+        courseLearningOutcome.ploMappings.map((mapping) => {
+          const programLearningOutcome = mapping.programLearningOutcome;
+
+          if (
+            mapping.departmentId !== departmentId ||
+            mapping.curriculumVersionId !== curriculumVersion.id ||
+            mapping.courseLearningOutcomeId !== courseLearningOutcome.id ||
+            mapping.programLearningOutcomeId !== programLearningOutcome.id ||
+            programLearningOutcome.departmentId !== departmentId ||
+            programLearningOutcome.curriculumVersionId !== curriculumVersion.id
+          ) {
+            return null;
+          }
+
+          return {
+            id: programLearningOutcome.id,
+            code: programLearningOutcome.code,
+            statement: programLearningOutcome.statement,
+            displayOrder: programLearningOutcome.displayOrder,
+          };
+        });
+
+      if (mappedProgramLearningOutcomes.some((outcome) => outcome === null)) {
+        return null;
+      }
+
+      return {
+        id: courseLearningOutcome.id,
+        code: courseLearningOutcome.code,
+        statement: courseLearningOutcome.statement,
+        displayOrder: courseLearningOutcome.displayOrder,
+        mappedProgramLearningOutcomes: mappedProgramLearningOutcomes
+          .filter((outcome) => outcome !== null)
+          .sort(byDisplayOrderCodeAndId),
+      };
+    },
+  );
+
+  if (courseLearningOutcomes.some((outcome) => outcome === null)) {
+    return null;
+  }
+
+  return {
+    courseOfferingId: offering.id,
+    curriculumCourse: {
+      id: curriculumCourse.id,
+      courseCodeSnapshot: curriculumCourse.courseCodeSnapshot,
+      courseTitleSnapshot: curriculumCourse.courseTitleSnapshot,
+      curriculumVersion: {
+        id: curriculumVersion.id,
+        code: curriculumVersion.code,
+        name: curriculumVersion.name,
+        status: curriculumVersion.status,
+        effectiveAcademicSessionCode:
+          curriculumVersion.effectiveAcademicSessionCode,
+      },
+    },
+    courseLearningOutcomes: courseLearningOutcomes
+      .filter((outcome) => outcome !== null)
+      .sort(byDisplayOrderCodeAndId),
   };
 }
 
@@ -1387,6 +1602,80 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
 
     return offering?.syllabusVersion
       ? sanitizeSyllabusVersion(offering.syllabusVersion, departmentId)
+      : null;
+  }
+
+  async findApprovedLearningOutcomesForCourseOffering(
+    departmentId: string,
+    courseOfferingId: string,
+  ) {
+    const offering = await this.prisma.courseOffering.findFirst({
+      where: {
+        id: courseOfferingId,
+        departmentId,
+        archivedAt: null,
+        curriculumCourseId: { not: null },
+        curriculumCourse: {
+          is: {
+            departmentId,
+            curriculumVersion: {
+              is: {
+                departmentId,
+                status: {
+                  in: [...READABLE_LEARNING_OUTCOME_CURRICULUM_STATUSES],
+                },
+              },
+            },
+          },
+        },
+      },
+      select: courseOfferingLearningOutcomesSelect,
+    });
+
+    return offering
+      ? sanitizeCourseOfferingLearningOutcomes(offering, departmentId)
+      : null;
+  }
+
+  async findApprovedLearningOutcomesForCourseOfferingForTeacher(
+    departmentId: string,
+    courseOfferingId: string,
+    teacherUserId: string,
+  ) {
+    const offering = await this.prisma.courseOffering.findFirst({
+      where: {
+        id: courseOfferingId,
+        departmentId,
+        archivedAt: null,
+        curriculumCourseId: { not: null },
+        curriculumCourse: {
+          is: {
+            departmentId,
+            curriculumVersion: {
+              is: {
+                departmentId,
+                status: {
+                  in: [...READABLE_LEARNING_OUTCOME_CURRICULUM_STATUSES],
+                },
+              },
+            },
+          },
+        },
+        teacherAssignments: {
+          some: {
+            departmentId,
+            teacherUserId,
+            status: "ACTIVE",
+            unassignedAt: null,
+            archivedAt: null,
+          },
+        },
+      },
+      select: courseOfferingLearningOutcomesSelect,
+    });
+
+    return offering
+      ? sanitizeCourseOfferingLearningOutcomes(offering, departmentId)
       : null;
   }
 
