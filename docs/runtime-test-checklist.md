@@ -25108,3 +25108,707 @@ Before implementation:
 - preserve approved/history immutability;
 - keep canonical syllabus and approved CLO/PLO data read-only/reference-based;
 - do not combine lifecycle work with Lesson Plan, attainment, formative/summative assessment, or Course File.
+
+## Teacher Course Outline Submission Transition Ordinary PostgreSQL/API Runtime Verification — 2026-08-20
+
+### Scope and supersession
+
+This checkpoint implements, independently reviews, statically verifies, promotes, runtime-activates and ordinary PostgreSQL/API-verifies the first Teacher-owned Course Outline lifecycle transition:
+
+`DRAFT → SUBMITTED_BY_TEACHER`
+
+It supersedes earlier pending wording only for:
+
+- Teacher submission of an exact assigned-course Course Outline `DRAFT`;
+- dedicated submission authorization and policy wiring;
+- exact active Teacher assignment enforcement for submission;
+- server-controlled submission timestamp and lifecycle mutation;
+- submission audit generation;
+- repeated-submission conflict behavior;
+- post-submission draft-edit lock;
+- authenticated-department scope preservation during submission;
+- live assignment-revocation concurrency protection.
+
+This checkpoint does **not** claim completion of the whole Course Outline lifecycle or product surface.
+
+Still outside this checkpoint:
+
+- `RETURNED_FOR_CORRECTION → SUBMITTED_BY_TEACHER` resubmission semantics;
+- Coordinator authority;
+- Coordinator review;
+- return for correction;
+- approval;
+- activation;
+- archival;
+- exact active CourseOutlineVersion binding;
+- topic-CLO alignment;
+- supplemental resources;
+- weekly plan;
+- Lesson Plan;
+- assessment schedule;
+- Course Outline Teacher frontend;
+- Coordinator/Admin review frontend;
+- complete Teacher Course Workspace integration.
+
+### Implementation identity
+
+Implementation commit:
+
+`f8e7400fd03432dd7ae63ba232bb249bd6cf26bb`
+
+Commit message:
+
+`Add Course Outline teacher submission`
+
+Implementation scope:
+
+- `11` files;
+- `10` previously tracked files modified;
+- `1` focused repository test added;
+- `817` insertions;
+- `1` deletion;
+- no Prisma schema change;
+- no Prisma migration;
+- no frontend change.
+
+Added HTTP route:
+
+`POST /api/v1/course-offerings/:id/course-outline-versions/:courseOutlineVersionId/submit`
+
+Dedicated policy:
+
+`course-management.course-outline.submit`
+
+Dedicated audit event:
+
+`course-management.course-outline.submitted`
+
+### Submission authority and lifecycle contract
+
+The submission service requires Teacher authority at the application boundary.
+
+Department Admin wildcard policy access does not independently authorise Course Outline submission because the service still requires the authenticated principal to carry Teacher authority and the repository requires the exact active Teacher assignment.
+
+The repository requires:
+
+- authenticated principal department;
+- exact CourseOffering;
+- non-archived CourseOffering;
+- exact Teacher actor;
+- exact `TeacherCourseAssignment`;
+- assignment status `ACTIVE`;
+- `unassignedAt IS NULL`;
+- assignment `archivedAt IS NULL`;
+- exact nested CourseOutlineVersion;
+- exact CourseOffering identity;
+- exact CurriculumCourse identity;
+- exact SyllabusVersion identity.
+
+Only this lifecycle transition is allowed by this checkpoint:
+
+`DRAFT → SUBMITTED_BY_TEACHER`
+
+`RETURNED_FOR_CORRECTION` is intentionally not accepted as a submission source yet.
+
+A valid initial `DRAFT` must also have:
+
+- `submittedAt = null`;
+- `approvedAt = null`;
+- `activatedAt = null`;
+- `archivedAt = null`.
+
+The conditional database mutation qualifies the exact state and all four lifecycle timestamps before applying the transition.
+
+On success:
+
+- status becomes `SUBMITTED_BY_TEACHER`;
+- `submittedAt` is generated server-side;
+- `approvedAt` remains null;
+- `activatedAt` remains null;
+- `archivedAt` remains null;
+- academic identity remains unchanged;
+- version number remains unchanged;
+- Teacher narrative content remains unchanged.
+
+Repeated submission is not idempotently accepted as another success and returns a controlled conflict.
+
+### Independent security review and correction
+
+Independent pre-runtime review identified an assignment-revocation race in the first implementation draft.
+
+The initial implementation verified the exact active Teacher assignment before the CourseOutlineVersion mutation but did not hold the assignment authority through the transaction.
+
+This could theoretically allow an assignment to be revoked between authorization and lifecycle mutation.
+
+The implementation was corrected before commit.
+
+The corrected repository uses a parameterized Prisma SQL authority query with:
+
+`FOR UPDATE OF co, tca`
+
+The query locks both:
+
+- the exact CourseOffering row;
+- the matching active TeacherCourseAssignment row.
+
+The lock query is scoped by:
+
+- department ID;
+- CourseOffering ID;
+- authenticated Teacher actor ID;
+- assignment `ACTIVE`;
+- `unassigned_at IS NULL`;
+- assignment `archived_at IS NULL`;
+- CourseOffering `archived_at IS NULL`.
+
+The correction also:
+
+- hardened malformed `DRAFT` lifecycle metadata;
+- added lifecycle timestamp predicates to the conditional mutation;
+- aligned success-audit `occurredAt` with the server-controlled transition timestamp.
+
+No schema or migration change was required by the correction.
+
+### Local and Ubuntu static verification
+
+The reviewed implementation passed focused and adjacent Course Outline tests before commit.
+
+After promotion to Ubuntu:
+
+- Prisma schema validation passed;
+- Prisma Client generation passed;
+- API typecheck passed;
+- API build passed;
+- exactly seven compiled Course Outline test artifacts were resolved;
+- compiled Course Outline test suite passed `90/90`;
+- zero failed;
+- zero skipped;
+- repository remained clean and origin-aligned.
+
+The seven compiled test areas covered:
+
+- Course Outline draft-content schema;
+- Course Outline version foundation;
+- Course Outline service authorization;
+- Course Outline repository create/read/update behavior;
+- Course Outline submission repository behavior;
+- Course Outline DTO validation;
+- CourseOffering controller/policy behavior.
+
+Static submission coverage included:
+
+- server-derived actor/department/timestamp;
+- Teacher-only application authorization;
+- Department Admin wildcard denial at the service boundary;
+- exact Teacher assignment requirement;
+- inactive/unassigned/archived assignment rejection;
+- wrong department rejection;
+- wrong nested object rejection;
+- exact academic binding enforcement;
+- DRAFT-only submission;
+- malformed lifecycle rejection;
+- repeated submission conflict;
+- conditional mutation conflict behavior;
+- structural audit context;
+- narrative-content exclusion from audit;
+- audit rollback;
+- parameterized authority-lock SQL contract.
+
+### Runtime activation
+
+Before runtime activation:
+
+- implementation commit was present on Ubuntu;
+- repository was clean and origin-aligned;
+- PM2 process `lexora-api` was healthy;
+- direct API health returned HTTP `200`;
+- Nginx API health returned HTTP `200`.
+
+Pre-restart PM2 PID:
+
+`36649`
+
+The API was then restarted to load the implementation.
+
+New PM2 PID:
+
+`67374`
+
+#### Startup timing observation
+
+The first post-restart health probe occurred while the new PM2 process had only just started and returned a temporary connection-refused result on direct port `4000`.
+
+The activation script stopped because that first version used a fixed short wait instead of the already-established retry pattern.
+
+This was a verifier/startup-timing issue, not a persistent Lexora runtime defect.
+
+No source, schema or database correction was required.
+
+A recovery verification was performed without another restart.
+
+On the first recovery attempt:
+
+- direct API: HTTP `200`;
+- Nginx API: HTTP `200`;
+- PM2 PID remained `67374`;
+- process status was online;
+- unauthenticated submission through direct API returned HTTP `401`;
+- unauthenticated submission through Nginx returned HTTP `401`;
+- port `4000` remained bound to `127.0.0.1` only;
+- repository remained clean and origin-aligned.
+
+### Ordinary PostgreSQL lock preflight
+
+Ordinary runtime database:
+
+`lexora_lms`
+
+PostgreSQL:
+
+`18.4`
+
+Before write testing, an ordinary-database preflight executed the exact new parameterized authority-lock pattern against a real active Teacher assignment.
+
+Preflight baseline counts:
+
+`0|13|2|0|0`
+
+Count order:
+
+1. Law SyllabusVersions;
+2. active/unarchived Law CourseOfferings;
+3. active Law TeacherCourseAssignments;
+4. Law CourseOutlineVersions;
+5. successful Course Outline submission audits.
+
+Two active Teacher assignments were available at preflight time, but both referenced the same unbound Law CourseOffering.
+
+No ordinary SyllabusVersion existed.
+
+The exact parameterized:
+
+`FOR UPDATE OF co, tca`
+
+query executed successfully against PostgreSQL `18.4`.
+
+Lock result:
+
+`1` exact row.
+
+After the preflight:
+
+`0|13|2|0|0`
+
+Tracked business counts remained unchanged.
+
+No Course Outline mutation occurred.
+
+No audit row was intentionally created.
+
+### Runtime fixture dependency resolution
+
+The runtime dependency audit resolved the canonical active Law principals:
+
+- Law Department Admin user ID: `cmpmmnmk700072imth5f907a6`;
+- Law Teacher user ID: `cmpmmnmqk000b2imteuqllujw`;
+- Law Student user ID: `cmpmmnn00000f2imt3sqhgto9`.
+
+The selected reusable approved/active curriculum foundation was based on:
+
+- CurriculumCourse: `curriculum_course_law_enrollment_runtime_active`;
+- course snapshot: `ENR-RT-001`;
+- CurriculumVersion: `SCA-RT-ACTIVE-V1`;
+- CurriculumVersion status: `ACTIVE`;
+- underlying Course status: `ACTIVE`.
+
+Selected reusable Law AcademicTerm:
+
+- ID: `term_law_2025_2026_s1`;
+- code: `LAW-2025-2026-S1`;
+- status: `PLANNED`.
+
+BUS cross-department direct-object candidate:
+
+`offering_bus_101_runtime`
+
+No prior fixture residue existed for the runtime submission prefix.
+
+Canonical approved curriculum rows were reused read-only and were not replaced or modified.
+
+### Disposable ordinary-runtime fixture
+
+Because the existing active Teacher assignments referenced an unbound CourseOffering and ordinary SyllabusVersion count was zero, a disposable fully-bound runtime fixture was required.
+
+Measured baseline before fixture creation:
+
+`0|13|2|0|0`
+
+Disposable fixture counts after setup:
+
+`1|16|4|1|0`
+
+The fixture added only temporary test rows required for:
+
+- one approved SyllabusVersion;
+- three fully-bound Law CourseOfferings;
+- two active exact TeacherCourseAssignments;
+- one direct DRAFT CourseOutlineVersion without Teacher assignment.
+
+Two additional CourseOutlineVersions were then created through the real Teacher API.
+
+Runtime-created outline identities included:
+
+- positive submission outline A: `cmt1qlrc1000j2izi6h8vhqpv`;
+- concurrency outline B: `cmt1qlrhv000n2izip37thqiq`;
+- unassigned direct outline C: `course_outline_submit_rt_20260820163030-68076_outline_c`.
+
+The disposable fixture was not intended to remain.
+
+### Fresh canonical authentication
+
+Fresh canonical runtime logins were performed for:
+
+#### Law Department Admin
+
+- login: HTTP `201`;
+- exact expected principal confirmed;
+- active role: `department_admin`.
+
+#### Law Teacher
+
+- login: HTTP `201`;
+- exact expected principal confirmed;
+- active role: `teacher`.
+
+#### Law Student
+
+- login: HTTP `201`;
+- exact expected principal confirmed;
+- active role: `student`.
+
+Raw passwords were not printed.
+
+Raw passwords were not written to disk.
+
+Raw access tokens were not printed.
+
+Raw access or refresh tokens were not retained in runtime documentation.
+
+### Teacher DRAFT creation prerequisites
+
+Two CourseOutlineVersions were created through the real Teacher API before submission testing.
+
+Both returned HTTP `201`.
+
+Both were verified as exact:
+
+- Law department;
+- assigned CourseOffering;
+- server-derived academic identity;
+- versioned `DRAFT`;
+- null submission/approval/activation/archive timestamps.
+
+The narrative values used for runtime verification remained Teacher-owned content and were later removed with the disposable fixture.
+
+### Negative and security submission matrix
+
+#### Unauthenticated request
+
+Submission without authentication:
+
+HTTP `401`
+
+#### Department Admin
+
+Law Department Admin submission attempt:
+
+HTTP `403`
+
+This confirms the Department Admin wildcard policy surface does not bypass the Teacher-only application authoring boundary.
+
+#### Student
+
+Law Student submission attempt:
+
+HTTP `403`
+
+#### Nested object mismatch
+
+Teacher used a valid Law offering with a CourseOutlineVersion belonging to another fixture offering:
+
+HTTP `404`
+
+#### Cross-department direct object
+
+Law Teacher attempted submission through BUS CourseOffering direct object ID:
+
+HTTP `404`
+
+#### Exact unassigned Law Course Outline
+
+Law Teacher attempted submission against a valid same-department CourseOutlineVersion whose offering had no assignment for that Teacher:
+
+HTTP `404`
+
+No successful submission audit was created by these denied paths.
+
+### Positive Teacher submission
+
+The canonical Law Teacher submitted outline A through the real HTTP endpoint.
+
+The request intentionally also supplied:
+
+`x-department-id: dept_bus_test`
+
+Result:
+
+HTTP `201`
+
+Verified:
+
+- authenticated Law principal scope won;
+- forged department header did not override the principal;
+- returned department remained `dept_law_test`;
+- status became `SUBMITTED_BY_TEACHER`;
+- `submittedAt` was populated server-side;
+- exact CourseOffering identity remained unchanged;
+- exact CurriculumCourse identity remained unchanged;
+- exact SyllabusVersion identity remained unchanged;
+- version number remained unchanged;
+- Teacher narrative content remained unchanged;
+- `approvedAt` remained null;
+- `activatedAt` remained null;
+- `archivedAt` remained null.
+
+Forged-department-header resistance therefore passed on the positive submission path.
+
+### Repeated submission and post-submit immutability
+
+Exact retry of the same submitted CourseOutlineVersion returned:
+
+HTTP `409`
+
+No second successful submission occurred.
+
+A Teacher PATCH attempt against the submitted CourseOutlineVersion returned:
+
+HTTP `409`
+
+The previously verified post-submission edit lock therefore remained enforced.
+
+### Live Teacher-assignment revocation concurrency verification
+
+A real PostgreSQL concurrency test was performed against outline B.
+
+Transaction A:
+
+- updated the exact TeacherCourseAssignment from `ACTIVE` to `INACTIVE`;
+- populated `unassignedAt`;
+- deliberately held the transaction open before commit.
+
+While the assignment revocation remained uncommitted, a real Teacher HTTP submission request for outline B was started.
+
+Verified:
+
+- submission did not complete immediately;
+- request blocked behind the assignment authority row lock.
+
+This confirms the submitted implementation was actually waiting on the authorization-bearing database row rather than relying on a stale pre-lock read.
+
+After Transaction A was released and committed:
+
+submission result:
+
+HTTP `404`
+
+Verified final state:
+
+- assignment B = `INACTIVE`;
+- assignment B `unassignedAt` populated;
+- outline B remained `DRAFT`;
+- outline B `submittedAt` remained null;
+- no submission success audit existed for outline B.
+
+This runtime test therefore verifies that the corrected:
+
+`FOR UPDATE OF co, tca`
+
+authority lock serializes Teacher assignment revocation against Course Outline submission and prevents the reviewed authorization race.
+
+### Submission audit verification
+
+Exactly one successful Course Outline submission audit existed for the positive outline A.
+
+Verified audit properties:
+
+- action: `course-management.course-outline.submitted`;
+- actor: canonical Law Teacher;
+- department: `dept_law_test`;
+- target type: `course_outline_version`;
+- target: exact submitted outline A;
+- outcome: `SUCCESS`.
+
+Audit timing:
+
+- `occurredAt` exactly matched the submitted CourseOutlineVersion `submittedAt`.
+
+Audit context contained structural metadata only:
+
+- CourseOutlineVersion ID;
+- CourseOffering ID;
+- CurriculumCourse ID;
+- SyllabusVersion ID;
+- version number;
+- previous status `DRAFT`;
+- new status `SUBMITTED_BY_TEACHER`;
+- transition timestamp.
+
+Verified absent from audit context:
+
+- course summary;
+- delivery plan;
+- teaching strategies;
+- assessment strategy;
+- evaluation policy;
+- make-up procedure;
+- narrative values.
+
+No submission success audit existed for:
+
+- revoked-assignment outline B;
+- unassigned outline C.
+
+### Disposable cleanup and baseline restoration
+
+After all runtime checks, disposable fixture data was deleted transactionally.
+
+Measured final counts:
+
+`0|13|2|0|0`
+
+This exactly matched the measured pre-test baseline:
+
+`0|13|2|0|0`
+
+Verified:
+
+- disposable SyllabusVersion removed;
+- disposable CourseOfferings removed;
+- disposable TeacherCourseAssignments removed;
+- disposable CourseOutlineVersions removed;
+- fixture-target Course Outline create/update/submission audits removed;
+- fixture-prefix residue: `0`;
+- authentication/session telemetry intentionally preserved;
+- canonical approved curriculum data not mutated.
+
+### Final platform safety
+
+At the end of the ordinary runtime matrix:
+
+- implementation commit remained `f8e7400fd03432dd7ae63ba232bb249bd6cf26bb`;
+- local server repository remained clean;
+- local server repository remained origin-aligned;
+- PM2 PID remained `67374` throughout the runtime matrix;
+- direct API health returned HTTP `200`;
+- Nginx API health returned HTTP `200`;
+- API listener remained loopback-only;
+- no raw password was retained;
+- no raw access/refresh token was retained;
+- disposable runtime fixture was removed;
+- measured business baseline was restored.
+
+### Current verified classification
+
+The narrow **Teacher Course Outline Submission Transition** is now:
+
+- source-audited;
+- implemented;
+- independently reviewed;
+- reviewed concurrency defect corrected before commit;
+- committed and pushed;
+- Windows statically verified;
+- Ubuntu Prisma validation verified;
+- Ubuntu Prisma generation verified;
+- Ubuntu API typecheck verified;
+- Ubuntu API build verified;
+- Ubuntu compiled Course Outline tests verified `90/90`;
+- promoted to Ubuntu runtime;
+- runtime activated under PM2;
+- unauthenticated route protection verified;
+- API loopback-only exposure verified;
+- live PostgreSQL `FOR UPDATE OF co, tca` execution verified;
+- fresh canonical Admin/Teacher/Student login verified;
+- exact Teacher assignment authorization runtime verified;
+- Department Admin submission denial runtime verified;
+- Student submission denial runtime verified;
+- nested-object safe-not-found verified;
+- same-department unassigned-object safe-not-found verified;
+- cross-department direct-object safe-not-found verified;
+- forged `x-department-id` resistance runtime verified;
+- positive `DRAFT → SUBMITTED_BY_TEACHER` runtime verified;
+- server-controlled submission timestamp verified;
+- repeated submission conflict verified;
+- submitted-outline PATCH immutability verified;
+- live assignment-revocation serialization verified;
+- revoked-assignment fail-closed behavior verified;
+- transactional submission audit verified;
+- audit actor verified;
+- audit timestamp consistency verified;
+- audit-context minimization verified;
+- disposable cleanup verified;
+- measured baseline restoration verified;
+- canonical academic non-mutation verified;
+- final Direct/Nginx health verified;
+- repository cleanliness/origin alignment verified.
+
+The narrow **Teacher Course Outline Submission Transition is technically complete and runtime verified**.
+
+This statement closes only the first Teacher submission transition.
+
+It does **not** mean the complete Course Outline workflow is complete.
+
+### Still pending Course Outline lifecycle/product work
+
+The following remain pending unless separately implemented and runtime verified:
+
+- scoped Coordinator authority foundation;
+- determination of exact Course Outline reviewer authority between Batch Coordinator / Programme Coordinator as required by the approved specification;
+- `SUBMITTED_BY_TEACHER → COORDINATOR_REVIEW`;
+- `COORDINATOR_REVIEW → RETURNED_FOR_CORRECTION`;
+- corrected-version resubmission semantics;
+- approval;
+- activation;
+- archival;
+- exact active CourseOutlineVersion binding;
+- amendment/new-version governance beyond the already verified DRAFT creation rule;
+- topic-CLO alignment;
+- offering-specific supplemental resources;
+- weekly plan;
+- Lesson Plan;
+- assessment schedule;
+- Teacher Course Outline frontend;
+- Coordinator/Admin review frontend;
+- complete Teacher Course Workspace integration.
+
+Department Admin must not be treated as an implicit Coordinator shortcut.
+
+Coordinator-sensitive academic actions must remain assignment-scoped rather than relying on a broad platform role alone.
+
+### Next logical checkpoint
+
+The next Course Outline lifecycle task should begin with a focused source/current-code audit of the scoped Coordinator authority model.
+
+Do not immediately implement Coordinator review by granting a broad `coordinator` role or reusing Department Admin wildcard authority.
+
+Before implementation, determine the smallest source-backed assignment-scoped authority foundation required for Course Outline review while preserving:
+
+- department isolation;
+- academic-session/term context;
+- exact duty assignment;
+- assignment validity;
+- workflow stage;
+- target state;
+- safe direct-object handling;
+- transactional audit requirements.
+
+Do not combine that authority foundation with approval, activation, frontend work, Lesson Plan, attendance, assessment or unrelated hardening.
