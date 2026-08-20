@@ -4,6 +4,7 @@ import type {
   AcademicVersionStatus,
   AcademicYearStatus,
   CourseOfferingStatus,
+  CourseOutlineStatus,
   CourseStatus,
   EligibilityStatus,
   EnrollmentSourceType,
@@ -11,6 +12,8 @@ import type {
   Prisma,
   TeacherAssignmentStatus,
 } from "@prisma/client";
+
+import type { CourseOutlineDraftFields } from "../../domain/course-outline-draft-fields";
 
 export interface ProgramListFilters {
   departmentId: string;
@@ -64,6 +67,71 @@ export interface TeacherAssignmentListFilters {
   departmentId: string;
   courseOfferingId: string;
 }
+
+export interface CourseOutlineVersionView {
+  id: string;
+  departmentId: string;
+  courseOfferingId: string;
+  curriculumCourseId: string;
+  syllabusVersionId: string;
+  versionNumber: number;
+  status: CourseOutlineStatus;
+  courseSummary: string | null;
+  deliveryPlan: string | null;
+  teachingStrategies: string | null;
+  assessmentStrategy: string | null;
+  evaluationPolicy: string | null;
+  makeUpProcedure: string | null;
+  submittedAt: Date | null;
+  approvedAt: Date | null;
+  activatedAt: Date | null;
+  archivedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface CourseOutlineWriteAuditInput {
+  actorUserId: string;
+  requestId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export interface CreateCourseOutlineVersionInput
+  extends CourseOutlineDraftFields,
+    CourseOutlineWriteAuditInput {
+  departmentId: string;
+  courseOfferingId: string;
+}
+
+export interface UpdateCourseOutlineVersionInput
+  extends CourseOutlineDraftFields,
+    CourseOutlineWriteAuditInput {
+  departmentId: string;
+  courseOfferingId: string;
+  courseOutlineVersionId: string;
+}
+
+export type CreateCourseOutlineVersionResult =
+  | { outcome: "CREATED"; courseOutlineVersion: CourseOutlineVersionView }
+  | {
+      outcome:
+        | "OFFERING_NOT_FOUND"
+        | "OFFERING_NOT_FULLY_BOUND"
+        | "OPEN_VERSION_ALREADY_EXISTS"
+        | "VERSION_CONFLICT";
+    };
+
+export type UpdateCourseOutlineVersionResult =
+  | { outcome: "UPDATED"; courseOutlineVersion: CourseOutlineVersionView }
+  | {
+      outcome:
+        | "OFFERING_NOT_FOUND"
+        | "OUTLINE_NOT_FOUND"
+        | "OUTLINE_NOT_EDITABLE"
+        | "NO_CHANGES"
+        | "VERSION_CONFLICT";
+    };
 
 export interface ProgramLearningOutcomeReadView {
   id: string;
@@ -505,6 +573,32 @@ export interface AcademicRepositoryPort {
     courseOfferingId: string,
     teacherUserId: string,
   ): Promise<CourseOfferingLearningOutcomesView | null>;
+  findCourseOutlineVersions(
+    departmentId: string,
+    courseOfferingId: string,
+  ): Promise<CourseOutlineVersionView[] | null>;
+  findCourseOutlineVersionsForTeacher(
+    departmentId: string,
+    courseOfferingId: string,
+    actorUserId: string,
+  ): Promise<CourseOutlineVersionView[] | null>;
+  findCourseOutlineVersionById(
+    departmentId: string,
+    courseOfferingId: string,
+    courseOutlineVersionId: string,
+  ): Promise<CourseOutlineVersionView | null>;
+  findCourseOutlineVersionByIdForTeacher(
+    departmentId: string,
+    courseOfferingId: string,
+    courseOutlineVersionId: string,
+    actorUserId: string,
+  ): Promise<CourseOutlineVersionView | null>;
+  createCourseOutlineVersion(
+    input: CreateCourseOutlineVersionInput,
+  ): Promise<CreateCourseOutlineVersionResult>;
+  updateCourseOutlineVersion(
+    input: UpdateCourseOutlineVersionInput,
+  ): Promise<UpdateCourseOutlineVersionResult>;
   createCourseOffering(input: CreateCourseOfferingInput): Promise<unknown>;
   updateCourseOffering(
     departmentId: string,

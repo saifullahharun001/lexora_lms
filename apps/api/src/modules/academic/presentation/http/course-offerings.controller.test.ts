@@ -346,3 +346,126 @@ test("offering read permits Teacher but does not grant Student broad access", ()
     false,
   );
 });
+
+test("Course Outline endpoints are nested, guarded, and use dedicated read/write policies", () => {
+  const cases = [
+    [
+      "createCourseOutlineVersion",
+      ":id/course-outline-versions",
+      RequestMethod.POST,
+      ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_WRITE,
+    ],
+    [
+      "listCourseOutlineVersions",
+      ":id/course-outline-versions",
+      RequestMethod.GET,
+      ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_READ,
+    ],
+    [
+      "getCourseOutlineVersion",
+      ":id/course-outline-versions/:courseOutlineVersionId",
+      RequestMethod.GET,
+      ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_READ,
+    ],
+    [
+      "updateCourseOutlineVersion",
+      ":id/course-outline-versions/:courseOutlineVersionId",
+      RequestMethod.PATCH,
+      ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_WRITE,
+    ],
+  ] as const;
+
+  assert.deepEqual(
+    Reflect.getMetadata(GUARDS_METADATA, CourseOfferingsController),
+    [AuthGuard, PolicyGuard],
+  );
+  for (const [method, path, requestMethod, policy] of cases) {
+    const handler = CourseOfferingsController.prototype[method];
+    assert.equal(Reflect.getMetadata(PATH_METADATA, handler), path);
+    assert.equal(Reflect.getMetadata(METHOD_METADATA, handler), requestMethod);
+    assert.equal(Reflect.getMetadata(REQUIRE_POLICY_KEY, handler), policy);
+  }
+});
+
+test("Course Outline routes forward only nested identities and whitelisted DTO data", async () => {
+  const calls: Array<{ method: string; args: unknown[] }> = [];
+  const service = Object.fromEntries(
+    [
+      "createCourseOutlineVersion",
+      "listCourseOutlineVersions",
+      "getCourseOutlineVersion",
+      "updateCourseOutlineVersion",
+    ].map((method) => [
+      method,
+      async (...args: unknown[]) => {
+        calls.push({ method, args });
+        return method;
+      },
+    ]),
+  );
+  const controller = new CourseOfferingsController(service as never);
+  const createBody = { courseSummary: "Summary" };
+  const updateBody = { deliveryPlan: "Plan" };
+
+  await controller.createCourseOutlineVersion({ id: "offering-a" }, createBody);
+  await controller.listCourseOutlineVersions({ id: "offering-a" });
+  await controller.getCourseOutlineVersion({
+    id: "offering-a",
+    courseOutlineVersionId: "outline-a",
+  });
+  await controller.updateCourseOutlineVersion(
+    { id: "offering-a", courseOutlineVersionId: "outline-a" },
+    updateBody,
+  );
+
+  assert.deepEqual(calls, [
+    {
+      method: "createCourseOutlineVersion",
+      args: ["offering-a", createBody],
+    },
+    { method: "listCourseOutlineVersions", args: ["offering-a"] },
+    {
+      method: "getCourseOutlineVersion",
+      args: ["offering-a", "outline-a"],
+    },
+    {
+      method: "updateCourseOutlineVersion",
+      args: ["offering-a", "outline-a", updateBody],
+    },
+  ]);
+});
+
+test("dedicated Course Outline policies admit Teacher and Department Admin but deny Student and unsupported roles", () => {
+  const authorization = new AuthorizationService();
+  const principal = (
+    role: "department_admin" | "teacher" | "student" | "auditor" | "support",
+  ) =>
+    ({
+      actorId: `${role}-a`,
+      isAuthenticated: true,
+      activeDepartmentId: "department-a",
+      roleAssignments: [
+        {
+          userRoleId: `${role}-assignment-a`,
+          roleId: `${role}-role-a`,
+          departmentId: "department-a",
+          role,
+        },
+      ],
+      permissions: [],
+    }) as never;
+
+  for (const policy of [
+    ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_READ,
+    ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_WRITE,
+  ]) {
+    assert.equal(authorization.isAllowed(principal("teacher"), policy), true);
+    assert.equal(
+      authorization.isAllowed(principal("department_admin"), policy),
+      true,
+    );
+    for (const role of ["student", "auditor", "support"] as const) {
+      assert.equal(authorization.isAllowed(principal(role), policy), false);
+    }
+  }
+});

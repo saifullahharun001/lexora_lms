@@ -8,12 +8,15 @@ import { AcademicService } from "../../application/services/academic.service";
 import { ACADEMIC_POLICY_NAMES } from "../../domain/academic.policy-names";
 import { BindCourseOfferingCurriculumDto } from "../dto/bind-course-offering-curriculum.dto";
 import { BindCourseOfferingSyllabusDto } from "../dto/bind-course-offering-syllabus.dto";
+import { CourseOutlineVersionParamDto } from "../dto/course-outline-version-param.dto";
 import { CreateCourseOfferingDto } from "../dto/create-course-offering.dto";
+import { CreateCourseOutlineVersionDto } from "../dto/create-course-outline-version.dto";
 import { CreateTeacherAssignmentDto } from "../dto/create-teacher-assignment.dto";
 import { ListCourseOfferingsQueryDto } from "../dto/list-course-offerings-query.dto";
 import { ListMyCourseOfferingsQueryDto } from "../dto/list-my-course-offerings-query.dto";
 import { ResourceIdParamDto } from "../dto/resource-id-param.dto";
 import { UpdateCourseOfferingDto } from "../dto/update-course-offering.dto";
+import { UpdateCourseOutlineVersionDto } from "../dto/update-course-outline-version.dto";
 
 @Controller({
   path: "course-offerings",
@@ -57,6 +60,43 @@ export class CourseOfferingsController {
   @RequirePolicy(ACADEMIC_POLICY_NAMES.OFFERING_READ)
   getLearningOutcomes(@Param() params: ResourceIdParamDto) {
     return this.academicService.getCourseOfferingLearningOutcomes(params.id);
+  }
+
+  @Post(":id/course-outline-versions")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_WRITE)
+  createCourseOutlineVersion(
+    @Param() params: ResourceIdParamDto,
+    @Body() body: CreateCourseOutlineVersionDto,
+  ) {
+    return this.academicService.createCourseOutlineVersion(params.id, body);
+  }
+
+  @Get(":id/course-outline-versions")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_READ)
+  listCourseOutlineVersions(@Param() params: ResourceIdParamDto) {
+    return this.academicService.listCourseOutlineVersions(params.id);
+  }
+
+  @Get(":id/course-outline-versions/:courseOutlineVersionId")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_READ)
+  getCourseOutlineVersion(@Param() params: CourseOutlineVersionParamDto) {
+    return this.academicService.getCourseOutlineVersion(
+      params.id,
+      params.courseOutlineVersionId,
+    );
+  }
+
+  @Patch(":id/course-outline-versions/:courseOutlineVersionId")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_WRITE)
+  updateCourseOutlineVersion(
+    @Param() params: CourseOutlineVersionParamDto,
+    @Body() body: UpdateCourseOutlineVersionDto,
+  ) {
+    return this.academicService.updateCourseOutlineVersion(
+      params.id,
+      params.courseOutlineVersionId,
+      body,
+    );
   }
 
   @Patch(":id")

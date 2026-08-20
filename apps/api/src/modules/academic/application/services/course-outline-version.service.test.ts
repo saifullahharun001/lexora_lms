@@ -1,0 +1,397 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
+import { CourseOutlineStatus } from "@prisma/client";
+
+import { AcademicService } from "./academic.service";
+
+type Role =
+  | "department_admin"
+  | "teacher"
+  | "student"
+  | "auditor"
+  | "support";
+
+const outline = {
+  id: "outline-a",
+  departmentId: "department-a",
+  courseOfferingId: "offering-a",
+  curriculumCourseId: "curriculum-a",
+  syllabusVersionId: "syllabus-a",
+  versionNumber: 2,
+  status: CourseOutlineStatus.DRAFT,
+  courseSummary: "Summary",
+  deliveryPlan: null,
+  teachingStrategies: null,
+  assessmentStrategy: null,
+  evaluationPolicy: null,
+  makeUpProcedure: null,
+  submittedAt: null,
+  approvedAt: null,
+  activatedAt: null,
+  archivedAt: null,
+  createdAt: new Date("2026-08-20T00:00:00.000Z"),
+  updatedAt: new Date("2026-08-20T00:00:00.000Z"),
+};
+
+function harness(
+  role: Role,
+  options: {
+    additionalRoles?: Role[];
+    createResult?: unknown;
+    updateResult?: unknown;
+    listResult?: unknown;
+    detailResult?: unknown;
+  } = {},
+) {
+  const calls: Array<{ method: string; args: unknown[] }> = [];
+  const repository = {
+    createCourseOutlineVersion: async (...args: unknown[]) => {
+      calls.push({ method: "create", args });
+      return options.createResult ?? {
+        outcome: "CREATED",
+        courseOutlineVersion: outline,
+      };
+    },
+    findCourseOutlineVersions: async (...args: unknown[]) => {
+      calls.push({ method: "admin-list", args });
+      return options.listResult === undefined ? [outline] : options.listResult;
+    },
+    findCourseOutlineVersionsForTeacher: async (...args: unknown[]) => {
+      calls.push({ method: "teacher-list", args });
+      return options.listResult === undefined ? [outline] : options.listResult;
+    },
+    findCourseOutlineVersionById: async (...args: unknown[]) => {
+      calls.push({ method: "admin-detail", args });
+      return options.detailResult === undefined ? outline : options.detailResult;
+    },
+    findCourseOutlineVersionByIdForTeacher: async (...args: unknown[]) => {
+      calls.push({ method: "teacher-detail", args });
+      return options.detailResult === undefined ? outline : options.detailResult;
+    },
+    updateCourseOutlineVersion: async (...args: unknown[]) => {
+      calls.push({ method: "update", args });
+      return options.updateResult ?? {
+        outcome: "UPDATED",
+        courseOutlineVersion: outline,
+      };
+    },
+  };
+  const roles = [role, ...(options.additionalRoles ?? [])];
+  const context = {
+    requestId: "request-a",
+    audit: { ipAddress: "127.0.0.1", userAgent: "test-agent" },
+    department: { departmentId: "forged-header-department" },
+    principal: {
+      actorId: `${role}-user`,
+      activeDepartmentId: "department-a",
+      roleAssignments: roles.map((assignedRole, index) => ({
+        userRoleId: `${assignedRole}-assignment-${index}`,
+        roleId: `${assignedRole}-role-${index}`,
+        departmentId: "department-a",
+        role: assignedRole,
+      })),
+      permissions: [],
+    },
+  };
+
+  return {
+    calls,
+    service: new AcademicService(
+      repository as never,
+      {} as never,
+      { get: () => context } as never,
+    ),
+  };
+}
+
+test("assigned Teacher creation derives department, actor, offering identity, and audit request metadata from the server context", async () => {
+  const h = harness("teacher");
+  assert.equal(
+    await h.service.createCourseOutlineVersion("offering-a", {
+      courseSummary: "Summary",
+      evaluationPolicy: null,
+    }),
+    outline,
+  );
+
+  const input = h.calls[0]?.args[0] as Record<string, unknown>;
+  assert.equal(input.departmentId, "department-a");
+  assert.equal(input.courseOfferingId, "offering-a");
+  assert.equal(input.actorUserId, "teacher-user");
+  assert.equal("teacherUserId" in input, false);
+  assert.equal(input.requestId, "request-a");
+  assert.equal(input.ipAddress, "127.0.0.1");
+  assert.equal(input.userAgent, "test-agent");
+  for (const serverField of [
+    "curriculumCourseId",
+    "syllabusVersionId",
+    "versionNumber",
+    "status",
+  ]) {
+    assert.equal(serverField in input, false);
+  }
+});
+
+test("Department Admin without Teacher authority, Student, and unsupported roles cannot author", async () => {
+  for (const h of [
+    harness("department_admin"),
+    harness("student"),
+    harness("auditor"),
+    harness("support"),
+  ]) {
+    await assert.rejects(
+      h.service.createCourseOutlineVersion("offering-a", {}),
+      ForbiddenException,
+    );
+    await assert.rejects(
+      h.service.updateCourseOutlineVersion("offering-a", "outline-a", {
+        courseSummary: "Changed",
+      }),
+      ForbiddenException,
+    );
+    assert.deepEqual(h.calls, []);
+  }
+});
+
+test("Teacher plus Department Admin dual-role principal may author under mandatory Teacher assignment authority", async () => {
+  const h = harness("teacher", { additionalRoles: ["department_admin"] });
+  assert.equal(
+    await h.service.createCourseOutlineVersion("offering-a", {
+      courseSummary: "Summary",
+    }),
+    outline,
+  );
+  assert.equal(
+    await h.service.updateCourseOutlineVersion("offering-a", "outline-a", {
+      deliveryPlan: "Plan",
+    }),
+    outline,
+  );
+  assert.deepEqual(
+    h.calls.map((call) => call.method),
+    ["create", "update"],
+  );
+  for (const call of h.calls) {
+    const input = call.args[0] as Record<string, unknown>;
+    assert.equal(input.actorUserId, "teacher-user");
+    assert.equal("teacherUserId" in input, false);
+  }
+});
+
+test("Teacher reads use exact principal department, offering, actor assignment scope, and nested version id", async () => {
+  const h = harness("teacher");
+  assert.deepEqual(await h.service.listCourseOutlineVersions("offering-a"), [
+    outline,
+  ]);
+  assert.equal(
+    await h.service.getCourseOutlineVersion("offering-a", "outline-a"),
+    outline,
+  );
+  assert.deepEqual(h.calls, [
+    {
+      method: "teacher-list",
+      args: ["department-a", "offering-a", "teacher-user"],
+    },
+    {
+      method: "teacher-detail",
+      args: ["department-a", "offering-a", "outline-a", "teacher-user"],
+    },
+  ]);
+});
+
+test("Department Admin receives department-scoped reads without Teacher assignment scope", async () => {
+  const h = harness("department_admin");
+  await h.service.listCourseOutlineVersions("offering-a");
+  await h.service.getCourseOutlineVersion("offering-a", "outline-a");
+  assert.deepEqual(h.calls, [
+    { method: "admin-list", args: ["department-a", "offering-a"] },
+    {
+      method: "admin-detail",
+      args: ["department-a", "offering-a", "outline-a"],
+    },
+  ]);
+});
+
+test("Student and unsupported roles fail closed before Course Outline repository reads", async () => {
+  for (const role of ["student", "auditor", "support"] as const) {
+    const h = harness(role);
+    await assert.rejects(
+      h.service.listCourseOutlineVersions("offering-a"),
+      ForbiddenException,
+    );
+    await assert.rejects(
+      h.service.getCourseOutlineVersion("offering-a", "outline-a"),
+      ForbiddenException,
+    );
+    assert.deepEqual(h.calls, []);
+  }
+});
+
+test("inaccessible, cross-department, unassigned, inactive, unassignedAt, and archived assignment reads share safe not-found behavior", async () => {
+  for (const scenario of [
+    "missing",
+    "cross-department",
+    "unassigned",
+    "inactive",
+    "unassigned-at",
+    "archived-assignment",
+  ]) {
+    const h = harness("teacher", { listResult: null, detailResult: null });
+    await assert.rejects(
+      h.service.listCourseOutlineVersions(`offering-${scenario}`),
+      NotFoundException,
+    );
+    await assert.rejects(
+      h.service.getCourseOutlineVersion(
+        `offering-${scenario}`,
+        "outline-direct-id",
+      ),
+      NotFoundException,
+    );
+  }
+});
+
+test("Teacher PATCH supplies exact nested scope, six-field input, and one server audit/authorization identity", async () => {
+  const h = harness("teacher");
+  assert.equal(
+    await h.service.updateCourseOutlineVersion("offering-a", "outline-a", {
+      courseSummary: "Changed",
+      deliveryPlan: null,
+    }),
+    outline,
+  );
+  const input = h.calls[0]?.args[0] as Record<string, unknown>;
+  assert.equal(input.departmentId, "department-a");
+  assert.equal(input.courseOfferingId, "offering-a");
+  assert.equal(input.courseOutlineVersionId, "outline-a");
+  assert.equal(input.actorUserId, "teacher-user");
+  assert.equal("teacherUserId" in input, false);
+  assert.equal("changedFields" in input, false);
+  assert.equal(input.courseSummary, "Changed");
+  assert.equal(input.deliveryPlan, null);
+});
+
+test("direct service runtime input cannot forward lifecycle, version, or academic identity fields", async () => {
+  const h = harness("teacher");
+  await h.service.updateCourseOutlineVersion(
+    "offering-a",
+    "outline-a",
+    {
+      courseSummary: "  Safe change  ",
+      status: CourseOutlineStatus.APPROVED,
+      versionNumber: 99,
+      departmentId: "department-b",
+      courseOfferingId: "offering-b",
+      curriculumCourseId: "curriculum-b",
+      syllabusVersionId: "syllabus-b",
+      submittedAt: new Date(),
+      approvedAt: new Date(),
+      activatedAt: new Date(),
+      archivedAt: new Date(),
+    } as never,
+  );
+
+  const input = h.calls[0]!.args[0] as Record<string, unknown>;
+  assert.equal(input.courseSummary, "Safe change");
+  assert.equal(input.departmentId, "department-a");
+  assert.equal(input.courseOfferingId, "offering-a");
+  assert.equal(input.courseOutlineVersionId, "outline-a");
+  for (const forgedField of [
+    "status",
+    "versionNumber",
+    "curriculumCourseId",
+    "syllabusVersionId",
+    "submittedAt",
+    "approvedAt",
+    "activatedAt",
+    "archivedAt",
+  ]) {
+    assert.equal(forgedField in input, false);
+  }
+  assert.equal(outline.status, CourseOutlineStatus.DRAFT);
+});
+
+test("direct create service input forwards only the six narratives plus server-derived authority", async () => {
+  const h = harness("teacher");
+  await h.service.createCourseOutlineVersion("offering-a", {
+    courseSummary: "  Allowed summary  ",
+    status: CourseOutlineStatus.ACTIVE,
+    versionNumber: 77,
+    departmentId: "department-b",
+    courseOfferingId: "offering-b",
+    curriculumCourseId: "curriculum-b",
+    syllabusVersionId: "syllabus-b",
+    approvedAt: new Date(),
+  } as never);
+
+  const input = h.calls[0]!.args[0] as Record<string, unknown>;
+  assert.equal(input.courseSummary, "Allowed summary");
+  assert.equal(input.departmentId, "department-a");
+  assert.equal(input.courseOfferingId, "offering-a");
+  assert.equal(input.actorUserId, "teacher-user");
+  for (const forgedField of [
+    "status",
+    "versionNumber",
+    "curriculumCourseId",
+    "syllabusVersionId",
+    "approvedAt",
+  ]) {
+    assert.equal(forgedField in input, false);
+  }
+});
+
+test("empty PATCH and repository-confirmed no-op PATCH are rejected without success", async () => {
+  const empty = harness("teacher");
+  await assert.rejects(
+    empty.service.updateCourseOutlineVersion("offering-a", "outline-a", {}),
+    BadRequestException,
+  );
+  assert.deepEqual(empty.calls, []);
+
+  const noOp = harness("teacher", { updateResult: { outcome: "NO_CHANGES" } });
+  await assert.rejects(
+    noOp.service.updateCourseOutlineVersion("offering-a", "outline-a", {
+      courseSummary: "Summary",
+    }),
+    BadRequestException,
+  );
+});
+
+test("repository outcomes map to safe not-found and controlled conflicts", async () => {
+  for (const outcome of ["OFFERING_NOT_FOUND", "OUTLINE_NOT_FOUND"] as const) {
+    const h = harness("teacher", { updateResult: { outcome } });
+    await assert.rejects(
+      h.service.updateCourseOutlineVersion("offering-a", "outline-a", {
+        courseSummary: "Changed",
+      }),
+      NotFoundException,
+    );
+  }
+  for (const outcome of ["OUTLINE_NOT_EDITABLE", "VERSION_CONFLICT"] as const) {
+    const h = harness("teacher", { updateResult: { outcome } });
+    await assert.rejects(
+      h.service.updateCourseOutlineVersion("offering-a", "outline-a", {
+        courseSummary: "Changed",
+      }),
+      ConflictException,
+    );
+  }
+  for (const outcome of [
+    "OFFERING_NOT_FULLY_BOUND",
+    "OPEN_VERSION_ALREADY_EXISTS",
+    "VERSION_CONFLICT",
+  ] as const) {
+    const h = harness("teacher", { createResult: { outcome } });
+    await assert.rejects(
+      h.service.createCourseOutlineVersion("offering-a", {}),
+      ConflictException,
+    );
+  }
+});

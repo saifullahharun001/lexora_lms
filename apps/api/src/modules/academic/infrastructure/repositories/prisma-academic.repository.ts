@@ -3,6 +3,7 @@ import {
   AcademicProgramStatus,
   AcademicVersionStatus,
   CourseOfferingStatus,
+  CourseOutlineStatus,
   CourseStatus,
   EnrollmentStatus,
   Prisma,
@@ -18,17 +19,18 @@ import type {
   AcademicYearListFilters,
   BindCourseOfferingCurriculumInput,
   BindCourseOfferingSyllabusInput,
-  CourseOfferingLearningOutcomesView,
   CourseListFilters,
+  CourseOfferingLearningOutcomesView,
   CourseOfferingListFilters,
   CreateAcademicTermInput,
   CreateAcademicYearInput,
   CreateCourseInput,
   CreateCourseOfferingInput,
+  CreateCourseOutlineVersionInput,
   CreateEnrollmentInput,
   CreateProgramInput,
-  CreateSyllabusVersionInput,
   CreateStudentCurriculumAssignmentInput,
+  CreateSyllabusVersionInput,
   CreateTeacherAssignmentInput,
   EnrollmentListFilters,
   ProgramListFilters,
@@ -41,10 +43,15 @@ import type {
   UpdateAcademicYearInput,
   UpdateCourseInput,
   UpdateCourseOfferingInput,
+  UpdateCourseOutlineVersionInput,
   UpdateEnrollmentInput,
   UpdateProgramInput,
 } from "../../application/ports/academic.repository.port";
 import { ACADEMIC_AUDIT_EVENTS } from "../../domain/academic.audit-events";
+import {
+  COURSE_OUTLINE_DRAFT_FIELD_NAMES,
+  selectCourseOutlineDraftFields,
+} from "../../domain/course-outline-draft-fields";
 
 const courseOfferingInclude = {
   course: true,
@@ -126,6 +133,62 @@ const BINDABLE_SYLLABUS_VERSION_STATUSES: readonly AcademicVersionStatus[] = [
   AcademicVersionStatus.APPROVED,
   AcademicVersionStatus.ACTIVE,
 ];
+
+const EDITABLE_COURSE_OUTLINE_STATUSES: readonly CourseOutlineStatus[] = [
+  CourseOutlineStatus.DRAFT,
+  CourseOutlineStatus.RETURNED_FOR_CORRECTION,
+];
+
+const OPEN_COURSE_OUTLINE_STATUSES: readonly CourseOutlineStatus[] = [
+  CourseOutlineStatus.DRAFT,
+  CourseOutlineStatus.SUBMITTED_BY_TEACHER,
+  CourseOutlineStatus.COORDINATOR_REVIEW,
+  CourseOutlineStatus.RETURNED_FOR_CORRECTION,
+];
+
+const courseOutlineVersionSelect = {
+  id: true,
+  departmentId: true,
+  courseOfferingId: true,
+  curriculumCourseId: true,
+  syllabusVersionId: true,
+  versionNumber: true,
+  status: true,
+  courseSummary: true,
+  deliveryPlan: true,
+  teachingStrategies: true,
+  assessmentStrategy: true,
+  evaluationPolicy: true,
+  makeUpProcedure: true,
+  submittedAt: true,
+  approvedAt: true,
+  activatedAt: true,
+  archivedAt: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.CourseOutlineVersionSelect;
+
+const courseOutlineOfferingSelect = {
+  id: true,
+  departmentId: true,
+  courseId: true,
+  curriculumCourseId: true,
+  syllabusVersionId: true,
+  curriculumCourse: {
+    select: {
+      id: true,
+      departmentId: true,
+      courseId: true,
+    },
+  },
+  syllabusVersion: {
+    select: {
+      id: true,
+      departmentId: true,
+      curriculumCourseId: true,
+    },
+  },
+} satisfies Prisma.CourseOfferingSelect;
 
 const CURRICULUM_VERSION_TRANSITIONS = {
   APPROVE: {
@@ -1677,6 +1740,419 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
     return offering
       ? sanitizeCourseOfferingLearningOutcomes(offering, departmentId)
       : null;
+  }
+
+  async findCourseOutlineVersions(
+    departmentId: string,
+    courseOfferingId: string,
+  ) {
+    const offering = await this.prisma.courseOffering.findFirst({
+      where: {
+        id: courseOfferingId,
+        departmentId,
+        archivedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (!offering) return null;
+
+    return this.prisma.courseOutlineVersion.findMany({
+      where: { departmentId, courseOfferingId },
+      select: courseOutlineVersionSelect,
+      orderBy: { versionNumber: "desc" },
+    });
+  }
+
+  async findCourseOutlineVersionsForTeacher(
+    departmentId: string,
+    courseOfferingId: string,
+    actorUserId: string,
+  ) {
+    if (!actorUserId) return null;
+
+    const offering = await this.prisma.courseOffering.findFirst({
+      where: {
+        id: courseOfferingId,
+        departmentId,
+        archivedAt: null,
+        teacherAssignments: {
+          some: {
+            departmentId,
+            courseOfferingId,
+            teacherUserId: actorUserId,
+            status: "ACTIVE",
+            unassignedAt: null,
+            archivedAt: null,
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!offering) return null;
+
+    return this.prisma.courseOutlineVersion.findMany({
+      where: { departmentId, courseOfferingId },
+      select: courseOutlineVersionSelect,
+      orderBy: { versionNumber: "desc" },
+    });
+  }
+
+  async findCourseOutlineVersionById(
+    departmentId: string,
+    courseOfferingId: string,
+    courseOutlineVersionId: string,
+  ) {
+    const offering = await this.prisma.courseOffering.findFirst({
+      where: {
+        id: courseOfferingId,
+        departmentId,
+        archivedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (!offering) return null;
+
+    return this.prisma.courseOutlineVersion.findFirst({
+      where: {
+        id: courseOutlineVersionId,
+        departmentId,
+        courseOfferingId,
+      },
+      select: courseOutlineVersionSelect,
+    });
+  }
+
+  async findCourseOutlineVersionByIdForTeacher(
+    departmentId: string,
+    courseOfferingId: string,
+    courseOutlineVersionId: string,
+    actorUserId: string,
+  ) {
+    if (!actorUserId) return null;
+
+    const offering = await this.prisma.courseOffering.findFirst({
+      where: {
+        id: courseOfferingId,
+        departmentId,
+        archivedAt: null,
+        teacherAssignments: {
+          some: {
+            departmentId,
+            courseOfferingId,
+            teacherUserId: actorUserId,
+            status: "ACTIVE",
+            unassignedAt: null,
+            archivedAt: null,
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!offering) return null;
+
+    return this.prisma.courseOutlineVersion.findFirst({
+      where: {
+        id: courseOutlineVersionId,
+        departmentId,
+        courseOfferingId,
+      },
+      select: courseOutlineVersionSelect,
+    });
+  }
+
+  async createCourseOutlineVersion(input: CreateCourseOutlineVersionInput) {
+    const draftFields = selectCourseOutlineDraftFields(input);
+    try {
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const lockedOffering = await tx.$queryRaw<Array<{ id: string }>>(
+            Prisma.sql`
+              SELECT co."id"
+              FROM "course_offerings" co
+              WHERE co."id" = ${input.courseOfferingId}
+                AND co."department_id" = ${input.departmentId}
+                AND co."archived_at" IS NULL
+                AND EXISTS (
+                  SELECT 1
+                  FROM "teacher_course_assignments" tca
+                  WHERE tca."course_offering_id" = co."id"
+                    AND tca."department_id" = ${input.departmentId}
+                    AND tca."teacher_user_id" = ${input.actorUserId}
+                    AND tca."status" = 'ACTIVE'
+                    AND tca."unassigned_at" IS NULL
+                    AND tca."archived_at" IS NULL
+                )
+              FOR UPDATE
+            `,
+          );
+
+          if (lockedOffering.length === 0) {
+            return { outcome: "OFFERING_NOT_FOUND" } as const;
+          }
+
+          const offering = await tx.courseOffering.findFirst({
+            where: {
+              id: input.courseOfferingId,
+              departmentId: input.departmentId,
+              archivedAt: null,
+              teacherAssignments: {
+                some: {
+                  departmentId: input.departmentId,
+                  courseOfferingId: input.courseOfferingId,
+                  teacherUserId: input.actorUserId,
+                  status: "ACTIVE",
+                  unassignedAt: null,
+                  archivedAt: null,
+                },
+              },
+            },
+            select: courseOutlineOfferingSelect,
+          });
+
+          if (!offering) return { outcome: "OFFERING_NOT_FOUND" } as const;
+
+          const curriculumCourse = offering.curriculumCourse;
+          const syllabusVersion = offering.syllabusVersion;
+          if (
+            !offering.curriculumCourseId ||
+            !offering.syllabusVersionId ||
+            !curriculumCourse ||
+            !syllabusVersion ||
+            curriculumCourse.id !== offering.curriculumCourseId ||
+            curriculumCourse.departmentId !== input.departmentId ||
+            curriculumCourse.courseId !== offering.courseId ||
+            syllabusVersion.id !== offering.syllabusVersionId ||
+            syllabusVersion.departmentId !== input.departmentId ||
+            syllabusVersion.curriculumCourseId !== offering.curriculumCourseId
+          ) {
+            return { outcome: "OFFERING_NOT_FULLY_BOUND" } as const;
+          }
+
+          const openVersion = await tx.courseOutlineVersion.findFirst({
+            where: {
+              departmentId: input.departmentId,
+              courseOfferingId: offering.id,
+              status: { in: [...OPEN_COURSE_OUTLINE_STATUSES] },
+            },
+            select: { id: true },
+          });
+          if (openVersion) {
+            return { outcome: "OPEN_VERSION_ALREADY_EXISTS" } as const;
+          }
+
+          const versionIdentity = await tx.courseOutlineVersion.aggregate({
+            where: {
+              departmentId: input.departmentId,
+              courseOfferingId: offering.id,
+            },
+            _max: { versionNumber: true },
+          });
+          const versionNumber = (versionIdentity._max.versionNumber ?? 0) + 1;
+          if (versionNumber > 32_767) {
+            return { outcome: "VERSION_CONFLICT" } as const;
+          }
+
+          const courseOutlineVersion = await tx.courseOutlineVersion.create({
+            data: {
+              departmentId: input.departmentId,
+              courseOfferingId: offering.id,
+              curriculumCourseId: offering.curriculumCourseId,
+              syllabusVersionId: offering.syllabusVersionId,
+              versionNumber,
+              status: CourseOutlineStatus.DRAFT,
+              courseSummary: draftFields.courseSummary ?? null,
+              deliveryPlan: draftFields.deliveryPlan ?? null,
+              teachingStrategies: draftFields.teachingStrategies ?? null,
+              assessmentStrategy: draftFields.assessmentStrategy ?? null,
+              evaluationPolicy: draftFields.evaluationPolicy ?? null,
+              makeUpProcedure: draftFields.makeUpProcedure ?? null,
+            },
+            select: courseOutlineVersionSelect,
+          });
+
+          await tx.auditLog.create({
+            data: {
+              requestId: input.requestId,
+              actorUserId: input.actorUserId,
+              actorType: "USER",
+              departmentId: input.departmentId,
+              action: ACADEMIC_AUDIT_EVENTS.COURSE_OUTLINE_CREATED,
+              targetType: "course_outline_version",
+              targetId: courseOutlineVersion.id,
+              outcome: "SUCCESS",
+              ipAddress: input.ipAddress,
+              userAgent: input.userAgent,
+              contextJson: {
+                courseOutlineVersionId: courseOutlineVersion.id,
+                courseOfferingId: offering.id,
+                curriculumCourseId: offering.curriculumCourseId,
+                syllabusVersionId: offering.syllabusVersionId,
+                versionNumber,
+                status: CourseOutlineStatus.DRAFT,
+              },
+            },
+          });
+
+          return { outcome: "CREATED", courseOutlineVersion } as const;
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (error) {
+      if (
+        error instanceof PrismaClientKnownRequestError &&
+        (error.code === "P2002" || error.code === "P2034")
+      ) {
+        return { outcome: "VERSION_CONFLICT" } as const;
+      }
+      throw error;
+    }
+  }
+
+  async updateCourseOutlineVersion(input: UpdateCourseOutlineVersionInput) {
+    const draftFields = selectCourseOutlineDraftFields(input);
+    return this.prisma.$transaction(async (tx) => {
+      const offering = await tx.courseOffering.findFirst({
+        where: {
+          id: input.courseOfferingId,
+          departmentId: input.departmentId,
+          archivedAt: null,
+          teacherAssignments: {
+            some: {
+              departmentId: input.departmentId,
+              courseOfferingId: input.courseOfferingId,
+              teacherUserId: input.actorUserId,
+              status: "ACTIVE",
+              unassignedAt: null,
+              archivedAt: null,
+            },
+          },
+        },
+        select: {
+          id: true,
+          departmentId: true,
+          curriculumCourseId: true,
+          syllabusVersionId: true,
+        },
+      });
+      if (!offering) return { outcome: "OFFERING_NOT_FOUND" } as const;
+
+      const existing = await tx.courseOutlineVersion.findFirst({
+        where: {
+          id: input.courseOutlineVersionId,
+          departmentId: input.departmentId,
+          courseOfferingId: input.courseOfferingId,
+        },
+        select: courseOutlineVersionSelect,
+      });
+      if (
+        !existing ||
+        existing.departmentId !== offering.departmentId ||
+        existing.curriculumCourseId !== offering.curriculumCourseId ||
+        existing.syllabusVersionId !== offering.syllabusVersionId
+      ) {
+        return { outcome: "OUTLINE_NOT_FOUND" } as const;
+      }
+      if (!EDITABLE_COURSE_OUTLINE_STATUSES.includes(existing.status)) {
+        return { outcome: "OUTLINE_NOT_EDITABLE" } as const;
+      }
+
+      const changedFields = COURSE_OUTLINE_DRAFT_FIELD_NAMES.filter(
+        (field) =>
+          Object.prototype.hasOwnProperty.call(draftFields, field) &&
+          existing[field] !== draftFields[field],
+      );
+      if (changedFields.length === 0) {
+        return { outcome: "NO_CHANGES" } as const;
+      }
+
+      const data = selectCourseOutlineDraftFields({
+        courseSummary: changedFields.includes("courseSummary")
+          ? draftFields.courseSummary
+          : undefined,
+        deliveryPlan: changedFields.includes("deliveryPlan")
+          ? draftFields.deliveryPlan
+          : undefined,
+        teachingStrategies: changedFields.includes("teachingStrategies")
+          ? draftFields.teachingStrategies
+          : undefined,
+        assessmentStrategy: changedFields.includes("assessmentStrategy")
+          ? draftFields.assessmentStrategy
+          : undefined,
+        evaluationPolicy: changedFields.includes("evaluationPolicy")
+          ? draftFields.evaluationPolicy
+          : undefined,
+        makeUpProcedure: changedFields.includes("makeUpProcedure")
+          ? draftFields.makeUpProcedure
+          : undefined,
+      });
+      const mutation = await tx.courseOutlineVersion.updateMany({
+        where: {
+          id: input.courseOutlineVersionId,
+          departmentId: input.departmentId,
+          courseOfferingId: input.courseOfferingId,
+          status: { in: [...EDITABLE_COURSE_OUTLINE_STATUSES] },
+        },
+        data,
+      });
+
+      if (mutation.count === 0) {
+        const current = await tx.courseOutlineVersion.findFirst({
+          where: {
+            id: input.courseOutlineVersionId,
+            departmentId: input.departmentId,
+            courseOfferingId: input.courseOfferingId,
+          },
+          select: { status: true },
+        });
+        if (!current) return { outcome: "OUTLINE_NOT_FOUND" } as const;
+        if (!EDITABLE_COURSE_OUTLINE_STATUSES.includes(current.status)) {
+          return { outcome: "OUTLINE_NOT_EDITABLE" } as const;
+        }
+        return { outcome: "VERSION_CONFLICT" } as const;
+      }
+
+      const courseOutlineVersion = await tx.courseOutlineVersion.findFirst({
+        where: {
+          id: input.courseOutlineVersionId,
+          departmentId: input.departmentId,
+          courseOfferingId: input.courseOfferingId,
+        },
+        select: courseOutlineVersionSelect,
+      });
+      if (!courseOutlineVersion) {
+        return { outcome: "OUTLINE_NOT_FOUND" } as const;
+      }
+
+      await tx.auditLog.create({
+        data: {
+          requestId: input.requestId,
+          actorUserId: input.actorUserId,
+          actorType: "USER",
+          departmentId: input.departmentId,
+          action: ACADEMIC_AUDIT_EVENTS.COURSE_OUTLINE_UPDATED,
+          targetType: "course_outline_version",
+          targetId: courseOutlineVersion.id,
+          outcome: "SUCCESS",
+          ipAddress: input.ipAddress,
+          userAgent: input.userAgent,
+          contextJson: {
+            courseOutlineVersionId: courseOutlineVersion.id,
+            courseOfferingId: courseOutlineVersion.courseOfferingId,
+            curriculumCourseId: courseOutlineVersion.curriculumCourseId,
+            syllabusVersionId: courseOutlineVersion.syllabusVersionId,
+            versionNumber: courseOutlineVersion.versionNumber,
+            status: courseOutlineVersion.status,
+            changedFields,
+          },
+        },
+      });
+
+      return { outcome: "UPDATED", courseOutlineVersion } as const;
+    });
   }
 
   async createCourseOffering(input: CreateCourseOfferingInput) {

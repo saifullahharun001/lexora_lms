@@ -1066,6 +1066,12 @@ model CourseOutlineVersion {
   syllabusVersionId  String              @map("syllabus_version_id")
   versionNumber      Int                 @map("version_number") @db.SmallInt
   status             CourseOutlineStatus @default(DRAFT)
+  courseSummary      String?             @map("course_summary")
+  deliveryPlan       String?             @map("delivery_plan")
+  teachingStrategies String?             @map("teaching_strategies")
+  assessmentStrategy String?             @map("assessment_strategy")
+  evaluationPolicy   String?             @map("evaluation_policy")
+  makeUpProcedure    String?             @map("make_up_procedure")
   submittedAt        DateTime?           @map("submitted_at")
   approvedAt         DateTime?           @map("approved_at")
   activatedAt        DateTime?           @map("activated_at")

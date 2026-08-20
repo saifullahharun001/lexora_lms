@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
@@ -87,33 +88,7 @@ test("CourseOutlineStatus has the exact dedicated workflow values", () => {
   assert.match(migration, /CREATE TYPE "CourseOutlineStatus" AS ENUM/);
 });
 
-test("CourseOutlineVersion contains only the required identity and lifecycle foundation", () => {
-  const fields = courseOutlineVersion
-    .split("\n")
-    .slice(1, -1)
-    .map((line) => line.trim())
-    .filter((line) => line !== "" && !line.startsWith("@@"))
-    .map((line) => line.split(/\s+/, 1)[0]);
-
-  assert.deepEqual(fields, [
-    "id",
-    "departmentId",
-    "courseOfferingId",
-    "curriculumCourseId",
-    "syllabusVersionId",
-    "versionNumber",
-    "status",
-    "submittedAt",
-    "approvedAt",
-    "activatedAt",
-    "archivedAt",
-    "createdAt",
-    "updatedAt",
-    "department",
-    "courseOffering",
-    "curriculumCourse",
-    "syllabusVersion",
-  ]);
+test("CourseOutlineVersion retains every required identity and lifecycle foundation field", () => {
   assert.match(courseOutlineVersion, /id\s+String\s+@id @default\(cuid\(\)\)/);
   for (const field of [
     "departmentId",
@@ -145,6 +120,35 @@ test("CourseOutlineVersion contains only the required identity and lifecycle fou
   );
   assert.match(courseOutlineVersion, /updatedAt\s+DateTime\s+@updatedAt/);
   assert.match(courseOutlineVersion, /@@map\("course_outline_versions"\)/);
+});
+
+test("historical foundation migration remains substantively unchanged across line endings and introduced only foundation columns", () => {
+  const normalizedMigration = migration.replace(/\r\n?/g, "\n");
+  assert.equal(
+    createHash("sha256").update(normalizedMigration, "utf8").digest("hex").toUpperCase(),
+    "1B481118BFD7B410FA16C60547F1FE73D54A4DB2379E02CD9F7DE02E14919D68",
+  );
+
+  const createTable =
+    migration.match(/CREATE TABLE "course_outline_versions" \(([\s\S]*?)\n\);/)?.[1] ?? "";
+  const columns = Array.from(createTable.matchAll(/^\s+"([^"]+)"\s/gm)).map(
+    (match) => match[1],
+  );
+  assert.deepEqual(columns, [
+    "id",
+    "department_id",
+    "course_offering_id",
+    "curriculum_course_id",
+    "syllabus_version_id",
+    "version_number",
+    "status",
+    "submitted_at",
+    "approved_at",
+    "activated_at",
+    "archived_at",
+    "created_at",
+    "updated_at",
+  ]);
 });
 
 test("CourseOutlineVersion binds to the exact fully bound CourseOffering identity", () => {

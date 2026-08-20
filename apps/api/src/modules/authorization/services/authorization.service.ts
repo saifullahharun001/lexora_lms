@@ -1,10 +1,9 @@
-import { Injectable } from "@nestjs/common";
-
 import type {
   PermissionGrant,
   PlatformRole,
   PrincipalContext
 } from "@lexora/types";
+import { Injectable } from "@nestjs/common";
 
 import {
   isPermissionGrantFromLoadedRole,
@@ -46,6 +45,8 @@ const STATIC_ROLE_POLICIES: Record<PlatformRole, string[]> = {
     "course-management.course.read",
     "course-management.offering.read",
     "course-management.offering.manage",
+    "course-management.course-outline.read",
+    "course-management.course-outline.write",
     "course-management.teacher-assignment.manage",
     "class-session.record.read",
     "class-session.record.create",

@@ -29,13 +29,14 @@ import type {
   AcademicRepositoryPort,
   AcademicTermListFilters,
   AcademicYearListFilters,
-  CourseOfferingLearningOutcomesView,
   CourseListFilters,
+  CourseOfferingLearningOutcomesView,
   CourseOfferingListFilters,
   CreateAcademicTermInput,
   CreateAcademicYearInput,
   CreateCourseInput,
   CreateCourseOfferingInput,
+  CreateCourseOutlineVersionInput,
   CreateEnrollmentInput,
   CreateProgramInput,
   CreateSyllabusVersionInput,
@@ -50,9 +51,15 @@ import type {
   UpdateAcademicYearInput,
   UpdateCourseInput,
   UpdateCourseOfferingInput,
+  UpdateCourseOutlineVersionInput,
   UpdateEnrollmentInput,
   UpdateProgramInput,
 } from "../ports/academic.repository.port";
+import type { CourseOutlineDraftFields } from "../../domain/course-outline-draft-fields";
+import {
+  hasCourseOutlineDraftFields,
+  selectCourseOutlineDraftFields,
+} from "../../domain/course-outline-draft-fields";
 
 interface AuditMetadata {
   [key: string]: unknown;
@@ -599,6 +606,146 @@ export class AcademicService {
     }
 
     return learningOutcomes;
+  }
+
+  async createCourseOutlineVersion(
+    courseOfferingId: string,
+    input: CourseOutlineDraftFields,
+  ) {
+    this.assertTeacherCourseOutlineAuthor();
+    const requestContext = this.requestContextService.get();
+    const draftFields = selectCourseOutlineDraftFields(input);
+    const result = await this.repository.createCourseOutlineVersion({
+      departmentId: this.getDepartmentId(),
+      courseOfferingId,
+      actorUserId: this.getActorId(),
+      courseSummary: draftFields.courseSummary,
+      deliveryPlan: draftFields.deliveryPlan,
+      teachingStrategies: draftFields.teachingStrategies,
+      assessmentStrategy: draftFields.assessmentStrategy,
+      evaluationPolicy: draftFields.evaluationPolicy,
+      makeUpProcedure: draftFields.makeUpProcedure,
+      requestId: requestContext?.requestId,
+      ipAddress: requestContext?.audit.ipAddress,
+      userAgent: requestContext?.audit.userAgent,
+    } satisfies CreateCourseOutlineVersionInput);
+
+    switch (result.outcome) {
+      case "CREATED":
+        return result.courseOutlineVersion;
+      case "OFFERING_NOT_FOUND":
+        throw new NotFoundException("Course offering not found");
+      case "OFFERING_NOT_FULLY_BOUND":
+        throw new ConflictException(
+          "Course offering must have curriculum and syllabus bindings",
+        );
+      case "OPEN_VERSION_ALREADY_EXISTS":
+        throw new ConflictException(
+          "An in-progress Course Outline version already exists",
+        );
+      case "VERSION_CONFLICT":
+        throw new ConflictException("Course Outline version conflict");
+    }
+  }
+
+  async listCourseOutlineVersions(courseOfferingId: string) {
+    const departmentId = this.getDepartmentId();
+    let versions;
+
+    if (this.hasRole("department_admin")) {
+      versions = await this.repository.findCourseOutlineVersions(
+        departmentId,
+        courseOfferingId,
+      );
+    } else if (this.hasRole("teacher")) {
+      versions = await this.repository.findCourseOutlineVersionsForTeacher(
+        departmentId,
+        courseOfferingId,
+        this.getActorId(),
+      );
+    } else {
+      throw new ForbiddenException("Course Outline access is forbidden");
+    }
+
+    if (!versions) throw new NotFoundException("Course offering not found");
+    return versions;
+  }
+
+  async getCourseOutlineVersion(
+    courseOfferingId: string,
+    courseOutlineVersionId: string,
+  ) {
+    const departmentId = this.getDepartmentId();
+    let version;
+
+    if (this.hasRole("department_admin")) {
+      version = await this.repository.findCourseOutlineVersionById(
+        departmentId,
+        courseOfferingId,
+        courseOutlineVersionId,
+      );
+    } else if (this.hasRole("teacher")) {
+      version = await this.repository.findCourseOutlineVersionByIdForTeacher(
+        departmentId,
+        courseOfferingId,
+        courseOutlineVersionId,
+        this.getActorId(),
+      );
+    } else {
+      throw new ForbiddenException("Course Outline access is forbidden");
+    }
+
+    if (!version) throw new NotFoundException("Course Outline version not found");
+    return version;
+  }
+
+  async updateCourseOutlineVersion(
+    courseOfferingId: string,
+    courseOutlineVersionId: string,
+    input: CourseOutlineDraftFields,
+  ) {
+    this.assertTeacherCourseOutlineAuthor();
+    const draftFields = selectCourseOutlineDraftFields(input);
+    if (!hasCourseOutlineDraftFields(draftFields)) {
+      throw new BadRequestException(
+        "At least one Course Outline draft field is required",
+      );
+    }
+
+    const requestContext = this.requestContextService.get();
+    const result = await this.repository.updateCourseOutlineVersion({
+      departmentId: this.getDepartmentId(),
+      courseOfferingId,
+      courseOutlineVersionId,
+      actorUserId: this.getActorId(),
+      courseSummary: draftFields.courseSummary,
+      deliveryPlan: draftFields.deliveryPlan,
+      teachingStrategies: draftFields.teachingStrategies,
+      assessmentStrategy: draftFields.assessmentStrategy,
+      evaluationPolicy: draftFields.evaluationPolicy,
+      makeUpProcedure: draftFields.makeUpProcedure,
+      requestId: requestContext?.requestId,
+      ipAddress: requestContext?.audit.ipAddress,
+      userAgent: requestContext?.audit.userAgent,
+    } satisfies UpdateCourseOutlineVersionInput);
+
+    switch (result.outcome) {
+      case "UPDATED":
+        return result.courseOutlineVersion;
+      case "OFFERING_NOT_FOUND":
+      case "OUTLINE_NOT_FOUND":
+        throw new NotFoundException("Course Outline version not found");
+      case "OUTLINE_NOT_EDITABLE":
+        throw new ConflictException(
+          "Course Outline version is not editable in its current status",
+        );
+      case "NO_CHANGES":
+        throw new BadRequestException(
+          "Course Outline patch contains no actual changes",
+        );
+      case "VERSION_CONFLICT":
+        throw new ConflictException("Course Outline version conflict");
+    }
   }
 
   async createCourseOffering(
@@ -2008,6 +2155,14 @@ export class AcademicService {
           assignment.departmentId === departmentId && assignment.role === role,
       ),
     );
+  }
+
+  private assertTeacherCourseOutlineAuthor() {
+    if (!this.hasRole("teacher")) {
+      throw new ForbiddenException(
+        "Only an assigned Teacher can author Course Outlines",
+      );
+    }
   }
 
   private async writeAudit(
