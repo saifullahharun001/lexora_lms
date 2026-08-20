@@ -25812,3 +25812,708 @@ Before implementation, determine the smallest source-backed assignment-scoped au
 - transactional audit requirements.
 
 Do not combine that authority foundation with approval, activation, frontend work, Lesson Plan, attendance, assessment or unrelated hardening.
+
+## Academic Session + Student Batch Schema Foundation and Ordinary PostgreSQL Verification — 2026-08-21
+
+### Scope and supersession
+
+This checkpoint closes the narrow **Academic Session + Student Batch schema foundation** required before introducing exact batch-scoped CourseOffering and Batch Coordinator authority.
+
+It supersedes earlier pending wording only for:
+
+- existence of a first-class department-scoped `AcademicSession` identity;
+- existence of a first-class programme/session-scoped `StudentBatch` identity;
+- database-level department consistency between StudentBatch, AcademicProgram and AcademicSession;
+- deployment of that schema foundation to the ordinary Lexora PostgreSQL runtime.
+
+It does **not** claim completion of:
+
+- AcademicSession management APIs or Admin UI;
+- StudentBatch management APIs or Admin UI;
+- canonical AcademicSession business rows;
+- canonical StudentBatch business rows;
+- CurriculumVersion → AcademicSession relational binding;
+- student → StudentBatch assignment;
+- Enrollment → StudentBatch binding;
+- CourseOffering → StudentBatch binding;
+- first-class Section identity;
+- BatchCoordinatorAssignment;
+- ProgrammeCoordinatorAssignment;
+- Coordinator role or policy provisioning;
+- Coordinator Course Outline review;
+- Course Outline coordinator/admin frontend;
+- broader academic-session or student-progression workflow.
+
+`AcademicSession`, `AcademicTerm`, `StudentBatch`, result-publication batch identity and attendance-import batch identity remain separate concepts.
+
+### Architecture reason
+
+A previous experimental Batch Coordinator schema attempted to scope coordinator authority by:
+
+`department + academic programme + academic term`
+
+Independent review rejected that model because an `AcademicTerm` is a calendar term and does not itself identify the student cohort/batch for which a coordinator has authority.
+
+A subsequent read-only architecture audit confirmed that the repository had:
+
+- AcademicProgram;
+- AcademicYear;
+- AcademicTerm;
+- CurriculumVersion;
+- CurriculumCourse;
+- StudentCurriculumAssignment;
+- Enrollment;
+- CourseOffering;
+
+but did not have a first-class AcademicSession or StudentBatch identity.
+
+The repository also already contained unrelated batch concepts including:
+
+- `ResultPublicationBatch`;
+- result-publication `batchCode`;
+- `AttendanceImportBatch`.
+
+Those concepts were explicitly not reused.
+
+The durable architecture direction is therefore:
+
+`Department → AcademicSession`
+
+and:
+
+`Department + AcademicProgram + AcademicSession → StudentBatch`
+
+Future exact Coordinator authority is expected to derive the target batch from an explicit CourseOffering binding and must not fall back to AcademicTerm-only or loose string-based scope.
+
+### Implementation identity
+
+Implementation commit:
+
+`d54b410ce3bd77e8b81ef52cefd881a9879d7fe1`
+
+Commit message:
+
+`Add academic session and student batch foundation`
+
+Implementation scope was exactly four files:
+
+- `.gitignore`;
+- `apps/api/prisma/schema.prisma`;
+- `apps/api/prisma/academic-session-student-batch-foundation.schema.test.ts`;
+- `apps/api/prisma/migrations/202608200003_add_academic_session_student_batch_foundation/migration.sql`.
+
+Migration:
+
+`202608200003_add_academic_session_student_batch_foundation`
+
+Reviewed migration SHA-256:
+
+`85805B211365C9495DC707391033ED433C1ED15A615DC4B00BD849F99ADF9DCE`
+
+### AcademicSession foundation
+
+`AcademicSession` now provides:
+
+- immutable CUID primary identity;
+- `departmentId`;
+- bounded `code` using `VARCHAR(64)`;
+- `name`;
+- nullable `archivedAt`;
+- created/updated timestamps.
+
+Department-scoped business uniqueness:
+
+`departmentId + code`
+
+Tenant-aware candidate identity:
+
+`id + departmentId`
+
+The model intentionally does not introduce speculative:
+
+- workflow status;
+- start date;
+- end date;
+- AcademicTerm relationship;
+- CourseOffering relationship.
+
+The same AcademicSession code may exist in different departments.
+
+### StudentBatch foundation
+
+`StudentBatch` now provides:
+
+- immutable CUID primary identity;
+- `departmentId`;
+- exact `academicProgramId`;
+- exact `academicSessionId`;
+- bounded `code` using `VARCHAR(64)`;
+- `name`;
+- nullable `archivedAt`;
+- created/updated timestamps.
+
+Business uniqueness is:
+
+`departmentId + academicProgramId + academicSessionId + code`
+
+This deliberately permits multiple explicitly coded cohorts within one programme/session scope rather than prematurely assuming one permanent cohort per programme/session.
+
+Tenant-aware candidate identity:
+
+`id + departmentId`
+
+The model intentionally does not contain:
+
+- `academicTermId`;
+- `courseOfferingId`;
+- `sectionCode`;
+- coordinator identity;
+- teacher identity;
+- result-publication batch identity;
+- JSON authorization scope.
+
+### Tenant-safe relational integrity
+
+The minimal composite candidate identity:
+
+`AcademicProgram(id, departmentId)`
+
+was added to support database-enforced tenant-safe academic relationships.
+
+StudentBatch → AcademicProgram uses the composite identity:
+
+`academicProgramId + departmentId`
+→
+`AcademicProgram(id + departmentId)`
+
+StudentBatch → AcademicSession uses:
+
+`academicSessionId + departmentId`
+→
+`AcademicSession(id + departmentId)`
+
+All newly introduced academic relationships use:
+
+- `ON DELETE RESTRICT`;
+- `ON UPDATE RESTRICT`.
+
+No cascade delete/update behavior was introduced.
+
+Database-level relations therefore reject a StudentBatch that attempts to combine:
+
+- Department A with a Programme from Department B;
+- Department A with an AcademicSession from Department B.
+
+### Existing-domain preservation
+
+This foundation intentionally did not modify CourseOffering academic scope.
+
+`CourseOffering` still has no:
+
+- `studentBatchId`;
+- `academicSessionId`.
+
+`StudentCurriculumAssignment` still has no:
+
+- `studentBatchId`.
+
+No Enrollment batch binding was introduced.
+
+The existing:
+
+`CurriculumVersion.effectiveAcademicSessionCode`
+
+string remains present and unchanged.
+
+No automatic mapping from that string to AcademicSession was introduced.
+
+No existing curriculum, offering, enrollment or student assignment row was backfilled or rebound.
+
+### Independent review
+
+Independent pre-commit review result:
+
+- Critical: `0`;
+- High: `0`;
+- Medium: `0`;
+- Low: `0`;
+- non-blocking suggestions: `2`.
+
+Review confirmed:
+
+- correct narrow scope;
+- department-scoped AcademicSession uniqueness;
+- non-global StudentBatch business identity;
+- department-aware composite foreign keys;
+- exact RESTRICT/RESTRICT behavior;
+- additive migration;
+- no DML;
+- no destructive DDL;
+- no coordinator authority;
+- no Course Outline workflow;
+- no CourseOffering batch binding;
+- no student batch binding;
+- preservation of `effectiveAcademicSessionCode`.
+
+### Static verification
+
+Before commit and again after Ubuntu server promotion:
+
+- focused Academic Session + Student Batch schema tests: `11/11` passed;
+- all Prisma schema-foundation tests: `94/94` passed across the applicable schema test files;
+- Prisma schema format: passed during implementation verification;
+- Prisma schema validate: passed;
+- Prisma Client generate: passed;
+- API typecheck: passed;
+- API build: passed;
+- `git diff --check`: passed.
+
+Native Node execution of Prisma schema tests emitted the existing module-type detection warning because the TypeScript test files use module syntax in the current CommonJS-compatible package.
+
+No:
+
+- `"type": "module"` change;
+- NodeNext migration;
+- ESM migration;
+- TypeScript module-system migration
+
+was introduced to suppress that warning.
+
+### Disposable PostgreSQL 18.4 verification
+
+The exact reviewed migration was runtime verified using:
+
+`postgres:18.4-alpine3.23`
+
+Verification environment:
+
+- PostgreSQL `18.4`;
+- loopback-only random host port;
+- no persistent volume;
+- ordinary `lexora_lms` database not accessed;
+- exact committed pre-implementation Prisma schema used as baseline;
+- reviewed schema and exact reviewed migration overlaid separately.
+
+The committed baseline was reconstructed with Prisma `db push`.
+
+The exact reviewed migration SQL was then applied to that baseline.
+
+Disposable catalog verification passed for:
+
+- `academic_sessions`;
+- `student_batches`;
+- AcademicProgram tenant candidate identity;
+- seven exact target indexes;
+- four new foreign keys;
+- all four foreign keys verified `RESTRICT / RESTRICT`;
+- no automatic AcademicSession row creation;
+- no automatic StudentBatch row creation;
+- no CourseOffering batch/session binding;
+- no StudentCurriculumAssignment batch binding;
+- preservation of CurriculumVersion effective-session string;
+- Prisma database-to-datamodel drift: none.
+
+### Disposable relational behavior verification
+
+Positive PostgreSQL behavior verified:
+
+- the same AcademicSession code may exist in different departments;
+- multiple AcademicSessions may exist in one department;
+- multiple differently coded StudentBatches may coexist in the same department/programme/session scope;
+- the same StudentBatch code may be reused in another AcademicSession;
+- the same StudentBatch code may be reused in another department.
+
+Negative PostgreSQL behavior verified:
+
+- duplicate department-scoped AcademicSession code rejected;
+- duplicate exact StudentBatch business identity rejected;
+- wrong-department AcademicProgram binding rejected;
+- wrong-department AcademicSession binding rejected;
+- referenced AcademicSession delete rejected;
+- referenced AcademicProgram delete rejected;
+- referenced AcademicSession identity update rejected;
+- referenced AcademicProgram identity update rejected.
+
+Rejected-write residue:
+
+`ZERO`
+
+Final disposable synthetic state:
+
+- AcademicSession rows: `3`;
+- StudentBatch rows: `4`;
+- tenant-safe StudentBatch joins: `4/4` passed.
+
+Prisma database-to-datamodel drift remained:
+
+`NONE`
+
+The disposable verifier container was removed after verification.
+
+### Verification-harness incidents and corrections
+
+Several verifier/environment issues occurred during the runtime-verification cycle.
+
+They did not require an implementation change.
+
+#### Docker image pull timeout
+
+An initial attempt used the uncached:
+
+`postgres:18.4`
+
+image.
+
+Docker Hub authentication/image retrieval failed with a TLS handshake timeout before a disposable PostgreSQL target was created.
+
+A subsequent readiness check confirmed the previously used:
+
+`postgres:18.4-alpine3.23`
+
+image was already cached locally.
+
+The corrected verifier used that exact cached image with image pulling disabled.
+
+No ordinary database was accessed by the failed attempt.
+
+#### Fresh-empty historical migration replay
+
+An initial disposable verifier attempted to build an empty PostgreSQL database by replaying the repository's retained historical Prisma migration chain.
+
+That failed at historical migration:
+
+`20260521_add_notice_foundation`
+
+because the retained migration set assumes earlier baseline tables such as `departments` already exist and is not a self-bootstrap chain from an empty database.
+
+The failure occurred in the disposable database only.
+
+The corrected verifier used the established current-schema baseline method:
+
+- exact committed pre-implementation Prisma schema;
+- Prisma `db push` into disposable PostgreSQL;
+- exact reviewed target migration applied separately.
+
+That corrected baseline verification passed.
+
+No historical migration file was edited or resolved.
+
+#### First relational-checkpoint stdin issue
+
+The first relational Checkpoint B harness invoked container `psql` without `docker exec -i` while providing SQL through stdin/heredoc.
+
+The intended positive INSERT statements therefore were not delivered to `psql`, and the subsequent row-count assertion failed.
+
+This was a verifier harness defect, not a database rejection and not an implementation defect.
+
+The failed disposable container was cleaned up.
+
+The standalone corrected Checkpoint B explicitly used `docker exec -i`.
+
+The complete positive/negative relational matrix then passed.
+
+#### Remote bundle verification shell issue
+
+One transferred review-bundle verification command attempted to run `sudo docker` inside a non-interactive SSH invocation.
+
+The SCP transfer itself had succeeded, but the remote command failed before completing the image check.
+
+The bundle was subsequently reverified independently by SHA-256 and matched the reviewed source exactly.
+
+No implementation or ordinary database state changed.
+
+### Server promotion and predeployment verification
+
+The Ubuntu runtime repository was fast-forwarded from:
+
+`b0a139d3fa78603d74a9e3908292eae1a3ee203f`
+
+to implementation commit:
+
+`d54b410ce3bd77e8b81ef52cefd881a9879d7fe1`
+
+Promotion verification confirmed:
+
+- branch `main`;
+- exact `origin/main` alignment;
+- clean repository;
+- exact four-file implementation commit;
+- migration SHA-256 matched the reviewed migration;
+- Prisma validate passed;
+- Prisma generate passed;
+- focused schema tests `11/11` passed;
+- schema-foundation regression tests `94/94` passed;
+- API typecheck passed;
+- API build passed.
+
+### Ordinary PostgreSQL predeployment state
+
+Ordinary database:
+
+`lexora_lms`
+
+PostgreSQL:
+
+`18.4 (Ubuntu 18.4-0ubuntu0.26.04.1)`
+
+Before deployment:
+
+- `academic_sessions`: absent;
+- `student_batches`: absent;
+- `academic_program_id_department_uq`: absent;
+- target migration-history row: absent;
+- target migration was exactly the only pending Prisma migration.
+
+Expected predeployment `prisma migrate status` returned non-zero because that exact migration was pending.
+
+Selected existing-domain row-count fingerprint before deployment:
+
+`2|4|8|14|1|12`
+
+The selected tables were, in order:
+
+- Departments: `2`;
+- AcademicPrograms: `4`;
+- CurriculumVersions: `8`;
+- CourseOfferings: `14`;
+- StudentCurriculumAssignments: `1`;
+- Enrollments: `12`.
+
+No ordinary database write occurred during predeployment verification.
+
+### Validated private rollback backup
+
+A private PostgreSQL custom-format backup was created and validated before ordinary migration deployment.
+
+Backup path:
+
+`/home/sh002/lexora-private-backups/lexora_lms-before-202608200003_add_academic_session_student_batch_foundation-20260820T182039Z.dump`
+
+The filename timestamp is UTC; the documentation/runtime closure occurred after local midnight on 2026-08-21.
+
+Backup verification:
+
+- archive format: PostgreSQL custom format;
+- `pg_restore --list`: passed;
+- TOC entries: `736`;
+- backup size: `802937` bytes;
+- backup file mode: `0600`;
+- containing private directory mode: `0700`;
+- backup SHA-256:
+  `1FA516F7B28B6FA50ECA57E4A48EE9C74BD92749CA8633B3EE98A2FD6923F8BC`.
+
+The backup remained present and valid after ordinary deployment.
+
+No credential, database URL, password, token or secret is recorded by this checkpoint.
+
+### Ordinary PostgreSQL deployment
+
+Immediately before deployment the following were reverified:
+
+- implementation HEAD and `origin/main`;
+- clean repository;
+- reviewed migration SHA;
+- validated rollback backup SHA/size/TOC/permissions;
+- ordinary database identity;
+- target schema objects absent;
+- target migration-history row absent;
+- selected existing-domain row counts unchanged from preflight;
+- Prisma still reported the exact target migration as pending.
+
+The ordinary migration was then applied with Prisma migration deployment.
+
+Target migration:
+
+`202608200003_add_academic_session_student_batch_foundation`
+
+Deployment result:
+
+`PASS`
+
+Migration-history verification after deployment:
+
+- completed target migration records: `1`;
+- rolled-back target migration records: `0`;
+- incomplete target migration records: `0`.
+
+### Ordinary live catalog verification
+
+After deployment the ordinary PostgreSQL catalog verified:
+
+- target tables: `2/2`;
+- exact target indexes: `7/7`;
+- tenant-aware new foreign keys with RESTRICT/RESTRICT behavior: `4/4`.
+
+New table row counts immediately after migration:
+
+- AcademicSession: `0`;
+- StudentBatch: `0`.
+
+Therefore the migration performed no canonical or runtime data backfill.
+
+No CourseOffering batch/session binding was introduced.
+
+No StudentCurriculumAssignment batch binding was introduced.
+
+`CurriculumVersion.effectiveAcademicSessionCode` remained present.
+
+### Existing business-data preservation
+
+Selected pre-migration counts:
+
+`2|4|8|14|1|12`
+
+Selected post-migration counts:
+
+`2|4|8|14|1|12`
+
+The selected existing-domain counts were exactly preserved.
+
+No existing Department, AcademicProgram, CurriculumVersion, CourseOffering, StudentCurriculumAssignment or Enrollment row was automatically rebound or backfilled by this migration.
+
+### Drift and idempotency verification
+
+After ordinary deployment:
+
+`prisma migrate status`
+
+reported:
+
+`Database schema is up to date!`
+
+Prisma database-to-datamodel drift check:
+
+`No difference detected.`
+
+A second:
+
+`prisma migrate deploy`
+
+reported:
+
+`No pending migrations to apply.`
+
+Exactly one completed target migration-history record remained.
+
+### Runtime non-disruption verification
+
+PM2 application:
+
+`lexora-api`
+
+PID before deployment:
+
+`67374`
+
+PID after deployment:
+
+`67374`
+
+PM2 restart:
+
+`not required`
+
+Health after deployment:
+
+- direct API: HTTP `200`;
+- Nginx-proxied API: HTTP `200`.
+
+Network exposure:
+
+- API port `4000`: loopback-only;
+- unsafe wildcard/public port `4000` listener: not detected.
+
+Repository remained:
+
+- branch `main`;
+- HEAD `d54b410ce3bd77e8b81ef52cefd881a9879d7fe1`;
+- aligned to `origin/main`;
+- clean.
+
+### Current verified classification
+
+The **Academic Session + Student Batch Schema Foundation** is now:
+
+- implemented;
+- independently reviewed;
+- statically verified;
+- focused schema-test verified;
+- Prisma schema-foundation regression verified;
+- disposable PostgreSQL `18.4` migration verified;
+- disposable positive relational behavior verified;
+- disposable duplicate protection verified;
+- disposable cross-department isolation verified;
+- disposable restrictive FK behavior verified;
+- committed and pushed;
+- promoted to the Ubuntu runtime repository;
+- deployed to ordinary PostgreSQL `18.4`;
+- ordinary migration-history verified;
+- ordinary live catalog verified;
+- selected existing business-data counts preserved;
+- Prisma drift verified as none;
+- second migration deployment verified as a safe no-op;
+- rollback backup retained and valid;
+- live API/Nginx non-disruption verified;
+- API loopback-only exposure preserved.
+
+### Explicitly still pending
+
+This checkpoint does **not** implement or verify:
+
+- creation of operational/canonical AcademicSession records;
+- creation of operational/canonical StudentBatch records;
+- AcademicSession CRUD or governance API;
+- StudentBatch CRUD or governance API;
+- CurriculumVersion → AcademicSession exact relational binding;
+- StudentCurriculumAssignment → StudentBatch binding;
+- Enrollment → StudentBatch binding;
+- CourseOffering → StudentBatch binding;
+- historical or canonical batch backfill;
+- first-class Section model;
+- BatchCoordinatorAssignment;
+- ProgrammeCoordinatorAssignment;
+- coordinator role provisioning;
+- coordinator policies;
+- coordinator APIs;
+- Course Outline `SUBMITTED_BY_TEACHER → COORDINATOR_REVIEW`;
+- return-for-correction coordinator workflow;
+- coordinator/admin Course Outline frontend.
+
+The complete Course Outline feature remains incomplete.
+
+The complete coordinator-governance feature remains incomplete.
+
+### Next safe architecture sequence
+
+The next narrow schema checkpoint should be:
+
+**CourseOffering → StudentBatch nullable binding foundation**
+
+That future checkpoint should:
+
+- use an exact immutable StudentBatch foreign-key identity;
+- preserve department consistency in the database;
+- initially remain nullable/additive for existing CourseOffering history;
+- perform no automatic ordinary-data backfill;
+- fail closed for future coordinator operations when an offering has no exact batch binding;
+- not use AcademicTerm as a StudentBatch substitute;
+- not use `effectiveAcademicSessionCode` as an authorization key;
+- not reuse result-publication `batchCode`.
+
+After that foundation is independently reviewed and runtime verified, a separate controlled checkpoint may bind existing/canonical CourseOfferings.
+
+Only after exact CourseOffering batch identity exists should `BatchCoordinatorAssignment` be redesigned around exact:
+
+`StudentBatch + AcademicTerm`
+
+scope.
+
+Programme Coordinator authority remains unresolved and must not be invented merely to continue Course Outline workflow development.
+
+### Final narrow verdict
+
+> **Academic Session + Student Batch Schema Foundation = IMPLEMENTED / INDEPENDENTLY REVIEWED / STATICALLY VERIFIED / DISPOSABLE POSTGRESQL 18.4 VERIFIED / ORDINARY POSTGRESQL 18.4 DEPLOYED / LIVE-CATALOG VERIFIED / NON-DISRUPTION VERIFIED / DOCUMENTED / CLOSED**
+
+This verdict applies only to the narrow schema/database foundation described above.
+
+It does not mean Academic Session management, Student Batch management, CourseOffering batch binding, student batch assignment, Coordinator governance, Course Outline coordinator workflow, or the complete Lexora LMS is complete.
