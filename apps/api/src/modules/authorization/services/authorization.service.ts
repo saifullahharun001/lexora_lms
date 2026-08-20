@@ -47,6 +47,7 @@ const STATIC_ROLE_POLICIES: Record<PlatformRole, string[]> = {
     "course-management.offering.manage",
     "course-management.course-outline.read",
     "course-management.course-outline.write",
+    "course-management.course-outline.submit",
     "course-management.teacher-assignment.manage",
     "class-session.record.read",
     "class-session.record.create",

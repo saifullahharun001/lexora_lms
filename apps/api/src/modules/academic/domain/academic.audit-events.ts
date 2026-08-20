@@ -13,6 +13,7 @@ export const ACADEMIC_AUDIT_EVENTS = {
   OFFERING_SYLLABUS_BOUND: "course-management.offering.syllabus-bound",
   COURSE_OUTLINE_CREATED: "course-management.course-outline.created",
   COURSE_OUTLINE_UPDATED: "course-management.course-outline.updated",
+  COURSE_OUTLINE_SUBMITTED: "course-management.course-outline.submitted",
   CURRICULUM_VERSION_APPROVED:
     "course-management.curriculum-version.approved",
   CURRICULUM_VERSION_ACTIVATED:

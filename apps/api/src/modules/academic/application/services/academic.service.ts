@@ -45,6 +45,7 @@ import type {
   EnrollmentListFilters,
   ProgramListFilters,
   StudentCourseOfferingListFilters,
+  SubmitCourseOutlineVersionInput,
   SyllabusVersionLifecycleAction,
   SyllabusVersionListFilters,
   UpdateAcademicTermInput,
@@ -745,6 +746,38 @@ export class AcademicService {
         );
       case "VERSION_CONFLICT":
         throw new ConflictException("Course Outline version conflict");
+    }
+  }
+
+  async submitCourseOutlineVersion(
+    courseOfferingId: string,
+    courseOutlineVersionId: string,
+  ) {
+    this.assertTeacherCourseOutlineAuthor();
+    const requestContext = this.requestContextService.get();
+    const result = await this.repository.submitCourseOutlineVersion({
+      departmentId: this.getDepartmentId(),
+      courseOfferingId,
+      courseOutlineVersionId,
+      actorUserId: this.getActorId(),
+      transitionAt: new Date(),
+      requestId: requestContext?.requestId,
+      ipAddress: requestContext?.audit.ipAddress,
+      userAgent: requestContext?.audit.userAgent,
+    } satisfies SubmitCourseOutlineVersionInput);
+
+    switch (result.outcome) {
+      case "SUBMITTED":
+        return result.courseOutlineVersion;
+      case "OFFERING_NOT_FOUND":
+      case "OUTLINE_NOT_FOUND":
+        throw new NotFoundException("Course Outline version not found");
+      case "OUTLINE_NOT_SUBMITTABLE":
+        throw new ConflictException(
+          "Course Outline version cannot be submitted in its current status",
+        );
+      case "VERSION_CONFLICT":
+        throw new ConflictException("Course Outline submission conflict");
     }
   }
 

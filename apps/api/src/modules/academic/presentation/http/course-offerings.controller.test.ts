@@ -347,7 +347,7 @@ test("offering read permits Teacher but does not grant Student broad access", ()
   );
 });
 
-test("Course Outline endpoints are nested, guarded, and use dedicated read/write policies", () => {
+test("Course Outline endpoints are nested, guarded, and use dedicated read/write/submit policies", () => {
   const cases = [
     [
       "createCourseOutlineVersion",
@@ -373,6 +373,12 @@ test("Course Outline endpoints are nested, guarded, and use dedicated read/write
       RequestMethod.PATCH,
       ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_WRITE,
     ],
+    [
+      "submitCourseOutlineVersion",
+      ":id/course-outline-versions/:courseOutlineVersionId/submit",
+      RequestMethod.POST,
+      ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_SUBMIT,
+    ],
   ] as const;
 
   assert.deepEqual(
@@ -395,6 +401,7 @@ test("Course Outline routes forward only nested identities and whitelisted DTO d
       "listCourseOutlineVersions",
       "getCourseOutlineVersion",
       "updateCourseOutlineVersion",
+      "submitCourseOutlineVersion",
     ].map((method) => [
       method,
       async (...args: unknown[]) => {
@@ -417,6 +424,16 @@ test("Course Outline routes forward only nested identities and whitelisted DTO d
     { id: "offering-a", courseOutlineVersionId: "outline-a" },
     updateBody,
   );
+  assert.equal(
+    CourseOfferingsController.prototype.submitCourseOutlineVersion.length,
+    1,
+  );
+  await controller.submitCourseOutlineVersion({
+    id: "offering-a",
+    courseOutlineVersionId: "outline-a",
+    status: "APPROVED",
+    submittedAt: "attacker-controlled",
+  } as never);
 
   assert.deepEqual(calls, [
     {
@@ -431,6 +448,10 @@ test("Course Outline routes forward only nested identities and whitelisted DTO d
     {
       method: "updateCourseOutlineVersion",
       args: ["offering-a", "outline-a", updateBody],
+    },
+    {
+      method: "submitCourseOutlineVersion",
+      args: ["offering-a", "outline-a"],
     },
   ]);
 });
@@ -458,6 +479,7 @@ test("dedicated Course Outline policies admit Teacher and Department Admin but d
   for (const policy of [
     ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_READ,
     ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_WRITE,
+    ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_SUBMIT,
   ]) {
     assert.equal(authorization.isAllowed(principal("teacher"), policy), true);
     assert.equal(

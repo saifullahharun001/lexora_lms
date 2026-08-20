@@ -46,6 +46,7 @@ function harness(
     additionalRoles?: Role[];
     createResult?: unknown;
     updateResult?: unknown;
+    submitResult?: unknown;
     listResult?: unknown;
     detailResult?: unknown;
   } = {},
@@ -81,6 +82,19 @@ function harness(
         outcome: "UPDATED",
         courseOutlineVersion: outline,
       };
+    },
+    submitCourseOutlineVersion: async (...args: unknown[]) => {
+      calls.push({ method: "submit", args });
+      return (
+        options.submitResult ?? {
+          outcome: "SUBMITTED",
+          courseOutlineVersion: {
+            ...outline,
+            status: CourseOutlineStatus.SUBMITTED_BY_TEACHER,
+            submittedAt: new Date("2026-08-20T01:00:00.000Z"),
+          },
+        }
+      );
     },
   };
   const roles = [role, ...(options.additionalRoles ?? [])];
@@ -391,6 +405,81 @@ test("repository outcomes map to safe not-found and controlled conflicts", async
     const h = harness("teacher", { createResult: { outcome } });
     await assert.rejects(
       h.service.createCourseOutlineVersion("offering-a", {}),
+      ConflictException,
+    );
+  }
+});
+
+test("assigned Teacher submission derives all authority, transition, and audit metadata from server context", async () => {
+  const h = harness("teacher");
+  const result = await h.service.submitCourseOutlineVersion(
+    "offering-a",
+    "outline-a",
+  );
+  assert.equal(result.status, CourseOutlineStatus.SUBMITTED_BY_TEACHER);
+
+  const input = h.calls[0]!.args[0] as Record<string, unknown>;
+  assert.equal(input.departmentId, "department-a");
+  assert.equal(input.courseOfferingId, "offering-a");
+  assert.equal(input.courseOutlineVersionId, "outline-a");
+  assert.equal(input.actorUserId, "teacher-user");
+  assert.ok(input.transitionAt instanceof Date);
+  assert.equal(input.requestId, "request-a");
+  assert.equal(input.ipAddress, "127.0.0.1");
+  assert.equal(input.userAgent, "test-agent");
+  for (const forbiddenField of [
+    "status",
+    "submittedAt",
+    "curriculumCourseId",
+    "syllabusVersionId",
+    "versionNumber",
+    "teacherUserId",
+  ]) {
+    assert.equal(forbiddenField in input, false);
+  }
+});
+
+test("submission is Teacher-only at the service boundary, including against Department Admin wildcard authority", async () => {
+  for (const role of [
+    "department_admin",
+    "student",
+    "auditor",
+    "support",
+  ] as const) {
+    const h = harness(role);
+    await assert.rejects(
+      h.service.submitCourseOutlineVersion("offering-a", "outline-a"),
+      ForbiddenException,
+    );
+    assert.deepEqual(h.calls, []);
+  }
+});
+
+test("Teacher plus Department Admin may submit only under Teacher repository assignment authority", async () => {
+  const h = harness("teacher", { additionalRoles: ["department_admin"] });
+  await h.service.submitCourseOutlineVersion("offering-a", "outline-a");
+  assert.equal(h.calls[0]!.method, "submit");
+  assert.equal(
+    (h.calls[0]!.args[0] as { actorUserId: string }).actorUserId,
+    "teacher-user",
+  );
+});
+
+test("submission repository outcomes map to safe not-found and controlled conflict", async () => {
+  for (const outcome of ["OFFERING_NOT_FOUND", "OUTLINE_NOT_FOUND"] as const) {
+    const h = harness("teacher", { submitResult: { outcome } });
+    await assert.rejects(
+      h.service.submitCourseOutlineVersion("offering-a", "outline-a"),
+      NotFoundException,
+    );
+  }
+  for (const outcome of [
+    "OUTLINE_NOT_SUBMITTABLE",
+    "VERSION_CONFLICT",
+  ] as const) {
+    const h = harness("teacher", { submitResult: { outcome } });
+    await assert.rejects(
+      h.service.submitCourseOutlineVersion("offering-a", "outline-a"),
       ConflictException,
     );
   }

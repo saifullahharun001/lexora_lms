@@ -35,6 +35,7 @@ import type {
   EnrollmentListFilters,
   ProgramListFilters,
   StudentCourseOfferingListFilters,
+  SubmitCourseOutlineVersionInput,
   SyllabusVersionListFilters,
   TeacherAssignmentListFilters,
   TransitionCurriculumVersionInput,
@@ -2152,6 +2153,180 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
       });
 
       return { outcome: "UPDATED", courseOutlineVersion } as const;
+    });
+  }
+
+  async submitCourseOutlineVersion(input: SubmitCourseOutlineVersionInput) {
+    return this.prisma.$transaction(async (tx) => {
+      const lockedAuthority = await tx.$queryRaw<
+        Array<{
+          courseOfferingId: string;
+          teacherCourseAssignmentId: string;
+        }>
+      >(
+        Prisma.sql`
+          SELECT
+            co."id" AS "courseOfferingId",
+            tca."id" AS "teacherCourseAssignmentId"
+          FROM "course_offerings" co
+          INNER JOIN "teacher_course_assignments" tca
+            ON tca."course_offering_id" = co."id"
+            AND tca."department_id" = ${input.departmentId}
+            AND tca."teacher_user_id" = ${input.actorUserId}
+            AND tca."status" = 'ACTIVE'
+            AND tca."unassigned_at" IS NULL
+            AND tca."archived_at" IS NULL
+          WHERE co."id" = ${input.courseOfferingId}
+            AND co."department_id" = ${input.departmentId}
+            AND co."archived_at" IS NULL
+          FOR UPDATE OF co, tca
+        `,
+      );
+      if (lockedAuthority.length === 0) {
+        return { outcome: "OFFERING_NOT_FOUND" } as const;
+      }
+
+      const offering = await tx.courseOffering.findFirst({
+        where: {
+          id: input.courseOfferingId,
+          departmentId: input.departmentId,
+          archivedAt: null,
+          teacherAssignments: {
+            some: {
+              departmentId: input.departmentId,
+              courseOfferingId: input.courseOfferingId,
+              teacherUserId: input.actorUserId,
+              status: "ACTIVE",
+              unassignedAt: null,
+              archivedAt: null,
+            },
+          },
+        },
+        select: {
+          id: true,
+          departmentId: true,
+          curriculumCourseId: true,
+          syllabusVersionId: true,
+        },
+      });
+      if (!offering) return { outcome: "OFFERING_NOT_FOUND" } as const;
+
+      const existing = await tx.courseOutlineVersion.findFirst({
+        where: {
+          id: input.courseOutlineVersionId,
+          departmentId: input.departmentId,
+          courseOfferingId: input.courseOfferingId,
+        },
+        select: courseOutlineVersionSelect,
+      });
+      if (
+        !existing ||
+        existing.departmentId !== offering.departmentId ||
+        existing.curriculumCourseId !== offering.curriculumCourseId ||
+        existing.syllabusVersionId !== offering.syllabusVersionId
+      ) {
+        return { outcome: "OUTLINE_NOT_FOUND" } as const;
+      }
+      if (
+        existing.status !== CourseOutlineStatus.DRAFT ||
+        existing.submittedAt !== null ||
+        existing.approvedAt !== null ||
+        existing.activatedAt !== null ||
+        existing.archivedAt !== null
+      ) {
+        return { outcome: "OUTLINE_NOT_SUBMITTABLE" } as const;
+      }
+
+      const mutation = await tx.courseOutlineVersion.updateMany({
+        where: {
+          id: input.courseOutlineVersionId,
+          departmentId: input.departmentId,
+          courseOfferingId: input.courseOfferingId,
+          curriculumCourseId: offering.curriculumCourseId ?? undefined,
+          syllabusVersionId: offering.syllabusVersionId ?? undefined,
+          status: CourseOutlineStatus.DRAFT,
+          submittedAt: null,
+          approvedAt: null,
+          activatedAt: null,
+          archivedAt: null,
+        },
+        data: {
+          status: CourseOutlineStatus.SUBMITTED_BY_TEACHER,
+          submittedAt: input.transitionAt,
+        },
+      });
+
+      if (mutation.count === 0) {
+        const current = await tx.courseOutlineVersion.findFirst({
+          where: {
+            id: input.courseOutlineVersionId,
+            departmentId: input.departmentId,
+            courseOfferingId: input.courseOfferingId,
+            curriculumCourseId: offering.curriculumCourseId ?? undefined,
+            syllabusVersionId: offering.syllabusVersionId ?? undefined,
+          },
+          select: {
+            status: true,
+            submittedAt: true,
+            approvedAt: true,
+            activatedAt: true,
+            archivedAt: true,
+          },
+        });
+        if (!current) return { outcome: "OUTLINE_NOT_FOUND" } as const;
+        if (
+          current.status !== CourseOutlineStatus.DRAFT ||
+          current.submittedAt !== null ||
+          current.approvedAt !== null ||
+          current.activatedAt !== null ||
+          current.archivedAt !== null
+        ) {
+          return { outcome: "OUTLINE_NOT_SUBMITTABLE" } as const;
+        }
+        return { outcome: "VERSION_CONFLICT" } as const;
+      }
+
+      const courseOutlineVersion = await tx.courseOutlineVersion.findFirst({
+        where: {
+          id: input.courseOutlineVersionId,
+          departmentId: input.departmentId,
+          courseOfferingId: input.courseOfferingId,
+          curriculumCourseId: offering.curriculumCourseId ?? undefined,
+          syllabusVersionId: offering.syllabusVersionId ?? undefined,
+        },
+        select: courseOutlineVersionSelect,
+      });
+      if (!courseOutlineVersion) {
+        throw new Error("Submitted Course Outline version could not be reloaded");
+      }
+
+      await tx.auditLog.create({
+        data: {
+          requestId: input.requestId,
+          actorUserId: input.actorUserId,
+          actorType: "USER",
+          departmentId: input.departmentId,
+          action: ACADEMIC_AUDIT_EVENTS.COURSE_OUTLINE_SUBMITTED,
+          targetType: "course_outline_version",
+          targetId: courseOutlineVersion.id,
+          outcome: "SUCCESS",
+          occurredAt: input.transitionAt,
+          ipAddress: input.ipAddress,
+          userAgent: input.userAgent,
+          contextJson: {
+            courseOutlineVersionId: courseOutlineVersion.id,
+            courseOfferingId: courseOutlineVersion.courseOfferingId,
+            curriculumCourseId: courseOutlineVersion.curriculumCourseId,
+            syllabusVersionId: courseOutlineVersion.syllabusVersionId,
+            versionNumber: courseOutlineVersion.versionNumber,
+            previousStatus: CourseOutlineStatus.DRAFT,
+            newStatus: CourseOutlineStatus.SUBMITTED_BY_TEACHER,
+            transitionTimestamp: input.transitionAt.toISOString(),
+          },
+        },
+      });
+
+      return { outcome: "SUBMITTED", courseOutlineVersion } as const;
     });
   }
 
