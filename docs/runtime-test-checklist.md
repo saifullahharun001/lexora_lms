@@ -24378,3 +24378,733 @@ Work one focused academic checkpoint at a time.
 This means only the canonical approved syllabus-content and structured prerequisite **schema foundation** is closed.
 
 It does not mean the complete Syllabus management feature, Course Outline feature, Lesson Plan, or Teacher Course Workspace is complete.
+
+## Teacher Assigned-Course Course Outline Draft Authoring Runtime Verification — 2026-08-20
+
+### Scope and classification
+
+This checkpoint implements, independently reviews, statically verifies, disposable-PostgreSQL verifies, deploys, and ordinary-runtime verifies the narrow:
+
+**Teacher assigned-course Course Outline draft-authoring backend.**
+
+This checkpoint supersedes earlier pending wording only for the implemented draft-authoring slice covering:
+
+- minimum Teacher-owned Course Outline narrative storage;
+- Course Outline create/list/detail/update HTTP contracts;
+- Department Admin department-scoped Course Outline reads;
+- Teacher exact assigned-course Course Outline reads and writes;
+- Student exclusion;
+- department/object isolation;
+- DTO/mass-assignment protection;
+- open-version conflict handling;
+- DRAFT / RETURNED_FOR_CORRECTION editability boundary;
+- non-editability of later workflow states;
+- Course Outline create/update success audit events.
+
+This checkpoint does **not** close the complete Course Outline feature.
+
+Still pending unless separately implemented and runtime verified:
+
+- Teacher submission transition;
+- coordinator review transition;
+- return-for-correction transition API;
+- approval transition API;
+- activation transition API;
+- archival transition API;
+- complete lifecycle service/API;
+- coordinator authority and review workflow;
+- exact active CourseOutlineVersion binding;
+- canonical active/latest Course Outline selection semantics;
+- Course Outline Teacher frontend;
+- coordinator/admin Course Outline frontend;
+- normalized topic-to-CLO alignment;
+- supplemental Teacher-owned learning-resource model;
+- weekly plan;
+- Lesson Plan;
+- formative or summative assessment integration;
+- CLO/PLO attainment;
+- Course File;
+- complete Teacher Course Workspace composition.
+
+Approved syllabus content and approved CLO/PLO statements/mappings remain canonical and reference-based. They are not duplicated into mutable Teacher-owned Course Outline draft content.
+
+### Implementation identity
+
+Implementation commit:
+
+`59cc2cc106e607568674469b3c235f3c52814269`
+
+Commit message:
+
+`Add course outline draft authoring`
+
+Implementation parent:
+
+`092a696b3ab3d86bb9d5e8e8f5596bfc3b63fe45`
+
+Migration:
+
+`202608200002_add_course_outline_draft_content`
+
+Reviewed migration SHA-256:
+
+`B7D5F52405DD867636A59A7BE4CD54B7FB635FA68A3F82965710382AF4BF0E4B`
+
+The migration is additive-only and adds exactly six nullable PostgreSQL `TEXT` columns to `course_outline_versions`:
+
+- `course_summary`;
+- `delivery_plan`;
+- `teaching_strategies`;
+- `assessment_strategy`;
+- `evaluation_policy`;
+- `make_up_procedure`.
+
+No automatic Course Outline row creation, content backfill, generic JSON storage, weekly-plan storage, LessonPlan model, or copied approved syllabus/CLO/PLO content was introduced.
+
+### Runtime field allowlist
+
+The Teacher-owned mutable draft field boundary is exactly:
+
+- `courseSummary`;
+- `deliveryPlan`;
+- `teachingStrategies`;
+- `assessmentStrategy`;
+- `evaluationPolicy`;
+- `makeUpProcedure`.
+
+Service and repository runtime boundaries independently select this exact allowlist.
+
+Direct/internal forged lifecycle, version, department, academic identity, timestamp, or caller-provided changed-field metadata cannot enter the Course Outline Prisma mutation payload.
+
+### Authorization model
+
+Course Outline draft authoring preserves server-authoritative scope.
+
+Department Admin:
+
+- may read Course Outline versions only within the authenticated principal department;
+- may not create or PATCH Teacher-owned Course Outline drafts merely through broad Department Admin authority.
+
+Teacher:
+
+- must hold Teacher authority;
+- must have an exact active assignment to the target CourseOffering;
+- assignment identity and audit actor identity use the same authenticated `actorUserId`;
+- unassigned, inactive, archived, unassigned-at, and cross-department targets fail safely;
+- direct object IDs remain nested under exact department + CourseOffering scope.
+
+Student:
+
+- receives no broad Course Outline read or authoring authority.
+
+Authenticated principal department authority remains authoritative over `x-department-id`; a forged cross-department header does not replace the principal department.
+
+### Open-version and editability rules
+
+Creation is server-derived for:
+
+- department identity;
+- CourseOffering identity;
+- CurriculumCourse identity;
+- SyllabusVersion identity;
+- version number;
+- initial `DRAFT` status;
+- audit actor.
+
+At most one in-progress Course Outline version is allowed per offering across:
+
+- `DRAFT`;
+- `SUBMITTED_BY_TEACHER`;
+- `COORDINATOR_REVIEW`;
+- `RETURNED_FOR_CORRECTION`.
+
+A completed/history-only state consisting of:
+
+- `APPROVED`;
+- `ACTIVE`;
+- `ARCHIVED`
+
+permits creation of the next server-numbered `DRAFT`.
+
+PATCH is permitted only while the current version is:
+
+- `DRAFT`; or
+- `RETURNED_FOR_CORRECTION`.
+
+The following are non-editable through the draft-authoring PATCH contract:
+
+- `SUBMITTED_BY_TEACHER`;
+- `COORDINATOR_REVIEW`;
+- `APPROVED`;
+- `ACTIVE`;
+- `ARCHIVED`.
+
+The runtime `APPROVED` state used below was set directly as controlled test-fixture state setup. This does **not** claim implementation or runtime verification of the future Course Outline approval-transition API.
+
+### Static and Linux verification
+
+After independent correction review, the implementation was committed and pushed.
+
+Ubuntu source promotion:
+
+- baseline server HEAD:
+  `092a696b3ab3d86bb9d5e8e8f5596bfc3b63fe45`;
+- promoted HEAD:
+  `59cc2cc106e607568674469b3c235f3c52814269`;
+- `origin/main` aligned exactly;
+- repository clean;
+- reviewed migration SHA unchanged.
+
+Prisma:
+
+- `prisma validate`: PASS;
+- `prisma generate`: PASS;
+- Prisma Client: `6.19.3`.
+
+API:
+
+- `pnpm --filter @lexora/api typecheck`: PASS;
+- `pnpm --filter @lexora/api build`: PASS.
+
+The first Linux focused-test invocation attempted to use `tsx`, which is not installed in the Ubuntu runtime environment.
+
+This was a verifier invocation issue, not an application defect.
+
+The already-built CommonJS test artifacts were then executed with:
+
+`node -r ./register-paths.js --test ...`
+
+Result:
+
+- compiled Course Outline focused tests: `76/76` PASS;
+- failures: `0`;
+- skipped: `0`;
+- repository remained clean.
+
+No package or module-system change was made merely to install `tsx`.
+
+### Disposable PostgreSQL verification and verifier incident
+
+PostgreSQL runtime:
+
+`18.4 (Ubuntu 18.4-0ubuntu0.26.04.1)`
+
+Before target migration deployment, ordinary database state was measured as:
+
+- target migration history rows: `0`;
+- target columns present: `0`;
+- `course_outline_versions`: `0`;
+- `course_offerings`: `14`;
+- `syllabus_versions`: `0`;
+- `teacher_course_assignments`: `5`;
+- `audit_logs`: `653`.
+
+An exact-current private snapshot was created with mode `0600`.
+
+#### First disposable restore verifier issue
+
+The first restore attempt kept the private snapshot owned/readable only by the application OS user while invoking `pg_restore` as PostgreSQL OS user `postgres`.
+
+Result:
+
+- restore failed with filesystem permission denied;
+- disposable database was removed;
+- snapshot was removed;
+- ordinary database remained untouched.
+
+This was a verifier filesystem-permission defect, not a schema/application defect.
+
+The corrected restore preserved private `0700` directory / `0600` snapshot permissions and restored through the application database role.
+
+#### Prisma target-selection verifier incident
+
+A subsequent disposable verifier overrode only `DATABASE_URL`.
+
+The Prisma schema also uses `DATABASE_DIRECT_URL`, so Prisma reported:
+
+`PostgreSQL database "lexora_lms"`
+
+and the reviewed target migration was applied once to the ordinary database instead of the disposable database.
+
+This was a verification-harness target-selection defect.
+
+The incident was immediately investigated read-only.
+
+Ordinary PostgreSQL showed:
+
+- target migration: exactly one completed row;
+- started at `2026-08-20 14:22:24.942104+00`;
+- finished at `2026-08-20 14:22:25.050962+00`;
+- rolled back: no;
+- six target columns: exactly present;
+- every target column: nullable PostgreSQL `text`;
+- `course_outline_versions`: `0`;
+- `course_offerings`: `14`;
+- `syllabus_versions`: `0`;
+- `teacher_course_assignments`: `5`;
+- `audit_logs`: `653`;
+- Direct API: HTTP `200`;
+- Nginx API: HTTP `200`.
+
+The reviewed migration is additive-only and no target business row/backfill was created.
+
+The ordinary migration was therefore **not rolled back**, avoiding an unnecessary second schema mutation.
+
+This incident must remain preserved as runtime verification history and must not be reclassified as a clean planned ordinary migration sequence.
+
+#### Corrected reconstructed disposable verification
+
+Because the ordinary target migration had already been applied and `course_outline_versions = 0`, an exact current disposable copy was created and a pre-target baseline was reconstructed **inside the disposable database only** by:
+
+- dropping only the six newly added nullable Course Outline draft columns;
+- deleting only the target `_prisma_migrations` history row.
+
+Both:
+
+- `DATABASE_URL`; and
+- `DATABASE_DIRECT_URL`
+
+were then explicitly overridden to the disposable database.
+
+Prisma target output explicitly named:
+
+`lexora_co_reverify_20260820T142752Z`
+
+and did not name ordinary `lexora_lms`.
+
+Corrected disposable result:
+
+- pre-target reconstruction: PASS;
+- Prisma dual-URL override: PASS;
+- disposable target: proven;
+- reviewed migration apply: PASS;
+- target migration history: `1|1|0|0`;
+- six nullable `TEXT` columns: exact;
+- Prisma drift: none;
+- second deploy: safe no-op;
+- migration status: up to date;
+- ordinary target migration remained unchanged/completed once;
+- ordinary target columns remained unchanged at six;
+- ordinary Course Outline rows remained `0`;
+- disposable database removed;
+- private temporary files removed;
+- API runtime remained healthy;
+- repository remained clean/origin-aligned.
+
+### Retained post-migration backup
+
+Before activating the new API code, a validated retained ordinary PostgreSQL backup was created:
+
+`/home/sh002/lexora-private-backups/lexora_lms-post-course-outline-draft-20260820T143022Z.dump`
+
+Backup properties:
+
+- mode: `0600`;
+- size: `801936` bytes;
+- TOC entries: `751`;
+- SHA-256:
+  `12A7E78C3B6F3290C0998C18A566F498A329F909666C5F7DA4E9CD5A87FD9914`.
+
+No database credential, raw token, password hash, or other secret is stored in this checklist.
+
+### Running API activation
+
+Before restart:
+
+- PM2 PID: `1478`;
+- Direct API: HTTP `200`;
+- Nginx API: HTTP `200`.
+
+After controlled:
+
+`pm2 restart lexora-api --update-env`
+
+the new running API state was:
+
+- PM2 PID: `36649`;
+- Direct API: HTTP `200`;
+- Nginx API: HTTP `200`;
+- listener: `127.0.0.1:4000` only;
+- unauthenticated new Course Outline route: HTTP `401`;
+- repository: clean/origin-aligned.
+
+This proves the committed Course Outline draft-authoring routes were active behind `AuthGuard`.
+
+### Ordinary runtime test baseline
+
+Immediately before the successful ordinary Course Outline runtime matrix:
+
+`syllabus_versions|course_offerings|teacher_course_assignments|course_outline_versions|course_outline_success_audits`
+
+was:
+
+`0|14|5|0|0`
+
+A controlled temporary fully-bound Course Outline fixture was used because the ordinary database contained no SyllabusVersion rows.
+
+The fixture contained:
+
+- one temporary Law SyllabusVersion;
+- two temporary fully-bound Law CourseOfferings;
+- one temporary exact active Teacher assignment on the positive offering;
+- zero pre-existing CourseOutlineVersion rows.
+
+Existing canonical CourseOffering and CurriculumCourse rows were not overwritten to create the test target.
+
+### Failed first HTTP verifier attempt
+
+The first HTTP runtime harness failed before any API login request was completed because its login-body helper attempted to pipe credential data into a Python process whose stdin was already consumed by a heredoc script.
+
+The helper reported:
+
+`login input incomplete`
+
+A second verifier bug was also identified:
+
+- fixture-created state was set in a child subshell;
+- parent cleanup state therefore did not observe it;
+- automatic cleanup did not execute.
+
+This was a verifier/harness defect, not an application defect.
+
+The failed fixture residue was measured exactly as:
+
+`1|2|1|0|0`
+
+for:
+
+`syllabus|offerings|assignments|outlines|outline-audits`
+
+A dedicated guarded cleanup transaction removed only the exact failed fixture.
+
+Post-cleanup ordinary baseline returned exactly to:
+
+`0|14|5|0|0`
+
+Platform remained:
+
+- PM2 PID `36649`;
+- Direct API HTTP `200`;
+- Nginx API HTTP `200`;
+- repository clean/origin-aligned.
+
+The corrected final harness:
+
+- used a pipe-safe `python3 -c` login-body builder;
+- kept the fixture cleanup trap inside the same subshell;
+- did not print raw passwords or access tokens.
+
+### Fresh authentication evidence
+
+Final successful ordinary runtime matrix used fresh canonical Law principals.
+
+Fresh login results:
+
+- Department Admin: HTTP `201`;
+- Teacher: HTTP `201`;
+- Student: HTTP `201`.
+
+Principal email, role, and department were checked.
+
+Raw passwords and access tokens were not printed or persisted in this documentation.
+
+### Negative authorization and isolation evidence
+
+Runtime results:
+
+- unauthenticated Course Outline list: HTTP `401`;
+- Student list: HTTP `403`;
+- Department Admin department-scoped empty list: HTTP `200`;
+- Department Admin create: HTTP `403`;
+- Teacher unassigned offering: HTTP `404`;
+- Teacher cross-department BUS direct object: HTTP `404`;
+- Department Admin cross-department BUS direct object: HTTP `404`;
+- Student Course Outline detail: HTTP `403`;
+- nested CourseOffering/CourseOutlineVersion direct-ID mismatch: HTTP `404`;
+- Teacher unassigned nested direct-ID access: HTTP `404`.
+
+These results runtime verify:
+
+- AuthGuard;
+- Course Outline policy boundaries;
+- Student exclusion;
+- Department Admin department isolation;
+- Teacher exact active-assignment isolation;
+- cross-department safe-not-found behavior;
+- nested object-level authorization.
+
+### Forged department-header runtime evidence
+
+An authenticated Law Teacher requested the valid assigned Law Course Outline while supplying:
+
+`x-department-id: dept_bus_test`
+
+Result:
+
+- HTTP `200`;
+- returned Course Outline identity remained the Law target;
+- returned department remained `dept_law_test`.
+
+Therefore authenticated principal department authority remained authoritative and the forged header did not override it.
+
+### Teacher create/read/update runtime evidence
+
+Assigned Teacher create:
+
+- HTTP `201`;
+- server-derived department identity: exact Law department;
+- CourseOffering identity: exact temporary positive offering;
+- CurriculumCourse identity: exact bound CurriculumCourse;
+- SyllabusVersion identity: exact bound SyllabusVersion;
+- generated version number: `1`;
+- initial status: `DRAFT`.
+
+Duplicate create while an open version existed:
+
+- HTTP `409`.
+
+Teacher list:
+
+- HTTP `200`;
+- exact created outline returned.
+
+Teacher detail:
+
+- HTTP `200`;
+- exact nested outline returned.
+
+Department Admin detail:
+
+- HTTP `200`;
+- department-scoped read verified.
+
+Assigned Teacher PATCH:
+
+- HTTP `200`;
+- `courseSummary` changed;
+- `deliveryPlan` changed;
+- lifecycle status remained `DRAFT`.
+
+No-op PATCH:
+
+- HTTP `400`.
+
+HTTP mass-assignment attempt containing:
+
+- `status`;
+- `versionNumber`;
+- `departmentId`;
+- `curriculumCourseId`;
+- `syllabusVersionId`
+
+was rejected:
+
+- HTTP `400`.
+
+Department Admin PATCH:
+
+- HTTP `403`.
+
+### Audit evidence
+
+After first create + first successful PATCH, success audit cardinality was:
+
+`1|1|2|0`
+
+for:
+
+`create|update|teacher-actor|narrative-leak`
+
+Therefore:
+
+- exactly one create success audit;
+- exactly one update success audit;
+- both attributed to the exact authenticated Teacher actor;
+- no Teacher narrative body found in `context_json`.
+
+Denied, conflict, invalid DTO, and no-op operations did not inflate Course Outline success-audit counts.
+
+### Approved-state immutability and version history evidence
+
+For test-state setup only, version 1 was moved directly in PostgreSQL from `DRAFT` to `APPROVED`.
+
+This direct SQL state setup does **not** verify or claim implementation of a Course Outline approval-transition API.
+
+With version 1 in `APPROVED`:
+
+Teacher PATCH result:
+
+- HTTP `409`.
+
+Teacher create then produced a new Course Outline:
+
+- HTTP `201`;
+- generated version number: `2`;
+- status: `DRAFT`.
+
+A second create while version 2 remained open returned:
+
+- HTTP `409`.
+
+Final temporary Course Outline state:
+
+`2|1|1`
+
+for:
+
+`total|approved-v1|draft-v2`
+
+Final success-audit state:
+
+`2|1|3|0`
+
+for:
+
+`create|update|teacher-actor|narrative-leak`
+
+Therefore:
+
+- two create success audits;
+- one update success audit;
+- all three used the authenticated Teacher actor;
+- no Teacher narrative body leaked into audit context.
+
+### Exact runtime cleanup and baseline restoration
+
+Final successful fixture cleanup deleted exactly:
+
+- three Course Outline success audit rows;
+- two CourseOutlineVersion rows;
+- one temporary Teacher assignment;
+- two temporary CourseOfferings;
+- one temporary SyllabusVersion.
+
+Post-cleanup measured baseline returned exactly to:
+
+`0|14|5|0|0`
+
+for:
+
+`syllabus_versions|course_offerings|teacher_course_assignments|course_outline_versions|course_outline_success_audits`
+
+Dedicated feature fixture residue was:
+
+`0|0|0|0`
+
+PM2 PID remained unchanged during the successful final runtime matrix:
+
+`36649`
+
+Platform remained:
+
+- Direct API: HTTP `200`;
+- Nginx API: HTTP `200`;
+- listener: loopback-only `127.0.0.1:4000`;
+- repository: clean/origin-aligned.
+
+### Runtime security properties verified
+
+This checkpoint runtime verified:
+
+- fresh canonical Admin/Teacher/Student authentication;
+- AuthGuard;
+- Course Outline policy boundary;
+- Student exclusion;
+- Department Admin read/write separation;
+- exact active Teacher assignment authorization;
+- unassigned Teacher safe-not-found behavior;
+- cross-department safe-not-found behavior;
+- nested direct-object protection;
+- authenticated principal department authority over forged `x-department-id`;
+- Teacher Course Outline create;
+- Teacher list/detail;
+- Teacher PATCH;
+- server-derived academic identity;
+- open-version conflict;
+- DTO mass-assignment rejection;
+- no-op PATCH rejection;
+- non-editability of `APPROVED` through the draft PATCH contract;
+- next-version creation after completed history;
+- exact success-audit cardinality;
+- audit actor correctness;
+- Teacher narrative audit non-leakage;
+- exact feature fixture cleanup;
+- exact measured ordinary baseline restoration.
+
+### Final technical classification
+
+The narrow **Teacher Assigned-Course Course Outline Draft Authoring Backend** checkpoint is now:
+
+- source/dependency scoped;
+- implemented;
+- independently reviewed;
+- security-corrected;
+- statically verified;
+- committed;
+- pushed;
+- promoted to Ubuntu;
+- Prisma validate/generate verified;
+- API typecheck verified;
+- API build verified;
+- Linux focused tests `76/76` verified;
+- reviewed migration identity verified;
+- corrected disposable PostgreSQL `18.4` verified;
+- Prisma drift verified as none;
+- migration second-deploy idempotency verified;
+- ordinary migration state verified;
+- retained rollback/safety backup created;
+- deployed to the running API;
+- ordinary HTTP runtime verified;
+- department isolation runtime verified;
+- assigned-course object authorization runtime verified;
+- DTO/mass-assignment runtime verified;
+- draft editability/immutability boundary runtime verified;
+- audit behavior runtime verified;
+- narrative audit non-leakage runtime verified;
+- runtime fixture fully removed;
+- measured ordinary academic baseline restored;
+- platform health and loopback-only exposure verified.
+
+This closes the narrow:
+
+**Teacher Assigned-Course Course Outline Draft Authoring Backend checkpoint.**
+
+### Course Outline work still pending
+
+This closure does **not** mean the complete Course Outline feature is complete.
+
+Still pending unless separately implemented and runtime verified:
+
+- Teacher submission workflow;
+- coordinator review;
+- return-for-correction transition workflow;
+- approval workflow;
+- activation workflow;
+- archival workflow;
+- complete lifecycle transition API/service;
+- coordinator authorization model;
+- exact active CourseOutlineVersion binding;
+- active/latest outline semantics;
+- topic-to-CLO normalized mapping;
+- additional offering-owned resource relationships;
+- weekly plan;
+- Lesson Plan;
+- Teacher Course Outline frontend;
+- coordinator/admin Course Outline frontend;
+- complete Teacher Course Workspace integration.
+
+### Next logical checkpoint
+
+The next Course Outline checkpoint should focus on the smallest safe **workflow transition slice**, beginning with:
+
+**Teacher submit / coordinator review / return-for-correction lifecycle contract and authorization design.**
+
+Before implementation:
+
+- preserve the current exact assignment and department-scoping rules;
+- define coordinator authority explicitly rather than inferring it from broad role labels;
+- make transition rules config/domain driven;
+- audit every successful sensitive transition;
+- preserve approved/history immutability;
+- keep canonical syllabus and approved CLO/PLO data read-only/reference-based;
+- do not combine lifecycle work with Lesson Plan, attainment, formative/summative assessment, or Course File.
