@@ -437,6 +437,8 @@ model Department {
   twoFactorMethods              TwoFactorMethod[]
   academicConfig                DepartmentAcademicConfig?
   academicPrograms              AcademicProgram[]
+  academicSessions              AcademicSession[]
+  studentBatches                StudentBatch[]
   curriculumVersions            CurriculumVersion[]
   curriculumCourses             CurriculumCourse[]
   programLearningOutcomes       ProgramLearningOutcome[]
@@ -613,13 +615,52 @@ model AcademicProgram {
   courses                      Course[]
   curriculumVersions           CurriculumVersion[]
   studentCurriculumAssignments StudentCurriculumAssignment[]
+  studentBatches               StudentBatch[]
   courseAssessmentTemplates    CourseAssessmentTemplate[]
   eligibilityRuleBindings      EligibilityRuleBinding[]
   notices                      Notice[]
 
+  @@unique([id, departmentId], map: "academic_program_id_department_uq")
   @@unique([departmentId, code])
   @@index([departmentId])
   @@map("academic_programs")
+}
+
+model AcademicSession {
+  id             String         @id @default(cuid())
+  departmentId   String         @map("department_id")
+  code           String         @db.VarChar(64)
+  name           String
+  archivedAt     DateTime?      @map("archived_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  department     Department     @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "academic_session_department_fkey")
+  studentBatches StudentBatch[]
+
+  @@unique([id, departmentId], map: "academic_session_id_department_uq")
+  @@unique([departmentId, code], map: "academic_session_department_code_uq")
+  @@index([departmentId], map: "academic_session_department_idx")
+  @@map("academic_sessions")
+}
+
+model StudentBatch {
+  id                String          @id @default(cuid())
+  departmentId      String          @map("department_id")
+  academicProgramId String          @map("academic_program_id")
+  academicSessionId String          @map("academic_session_id")
+  code              String          @db.VarChar(64)
+  name              String
+  archivedAt        DateTime?       @map("archived_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+  department        Department      @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "student_batch_department_fkey")
+  academicProgram   AcademicProgram @relation(fields: [academicProgramId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "student_batch_program_identity_fkey")
+  academicSession   AcademicSession @relation(fields: [academicSessionId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "student_batch_session_identity_fkey")
+
+  @@unique([id, departmentId], map: "student_batch_id_department_uq")
+  @@unique([departmentId, academicProgramId, academicSessionId, code], map: "student_batch_department_program_session_code_uq")
+  @@index([departmentId, academicProgramId, academicSessionId], map: "student_batch_department_program_session_idx")
+  @@map("student_batches")
 }
 
 model AcademicYear {
