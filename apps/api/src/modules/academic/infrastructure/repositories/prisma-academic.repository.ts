@@ -1606,8 +1606,82 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
     });
   }
 
-  updateCourse(departmentId: string, id: string, input: UpdateCourseInput) {
+  async updateCourse(
+    departmentId: string,
+    id: string,
+    input: UpdateCourseInput,
+  ) {
     return this.prisma.$transaction(async (tx) => {
+      if (input.academicProgramId !== undefined) {
+        // StudentBatch binding locks CourseOffering before Course. This path
+        // shares only the Course lock and never requests CourseOffering rows,
+        // so both workflows serialize without reversing their shared order.
+        const lockedCourses = await tx.$queryRaw<
+          Array<{ id: string; academicProgramId: string | null }>
+        >(
+          Prisma.sql`
+            SELECT "id", "academic_program_id" AS "academicProgramId"
+            FROM "courses"
+            WHERE "id" = ${id}
+              AND "department_id" = ${departmentId}
+              AND "archived_at" IS NULL
+            FOR UPDATE
+          `,
+        );
+        if (lockedCourses.length !== 1) {
+          return { outcome: "COURSE_NOT_FOUND" } as const;
+        }
+
+        const currentAcademicProgramId =
+          lockedCourses[0]!.academicProgramId;
+        if (input.academicProgramId !== null) {
+          const lockedPrograms = await tx.$queryRaw<Array<{ id: string }>>(
+            Prisma.sql`
+              SELECT "id"
+              FROM "academic_programs"
+              WHERE "id" = ${input.academicProgramId}
+                AND "department_id" = ${departmentId}
+                AND "archived_at" IS NULL
+              FOR UPDATE
+            `,
+          );
+          if (lockedPrograms.length !== 1) {
+            return { outcome: "ACADEMIC_PROGRAM_NOT_FOUND" } as const;
+          }
+        }
+
+        if (currentAcademicProgramId !== input.academicProgramId) {
+          const lockedCurriculumCourses = await tx.$queryRaw<
+            Array<{
+              id: string;
+              departmentId: string;
+            }>
+          >(
+            Prisma.sql`
+              SELECT
+                "id",
+                "department_id" AS "departmentId"
+              FROM "curriculum_courses"
+              WHERE "course_id" = ${id}
+              ORDER BY "id"
+              FOR UPDATE
+            `,
+          );
+
+          if (
+            lockedCurriculumCourses.some(
+              (dependency) => dependency.departmentId !== departmentId,
+            )
+          ) {
+            return { outcome: "PROGRAMME_DEPENDENCY_CONFLICT" } as const;
+          }
+
+          if (lockedCurriculumCourses.length > 0) {
+            return { outcome: "PROGRAMME_DEPENDENCY_CONFLICT" } as const;
+          }
+        }
+      }
+
       const result = await tx.course.updateMany({
         where: {
           id,
@@ -1618,10 +1692,10 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
       });
 
       if (result.count === 0) {
-        return null;
+        return { outcome: "COURSE_NOT_FOUND" } as const;
       }
 
-      return tx.course.findFirst({
+      const course = await tx.course.findFirst({
         where: {
           id,
           departmentId,
@@ -1631,6 +1705,9 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
           academicProgram: true,
         },
       });
+      return course
+        ? ({ outcome: "UPDATED", course } as const)
+        : ({ outcome: "COURSE_NOT_FOUND" } as const);
     });
   }
 

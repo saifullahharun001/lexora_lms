@@ -274,6 +274,15 @@ export interface UpdateCourseInput {
   status?: CourseStatus;
 }
 
+export type UpdateCourseResult =
+  | { outcome: "UPDATED"; course: unknown }
+  | {
+      outcome:
+        | "COURSE_NOT_FOUND"
+        | "ACADEMIC_PROGRAM_NOT_FOUND"
+        | "PROGRAMME_DEPENDENCY_CONFLICT";
+    };
+
 export interface CreateCourseOfferingInput {
   departmentId: string;
   courseId: string;
@@ -581,7 +590,7 @@ export interface AcademicRepositoryPort {
     departmentId: string,
     id: string,
     input: UpdateCourseInput,
-  ): Promise<unknown | null>;
+  ): Promise<UpdateCourseResult>;
   findCourseOfferings(filters: CourseOfferingListFilters): Promise<unknown[]>;
   findStudentVisibleCourseOfferings(
     filters: StudentCourseOfferingListFilters,

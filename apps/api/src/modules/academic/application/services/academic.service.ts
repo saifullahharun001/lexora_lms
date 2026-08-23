@@ -454,18 +454,27 @@ export class AcademicService {
   }
 
   async updateCourse(id: string, input: UpdateCourseInput) {
-    await this.assertProgramInDepartment(input.academicProgramId);
-
     try {
-      const course = await this.repository.updateCourse(
+      const result = await this.repository.updateCourse(
         this.getDepartmentId(),
         id,
         input,
       );
 
-      if (!course) {
-        throw new NotFoundException("Course not found");
+      switch (result.outcome) {
+        case "COURSE_NOT_FOUND":
+          throw new NotFoundException("Course not found");
+        case "ACADEMIC_PROGRAM_NOT_FOUND":
+          throw new BadRequestException(
+            "Academic program does not belong to the active department",
+          );
+        case "PROGRAMME_DEPENDENCY_CONFLICT":
+          throw new ConflictException(
+            "Course academic program conflicts with existing curriculum dependencies",
+          );
       }
+
+      const course = result.course;
 
       await this.writeAudit(
         ACADEMIC_AUDIT_EVENTS.COURSE_UPDATED,
