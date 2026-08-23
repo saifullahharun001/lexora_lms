@@ -644,18 +644,19 @@ model AcademicSession {
 }
 
 model StudentBatch {
-  id                String          @id @default(cuid())
-  departmentId      String          @map("department_id")
-  academicProgramId String          @map("academic_program_id")
-  academicSessionId String          @map("academic_session_id")
-  code              String          @db.VarChar(64)
+  id                String           @id @default(cuid())
+  departmentId      String           @map("department_id")
+  academicProgramId String           @map("academic_program_id")
+  academicSessionId String           @map("academic_session_id")
+  code              String           @db.VarChar(64)
   name              String
-  archivedAt        DateTime?       @map("archived_at")
-  createdAt         DateTime        @default(now()) @map("created_at")
-  updatedAt         DateTime        @updatedAt @map("updated_at")
-  department        Department      @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "student_batch_department_fkey")
-  academicProgram   AcademicProgram @relation(fields: [academicProgramId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "student_batch_program_identity_fkey")
-  academicSession   AcademicSession @relation(fields: [academicSessionId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "student_batch_session_identity_fkey")
+  archivedAt        DateTime?        @map("archived_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  department        Department       @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "student_batch_department_fkey")
+  academicProgram   AcademicProgram  @relation(fields: [academicProgramId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "student_batch_program_identity_fkey")
+  academicSession   AcademicSession  @relation(fields: [academicSessionId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "student_batch_session_identity_fkey")
+  courseOfferings   CourseOffering[]
 
   @@unique([id, departmentId], map: "student_batch_id_department_uq")
   @@unique([departmentId, academicProgramId, academicSessionId, code], map: "student_batch_department_program_session_code_uq")
@@ -1060,6 +1061,7 @@ model CourseOffering {
   departmentId            String                    @map("department_id")
   courseId                String                    @map("course_id")
   academicTermId          String                    @map("academic_term_id")
+  studentBatchId          String?                   @map("student_batch_id")
   curriculumCourseId      String?                   @map("curriculum_course_id")
   syllabusVersionId       String?                   @map("syllabus_version_id")
   sectionCode             String                    @map("section_code")
@@ -1073,6 +1075,7 @@ model CourseOffering {
   department              Department                @relation(fields: [departmentId], references: [id])
   course                  Course                    @relation(fields: [courseId], references: [id])
   academicTerm            AcademicTerm              @relation(fields: [academicTermId], references: [id])
+  studentBatch            StudentBatch?             @relation(fields: [studentBatchId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "course_offering_student_batch_identity_fkey")
   curriculumCourse        CurriculumCourse?         @relation(fields: [curriculumCourseId], references: [id], onDelete: Restrict)
   syllabusVersion         SyllabusVersion?          @relation(fields: [syllabusVersionId, departmentId, curriculumCourseId], references: [id, departmentId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "course_offering_syllabus_identity_fkey")
   courseOutlineVersions   CourseOutlineVersion[]
@@ -1094,6 +1097,7 @@ model CourseOffering {
   @@index([departmentId])
   @@index([courseId])
   @@index([academicTermId])
+  @@index([departmentId, academicTermId, studentBatchId], map: "course_offering_department_term_student_batch_idx")
   @@index([departmentId, curriculumCourseId], map: "course_offering_dept_curriculum_course_idx")
   @@index([departmentId, syllabusVersionId], map: "course_offering_dept_syllabus_version_idx")
   @@map("course_offerings")

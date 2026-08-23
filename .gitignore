@@ -46,6 +46,8 @@ apps/api/prisma/migrations/*
 !apps/api/prisma/migrations/202608200002_add_course_outline_draft_content/migration.sql
 !apps/api/prisma/migrations/202608200003_add_academic_session_student_batch_foundation/
 !apps/api/prisma/migrations/202608200003_add_academic_session_student_batch_foundation/migration.sql
+!apps/api/prisma/migrations/202608210001_add_course_offering_student_batch_binding_foundation/
+!apps/api/prisma/migrations/202608210001_add_course_offering_student_batch_binding_foundation/migration.sql
 *.log
 
 

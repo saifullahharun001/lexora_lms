@@ -190,13 +190,13 @@ test("StudentBatch remains separate from term, offering, coordinator, and result
   assert.match(schema, /model Session \{/);
 });
 
-test("existing curriculum, student, and offering bindings are not rewritten", () => {
+test("existing curriculum and student bindings are not rewritten by the identity foundation", () => {
   assert.match(
     curriculumVersion,
     /effectiveAcademicSessionCode\s+String\s+@map\("effective_academic_session_code"\) @db\.VarChar\(64\)/,
   );
   assert.doesNotMatch(curriculumVersion, /\bacademicSessionId\b/);
-  assert.doesNotMatch(courseOffering, /\b(?:studentBatchId|academicSessionId)\b/);
+  assert.doesNotMatch(courseOffering, /\bacademicSessionId\b/);
   assert.doesNotMatch(studentCurriculumAssignment, /\bstudentBatchId\b/);
 });
 
