@@ -96,6 +96,12 @@ const SYLLABUS_BINDING_PERMISSION = {
   action: "manage",
 } as const;
 
+const STUDENT_BATCH_BINDING_PERMISSION = {
+  code: PERMISSIONS.COURSE_MANAGEMENT.STUDENT_BATCH_BINDING_MANAGE,
+  resource: "course-management.student-batch-binding",
+  action: "manage",
+} as const;
+
 @Injectable()
 export class AcademicService {
   constructor(
@@ -928,6 +934,49 @@ export class AcademicService {
       case "BINDING_CONFLICT":
         throw new ConflictException(
           "Course offering syllabus binding conflicts with an existing binding",
+        );
+    }
+  }
+
+  async bindCourseOfferingStudentBatch(
+    courseOfferingId: string,
+    studentBatchId: string,
+  ) {
+    const departmentId = await this.assertDepartmentAdminCanBindStudentBatch();
+    const requestContext = this.requestContextService.get();
+    const result = await this.repository.bindCourseOfferingStudentBatch({
+      departmentId,
+      courseOfferingId,
+      studentBatchId,
+      actorUserId: this.getActorId(),
+      requestId: requestContext?.requestId,
+      ipAddress: requestContext?.audit.ipAddress,
+      userAgent: requestContext?.audit.userAgent,
+    });
+
+    switch (result.outcome) {
+      case "BOUND":
+      case "ALREADY_BOUND":
+        return result.offering;
+      case "OFFERING_NOT_FOUND":
+        throw new NotFoundException("Course offering not found");
+      case "OFFERING_CURRICULUM_NOT_BOUND":
+        throw new BadRequestException(
+          "Course offering curriculum must be bound before its StudentBatch",
+        );
+      case "STUDENT_BATCH_NOT_FOUND":
+        throw new NotFoundException("StudentBatch not found");
+      case "DEPENDENCY_SCOPE_MISMATCH":
+        throw new NotFoundException(
+          "StudentBatch binding dependency not found",
+        );
+      case "PROGRAMME_MISMATCH":
+        throw new BadRequestException(
+          "Course offering curriculum and StudentBatch programmes must match",
+        );
+      case "BINDING_CONFLICT":
+        throw new ConflictException(
+          "Course offering StudentBatch binding conflicts with an existing binding",
         );
     }
   }
@@ -1859,6 +1908,84 @@ export class AcademicService {
     if (!actor) {
       throw new ForbiddenException(
         "Only active department admins can manage syllabus bindings",
+      );
+    }
+
+    return departmentId;
+  }
+
+  private async assertDepartmentAdminCanBindStudentBatch() {
+    const departmentId = this.getDepartmentId();
+    const actorId = this.getActorId();
+    const principal = this.requestContextService.get()?.principal;
+    const bindingPermission = principal?.permissions.find(
+      (permission) =>
+        permission.resource === STUDENT_BATCH_BINDING_PERMISSION.resource &&
+        permission.action === STUDENT_BATCH_BINDING_PERMISSION.action &&
+        permission.scope === "department" &&
+        isPermissionGrantFromLoadedRole(principal, permission) &&
+        principal.roleAssignments.some(
+          (assignment) =>
+            assignment.role === "department_admin" &&
+            assignment.departmentId === departmentId &&
+            assignment.userRoleId === permission.source?.userRoleId &&
+            assignment.roleId === permission.source?.roleId,
+        ),
+    );
+
+    if (!bindingPermission?.source) {
+      throw new ForbiddenException(
+        "Explicit academic governance permission is required to manage StudentBatch bindings",
+      );
+    }
+    const permissionSource = bindingPermission.source;
+    const now = new Date();
+    const actor = await this.prisma.user.findFirst({
+      where: {
+        id: actorId,
+        departmentId,
+        status: UserStatus.ACTIVE,
+        archivedAt: null,
+        deletedAt: null,
+        department: {
+          id: departmentId,
+          status: DepartmentStatus.ACTIVE,
+          archivedAt: null,
+          deletedAt: null,
+        },
+        userRoles: {
+          some: {
+            id: permissionSource.userRoleId,
+            departmentId,
+            revokedAt: null,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+            role: {
+              id: permissionSource.roleId,
+              code: "department_admin",
+              departmentId,
+              archivedAt: null,
+              rolePermissions: {
+                some: {
+                  permission: {
+                    is: {
+                      code: STUDENT_BATCH_BINDING_PERMISSION.code,
+                      resource: STUDENT_BATCH_BINDING_PERMISSION.resource,
+                      action: STUDENT_BATCH_BINDING_PERMISSION.action,
+                      scope: PermissionScope.DEPARTMENT,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!actor) {
+      throw new ForbiddenException(
+        "Only active department admins can manage StudentBatch bindings",
       );
     }
 

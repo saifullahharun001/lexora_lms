@@ -12,6 +12,8 @@ export const COURSE_MANAGEMENT_POLICY_NAMES = {
   COURSE_OUTLINE_SUBMIT: "course-management.course-outline.submit",
   CURRICULUM_BINDING_MANAGE: "course-management.curriculum-binding.manage",
   SYLLABUS_BINDING_MANAGE: "course-management.syllabus-binding.manage",
+  STUDENT_BATCH_BINDING_MANAGE:
+    "course-management.student-batch-binding.manage",
   CURRICULUM_VERSION_LIFECYCLE_MANAGE:
     "course-management.curriculum-version.lifecycle.manage",
   SYLLABUS_VERSION_MANAGE: "course-management.syllabus-version.manage",

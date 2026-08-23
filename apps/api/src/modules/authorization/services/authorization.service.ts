@@ -16,6 +16,11 @@ const EXPLICIT_DEPARTMENT_ADMIN_PERMISSION_POLICIES = {
     resource: "course-management.syllabus-binding",
     action: "manage",
     scope: "department"
+  },
+  [PERMISSIONS.COURSE_MANAGEMENT.STUDENT_BATCH_BINDING_MANAGE]: {
+    resource: "course-management.student-batch-binding",
+    action: "manage",
+    scope: "department"
   }
 } as const;
 

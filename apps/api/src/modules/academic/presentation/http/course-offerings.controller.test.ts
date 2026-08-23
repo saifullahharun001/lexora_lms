@@ -86,6 +86,53 @@ test("syllabus binding route forwards only the dedicated DTO target", async () =
   assert.deepEqual(calls, [["offering-a", "syllabus-a"]]);
 });
 
+test("StudentBatch binding is a guarded PUT route with its exact dedicated policy", () => {
+  assert.deepEqual(
+    Reflect.getMetadata(GUARDS_METADATA, CourseOfferingsController),
+    [AuthGuard, PolicyGuard],
+  );
+  assert.equal(
+    Reflect.getMetadata(
+      PATH_METADATA,
+      CourseOfferingsController.prototype.bindStudentBatch,
+    ),
+    ":id/student-batch-binding",
+  );
+  assert.equal(
+    Reflect.getMetadata(
+      METHOD_METADATA,
+      CourseOfferingsController.prototype.bindStudentBatch,
+    ),
+    RequestMethod.PUT,
+  );
+  assert.equal(
+    Reflect.getMetadata(
+      REQUIRE_POLICY_KEY,
+      CourseOfferingsController.prototype.bindStudentBatch,
+    ),
+    ACADEMIC_POLICY_NAMES.STUDENT_BATCH_BINDING_MANAGE,
+  );
+});
+
+test("StudentBatch binding route forwards only the dedicated DTO target", async () => {
+  const calls: unknown[] = [];
+  const controller = new CourseOfferingsController({
+    bindCourseOfferingStudentBatch: async (...args: unknown[]) => {
+      calls.push(args);
+      return { id: "offering-a", studentBatchId: "batch-a" };
+    },
+  } as never);
+
+  assert.deepEqual(
+    await controller.bindStudentBatch(
+      { id: "offering-a" },
+      { studentBatchId: "batch-a" },
+    ),
+    { id: "offering-a", studentBatchId: "batch-a" },
+  );
+  assert.deepEqual(calls, [["offering-a", "batch-a"]]);
+});
+
 test("bound syllabus read is a guarded GET using offering read policy", () => {
   const guards = Reflect.getMetadata(
     GUARDS_METADATA,
@@ -307,6 +354,63 @@ test("syllabus binding requires exact Department Admin permission provenance", (
       authorization.isAllowed(
         principal(role, true),
         ACADEMIC_POLICY_NAMES.SYLLABUS_BINDING_MANAGE,
+      ),
+      false,
+    );
+  }
+});
+
+test("StudentBatch binding requires exact Department Admin permission provenance", () => {
+  const authorization = new AuthorizationService();
+  const principal = (
+    role: "department_admin" | "teacher" | "student",
+    withPermission: boolean,
+  ) => {
+    const userRoleId = `${role}-assignment-a`;
+    const roleId = `${role}-role-a`;
+    return {
+      actorId: `${role}-a`,
+      isAuthenticated: true,
+      activeDepartmentId: "department-a",
+      roleAssignments: [
+        { userRoleId, roleId, departmentId: "department-a", role },
+      ],
+      permissions: withPermission
+        ? [
+            {
+              resource: "course-management.student-batch-binding",
+              action: "manage",
+              scope: "department",
+              source: {
+                departmentId: "department-a",
+                userRoleId,
+                roleId,
+              },
+            },
+          ]
+        : [],
+    } as never;
+  };
+
+  assert.equal(
+    authorization.isAllowed(
+      principal("department_admin", true),
+      ACADEMIC_POLICY_NAMES.STUDENT_BATCH_BINDING_MANAGE,
+    ),
+    true,
+  );
+  assert.equal(
+    authorization.isAllowed(
+      principal("department_admin", false),
+      ACADEMIC_POLICY_NAMES.STUDENT_BATCH_BINDING_MANAGE,
+    ),
+    false,
+  );
+  for (const role of ["teacher", "student"] as const) {
+    assert.equal(
+      authorization.isAllowed(
+        principal(role, true),
+        ACADEMIC_POLICY_NAMES.STUDENT_BATCH_BINDING_MANAGE,
       ),
       false,
     );

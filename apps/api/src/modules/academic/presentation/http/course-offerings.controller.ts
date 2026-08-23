@@ -8,6 +8,7 @@ import { AcademicService } from "../../application/services/academic.service";
 import { ACADEMIC_POLICY_NAMES } from "../../domain/academic.policy-names";
 import { BindCourseOfferingCurriculumDto } from "../dto/bind-course-offering-curriculum.dto";
 import { BindCourseOfferingSyllabusDto } from "../dto/bind-course-offering-syllabus.dto";
+import { BindCourseOfferingStudentBatchDto } from "../dto/bind-course-offering-student-batch.dto";
 import { CourseOutlineVersionParamDto } from "../dto/course-outline-version-param.dto";
 import { CreateCourseOfferingDto } from "../dto/create-course-offering.dto";
 import { CreateCourseOutlineVersionDto } from "../dto/create-course-outline-version.dto";
@@ -135,6 +136,18 @@ export class CourseOfferingsController {
     return this.academicService.bindCourseOfferingSyllabus(
       params.id,
       body.syllabusVersionId,
+    );
+  }
+
+  @Put(":id/student-batch-binding")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.STUDENT_BATCH_BINDING_MANAGE)
+  bindStudentBatch(
+    @Param() params: ResourceIdParamDto,
+    @Body() body: BindCourseOfferingStudentBatchDto,
+  ) {
+    return this.academicService.bindCourseOfferingStudentBatch(
+      params.id,
+      body.studentBatchId,
     );
   }
 

@@ -19,6 +19,7 @@ import type {
   AcademicYearListFilters,
   BindCourseOfferingCurriculumInput,
   BindCourseOfferingSyllabusInput,
+  BindCourseOfferingStudentBatchInput,
   CourseListFilters,
   CourseOfferingLearningOutcomesView,
   CourseOfferingListFilters,
@@ -57,6 +58,23 @@ import {
 const courseOfferingInclude = {
   course: true,
   academicTerm: true,
+  studentBatch: {
+    select: {
+      id: true,
+      departmentId: true,
+      academicProgramId: true,
+      academicSessionId: true,
+      code: true,
+      name: true,
+      archivedAt: true,
+      academicProgram: {
+        select: { id: true, departmentId: true },
+      },
+      academicSession: {
+        select: { id: true, departmentId: true },
+      },
+    },
+  },
   curriculumCourse: {
     select: {
       id: true,
@@ -450,10 +468,49 @@ function isCourseOfferingBoundIdentityConflict(error: unknown) {
   );
 }
 
+function isCourseOfferingBoundBatchedIdentityConflict(error: unknown) {
+  if (
+    !(error instanceof PrismaClientKnownRequestError) ||
+    error.code !== "P2002"
+  ) {
+    return false;
+  }
+
+  const target = error.meta?.target;
+  if (typeof target === "string") {
+    return target === "course_offering_bound_batched_curriculum_identity_uq";
+  }
+
+  if (!Array.isArray(target) || target.length !== 5) {
+    return false;
+  }
+
+  const mappedColumns = [
+    "department_id",
+    "academic_term_id",
+    "student_batch_id",
+    "curriculum_course_id",
+    "section_code",
+  ];
+  const prismaFields = [
+    "departmentId",
+    "academicTermId",
+    "studentBatchId",
+    "curriculumCourseId",
+    "sectionCode",
+  ];
+
+  return (
+    mappedColumns.every((column) => target.includes(column)) ||
+    prismaFields.every((field) => target.includes(field))
+  );
+}
+
 interface CourseOfferingReadRecord {
   id: string;
   departmentId: string;
   courseId: string;
+  studentBatchId?: string | null;
   course: {
     id: string;
     departmentId: string;
@@ -501,6 +558,17 @@ interface CourseOfferingReadRecord {
       academicProgram: { id: string; departmentId: string } | null;
     };
   };
+  studentBatch?: null | {
+    id: string;
+    departmentId: string;
+    academicProgramId: string;
+    academicSessionId: string;
+    code: string;
+    name: string;
+    archivedAt: Date | null;
+    academicProgram: { id: string; departmentId: string };
+    academicSession: { id: string; departmentId: string };
+  };
   [key: string]: unknown;
 }
 
@@ -519,8 +587,25 @@ function sanitizeCourseOfferingRead(
   }
 
   const curriculumCourse = offering.curriculumCourse;
+  const studentBatchId = offering.studentBatchId ?? null;
+  const studentBatch = offering.studentBatch ?? null;
+
+  if (
+    (studentBatchId === null && studentBatch !== null) ||
+    (studentBatchId !== null &&
+      (!studentBatch ||
+        studentBatch.id !== studentBatchId ||
+        studentBatch.departmentId !== departmentId ||
+        studentBatch.academicProgram.id !== studentBatch.academicProgramId ||
+        studentBatch.academicProgram.departmentId !== departmentId ||
+        studentBatch.academicSession.id !== studentBatch.academicSessionId ||
+        studentBatch.academicSession.departmentId !== departmentId))
+  ) {
+    return null;
+  }
+
   if (!curriculumCourse) {
-    return offering;
+    return studentBatchId === null ? offering : null;
   }
 
   const version = curriculumCourse.curriculumVersion;
@@ -551,8 +636,26 @@ function sanitizeCourseOfferingRead(
     return null;
   }
 
+  if (studentBatch && studentBatch.academicProgramId !== academicProgramId) {
+    return null;
+  }
+
   return {
     ...offering,
+    ...("studentBatch" in offering || "studentBatchId" in offering
+      ? {
+          studentBatch: studentBatch
+            ? {
+                id: studentBatch.id,
+                academicProgramId: studentBatch.academicProgramId,
+                academicSessionId: studentBatch.academicSessionId,
+                code: studentBatch.code,
+                name: studentBatch.name,
+                archivedAt: studentBatch.archivedAt,
+              }
+            : null,
+        }
+      : {}),
     curriculumCourse: {
       id: curriculumCourse.id,
       categoryCode: curriculumCourse.categoryCode,
@@ -993,6 +1096,124 @@ const courseOfferingSyllabusBindingSelect = {
     select: syllabusVersionSelect.curriculumCourse.select,
   },
 } satisfies Prisma.CourseOfferingSelect;
+
+const courseOfferingStudentBatchBindingSelect = {
+  id: true,
+  departmentId: true,
+  courseId: true,
+  academicTermId: true,
+  studentBatchId: true,
+  curriculumCourseId: true,
+  sectionCode: true,
+  course: {
+    select: {
+      id: true,
+      departmentId: true,
+      academicProgramId: true,
+      academicProgram: {
+        select: { id: true, departmentId: true },
+      },
+    },
+  },
+  curriculumCourse: {
+    select: {
+      id: true,
+      departmentId: true,
+      courseId: true,
+      curriculumVersionId: true,
+      course: {
+        select: {
+          id: true,
+          departmentId: true,
+          academicProgramId: true,
+          academicProgram: {
+            select: { id: true, departmentId: true },
+          },
+        },
+      },
+      curriculumVersion: {
+        select: {
+          id: true,
+          departmentId: true,
+          academicProgramId: true,
+          academicProgram: {
+            select: { id: true, departmentId: true },
+          },
+        },
+      },
+    },
+  },
+} satisfies Prisma.CourseOfferingSelect;
+
+const studentBatchBindingSelect = {
+  id: true,
+  departmentId: true,
+  academicProgramId: true,
+  academicSessionId: true,
+  archivedAt: true,
+  academicProgram: {
+    select: { id: true, departmentId: true },
+  },
+  academicSession: {
+    select: { id: true, departmentId: true },
+  },
+} satisfies Prisma.StudentBatchSelect;
+
+type CourseOfferingStudentBatchBindingRecord = Prisma.CourseOfferingGetPayload<{
+  select: typeof courseOfferingStudentBatchBindingSelect;
+}>;
+
+type StudentBatchBindingRecord = Prisma.StudentBatchGetPayload<{
+  select: typeof studentBatchBindingSelect;
+}>;
+
+function isCourseOfferingStudentBatchDependencyConsistent(
+  offering: CourseOfferingStudentBatchBindingRecord,
+  departmentId: string,
+) {
+  const course = offering.course;
+  const curriculumCourse = offering.curriculumCourse;
+  const curriculumVersion = curriculumCourse?.curriculumVersion;
+
+  return Boolean(
+    offering.departmentId === departmentId &&
+    course.id === offering.courseId &&
+    course.departmentId === departmentId &&
+    course.academicProgramId &&
+    course.academicProgram?.id === course.academicProgramId &&
+    course.academicProgram.departmentId === departmentId &&
+    offering.curriculumCourseId &&
+    curriculumCourse &&
+    curriculumCourse.id === offering.curriculumCourseId &&
+    curriculumCourse.departmentId === departmentId &&
+    curriculumCourse.courseId === offering.courseId &&
+    curriculumCourse.course.id === curriculumCourse.courseId &&
+    curriculumCourse.course.departmentId === departmentId &&
+    curriculumCourse.course.academicProgramId === course.academicProgramId &&
+    curriculumCourse.course.academicProgram?.id ===
+      curriculumCourse.course.academicProgramId &&
+    curriculumCourse.course.academicProgram.departmentId === departmentId &&
+    curriculumVersion &&
+    curriculumVersion.id === curriculumCourse.curriculumVersionId &&
+    curriculumVersion.departmentId === departmentId &&
+    curriculumVersion.academicProgram.id ===
+      curriculumVersion.academicProgramId &&
+    curriculumVersion.academicProgram.departmentId === departmentId,
+  );
+}
+
+function isStudentBatchBindingDependencyConsistent(
+  studentBatch: StudentBatchBindingRecord,
+  departmentId: string,
+) {
+  return Boolean(
+    studentBatch.departmentId === departmentId &&
+    studentBatch.academicProgram.id === studentBatch.academicProgramId &&
+    studentBatch.academicProgram.departmentId === departmentId &&
+    studentBatch.academicSession.id === studentBatch.academicSessionId &&
+    studentBatch.academicSession.departmentId === departmentId,
+  );
+}
 
 type CourseOfferingSyllabusBindingRecord = Prisma.CourseOfferingGetPayload<{
   select: typeof courseOfferingSyllabusBindingSelect;
@@ -2982,6 +3203,274 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
 
       return { outcome: "BOUND", offering: safeBound } as const;
     });
+  }
+
+  async bindCourseOfferingStudentBatch(
+    input: BindCourseOfferingStudentBatchInput,
+  ) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const lockedOffering = await tx.$queryRaw<
+          Array<{ id: string; courseId: string }>
+        >(
+          Prisma.sql`
+            SELECT "id", "course_id" AS "courseId"
+            FROM "course_offerings"
+            WHERE "id" = ${input.courseOfferingId}
+              AND "department_id" = ${input.departmentId}
+              AND "archived_at" IS NULL
+              AND "status" <> 'ARCHIVED'
+            FOR UPDATE
+          `,
+        );
+        if (lockedOffering.length !== 1) {
+          return { outcome: "OFFERING_NOT_FOUND" } as const;
+        }
+
+        const lockedCourse = await tx.$queryRaw<Array<{ id: string }>>(
+          Prisma.sql`
+            SELECT "id"
+            FROM "courses"
+            WHERE "id" = ${lockedOffering[0]!.courseId}
+              AND "department_id" = ${input.departmentId}
+            FOR UPDATE
+          `,
+        );
+        if (lockedCourse.length !== 1) {
+          return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+        }
+
+        const offering = await tx.courseOffering.findFirst({
+          where: {
+            id: input.courseOfferingId,
+            departmentId: input.departmentId,
+            archivedAt: null,
+            status: { not: CourseOfferingStatus.ARCHIVED },
+          },
+          select: courseOfferingStudentBatchBindingSelect,
+        });
+
+        if (!offering) {
+          return { outcome: "OFFERING_NOT_FOUND" } as const;
+        }
+        if (!offering.curriculumCourseId) {
+          return { outcome: "OFFERING_CURRICULUM_NOT_BOUND" } as const;
+        }
+        if (
+          offering.studentBatchId &&
+          offering.studentBatchId !== input.studentBatchId
+        ) {
+          return { outcome: "BINDING_CONFLICT" } as const;
+        }
+        if (
+          !isCourseOfferingStudentBatchDependencyConsistent(
+            offering,
+            input.departmentId,
+          )
+        ) {
+          return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+        }
+
+        const isExactHistoricalBinding =
+          offering.studentBatchId === input.studentBatchId;
+        const lockedStudentBatch = await tx.$queryRaw<Array<{ id: string }>>(
+          isExactHistoricalBinding
+            ? Prisma.sql`
+                SELECT "id"
+                FROM "student_batches"
+                WHERE "id" = ${input.studentBatchId}
+                  AND "department_id" = ${input.departmentId}
+                FOR UPDATE
+              `
+            : Prisma.sql`
+                SELECT "id"
+                FROM "student_batches"
+                WHERE "id" = ${input.studentBatchId}
+                  AND "department_id" = ${input.departmentId}
+                  AND "archived_at" IS NULL
+                FOR UPDATE
+              `,
+        );
+        if (lockedStudentBatch.length !== 1) {
+          return { outcome: "STUDENT_BATCH_NOT_FOUND" } as const;
+        }
+
+        const studentBatch = await tx.studentBatch.findFirst({
+          where: {
+            id: input.studentBatchId,
+            departmentId: input.departmentId,
+            ...(isExactHistoricalBinding ? {} : { archivedAt: null }),
+          },
+          select: studentBatchBindingSelect,
+        });
+        if (!studentBatch) {
+          return { outcome: "STUDENT_BATCH_NOT_FOUND" } as const;
+        }
+        if (
+          !isStudentBatchBindingDependencyConsistent(
+            studentBatch,
+            input.departmentId,
+          )
+        ) {
+          return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+        }
+
+        const courseAcademicProgramId = offering.course.academicProgramId!;
+        const curriculumAcademicProgramId =
+          offering.curriculumCourse!.curriculumVersion.academicProgramId;
+        if (
+          courseAcademicProgramId !== curriculumAcademicProgramId ||
+          courseAcademicProgramId !== studentBatch.academicProgramId
+        ) {
+          return { outcome: "PROGRAMME_MISMATCH" } as const;
+        }
+
+        if (isExactHistoricalBinding) {
+          const existing = await tx.courseOffering.findFirst({
+            where: {
+              id: offering.id,
+              departmentId: input.departmentId,
+              archivedAt: null,
+              status: { not: CourseOfferingStatus.ARCHIVED },
+            },
+            include: courseOfferingInclude,
+          });
+          const safeExisting = existing
+            ? sanitizeCourseOfferingRead(existing, input.departmentId)
+            : null;
+
+          return safeExisting
+            ? ({ outcome: "ALREADY_BOUND", offering: safeExisting } as const)
+            : ({ outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const);
+        }
+
+        const identityConflict = await tx.courseOffering.findFirst({
+          where: {
+            id: { not: offering.id },
+            departmentId: input.departmentId,
+            academicTermId: offering.academicTermId,
+            studentBatchId: studentBatch.id,
+            curriculumCourseId: offering.curriculumCourseId,
+            sectionCode: offering.sectionCode,
+          },
+          select: { id: true },
+        });
+        if (identityConflict) {
+          return { outcome: "BINDING_CONFLICT" } as const;
+        }
+
+        const updated = await tx.courseOffering.updateMany({
+          where: {
+            id: offering.id,
+            departmentId: input.departmentId,
+            archivedAt: null,
+            status: { not: CourseOfferingStatus.ARCHIVED },
+            curriculumCourseId: offering.curriculumCourseId,
+            studentBatchId: null,
+          },
+          data: { studentBatchId: studentBatch.id },
+        });
+
+        if (updated.count === 0) {
+          const concurrent = await tx.courseOffering.findFirst({
+            where: {
+              id: offering.id,
+              departmentId: input.departmentId,
+              archivedAt: null,
+              status: { not: CourseOfferingStatus.ARCHIVED },
+            },
+            select: courseOfferingStudentBatchBindingSelect,
+          });
+          if (!concurrent) {
+            return { outcome: "OFFERING_NOT_FOUND" } as const;
+          }
+          if (
+            !concurrent.curriculumCourseId ||
+            !isCourseOfferingStudentBatchDependencyConsistent(
+              concurrent,
+              input.departmentId,
+            )
+          ) {
+            return { outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const;
+          }
+          if (concurrent.studentBatchId !== studentBatch.id) {
+            if (concurrent.studentBatchId) {
+              return { outcome: "BINDING_CONFLICT" } as const;
+            }
+            throw new Error("STUDENT_BATCH_BINDING_GUARD_MISSED");
+          }
+
+          const existing = await tx.courseOffering.findFirst({
+            where: {
+              id: offering.id,
+              departmentId: input.departmentId,
+              archivedAt: null,
+              status: { not: CourseOfferingStatus.ARCHIVED },
+            },
+            include: courseOfferingInclude,
+          });
+          const safeExisting = existing
+            ? sanitizeCourseOfferingRead(existing, input.departmentId)
+            : null;
+
+          return safeExisting
+            ? ({ outcome: "ALREADY_BOUND", offering: safeExisting } as const)
+            : ({ outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const);
+        }
+
+        await tx.auditLog.create({
+          data: {
+            requestId: input.requestId,
+            actorUserId: input.actorUserId,
+            actorType: "USER",
+            departmentId: input.departmentId,
+            action: ACADEMIC_AUDIT_EVENTS.OFFERING_STUDENT_BATCH_BOUND,
+            targetType: "course_offering",
+            targetId: offering.id,
+            outcome: "SUCCESS",
+            ipAddress: input.ipAddress,
+            userAgent: input.userAgent,
+            contextJson: {
+              courseOfferingId: offering.id,
+              studentBatchId: studentBatch.id,
+              courseId: offering.courseId,
+              curriculumCourseId: offering.curriculumCourseId,
+              curriculumVersionId:
+                offering.curriculumCourse!.curriculumVersionId,
+              academicProgramId: courseAcademicProgramId,
+              courseAcademicProgramId,
+              curriculumAcademicProgramId,
+              studentBatchAcademicProgramId: studentBatch.academicProgramId,
+              previousBindingValue: null,
+              newBindingValue: studentBatch.id,
+            },
+          },
+        });
+
+        const bound = await tx.courseOffering.findFirst({
+          where: {
+            id: offering.id,
+            departmentId: input.departmentId,
+            archivedAt: null,
+            status: { not: CourseOfferingStatus.ARCHIVED },
+          },
+          include: courseOfferingInclude,
+        });
+        const safeBound = bound
+          ? sanitizeCourseOfferingRead(bound, input.departmentId)
+          : null;
+        if (!safeBound) {
+          throw new Error("BOUND_COURSE_OFFERING_NOT_FOUND");
+        }
+
+        return { outcome: "BOUND", offering: safeBound } as const;
+      });
+    } catch (error) {
+      if (isCourseOfferingBoundBatchedIdentityConflict(error)) {
+        return { outcome: "BINDING_CONFLICT" } as const;
+      }
+      throw error;
+    }
   }
 
   async findSyllabusVersions(filters: SyllabusVersionListFilters) {

@@ -215,6 +215,63 @@ test("syllabus binding is excluded from broad role authority and requires an exa
   );
 });
 
+test("StudentBatch binding is excluded from broad role authority and requires an exact Department Admin grant", () => {
+  const service = new AuthorizationService();
+  const policy = "course-management.student-batch-binding.manage";
+  const adminAssignment = {
+    userRoleId: "admin-assignment",
+    roleId: "admin-role",
+    departmentId: "department-a",
+    role: "department_admin" as const
+  };
+  const exactGrant = grant(
+    {
+      userRoleId: adminAssignment.userRoleId,
+      roleId: adminAssignment.roleId
+    },
+    {
+      resource: "course-management.student-batch-binding",
+      action: "manage",
+      scope: "department"
+    }
+  );
+
+  assert.equal(
+    service.isAllowed(
+      principal({ roleAssignments: [adminAssignment], permissions: [] }),
+      policy
+    ),
+    false
+  );
+  assert.equal(
+    service.isAllowed(
+      principal({
+        roleAssignments: [adminAssignment],
+        permissions: [exactGrant]
+      }),
+      policy
+    ),
+    true
+  );
+  for (const role of ["teacher", "student"] as const) {
+    assert.equal(
+      service.isAllowed(
+        principal({
+          roleAssignments: [
+            {
+              ...adminAssignment,
+              role
+            }
+          ],
+          permissions: [exactGrant]
+        }),
+        policy
+      ),
+      false
+    );
+  }
+});
+
 test("AuthorizationService accepts service principals with empty authority", () => {
   const service = new AuthorizationService();
   assert.deepEqual(

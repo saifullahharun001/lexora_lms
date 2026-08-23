@@ -320,6 +320,16 @@ export interface BindCourseOfferingSyllabusInput {
   userAgent?: string;
 }
 
+export interface BindCourseOfferingStudentBatchInput {
+  departmentId: string;
+  courseOfferingId: string;
+  studentBatchId: string;
+  actorUserId: string;
+  requestId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
 export interface CreateSyllabusVersionInput {
   departmentId: string;
   curriculumCourseId: string;
@@ -367,6 +377,18 @@ export type BindCourseOfferingSyllabusResult =
         | "INELIGIBLE_SYLLABUS_VERSION"
         | "MALFORMED_SYLLABUS_VERSION"
         | "DEPENDENCY_SCOPE_MISMATCH"
+        | "BINDING_CONFLICT";
+    };
+
+export type BindCourseOfferingStudentBatchResult =
+  | { outcome: "BOUND" | "ALREADY_BOUND"; offering: unknown }
+  | {
+      outcome:
+        | "OFFERING_NOT_FOUND"
+        | "OFFERING_CURRICULUM_NOT_BOUND"
+        | "STUDENT_BATCH_NOT_FOUND"
+        | "DEPENDENCY_SCOPE_MISMATCH"
+        | "PROGRAMME_MISMATCH"
         | "BINDING_CONFLICT";
     };
 
@@ -632,6 +654,9 @@ export interface AcademicRepositoryPort {
   bindCourseOfferingSyllabus(
     input: BindCourseOfferingSyllabusInput,
   ): Promise<BindCourseOfferingSyllabusResult>;
+  bindCourseOfferingStudentBatch(
+    input: BindCourseOfferingStudentBatchInput,
+  ): Promise<BindCourseOfferingStudentBatchResult>;
   findSyllabusVersions(filters: SyllabusVersionListFilters): Promise<unknown[]>;
   findSyllabusVersionById(
     departmentId: string,

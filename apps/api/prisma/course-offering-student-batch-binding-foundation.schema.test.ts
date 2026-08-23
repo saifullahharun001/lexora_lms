@@ -129,6 +129,14 @@ function interfaceBlock(name: string) {
   );
 }
 
+function controllerMethod(name: string) {
+  return (
+    courseOfferingsController.match(
+      new RegExp(`\\n  ${name}\\([\\s\\S]*?\\n  \\}`),
+    )?.[0] ?? ""
+  );
+}
+
 const studentBatch = model("StudentBatch");
 const courseOffering = model("CourseOffering");
 const courseOutlineVersion = model("CourseOutlineVersion");
@@ -322,7 +330,8 @@ test("generic CourseOffering create and update boundaries remain closed to Stude
   assert.doesNotMatch(updateDto, /studentBatchId/);
   assert.doesNotMatch(interfaceBlock("CreateCourseOfferingInput"), /studentBatchId/);
   assert.doesNotMatch(interfaceBlock("UpdateCourseOfferingInput"), /studentBatchId/);
-  assert.doesNotMatch(courseOfferingsController, /studentBatchId/);
+  assert.doesNotMatch(controllerMethod("create"), /studentBatchId/);
+  assert.doesNotMatch(controllerMethod("update"), /studentBatchId/);
 });
 
 test("no adjacent academic model or loose session identity is repurposed", () => {
@@ -342,7 +351,7 @@ test("foundation introduces no Coordinator authority or assignment model", () =>
   );
   assert.doesNotMatch(migration, /coordinator|policy|permission|role|audit/i);
   assert.doesNotMatch(policySources, /batch[-_.]coordinator/i);
-  assert.doesNotMatch(courseOfferingsController, /student[-_]?batch.*bind/i);
+  assert.doesNotMatch(courseOfferingsController, /batch[-_.]?coordinator/i);
 });
 
 test("all explicit PostgreSQL identifiers fit the 63-byte identifier limit", () => {

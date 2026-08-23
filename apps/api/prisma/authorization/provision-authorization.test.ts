@@ -10,6 +10,7 @@ import {
 
 import {
   AUTHORIZATION_PROVISIONING_DEFINITIONS,
+  STUDENT_BATCH_BINDING_MANAGE_PROVISIONING,
   SYLLABUS_BINDING_MANAGE_PROVISIONING,
   SYLLABUS_VERSION_LIFECYCLE_MANAGE_PROVISIONING,
   SYLLABUS_VERSION_MANAGE_PROVISIONING,
@@ -27,6 +28,7 @@ import {
 const manageDefinition = SYLLABUS_VERSION_MANAGE_PROVISIONING;
 const lifecycleDefinition = SYLLABUS_VERSION_LIFECYCLE_MANAGE_PROVISIONING;
 const bindingDefinition = SYLLABUS_BINDING_MANAGE_PROVISIONING;
+const studentBatchBindingDefinition = STUDENT_BATCH_BINDING_MANAGE_PROVISIONING;
 
 interface TestDepartment {
   id: string;
@@ -132,6 +134,10 @@ const exactBindingPermission = exactPermission(
   bindingDefinition,
   "permission-syllabus-binding-manage",
 );
+const exactStudentBatchBindingPermission = exactPermission(
+  studentBatchBindingDefinition,
+  "permission-student-batch-binding-manage",
+);
 const exactManageLink: TestRolePermission = {
   id: "role-permission-syllabus-manage",
   roleId: adminRoleA.id,
@@ -146,6 +152,11 @@ const exactBindingLink: TestRolePermission = {
   id: "role-permission-syllabus-binding-manage",
   roleId: adminRoleA.id,
   permissionId: exactBindingPermission.id,
+};
+const exactStudentBatchBindingLink: TestRolePermission = {
+  id: "role-permission-student-batch-binding-manage",
+  roleId: adminRoleA.id,
+  permissionId: exactStudentBatchBindingPermission.id,
 };
 
 function baseState(): TestState {
@@ -163,18 +174,20 @@ function ordinaryRuntimeState(): TestState {
   state.permissions.push(
     structuredClone(exactManagePermission),
     structuredClone(exactLifecyclePermission),
+    structuredClone(exactBindingPermission),
   );
   state.rolePermissions.push(
     structuredClone(exactManageLink),
     structuredClone(exactLifecycleLink),
+    structuredClone(exactBindingLink),
   );
   return state;
 }
 
 function completeState(): TestState {
   const state = ordinaryRuntimeState();
-  state.permissions.push(structuredClone(exactBindingPermission));
-  state.rolePermissions.push(structuredClone(exactBindingLink));
+  state.permissions.push(structuredClone(exactStudentBatchBindingPermission));
+  state.rolePermissions.push(structuredClone(exactStudentBatchBindingLink));
   return state;
 }
 
@@ -405,10 +418,23 @@ test("definition set preserves existing authorities and adds exact binding autho
     targetRoleCode: "department_admin",
     auditAction: "authorization.syllabus-binding-manage.provisioned",
   });
+  assert.deepEqual(studentBatchBindingDefinition, {
+    permission: {
+      code: "course-management.student-batch-binding.manage",
+      resource: "course-management.student-batch-binding",
+      action: "manage",
+      scope: PermissionScope.DEPARTMENT,
+      description:
+        "Manage CourseOffering to StudentBatch bindings within the active department governance scope",
+    },
+    targetRoleCode: "department_admin",
+    auditAction: "authorization.student-batch-binding-manage.provisioned",
+  });
   assert.deepEqual(AUTHORIZATION_PROVISIONING_DEFINITIONS, [
     manageDefinition,
     lifecycleDefinition,
     bindingDefinition,
+    studentBatchBindingDefinition,
   ]);
   assert.equal(
     new Set(
@@ -463,17 +489,21 @@ test("CLI rejects missing, duplicate, malformed, unsupported, and standalone sep
   }
 });
 
-test("ordinary-runtime-shaped dry run preserves existing definitions and plans only binding", async () => {
+test("ordinary-runtime-shaped dry run preserves existing definitions and plans only StudentBatch binding", async () => {
   const initial = ordinaryRuntimeState();
   const h = makeHarness(initial);
   const result = await planAuthorizationProvisioning(h.client, byCode);
   const managePlan = planFor(result, manageDefinition.permission.code);
   const lifecyclePlan = planFor(result, lifecycleDefinition.permission.code);
   const bindingPlan = planFor(result, bindingDefinition.permission.code);
+  const studentBatchBindingPlan = planFor(
+    result,
+    studentBatchBindingDefinition.permission.code,
+  );
 
   assert.equal(result.applied, false);
-  assert.equal(result.plan.definitions.length, 3);
-  for (const existingPlan of [managePlan, lifecyclePlan]) {
+  assert.equal(result.plan.definitions.length, 4);
+  for (const existingPlan of [managePlan, lifecyclePlan, bindingPlan]) {
     assert.equal(existingPlan.permission.state, "EXACT");
     assert.equal(existingPlan.roleLink.state, "EXACT");
     assert.deepEqual(existingPlan.changes, {
@@ -482,9 +512,9 @@ test("ordinary-runtime-shaped dry run preserves existing definitions and plans o
       auditLog: "UNCHANGED",
     });
   }
-  assert.equal(bindingPlan.permission.state, "ABSENT");
-  assert.equal(bindingPlan.roleLink.state, "ABSENT");
-  assert.deepEqual(bindingPlan.changes, {
+  assert.equal(studentBatchBindingPlan.permission.state, "ABSENT");
+  assert.equal(studentBatchBindingPlan.roleLink.state, "ABSENT");
+  assert.deepEqual(studentBatchBindingPlan.changes, {
     permission: "CREATE",
     rolePermission: "CREATE",
     auditLog: "CREATE",
@@ -495,7 +525,7 @@ test("ordinary-runtime-shaped dry run preserves existing definitions and plans o
   assert.deepEqual(h.state(), initial);
 });
 
-test("ordinary-runtime-shaped apply leaves existing authorities untouched and creates only binding", async () => {
+test("ordinary-runtime-shaped apply preserves existing authorities and creates only StudentBatch binding", async () => {
   const initial = ordinaryRuntimeState();
   const existingPermissions = structuredClone(initial.permissions);
   const existingRolePermissions = structuredClone(initial.rolePermissions);
@@ -507,10 +537,15 @@ test("ordinary-runtime-shaped apply leaves existing authorities untouched and cr
     lifecycleDefinition.permission.code,
   );
   const bindingResult = resultFor(result, bindingDefinition.permission.code);
+  const studentBatchBindingResult = resultFor(
+    result,
+    studentBatchBindingDefinition.permission.code,
+  );
 
   for (const [definition, definitionResult] of [
     [manageDefinition, manageResult],
     [lifecycleDefinition, lifecycleResult],
+    [bindingDefinition, bindingResult],
   ] as const) {
     assert.deepEqual(definitionResult, {
       permissionCode: definition.permission.code,
@@ -519,34 +554,39 @@ test("ordinary-runtime-shaped apply leaves existing authorities untouched and cr
       auditRecorded: false,
     });
   }
-  assert.deepEqual(bindingResult, {
-    permissionCode: bindingDefinition.permission.code,
+  assert.deepEqual(studentBatchBindingResult, {
+    permissionCode: studentBatchBindingDefinition.permission.code,
     permissionCreated: true,
     rolePermissionCreated: true,
     auditRecorded: true,
   });
   assert.deepEqual(h.counters.permissionCreateCodes, [
-    bindingDefinition.permission.code,
+    studentBatchBindingDefinition.permission.code,
   ]);
   assert.deepEqual(h.counters.rolePermissionCreateCodes, [
-    bindingDefinition.permission.code,
+    studentBatchBindingDefinition.permission.code,
   ]);
-  assert.deepEqual(h.counters.auditActions, [bindingDefinition.auditAction]);
+  assert.deepEqual(h.counters.auditActions, [
+    studentBatchBindingDefinition.auditAction,
+  ]);
   assert.equal(h.counters.transactions, 1);
   assert.deepEqual(h.counters.isolationLevels, [
     Prisma.TransactionIsolationLevel.Serializable,
   ]);
-  assert.deepEqual(h.state().permissions.slice(0, 2), existingPermissions);
   assert.deepEqual(
-    h.state().rolePermissions.slice(0, 2),
+    h.state().permissions.slice(0, existingPermissions.length),
+    existingPermissions,
+  );
+  assert.deepEqual(
+    h.state().rolePermissions.slice(0, existingRolePermissions.length),
     existingRolePermissions,
   );
-  assert.equal(h.state().permissions.length, 3);
-  assert.equal(h.state().rolePermissions.length, 3);
+  assert.equal(h.state().permissions.length, 4);
+  assert.equal(h.state().rolePermissions.length, 4);
   assert.equal(h.state().audits.length, 1);
 });
 
-test("binding provisioning audit is exact and targets the selected Department Admin link", async () => {
+test("StudentBatch binding provisioning audit is exact and targets the selected Law Department Admin link", async () => {
   const h = makeHarness(ordinaryRuntimeState());
   await applyAuthorizationProvisioning(h.client, byCode);
 
@@ -563,21 +603,24 @@ test("binding provisioning audit is exact and targets the selected Department Ad
   assert.equal(audit.actorType, "SERVICE");
   assert.equal(audit.actorUserId, null);
   assert.equal(audit.departmentId, departmentA.id);
-  assert.equal(audit.action, bindingDefinition.auditAction);
+  assert.equal(audit.action, studentBatchBindingDefinition.auditAction);
   assert.equal(audit.targetType, "role_permission");
   assert.equal(targetLink?.roleId, adminRoleA.id);
-  assert.equal(targetPermission?.code, bindingDefinition.permission.code);
+  assert.equal(
+    targetPermission?.code,
+    studentBatchBindingDefinition.permission.code,
+  );
   assert.deepEqual(audit.contextJson, {
     mode: "APPLY",
     departmentCode: departmentA.code,
     roleCode: adminRoleA.code,
-    permissionCode: bindingDefinition.permission.code,
+    permissionCode: studentBatchBindingDefinition.permission.code,
     permissionCreated: true,
     rolePermissionCreated: true,
   });
 });
 
-test("second apply is a true no-op for all three definitions", async () => {
+test("second apply is a true no-op for all four definitions", async () => {
   const h = makeHarness(ordinaryRuntimeState());
   await applyAuthorizationProvisioning(h.client, byCode);
   const writesAfterFirst = h.counters.writes;
@@ -598,33 +641,36 @@ test("second apply is a true no-op for all three definitions", async () => {
     assert.equal(result.auditRecorded, false);
   }
   assert.equal(h.counters.writes, writesAfterFirst);
-  assert.equal(h.state().permissions.length, 3);
-  assert.equal(h.state().rolePermissions.length, 3);
+  assert.equal(h.state().permissions.length, 4);
+  assert.equal(h.state().rolePermissions.length, 4);
   assert.equal(h.state().audits.length, 1);
 });
 
-test("exact binding permission with absent link creates only the missing link and one audit", async () => {
+test("exact StudentBatch binding permission with absent link creates only the missing link and one audit", async () => {
   const state = ordinaryRuntimeState();
-  state.permissions.push(structuredClone(exactBindingPermission));
+  state.permissions.push(structuredClone(exactStudentBatchBindingPermission));
   const h = makeHarness(state);
   const result = await applyAuthorizationProvisioning(h.client, byCode);
-  const bindingResult = resultFor(result, bindingDefinition.permission.code);
+  const bindingResult = resultFor(
+    result,
+    studentBatchBindingDefinition.permission.code,
+  );
 
   assert.equal(bindingResult.permissionCreated, false);
   assert.equal(bindingResult.rolePermissionCreated, true);
   assert.equal(bindingResult.auditRecorded, true);
   assert.equal(h.counters.permissionCreates, 0);
   assert.deepEqual(h.counters.rolePermissionCreateCodes, [
-    bindingDefinition.permission.code,
+    studentBatchBindingDefinition.permission.code,
   ]);
-  assert.equal(h.state().permissions.length, 3);
-  assert.equal(h.state().rolePermissions.length, 3);
+  assert.equal(h.state().permissions.length, 4);
+  assert.equal(h.state().rolePermissions.length, 4);
   assert.equal(h.state().audits.length, 1);
   assert.deepEqual(h.state().audits[0]!.contextJson, {
     mode: "APPLY",
     departmentCode: departmentA.code,
     roleCode: adminRoleA.code,
-    permissionCode: bindingDefinition.permission.code,
+    permissionCode: studentBatchBindingDefinition.permission.code,
     permissionCreated: false,
     rolePermissionCreated: true,
   });
@@ -638,16 +684,19 @@ test("all absent definitions are provisioned and audited in one Serializable tra
     manageDefinition.permission.code,
     lifecycleDefinition.permission.code,
     bindingDefinition.permission.code,
+    studentBatchBindingDefinition.permission.code,
   ]);
   assert.deepEqual(h.counters.rolePermissionCreateCodes, [
     manageDefinition.permission.code,
     lifecycleDefinition.permission.code,
     bindingDefinition.permission.code,
+    studentBatchBindingDefinition.permission.code,
   ]);
   assert.deepEqual(h.counters.auditActions, [
     manageDefinition.auditAction,
     lifecycleDefinition.auditAction,
     bindingDefinition.auditAction,
+    studentBatchBindingDefinition.auditAction,
   ]);
   assert.equal(h.counters.transactions, 1);
   assert.deepEqual(h.counters.isolationLevels, [
@@ -660,6 +709,7 @@ test("permission code mismatches including binding fail closed without committed
     manageDefinition,
     lifecycleDefinition,
     bindingDefinition,
+    studentBatchBindingDefinition,
   ] as const) {
     const state = baseState();
     state.permissions.push({
@@ -682,6 +732,7 @@ test("equivalent semantics under incompatible codes including binding fail close
     manageDefinition,
     lifecycleDefinition,
     bindingDefinition,
+    studentBatchBindingDefinition,
   ] as const) {
     const state = baseState();
     state.permissions.push({
@@ -699,10 +750,10 @@ test("equivalent semantics under incompatible codes including binding fail close
   }
 });
 
-test("later binding collision is detected before earlier absent definitions are written", async () => {
+test("later StudentBatch binding collision is detected before earlier absent definitions are written", async () => {
   const state = baseState();
   state.permissions.push({
-    ...exactBindingPermission,
+    ...exactStudentBatchBindingPermission,
     resource: "course-management.conflicting-resource",
   });
   const h = makeHarness(state);
@@ -808,7 +859,7 @@ test("missing, ambiguous, archived, and wrong-department Admin roles fail closed
   }
 });
 
-test("only the selected department's exact Admin role receives the binding link", async () => {
+test("only the selected Law Department's exact Admin role receives the StudentBatch binding link", async () => {
   const state = baseState();
   state.departments.push(structuredClone(departmentB));
   state.roles.push(
@@ -840,7 +891,8 @@ test("only the selected department's exact Admin role receives the binding link"
   const bindingPermission = h
     .state()
     .permissions.find(
-      (permission) => permission.code === bindingDefinition.permission.code,
+      (permission) =>
+        permission.code === studentBatchBindingDefinition.permission.code,
     );
   assert.ok(bindingPermission);
   const bindingLinks = h
@@ -894,9 +946,9 @@ test("unrelated permissions and links remain unchanged", async () => {
   );
 });
 
-test("binding RolePermission failure rolls back its new permission", async () => {
+test("StudentBatch binding RolePermission failure rolls back its new permission", async () => {
   const h = makeHarness(ordinaryRuntimeState(), {
-    failRolePermissionForCode: bindingDefinition.permission.code,
+    failRolePermissionForCode: studentBatchBindingDefinition.permission.code,
   });
   await assert.rejects(
     applyAuthorizationProvisioning(h.client, byCode),
@@ -908,9 +960,9 @@ test("binding RolePermission failure rolls back its new permission", async () =>
   assert.equal(h.state().audits.length, 0);
 });
 
-test("binding audit failure rolls back its new permission and link", async () => {
+test("StudentBatch binding audit failure rolls back its new permission and link", async () => {
   const h = makeHarness(ordinaryRuntimeState(), {
-    failAuditForCode: bindingDefinition.permission.code,
+    failAuditForCode: studentBatchBindingDefinition.permission.code,
   });
   await assert.rejects(
     applyAuthorizationProvisioning(h.client, byCode),
@@ -922,9 +974,9 @@ test("binding audit failure rolls back its new permission and link", async () =>
   assert.equal(h.state().audits.length, 0);
 });
 
-test("later binding failure rolls back all earlier tentative writes and audits", async () => {
+test("later StudentBatch binding failure rolls back all earlier tentative writes and audits", async () => {
   const h = makeHarness(baseState(), {
-    failAuditForCode: bindingDefinition.permission.code,
+    failAuditForCode: studentBatchBindingDefinition.permission.code,
   });
   await assert.rejects(
     applyAuthorizationProvisioning(h.client, byCode),
@@ -935,11 +987,13 @@ test("later binding failure rolls back all earlier tentative writes and audits",
     manageDefinition.permission.code,
     lifecycleDefinition.permission.code,
     bindingDefinition.permission.code,
+    studentBatchBindingDefinition.permission.code,
   ]);
   assert.deepEqual(h.counters.auditActions, [
     manageDefinition.auditAction,
     lifecycleDefinition.auditAction,
     bindingDefinition.auditAction,
+    studentBatchBindingDefinition.auditAction,
   ]);
   assert.equal(h.state().permissions.length, 0);
   assert.equal(h.state().rolePermissions.length, 0);
@@ -958,12 +1012,14 @@ test("simultaneous and repeated logical applies preserve exact cardinality", asy
   assert.equal(
     [first, simultaneous].filter(
       (result) =>
-        resultFor(result, bindingDefinition.permission.code).auditRecorded,
+        resultFor(result, studentBatchBindingDefinition.permission.code)
+          .auditRecorded,
     ).length,
     1,
   );
   assert.equal(
-    resultFor(repeated, bindingDefinition.permission.code).auditRecorded,
+    resultFor(repeated, studentBatchBindingDefinition.permission.code)
+      .auditRecorded,
     false,
   );
   assert.equal(h.counters.writes, writesAfterSimultaneous);
@@ -971,14 +1027,16 @@ test("simultaneous and repeated logical applies preserve exact cardinality", asy
     h
       .state()
       .permissions.filter(
-        (permission) => permission.code === bindingDefinition.permission.code,
+        (permission) =>
+          permission.code === studentBatchBindingDefinition.permission.code,
       ).length,
     1,
   );
   const bindingPermission = h
     .state()
     .permissions.find(
-      (permission) => permission.code === bindingDefinition.permission.code,
+      (permission) =>
+        permission.code === studentBatchBindingDefinition.permission.code,
     )!;
   assert.equal(
     h
@@ -993,12 +1051,13 @@ test("simultaneous and repeated logical applies preserve exact cardinality", asy
   assert.equal(
     h
       .state()
-      .audits.filter((audit) => audit.action === bindingDefinition.auditAction)
-      .length,
+      .audits.filter(
+        (audit) => audit.action === studentBatchBindingDefinition.auditAction,
+      ).length,
     1,
   );
-  assert.equal(h.state().permissions.length, 3);
-  assert.equal(h.state().rolePermissions.length, 3);
+  assert.equal(h.state().permissions.length, 4);
+  assert.equal(h.state().rolePermissions.length, 4);
   assert.equal(h.state().audits.length, 1);
 });
 
@@ -1020,11 +1079,13 @@ test("sanitized multi-definition summary is deterministic, compact, and secret-f
         manageDefinition.permission.code,
         lifecycleDefinition.permission.code,
         bindingDefinition.permission.code,
+        studentBatchBindingDefinition.permission.code,
       ],
     );
     assert.equal(summary.definitions[0]!.noOp, true);
     assert.equal(summary.definitions[1]!.noOp, true);
-    assert.equal(summary.definitions[2]!.noOp, false);
+    assert.equal(summary.definitions[2]!.noOp, true);
+    assert.equal(summary.definitions[3]!.noOp, false);
     assert.equal(summary.noOp, false);
     assert.equal(output.includes(secret), false);
     assert.equal(output.includes("secret-password"), false);
