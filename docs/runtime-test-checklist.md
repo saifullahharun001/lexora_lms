@@ -26517,3 +26517,779 @@ Programme Coordinator authority remains unresolved and must not be invented mere
 This verdict applies only to the narrow schema/database foundation described above.
 
 It does not mean Academic Session management, Student Batch management, CourseOffering batch binding, student batch assignment, Coordinator governance, Course Outline coordinator workflow, or the complete Lexora LMS is complete.
+
+
+## CourseOffering → StudentBatch Nullable Binding Foundation and PostgreSQL 18.6 Runtime Verification — 2026-08-23
+
+### Supersession and scope
+
+This checkpoint supersedes earlier statements only to the extent that
+**CourseOffering → StudentBatch binding remained pending**.
+
+The preceding **Academic Session + Student Batch Schema Foundation** remains valid and
+closed. That earlier checkpoint intentionally introduced the first-class
+`AcademicSession` and programme/session-scoped `StudentBatch` identities without
+binding existing CourseOfferings to a StudentBatch.
+
+This checkpoint closes the next narrow schema/database dependency:
+
+**CourseOffering → StudentBatch nullable binding foundation**
+
+It does not implement StudentBatch management, student batch assignment,
+Batch Coordinator authority, or a complete operational batch workflow.
+
+The architectural separation remains:
+
+- `AcademicSession`;
+- `AcademicTerm`;
+- `StudentBatch`;
+- result-publication batch identity;
+- attendance-import batch identity.
+
+These concepts must not be collapsed into one another.
+
+`effectiveAcademicSessionCode` remains curriculum metadata and is not an authorization
+key.
+
+`AcademicTerm` is not a substitute for `StudentBatch`.
+
+Future Batch Coordinator authority must remain scoped by:
+
+`StudentBatch + AcademicTerm`
+
+### Implementation commit
+
+Implementation commit:
+
+`0e6de5ca04dbff1fa9998bff5e82a901eecf8a24`
+
+Commit message:
+
+`Add course offering student batch binding foundation`
+
+The reviewed implementation changed exactly five files:
+
+- `.gitignore`;
+- `apps/api/prisma/schema.prisma`;
+- `apps/api/prisma/academic-session-student-batch-foundation.schema.test.ts`;
+- `apps/api/prisma/course-offering-student-batch-binding-foundation.schema.test.ts`;
+- `apps/api/prisma/migrations/202608210001_add_course_offering_student_batch_binding_foundation/migration.sql`.
+
+No controller, DTO, service, repository, policy, frontend, Course Outline workflow,
+result workflow, attendance workflow or deployment configuration was changed by the
+implementation commit.
+
+### Migration identity
+
+Migration:
+
+`202608210001_add_course_offering_student_batch_binding_foundation`
+
+Reviewed migration SHA-256:
+
+`52D084155FA85CDE0593DDA0AE769F9F9F460A71908F5C303B7F073CC2EDE87C`
+
+Reviewed verification artifact:
+
+`lexora-course-offering-student-batch-review-20260821-080538.zip`
+
+Artifact size:
+
+`28114` bytes
+
+Artifact SHA-256:
+
+`365CEA66ADFCDCC621649253FF64B62130A6155BC6D4F43AB49FF07BB94C0747`
+
+The review ZIP was independently verified to contain exactly seven expected files.
+
+The ZIP is a temporary review artifact and is not part of the repository.
+
+### CourseOffering schema foundation
+
+`CourseOffering` now exposes the nullable mapped scalar:
+
+`studentBatchId` → `student_batch_id`
+
+The field is nullable so historical and currently unassigned CourseOfferings remain
+valid without backfill.
+
+The exact StudentBatch relation uses the composite child identity:
+
+`studentBatchId + departmentId`
+
+against the parent candidate identity:
+
+`StudentBatch.id + StudentBatch.departmentId`
+
+Database foreign key:
+
+`course_offering_student_batch_identity_fkey`
+
+Exact behavior:
+
+- `ON DELETE RESTRICT`;
+- `ON UPDATE RESTRICT`.
+
+The parent candidate identity remains:
+
+`student_batch_id_department_uq`
+
+on:
+
+`student_batches(id, department_id)`
+
+This structurally prevents a CourseOffering in one department from binding to a
+StudentBatch belonging to another department.
+
+### Curriculum prerequisite for batch binding
+
+Database CHECK:
+
+`course_offering_batch_requires_curriculum`
+
+Exact rule:
+
+`student_batch_id IS NULL OR curriculum_course_id IS NOT NULL`
+
+Therefore a CourseOffering cannot carry a StudentBatch identity unless it already has
+a CurriculumCourse identity.
+
+This checkpoint does not itself validate the full application-level programme chain.
+
+Future operational binding must verify:
+
+`Course.academicProgramId == CurriculumVersion.academicProgramId == StudentBatch.academicProgramId`
+
+before allowing a new StudentBatch binding.
+
+### CourseOffering uniqueness after this checkpoint
+
+The historical curriculum-unbound identity remains unchanged:
+
+`course_offering_unbound_identity_uq`
+
+Identity:
+
+`department_id + academic_term_id + course_id + section_code`
+
+Predicate:
+
+`curriculum_course_id IS NULL`
+
+The canonical curriculum-bound but StudentBatch-unbound identity is:
+
+`course_offering_bound_curriculum_identity_uq`
+
+Identity:
+
+`department_id + academic_term_id + curriculum_course_id + section_code`
+
+Predicate:
+
+`curriculum_course_id IS NOT NULL AND student_batch_id IS NULL`
+
+The canonical index name was intentionally preserved for compatibility with existing
+application conflict-recognition behavior.
+
+The new curriculum-bound and StudentBatch-bound identity is:
+
+`course_offering_bound_batched_curriculum_identity_uq`
+
+Identity:
+
+`department_id + academic_term_id + student_batch_id + curriculum_course_id + section_code`
+
+Predicate:
+
+`curriculum_course_id IS NOT NULL AND student_batch_id IS NOT NULL`
+
+This permits the same curriculum/term/section identity to coexist for different
+StudentBatches while preventing duplicate identity within the same StudentBatch.
+
+Supporting non-unique lookup index:
+
+`course_offering_department_term_student_batch_idx`
+
+Identity:
+
+`department_id + academic_term_id + student_batch_id`
+
+This index supports future exact department/term/batch authorization lookups.
+
+The temporary migration index:
+
+`course_offering_bound_curriculum_identity_tmp_uq`
+
+does not remain after successful migration completion.
+
+### Course Outline identity preservation
+
+This checkpoint did not change `CourseOutlineVersion`.
+
+Its exact academic identity remains based on:
+
+- `courseOfferingId`;
+- `departmentId`;
+- `curriculumCourseId`;
+- `syllabusVersionId`.
+
+No StudentBatch snapshot was added to CourseOutlineVersion by this checkpoint.
+
+### Application boundary preservation
+
+Generic CourseOffering create/update boundaries remain closed to direct
+client-controlled `studentBatchId`.
+
+This checkpoint does not introduce generic PATCH-based StudentBatch rebinding.
+
+The future application-layer CourseOffering → StudentBatch workflow must be dedicated
+and controlled.
+
+Expected lifecycle remains:
+
+- `null → X`: allowed only after exact validation;
+- `X → X`: idempotent;
+- `X → Y`: conflict / blocked unless a separately approved migration workflow exists.
+
+### Static verification
+
+Final local and Ubuntu verification passed.
+
+Prisma:
+
+- schema validation: PASS;
+- Prisma Client generation: PASS.
+
+API:
+
+- TypeScript typecheck: PASS;
+- NestJS build: PASS.
+
+Compiled Prisma schema test files:
+
+`13`
+
+Compiled Prisma schema tests:
+
+`108`
+
+Results:
+
+- passed: `108`;
+- failed: `0`;
+- skipped: `0`.
+
+`git diff --check` passed.
+
+The local implementation files matched the independently reviewed artifact exactly
+before commit.
+
+### Verification incident and ordinary database recovery
+
+An early disposable-verification harness incorrectly inherited/loaded the ordinary API
+`.env`.
+
+As a result, Prisma targeted:
+
+- database: `lexora_lms`;
+- host/port: `localhost:5432`;
+
+instead of the intended disposable PostgreSQL database.
+
+This was a **verification-harness target-selection incident**, not an application
+behavior defect.
+
+The migration did not complete.
+
+The failed migration record showed:
+
+- `finished_at`: null;
+- `applied_steps_count`: `0`.
+
+The failed attempt left partial target catalog residue.
+
+Recovery was performed before further verification.
+
+Recovery actions included:
+
+- manual removal of partial target schema residue;
+- verification that `course_offerings.student_batch_id` was absent again;
+- verification that target CourseOffering StudentBatch indexes and foreign key were
+  absent again;
+- preservation of the existing AcademicSession and StudentBatch foundation;
+- marking the failed migration attempt rolled back with
+  `prisma migrate resolve --rolled-back`;
+- verification that the failed history row remained unfinished but had
+  `rolled_back_at` populated and `applied_steps_count = 0`;
+- verification that ordinary selected business-row counts remained unchanged;
+- Direct API health verification;
+- Nginx API health verification.
+
+No `_prisma_migrations` record was manually deleted.
+
+No raw database credentials, tokens or secrets are preserved in this documentation.
+
+### Recovered ordinary baseline
+
+After recovery and before the final target migration, ordinary PostgreSQL was:
+
+`18.6`
+
+Selected baseline count fingerprint:
+
+`2|4|0|0|8|61|14|12|0`
+
+corresponding to:
+
+- departments: `2`;
+- academic_programs: `4`;
+- academic_sessions: `0`;
+- student_batches: `0`;
+- curriculum_versions: `8`;
+- curriculum_courses: `61`;
+- course_offerings: `14`;
+- enrollments: `12`;
+- course_outline_versions: `0`.
+
+At this recovered baseline:
+
+- target CourseOffering StudentBatch column: absent;
+- target lookup index: absent;
+- target batched identity index: absent;
+- target StudentBatch FK: absent;
+- target batch-requires-curriculum CHECK: absent.
+
+### Validated private rollback snapshot
+
+After recovery and before final deployment, an exact-current private PostgreSQL snapshot
+was created:
+
+`/home/sh002/lexora-private-backups/lexora_lms-before-course-offering-student-batch-20260823T140659Z.dump`
+
+Size:
+
+`817455` bytes
+
+SHA-256:
+
+`6D6E24FCD5369232B50D3A42798DD9BB54DE8EC670EA18E3CC5750F31849E03E`
+
+`pg_restore --list` validation passed.
+
+The backup contains private application data and must not be committed, uploaded or
+published.
+
+### PostgreSQL 18.6 disposable verification
+
+Runtime PostgreSQL had advanced from the earlier PostgreSQL 18.4 baseline to
+PostgreSQL:
+
+`18.6`
+
+Exact disposable Docker image:
+
+`postgres:18.6-alpine3.23`
+
+Observed image ID/digest:
+
+`sha256:697c180dbf244d3ce4a8f4cbc0156cde840af055c1bf8b76aebe422a4822086f`
+
+The exact-current recovered ordinary snapshot was restored into:
+
+- database: `lexora_course_offering_verify`;
+- host: `127.0.0.1`;
+- temporary port: `32773`;
+- PostgreSQL: `18.6`.
+
+Restored selected baseline counts were exactly:
+
+`2|4|0|0|8|61|14|12|0`
+
+All `14` existing CourseOfferings initially had:
+
+`student_batch_id IS NULL`
+
+No `prisma db push` was used.
+
+The reviewed migration was applied through Prisma migration deployment against the
+explicitly guarded disposable database.
+
+The datasource was verified before deployment as:
+
+`lexora_course_offering_verify @ 127.0.0.1:32773`
+
+### Disposable catalog verification
+
+Disposable live catalog verification passed.
+
+Verified nullable column:
+
+`course_offerings.student_batch_id`
+
+Verified CHECK:
+
+`course_offering_batch_requires_curriculum`
+
+Verified exact composite restrictive FK:
+
+`course_offering_student_batch_identity_fkey`
+
+Verified CourseOffering indexes:
+
+- `course_offering_unbound_identity_uq`;
+- `course_offering_bound_curriculum_identity_uq`;
+- `course_offering_bound_batched_curriculum_identity_uq`;
+- `course_offering_department_term_student_batch_idx`.
+
+Verified StudentBatch parent candidate identity:
+
+`student_batch_id_department_uq`
+
+The temporary migration index was absent after completion.
+
+### Disposable relational behavior verification
+
+Synthetic verification was executed only against the disposable PostgreSQL database.
+
+Verified positive behavior:
+
+- valid same-department StudentBatch binding succeeded;
+- exact Course/Curriculum programme fixture was used;
+- the same curriculum/term/section could coexist across two different non-null
+  StudentBatches.
+
+Verified negative behavior:
+
+- StudentBatch identity without CurriculumCourse identity was rejected by
+  `course_offering_batch_requires_curriculum`;
+- cross-department StudentBatch binding was rejected by
+  `course_offering_student_batch_identity_fkey`;
+- duplicate identity inside the same StudentBatch was rejected by
+  `course_offering_bound_batched_curriculum_identity_uq`;
+- curriculum-bound but batch-null duplicate identity was rejected by
+  `course_offering_bound_curriculum_identity_uq`;
+- legacy curriculum-unbound duplicate identity was rejected by
+  `course_offering_unbound_identity_uq`;
+- deletion of a referenced StudentBatch was blocked by `RESTRICT`;
+- mutation of a referenced StudentBatch identity was blocked by `RESTRICT`.
+
+Synthetic relational writes were wrapped in a transaction and rolled back.
+
+Post-rollback disposable state returned to:
+
+- course_offerings: `14`;
+- CourseOfferings with non-null StudentBatch: `0`;
+- academic_sessions: `0`;
+- student_batches: `0`.
+
+### Disposable verification-harness corrections
+
+Two additional verifier issues occurred and were corrected without product changes.
+
+First, a read-only catalog verifier used a heredoc with `docker exec` without stdin
+forwarding, producing blank output.
+
+The corrected verifier used the mapped loopback PostgreSQL port and host `psql`.
+
+Second, an early parent `RESTRICT` test attempted to catch
+`foreign_key_violation`.
+
+PostgreSQL raised:
+
+`restrict_violation`
+
+for the explicit `RESTRICT` action.
+
+The corrected harness caught the correct condition and both parent DELETE and parent
+identity UPDATE `RESTRICT` tests passed.
+
+These were verification-harness issues and did not require implementation changes.
+
+### Ordinary PostgreSQL 18.6 deployment
+
+Ubuntu server source was fast-forwarded to:
+
+`0e6de5ca04dbff1fa9998bff5e82a901eecf8a24`
+
+Server verification before migration passed:
+
+- Prisma validate;
+- Prisma generate;
+- API typecheck;
+- API build;
+- compiled Prisma schema tests `108/108`.
+
+Ordinary datasource was explicitly verified as:
+
+- database: `lexora_lms`;
+- host/port: `localhost:5432`;
+- PostgreSQL: `18.6`.
+
+The target migration was then successfully applied to ordinary PostgreSQL.
+
+### Final migration history
+
+Because the earlier failed verifier attempt was preserved as a rolled-back historical
+record, the target migration name now has two history rows.
+
+Historical failed attempt:
+
+- finished: false;
+- rolled back: true;
+- applied steps: `0`.
+
+Final successful deployment:
+
+- finished: true;
+- rolled back: false;
+- applied steps: `1`.
+
+There is no unresolved failed target migration record.
+
+### Ordinary live catalog verification
+
+Live ordinary PostgreSQL now contains nullable:
+
+`course_offerings.student_batch_id`
+
+Live CHECK:
+
+`course_offering_batch_requires_curriculum`
+
+Live composite FK:
+
+`course_offering_student_batch_identity_fkey`
+
+Exact FK behavior:
+
+`FOREIGN KEY (student_batch_id, department_id)
+ REFERENCES student_batches(id, department_id)
+ ON UPDATE RESTRICT
+ ON DELETE RESTRICT`
+
+Live CourseOffering indexes:
+
+- `course_offering_unbound_identity_uq`;
+- `course_offering_bound_curriculum_identity_uq`;
+- `course_offering_bound_batched_curriculum_identity_uq`;
+- `course_offering_department_term_student_batch_idx`.
+
+Temporary migration index:
+
+`course_offering_bound_curriculum_identity_tmp_uq`
+
+is absent.
+
+### Ordinary existing-data preservation and no-backfill verification
+
+Post-deployment selected count fingerprint remained:
+
+`2|4|0|0|8|61|14|12|0`
+
+Therefore selected existing business/academic row counts were preserved.
+
+CourseOfferings with non-null StudentBatch after deployment:
+
+`0`
+
+Therefore this checkpoint performed no automatic CourseOffering → StudentBatch
+backfill.
+
+It also created no automatic AcademicSession or StudentBatch business rows.
+
+### Prisma drift and migration idempotency
+
+Ordinary database-to-datamodel drift verification reported:
+
+`No difference detected.`
+
+A second:
+
+`prisma migrate deploy`
+
+reported:
+
+`No pending migrations to apply.`
+
+Therefore:
+
+- live Prisma drift: none;
+- migration re-deployment: safe no-op.
+
+Post-deployment:
+
+`prisma migrate status`
+
+reported:
+
+`Database schema is up to date!`
+
+### Runtime non-disruption
+
+No PM2 restart was required for this schema/test-only implementation.
+
+PM2 PID before migration:
+
+`1486`
+
+PM2 PID after migration:
+
+`1486`
+
+Direct API health:
+
+`HTTP 200`
+
+Nginx API health:
+
+`HTTP 200`
+
+Repository remained:
+
+- clean;
+- local/server/origin aligned.
+
+### Security and architecture preservation
+
+This schema/database checkpoint did not weaken or remove:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- `@RequirePolicy()`;
+- authenticated request context;
+- department isolation;
+- object-level authorization;
+- Teacher assigned-course checks;
+- Student own-resource checks;
+- safe not-found behavior;
+- result publication lock;
+- result amendment flow;
+- controlled GPA/CGPA recalculation;
+- transcript immutable snapshots;
+- transcript token hashing/expiry/revocation;
+- minimal public transcript verification response;
+- attendance active-session rule;
+- Teacher-only attendance capture;
+- override-reason requirements;
+- notification isolation;
+- critical-locked preference protection;
+- audit requirements for sensitive operations.
+
+No new HTTP route, role grant, policy grant, browser token behavior, public endpoint,
+file-handling path, result mutation path or transcript mutation path was introduced by
+this checkpoint.
+
+### Current verified classification
+
+The **CourseOffering → StudentBatch Nullable Binding Foundation** is now:
+
+- source-audited;
+- dependency-scoped;
+- implemented;
+- independently reviewed;
+- exact reviewed artifact matched before commit;
+- statically verified;
+- Prisma validate verified;
+- Prisma Client generation verified;
+- API typecheck verified;
+- API build verified;
+- compiled Prisma schema tests `108/108` verified;
+- implementation committed and pushed;
+- Ubuntu server promoted to the implementation commit;
+- PostgreSQL `18.6` disposable verification completed;
+- exact-current snapshot restore verified;
+- disposable migration verified;
+- disposable live catalog verified;
+- disposable department-safe FK verified;
+- disposable curriculum prerequisite CHECK verified;
+- disposable batch-null uniqueness verified;
+- disposable batch-bound uniqueness verified;
+- legacy unbound uniqueness verified;
+- cross-department StudentBatch substitution rejection verified;
+- parent StudentBatch DELETE `RESTRICT` verified;
+- parent StudentBatch identity UPDATE `RESTRICT` verified;
+- disposable transactional cleanup verified;
+- validated private rollback backup retained;
+- ordinary PostgreSQL `18.6` deployed;
+- final migration history verified;
+- ordinary live catalog verified;
+- existing selected academic/business rows preserved;
+- no automatic StudentBatch binding verified;
+- no automatic AcademicSession/StudentBatch business-row creation verified;
+- live Prisma drift verified as none;
+- migration idempotency verified;
+- PM2 non-disruption verified;
+- Direct API health verified;
+- Nginx API health verified;
+- repository cleanliness/origin alignment verified.
+
+The **CourseOffering → StudentBatch Nullable Binding Foundation** is technically
+complete and runtime verified.
+
+This documentation checkpoint closes only that foundation.
+
+### Still pending
+
+The following remain pending unless separately implemented and runtime verified:
+
+- operational/canonical AcademicSession records;
+- operational/canonical StudentBatch records;
+- AcademicSession CRUD/governance API;
+- AcademicSession Admin UI;
+- StudentBatch CRUD/governance API;
+- StudentBatch Admin UI;
+- Student → StudentBatch assignment;
+- StudentCurriculumAssignment → StudentBatch binding;
+- Enrollment → StudentBatch binding;
+- generic CourseOffering PATCH support for StudentBatch;
+- dedicated immutable CourseOffering → StudentBatch application-layer binding workflow;
+- exact service-layer validation of
+  `Course.academicProgramId == CurriculumVersion.academicProgramId == StudentBatch.academicProgramId`;
+- audit event for an operational StudentBatch binding action;
+- BatchCoordinatorAssignment;
+- Batch Coordinator runtime policies/authority;
+- Batch Coordinator frontend;
+- CourseOutlineVersion StudentBatch snapshot changes;
+- result StudentBatch integration;
+- attendance StudentBatch integration;
+- historical StudentBatch backfill.
+
+### Next safe step
+
+Do not immediately implement BatchCoordinatorAssignment.
+
+Do not immediately backfill historical CourseOfferings.
+
+Do not expose `studentBatchId` through generic CourseOffering PATCH.
+
+Before selecting the next implementation checkpoint, perform a fresh source/runtime
+audit against the latest repository and runtime checklist.
+
+If the next work is the operational CourseOffering → StudentBatch binding workflow,
+preserve:
+
+- exact authenticated department scope;
+- exact CourseOffering object scope;
+- exact StudentBatch department identity;
+- exact programme-chain validation;
+- immutable/idempotent binding semantics;
+- audit logging for the binding action.
+
+Expected lifecycle remains:
+
+- `null → X`: allowed after exact validation;
+- `X → X`: idempotent;
+- `X → Y`: conflict / blocked unless a separately approved migration workflow exists.
+
+Future Batch Coordinator authority must continue to use:
+
+`StudentBatch + AcademicTerm`
+
+and must not derive authority from `effectiveAcademicSessionCode`.
+
+> **CourseOffering → StudentBatch Nullable Binding Foundation = IMPLEMENTED / INDEPENDENTLY REVIEWED / STATICALLY VERIFIED / 108/108 PRISMA TESTS PASS / DISPOSABLE POSTGRESQL 18.6 VERIFIED / ORDINARY POSTGRESQL 18.6 DEPLOYED / LIVE-CATALOG VERIFIED / NO-BACKFILL VERIFIED / DRIFT-FREE / IDEMPOTENT / NON-DISRUPTION VERIFIED / DOCUMENTED / CLOSED**
+
+This does not mean StudentBatch management, Student batch assignment, Batch Coordinator
+authority, Course Outline coordinator workflow, result/attendance StudentBatch
+integration, or the complete Lexora LMS is complete.
