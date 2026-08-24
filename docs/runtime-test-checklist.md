@@ -28441,3 +28441,531 @@ Do not combine the next task with:
 - result/transcript work
 
 unless a separate source-driven scope explicitly requires it.
+
+## AcademicSession + StudentBatch Operational Management Ordinary-Runtime Verification — 2026-08-24
+
+### Scope and supersession
+
+This checkpoint records the implementation, independent review, deployment and
+ordinary-runtime verification of the operational backend management workflows for:
+
+- `AcademicSession`;
+- `StudentBatch`.
+
+It supersedes earlier pending wording only to the extent that the following remained
+unimplemented or unverified:
+
+- AcademicSession CRUD/governance API;
+- StudentBatch CRUD/governance API.
+
+The earlier **Academic Session + Student Batch Schema Foundation** remains valid
+historical evidence.
+
+The earlier **CourseOffering → StudentBatch Nullable Binding Foundation** also remains
+valid historical evidence.
+
+This checkpoint does not create canonical academic-session or student-batch business
+records and does not claim completion of the broader StudentBatch/Coordinator workflow.
+
+### Implementation identity
+
+Implementation commit:
+
+`956102c2237ffa56bc3c3e4db22d422b52f1ebd8`
+
+Commit message:
+
+`feat: add academic session and student batch management`
+
+Implementation parent:
+
+`19970eb201111af0c300ba81651469eeffa874d6`
+
+Reviewed implementation scope:
+
+- exactly `22` files;
+- `2589` insertions;
+- no Prisma schema change;
+- no migration;
+- no automatic runtime business-row creation;
+- no frontend change;
+- no CourseOffering StudentBatch-binding implementation change.
+
+The implementation was independently diff-reviewed before commit.
+
+The initial review identified a write/audit atomicity gap in the new management write
+paths.
+
+That issue was corrected before the final implementation commit.
+
+The final committed implementation performs the relevant business mutation,
+authoritative post-write verification and success audit within the same Prisma
+transaction.
+
+### Operational API surface
+
+AcademicSession management routes:
+
+- `POST /api/v1/academic-sessions`;
+- `GET /api/v1/academic-sessions`;
+- `GET /api/v1/academic-sessions/:id`;
+- `PATCH /api/v1/academic-sessions/:id`.
+
+StudentBatch management routes:
+
+- `POST /api/v1/student-batches`;
+- `GET /api/v1/student-batches`;
+- `GET /api/v1/student-batches/:id`;
+- `PATCH /api/v1/student-batches/:id`.
+
+No delete, archive or unarchive workflow was introduced by this checkpoint.
+
+### Authorization model
+
+New ordinary management policies:
+
+- `course-management.academic-session.read`;
+- `course-management.academic-session.manage`;
+- `course-management.student-batch.read`;
+- `course-management.student-batch.manage`.
+
+These management policies are available to the Department Admin through the existing
+department-scoped course-management authority model.
+
+Teacher and Student do not receive these management authorities.
+
+The existing dedicated:
+
+`course-management.student-batch-binding.manage`
+
+authority remains separate and exact-grant controlled.
+
+This checkpoint does not weaken or broaden the existing dedicated CourseOffering →
+StudentBatch binding authority.
+
+All new controllers remain protected by:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- `@RequirePolicy()`.
+
+Authenticated principal department scope remains authoritative.
+
+A supplied `x-department-id` header does not override a valid authenticated
+principal's real department.
+
+### AcademicSession management behavior
+
+AcademicSession management supports:
+
+- department-scoped create;
+- department-scoped list;
+- bounded code/name search;
+- department-scoped direct read;
+- department-scoped code/name update.
+
+Client-controlled values do not determine:
+
+- `departmentId`;
+- `id`;
+- archival state;
+- timestamps.
+
+Department-scoped AcademicSession code uniqueness remains enforced.
+
+The same AcademicSession code remains independently valid in another department.
+
+Cross-department direct object access remains safe-not-found.
+
+### StudentBatch management behavior
+
+StudentBatch creation accepts the exact identity:
+
+- `academicProgramId`;
+- `academicSessionId`;
+- `code`;
+- `name`.
+
+The authenticated principal department remains server-derived.
+
+Creation validates that the target AcademicProgram and AcademicSession are:
+
+- present;
+- in the active department;
+- non-archived.
+
+The repository transaction revalidates and locks the required parent identities before
+the StudentBatch mutation.
+
+StudentBatch management reads expose compact AcademicProgram and AcademicSession
+identity while remaining department-scoped.
+
+Malformed, cross-department or archived relational chains fail closed.
+
+Ordinary StudentBatch PATCH allows only:
+
+- `code`;
+- `name`.
+
+The following remain immutable through ordinary PATCH:
+
+- `academicProgramId`;
+- `academicSessionId`;
+- `departmentId`;
+- lifecycle/server-owned identity.
+
+No StudentBatch re-parenting workflow was introduced.
+
+### Success-audit events
+
+Operational management success audits are:
+
+- `course-management.academic-session.created`;
+- `course-management.academic-session.updated`;
+- `course-management.student-batch.created`;
+- `course-management.student-batch.updated`.
+
+Audit identity is server-derived and includes the authenticated actor, department and
+request context.
+
+Successful management mutation and its required success audit are transactionally
+coupled.
+
+A required audit failure causes the corresponding business mutation to roll back.
+
+### Static verification
+
+Final focused verification before deployment:
+
+- management service tests: `9/9`;
+- management repository tests: `4/4`;
+- atomic write regression tests: `13/13`;
+- DTO contract tests: `5/5`;
+- controller contract tests: `3/3`;
+- management authorization tests: `2/2`;
+- existing authorization tests: `8/8`;
+- existing StudentBatch binding service tests: `4/4`;
+- existing StudentBatch binding repository tests: `12/12`;
+- existing CourseOffering controller tests: `17/17`;
+- existing AcademicService regression tests: `16/16`;
+- existing PrismaAcademicRepository regression tests: `47/47`.
+
+Combined focused result:
+
+`140/140 PASS`
+
+Also verified:
+
+- API typecheck: PASS;
+- API build: PASS;
+- `git diff --check`: PASS.
+
+No schema or migration change was introduced.
+
+### Ubuntu server promotion and activation
+
+Server source before promotion:
+
+`19970eb201111af0c300ba81651469eeffa874d6`
+
+Reviewed implementation target:
+
+`956102c2237ffa56bc3c3e4db22d422b52f1ebd8`
+
+Promotion:
+
+- fast-forward only;
+- exactly `22` implementation files;
+- no schema/migration change;
+- server API typecheck: PASS;
+- server API build: PASS.
+
+PM2 process:
+
+`lexora-api`
+
+PID before activation:
+
+`1596`
+
+PID after controlled restart:
+
+`27739`
+
+Post-activation health:
+
+- direct API: HTTP `200`;
+- Nginx-proxied API: HTTP `200`.
+
+API port `4000` remained:
+
+`127.0.0.1:4000`
+
+No unsafe wildcard API listener was detected.
+
+Unauthenticated smoke verification after activation:
+
+- AcademicSession list: HTTP `401`;
+- StudentBatch list: HTTP `401`.
+
+Repository remained clean and aligned with `origin/main`.
+
+### Authenticated ordinary-runtime verification
+
+Ordinary runtime precondition:
+
+- implementation HEAD/origin aligned;
+- repository clean;
+- PM2 online;
+- direct API HTTP `200`;
+- Nginx API HTTP `200`;
+- Law AcademicSession baseline: `0`;
+- Law StudentBatch baseline: `0`.
+
+Canonical Law runtime principals were authenticated through the existing login flow.
+
+Raw passwords and raw access tokens were not recorded in this documentation.
+
+Authorization-negative verification passed:
+
+- unauthenticated AcademicSession list → HTTP `401`;
+- Teacher AcademicSession read → HTTP `403`;
+- Teacher AcademicSession write → HTTP `403`;
+- Student StudentBatch read → HTTP `403`;
+- Student AcademicSession write → HTTP `403`.
+
+### AcademicSession ordinary-runtime behavior
+
+Verified through the ordinary Nginx/API/PostgreSQL runtime:
+
+- Department Admin create → HTTP `201`;
+- forged other-department header did not change persisted Law department scope;
+- list/search → HTTP `200`;
+- direct read → HTTP `200`;
+- duplicate department/code identity → HTTP `409`;
+- Law Admin direct read of another-department AcademicSession → HTTP `404`;
+- update → HTTP `200`.
+
+### StudentBatch ordinary-runtime behavior
+
+Verified through the ordinary Nginx/API/PostgreSQL runtime:
+
+- Department Admin create → HTTP `201`;
+- duplicate exact business identity → HTTP `409`;
+- cross-department AcademicProgram parent → HTTP `400`;
+- cross-department AcademicSession parent → HTTP `400`;
+- Law Admin direct read of another-department StudentBatch → HTTP `404`;
+- list/search with forged other-department header remained scoped to Law → HTTP `200`;
+- code/name update → HTTP `200`.
+
+Immutable-parent and mass-assignment verification:
+
+- `academicProgramId` PATCH attempt → HTTP `400`;
+- `academicSessionId` PATCH attempt → HTTP `400`;
+- `departmentId` mass-assignment attempt → HTTP `400`;
+- authoritative final direct read → HTTP `200`;
+- persisted parent identities remained unchanged.
+
+### Authoritative PostgreSQL and audit verification
+
+The ordinary PostgreSQL state was inspected after the successful API operations.
+
+Verified:
+
+- persisted AcademicSession identity;
+- persisted StudentBatch department/programme/session chain;
+- expected success audit cardinality: exactly `4`;
+- audit actor identity: correct;
+- audit department identity: correct;
+- audit request identity: present and correct for the tested flow.
+
+Runtime fixtures were then removed.
+
+Baseline restoration:
+
+- AcademicSession: `0 → 0`;
+- StudentBatch: `0 → 0`;
+- feature fixture residue: `ZERO`.
+
+After cleanup:
+
+- PM2 PID remained `27739`;
+- direct API remained HTTP `200`;
+- Nginx API remained HTTP `200`;
+- API remained loopback-only;
+- HEAD/origin remained aligned;
+- repository remained clean.
+
+### Real PostgreSQL forced audit-failure rollback verification
+
+A separate ordinary-runtime verifier exercised the final compiled
+`PrismaAcademicRepository` against the real PostgreSQL runtime.
+
+The existing AuditLog actor foreign key was first verified.
+
+A deliberately nonexistent actor identity was then supplied only to the controlled
+repository verifier so that the required success-audit insert would fail at the
+database boundary.
+
+The invalid actor was confirmed absent before verification.
+
+No API authentication or production principal was altered.
+
+The following four write paths were exercised:
+
+1. AcademicSession create;
+2. AcademicSession update;
+3. StudentBatch create;
+4. StudentBatch update.
+
+For each path, the required success-audit insert failed as intended.
+
+Verified rollback behavior:
+
+- AcademicSession create mutation residue: `ZERO`;
+- AcademicSession update original value: preserved;
+- StudentBatch create mutation residue: `ZERO`;
+- StudentBatch update original mutable value: preserved;
+- StudentBatch immutable parent identity: preserved;
+- failed-audit residue: `ZERO`.
+
+Controlled update fixtures were removed after verification.
+
+Final baseline restoration:
+
+- AcademicSession: `0 → 0`;
+- StudentBatch: `0 → 0`;
+- feature AcademicSession residue: `ZERO`;
+- feature StudentBatch residue: `ZERO`;
+- feature audit residue: `ZERO`.
+
+Final platform integrity after the forced-failure verifier:
+
+- PM2 PID: `27739 → 27739`;
+- direct API: HTTP `200`;
+- Nginx API: HTTP `200`;
+- HEAD/origin: aligned;
+- repository: clean.
+
+Therefore the final committed transactional implementation was verified against the
+ordinary PostgreSQL runtime to roll back business mutations when the required success
+audit fails.
+
+### Security and architecture preservation
+
+This checkpoint preserves:
+
+- AuthGuard enforcement;
+- PolicyGuard enforcement;
+- `@RequirePolicy()` enforcement;
+- authenticated request context;
+- principal-authoritative department isolation;
+- safe cross-department direct-object handling;
+- DTO whitelist/mass-assignment boundaries;
+- StudentBatch immutable parent identity;
+- existing dedicated StudentBatch-binding authority;
+- existing result publication/lock rules;
+- transcript immutability/security boundaries;
+- attendance authority boundaries;
+- notification isolation;
+- existing sensitive audit requirements.
+
+No raw:
+
+- access token;
+- refresh token;
+- password;
+- database credential;
+- transcript verification token;
+- production secret
+
+is preserved by this checkpoint.
+
+### Current verified classification
+
+The **AcademicSession + StudentBatch Operational Management Backend** is now:
+
+- implemented;
+- independently reviewed;
+- audit-atomicity corrected before commit;
+- statically verified;
+- `140/140` focused tests passed;
+- API typecheck verified;
+- API build verified;
+- committed and pushed;
+- promoted to Ubuntu;
+- activated under PM2;
+- AuthGuard/PolicyGuard protected;
+- Department Admin management authority verified;
+- Teacher/Student exclusion verified;
+- principal-authoritative department isolation verified;
+- forged department-header resistance verified;
+- cross-department object isolation verified;
+- cross-department parent rejection verified;
+- duplicate conflict behavior verified;
+- StudentBatch immutable-parent behavior verified;
+- PostgreSQL persistence verified;
+- success-audit identity/cardinality verified;
+- real PostgreSQL forced audit-failure rollback verified;
+- cleanup/baseline restoration verified;
+- API/Nginx health preserved;
+- loopback-only API exposure preserved;
+- repository cleanliness/origin alignment verified.
+
+The **AcademicSession + StudentBatch Operational Management Backend** is technically
+complete and ordinary-runtime verified.
+
+### Superseded pending statements
+
+Earlier statements that the following were pending are superseded by this checkpoint:
+
+- AcademicSession CRUD/governance API;
+- StudentBatch CRUD/governance API.
+
+Historical checkpoints remain valid for the state they documented at that time.
+
+### Still pending
+
+The following remain pending unless separately implemented and runtime verified:
+
+- canonical/operational AcademicSession business records;
+- canonical/operational StudentBatch business records;
+- AcademicSession Admin UI;
+- StudentBatch Admin UI;
+- archive/unarchive governance for AcademicSession;
+- archive/unarchive governance for StudentBatch;
+- Student → StudentBatch assignment;
+- StudentCurriculumAssignment → StudentBatch binding;
+- Enrollment → StudentBatch binding;
+- historical/canonical StudentBatch backfill;
+- BatchCoordinatorAssignment;
+- Batch Coordinator runtime authority/policies;
+- Batch Coordinator frontend;
+- Programme Coordinator authority where independently required by specification;
+- CourseOutlineVersion StudentBatch snapshot;
+- Course Outline coordinator review/return/approval/activation workflow;
+- result StudentBatch integration;
+- attendance StudentBatch integration;
+- complete production hardening;
+- complete Lexora LMS.
+
+`AcademicSession`, `AcademicTerm`, `StudentBatch`, result-publication batch identity and
+attendance-import batch identity remain distinct concepts.
+
+Future Batch Coordinator authority must continue to be based on exact:
+
+`StudentBatch + AcademicTerm`
+
+scope and must not derive authority from:
+
+`CurriculumVersion.effectiveAcademicSessionCode`.
+
+### Final narrow verdict
+
+> **AcademicSession + StudentBatch Operational Management Backend = IMPLEMENTED / INDEPENDENTLY REVIEWED / 140/140 FOCUSED TESTS PASS / TYPECHECK PASS / BUILD PASS / DEPLOYED / AUTHENTICATED ORDINARY-RUNTIME VERIFIED / DEPARTMENT-ISOLATED / CROSS-DEPARTMENT NEGATIVE TESTED / IMMUTABLE-PARENT VERIFIED / SUCCESS-AUDIT VERIFIED / REAL-POSTGRESQL AUDIT-FAILURE ROLLBACK VERIFIED / CLEANUP VERIFIED / NON-DISRUPTION VERIFIED / READY FOR DOCUMENTATION CLOSURE**
+
+This verdict applies only to the operational backend management bundle described above.
+
+It does not mean canonical AcademicSession/StudentBatch academic configuration, the
+Admin UI, Student-to-Batch assignment, Coordinator governance, the complete Course
+Outline workflow, or the complete Lexora LMS is complete.
