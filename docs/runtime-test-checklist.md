@@ -27682,3 +27682,762 @@ The narrow sequential programme-change behavior corrected by this commit is runt
 verified.
 
 Concurrent CurriculumCourse creation remains a separate unresolved hardening boundary.
+
+## CurriculumCourse Parent Department Identity Hardening — Runtime Verification (2026-08-24)
+
+### Scope and classification
+
+This checkpoint hardens the database-level department identity of
+`CurriculumCourse` parent relations.
+
+It closes the previously runtime-demonstrated defense-in-depth gap where an
+independently valid:
+
+- `Course`;
+- `CurriculumVersion`; or
+- `CourseAssessmentTemplate`
+
+from another department could be referenced by a `CurriculumCourse` row because
+the earlier parent foreign keys referenced only parent `id`.
+
+The application-level Course academic-programme change path had already been
+hardened to fail closed when malformed curriculum dependencies existed.
+
+This checkpoint adds the corresponding database-level tenant identity protection
+for the three `CurriculumCourse` parent relationships.
+
+Current verified classification:
+
+- implementation: complete;
+- implementation review: passed;
+- focused schema verification: passed;
+- Prisma validation/generation: passed;
+- API typecheck/build: passed;
+- source committed and pushed;
+- ordinary PostgreSQL deployment: complete;
+- live PostgreSQL catalog verification: passed;
+- live relational behavior verification: passed;
+- Prisma migration status: clean;
+- Prisma database/datamodel drift: none;
+- repeated migration deployment: safe no-op;
+- runtime health: passed.
+
+This checkpoint does not claim broader database row-level security or complete
+multi-tenant database enforcement across every Lexora table.
+
+### Implementation identity
+
+Primary implementation commit:
+
+`9ea97368ca24e26737f49f3f79993a4b7bb8a682`
+
+Commit message:
+
+`Harden curriculum course department identity`
+
+Implementation parent:
+
+`440875658473c091a28196db89a2785e5a9a9076`
+
+Primary implementation scope:
+
+- `.gitignore`;
+- `apps/api/prisma/schema.prisma`;
+- `apps/api/prisma/curriculum-course-department-identity.schema.test.ts`;
+- `apps/api/prisma/migrations/202608240001_harden_curriculum_course_department_identity/migration.sql`.
+
+Primary implementation diff:
+
+- files: `4`;
+- insertions: `212`;
+- deletions: `3`.
+
+Migration:
+
+`202608240001_harden_curriculum_course_department_identity`
+
+The migration performs schema/constraint hardening only.
+
+It contains no business-row:
+
+- `INSERT`;
+- `UPDATE`;
+- `DELETE`;
+- `MERGE`;
+- `TRUNCATE`;
+- `COPY`.
+
+No API route, service authorization rule, frontend behavior, role, policy,
+request-context rule, or audit behavior was changed by this focused
+implementation.
+
+### Parent candidate identities
+
+The Prisma model now exposes:
+
+Course:
+
+`@@unique([id, departmentId], map: "course_id_department_uq")`
+
+CourseAssessmentTemplate:
+
+`@@unique([id, departmentId], map: "assessment_template_id_department_uq")`
+
+The already-existing CurriculumVersion identity is reused:
+
+`@@unique([id, departmentId], map: "curriculum_version_id_department_uq")`
+
+No duplicate CurriculumVersion candidate identity was introduced.
+
+### CurriculumCourse composite parent relationships
+
+The final Prisma relations bind the authenticated academic tenant identity into
+all three relevant parent relations:
+
+Course:
+
+`(courseId, departmentId) -> Course(id, departmentId)`
+
+CurriculumVersion:
+
+`(curriculumVersionId, departmentId) -> CurriculumVersion(id, departmentId)`
+
+CourseAssessmentTemplate:
+
+`(assessmentTemplateId, departmentId) -> CourseAssessmentTemplate(id, departmentId)`
+
+All three use:
+
+- `ON DELETE RESTRICT`;
+- `ON UPDATE RESTRICT`.
+
+Exact live constraint names:
+
+- `curriculum_course_dept_course_fkey`;
+- `curriculum_course_dept_version_fkey`;
+- `curriculum_course_dept_template_fkey`.
+
+The direct:
+
+`CurriculumCourse.departmentId -> Department.id`
+
+relationship remains present.
+
+Its existing live behavior remains:
+
+- `ON DELETE RESTRICT`;
+- `ON UPDATE CASCADE`.
+
+### Superseded single-column parent foreign keys
+
+The following earlier single-column parent foreign keys were removed:
+
+- `curriculum_courses_course_id_fkey`;
+- `curriculum_courses_curriculum_version_id_fkey`;
+- `curriculum_courses_assessment_template_id_fkey`.
+
+They are not recreated elsewhere.
+
+### Static verification
+
+Before the implementation commit, focused verification reported:
+
+- CurriculumCourse department-identity schema tests: `7/7` PASS;
+- existing OBE identity regression tests: `13/13` PASS;
+- Prisma validate: PASS;
+- Prisma generate: PASS;
+- API typecheck: PASS;
+- API build: PASS.
+
+After final Ubuntu source promotion, server-side verification again confirmed:
+
+- Prisma validate: PASS;
+- Prisma generate: PASS;
+- `pnpm --filter @lexora/api typecheck`: PASS;
+- `pnpm --filter @lexora/api build`: PASS;
+- repository remained clean.
+
+No TypeScript module-system change was introduced.
+
+### Ordinary PostgreSQL baseline
+
+Ordinary datasource was explicitly verified as:
+
+- database: `lexora_lms`;
+- PostgreSQL: `18.6`;
+- ordinary PostgreSQL host/port remained the existing local runtime target.
+
+No database credential value is recorded here.
+
+Before the hardening migration, department-identity mismatch count across the
+existing `CurriculumCourse` parent relationships was:
+
+`0`
+
+Selected ordinary business-row fingerprint before deployment:
+
+`2|4|0|0|8|61|14|12|0`
+
+representing:
+
+- departments: `2`;
+- academic programs: `4`;
+- academic sessions: `0`;
+- student batches: `0`;
+- curriculum versions: `8`;
+- curriculum courses: `61`;
+- course offerings: `14`;
+- enrollments: `12`;
+- course outline versions: `0`.
+
+A private exact-current database snapshot was created and validated before the
+migration incident described below.
+
+The private snapshot is not part of the repository and must not be committed or
+uploaded.
+
+### Verification-harness and deployment-order incident
+
+Several verification-harness issues occurred during this checkpoint.
+
+They are preserved explicitly so that they are not later misclassified as
+product defects or successful verification evidence.
+
+#### Temporary worktree boundary verifier
+
+The first isolated verification attempt stopped before disposable PostgreSQL
+startup because the temporary worktree boundary guard compared Git status output
+too rigidly.
+
+A narrow diagnostic subsequently confirmed the exact intended temporary
+worktree state:
+
+Tracked modifications:
+
+- `.gitignore`;
+- `apps/api/prisma/schema.prisma`.
+
+Untracked intended files:
+
+- `apps/api/prisma/curriculum-course-department-identity.schema.test.ts`;
+- target `migration.sql`.
+
+The transferred four-file bundle hashes matched the reviewed local source
+exactly.
+
+No database was touched during this failure.
+
+#### Cross-platform CRLF verifier noise
+
+The transferred Windows review bundle retained CRLF line endings.
+
+Ubuntu `git diff --check` therefore emitted whole-file `^M` / trailing-whitespace
+noise for transferred files.
+
+This was a cross-platform verifier issue, not a Prisma-schema semantic change.
+
+The exact reviewed file hashes were used as the authoritative transfer
+integrity evidence.
+
+#### Docker privilege boundary
+
+The first disposable PostgreSQL startup attempted direct Docker socket access.
+
+The server intentionally requires Docker administration through `sudo`.
+
+Direct Docker access therefore failed with a Docker socket permission error.
+
+The corrected harness used `sudo docker`.
+
+No disposable database had started and no ordinary database mutation occurred
+during the failed direct-Docker attempt.
+
+#### Offline pnpm bootstrap failure
+
+A later isolated worktree attempt used:
+
+`pnpm install --offline --frozen-lockfile`
+
+The pnpm store did not contain every required package tarball.
+
+The install therefore stopped before provisioning an isolated Prisma executable.
+
+A subsequent Prisma command in that temporary worktree was unavailable.
+
+This was a verification-environment dependency issue.
+
+It was not an application or migration defect.
+
+#### Ordinary-database deployment-order incident
+
+The most important verifier incident occurred when the already-installed Prisma
+CLI from the ordinary live repository was reused while supplying the isolated
+worktree schema through `--schema`.
+
+Although the schema path pointed at the isolated worktree, Prisma loaded the
+ordinary live repository environment.
+
+Prisma explicitly reported the datasource as:
+
+- database: `lexora_lms`;
+- host: `localhost:5432`.
+
+As a result, the hardening migration was applied successfully to the ordinary
+Lexora PostgreSQL database before the implementation source commit had been
+created and pushed.
+
+This was a deployment-order / verifier isolation failure.
+
+It was not treated as a successful disposable-database verification.
+
+No attempt was made to hide or relabel the event as disposable verification.
+
+### Immediate incident-state verification
+
+Immediately after the unintended early ordinary deployment, read-only
+verification confirmed:
+
+Target migration history:
+
+- target rows: `1`;
+- completed target rows: `1`;
+- rolled back target rows: `0`;
+- applied steps: `1`.
+
+Migration start time recorded by Prisma:
+
+`2026-08-24 02:58:23.914388+00`
+
+Migration completion time:
+
+`2026-08-24 02:58:23.981055+00`
+
+Live parent unique indexes:
+
+- `course_id_department_uq`;
+- `assessment_template_id_department_uq`;
+- `curriculum_version_id_department_uq`.
+
+Live composite parent FKs:
+
+- `curriculum_course_dept_course_fkey`;
+- `curriculum_course_dept_version_fkey`;
+- `curriculum_course_dept_template_fkey`.
+
+All three were present with:
+
+- `ON UPDATE RESTRICT`;
+- `ON DELETE RESTRICT`.
+
+The direct department FK remained present.
+
+Department-identity mismatch count remained:
+
+`0`
+
+The selected business-row fingerprint remained exactly:
+
+`2|4|0|0|8|61|14|12|0`
+
+PM2 remained healthy.
+
+Direct API health:
+
+`HTTP 200`
+
+Nginx API health:
+
+`HTTP 200`
+
+Because the migration was:
+
+- completed successfully;
+- DDL-only;
+- internally consistent;
+- non-destructive to business rows;
+
+and immediate catalog/data/runtime checks passed, no destructive rollback was
+attempted.
+
+The recovery strategy was to align reviewed source control with the already
+successful ordinary database state, then perform full idempotency, drift and
+behavior verification.
+
+### Migration checksum portability incident and correction
+
+The migration had been applied from the transferred Windows bundle.
+
+Applied migration SHA-256:
+
+`39967fd21860e77ab2a0cf5c2b82e0a10cc1551dd0bef25104e9790837d4eac3`
+
+That applied file contained:
+
+`36`
+
+carriage-return bytes from CRLF line endings.
+
+The initial implementation Git commit normalized the same migration SQL to LF.
+
+Initial committed LF migration SHA-256:
+
+`149bb9549870cce0e77cab483dc8158f51b2517d97b276ae3da34ffc1fe66c22`
+
+After CRLF-to-LF normalization, the applied bundle and committed migration were
+verified byte-for-byte identical.
+
+Therefore:
+
+- SQL semantics were unchanged;
+- the difference was line-ending representation only.
+
+Because Prisma migration checksums are byte-sensitive, source history was
+corrected to preserve the exact successfully applied migration bytes.
+
+Checksum-preservation commit:
+
+`1e86b7ac4f03ff236602109f1fcf2d71e4199efa`
+
+Commit message:
+
+`Preserve applied curriculum migration checksum`
+
+The correction:
+
+- added a path-specific `.gitattributes` `-text` rule;
+- re-indexed the target migration with its exact CRLF bytes;
+- did not change migration SQL semantics.
+
+Final committed migration SHA-256:
+
+`39967fd21860e77ab2a0cf5c2b82e0a10cc1551dd0bef25104e9790837d4eac3`
+
+Final committed migration SHA therefore matches the ordinary Prisma
+`_prisma_migrations.checksum` exactly.
+
+No `_prisma_migrations` checksum was manually edited.
+
+No migration was marked applied or rolled back through `prisma migrate resolve`.
+
+### Final server source promotion
+
+Ubuntu source was fast-forwarded from:
+
+`440875658473c091a28196db89a2785e5a9a9076`
+
+to:
+
+`1e86b7ac4f03ff236602109f1fcf2d71e4199efa`
+
+After promotion:
+
+- server HEAD matched `origin/main`;
+- repository was clean;
+- checked-out migration SHA matched the live Prisma checksum;
+- checked-out migration retained exactly `36` CR bytes;
+- the migration path resolved to Git attribute `text: unset`.
+
+### Final Prisma migration state
+
+`prisma migrate status`
+
+reported:
+
+`Database schema is up to date!`
+
+No applied-migration checksum warning remained.
+
+Source migration SHA and ordinary database migration checksum matched exactly.
+
+A second ordinary:
+
+`prisma migrate deploy`
+
+reported:
+
+`No pending migrations to apply.`
+
+Target migration history remained:
+
+- exactly `1` target record;
+- exactly `1` completed target record;
+- no unresolved failed target record.
+
+The target checksum remained unchanged.
+
+### Final ordinary PostgreSQL catalog verification
+
+Live PostgreSQL verified exactly three new composite parent foreign keys:
+
+`curriculum_course_dept_course_fkey`
+
+`(course_id, department_id) -> courses(id, department_id)`
+
+`ON UPDATE RESTRICT ON DELETE RESTRICT`
+
+`curriculum_course_dept_version_fkey`
+
+`(curriculum_version_id, department_id) -> curriculum_versions(id, department_id)`
+
+`ON UPDATE RESTRICT ON DELETE RESTRICT`
+
+`curriculum_course_dept_template_fkey`
+
+`(assessment_template_id, department_id) -> course_assessment_templates(id, department_id)`
+
+`ON UPDATE RESTRICT ON DELETE RESTRICT`
+
+The direct department foreign key remained:
+
+`curriculum_courses_department_id_fkey`
+
+Superseded parent foreign keys were absent.
+
+All three parent candidate identities were present.
+
+### Corrected live relational behavior verification
+
+An initial live negative-matrix harness attempted to reuse existing
+cross-department fixtures.
+
+It stopped because no cross-department `CurriculumVersion` fixture was
+available.
+
+The summary lines printed after that failed probe were hardcoded harness output
+and are not treated as runtime evidence.
+
+The corrected final matrix created synthetic parent fixtures only inside one
+ordinary PostgreSQL transaction.
+
+The transaction used:
+
+- local lock timeout;
+- local statement timeout;
+- synthetic same-department and cross-department parent rows;
+- exact constraint-name assertions;
+- final `ROLLBACK`.
+
+Verified positive control:
+
+- valid same-department `CurriculumCourse` parent binding: PASS.
+
+Verified negative behavior:
+
+Cross-department Course:
+
+- blocked;
+- exact rejecting constraint:
+  `curriculum_course_dept_course_fkey`.
+
+Cross-department CurriculumVersion:
+
+- blocked;
+- exact rejecting constraint:
+  `curriculum_course_dept_version_fkey`.
+
+Cross-department CourseAssessmentTemplate:
+
+- blocked;
+- exact rejecting constraint:
+  `curriculum_course_dept_template_fkey`.
+
+Referenced parent Course delete:
+
+- blocked;
+- exact restrictive FK:
+  `curriculum_course_dept_course_fkey`.
+
+Referenced parent Course department-identity update:
+
+- blocked;
+- exact restrictive FK:
+  `curriculum_course_dept_course_fkey`.
+
+Transaction result:
+
+`ROLLBACK`
+
+Post-probe synthetic residue:
+
+`0`
+
+Therefore no synthetic verification fixture persisted in the ordinary database.
+
+### Final Prisma drift verification
+
+After source promotion and live behavioral verification:
+
+`prisma migrate diff`
+
+reported:
+
+`No difference detected.`
+
+Therefore ordinary database-to-datamodel Prisma drift is:
+
+`none`
+
+### Final data integrity
+
+Final verification fingerprint:
+
+`2|4|8|63|4|61|14|12`
+
+representing:
+
+- departments: `2`;
+- academic programs: `4`;
+- curriculum versions: `8`;
+- courses: `63`;
+- course assessment templates: `4`;
+- curriculum courses: `61`;
+- course offerings: `14`;
+- enrollments: `12`.
+
+Fingerprint before and after the final transactional probe was identical.
+
+Final department-identity mismatch count:
+
+`0`
+
+### Runtime service non-disruption
+
+No PM2 restart was required for this schema-only hardening.
+
+PM2 PID before/after final verification:
+
+`1676`
+
+Direct API health:
+
+`HTTP 200`
+
+Nginx API health:
+
+`HTTP 200`
+
+Server repository:
+
+- HEAD:
+  `1e86b7ac4f03ff236602109f1fcf2d71e4199efa`;
+- aligned with `origin/main`;
+- working tree clean.
+
+### Security boundary preserved
+
+This checkpoint did not weaken or bypass:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- `@RequirePolicy()`;
+- authenticated request context;
+- department-scoped application authorization;
+- object-level authorization;
+- teacher assigned-course isolation;
+- student own-resource restrictions;
+- audit behavior;
+- result publication locking;
+- result amendment controls;
+- GPA/CGPA controls;
+- transcript snapshot/token controls;
+- attendance active-session controls;
+- attendance/eligibility override-reason requirements;
+- notification isolation.
+
+The new database constraints provide an additional defense-in-depth boundary.
+
+They do not replace application authorization.
+
+### Scope boundary and remaining work
+
+This checkpoint enforces parent department identity only.
+
+It does not by itself enforce semantic programme compatibility between:
+
+- `CurriculumVersion`;
+- `Course`;
+- `CourseAssessmentTemplate`;
+- `CurriculumCourse`.
+
+Programme compatibility remains a separate application/domain invariant unless
+and until separately represented at database level.
+
+This checkpoint also does not introduce:
+
+- PostgreSQL row-level security;
+- generic curriculum write APIs;
+- automatic curriculum backfill;
+- historical curriculum reassignment;
+- concurrency serialization/retry redesign;
+- frontend changes;
+- broader tenant-aware composite foreign keys across every Lexora relation.
+
+Earlier evidence showed that ordinary current data already had zero
+CurriculumCourse department-identity mismatches.
+
+The purpose of this checkpoint is prevention and defense-in-depth for future
+writes, raw SQL, backfill tooling and future curriculum-management surfaces.
+
+Future CurriculumCourse CRUD must continue to perform:
+
+- authenticated department scoping;
+- object-level authorization;
+- programme compatibility validation;
+- safe transaction/concurrency design;
+- audit-ready mutation handling.
+
+### Accurate current status
+
+> CurriculumCourse parent department identity hardening is implemented, reviewed, committed and pushed, deployed to ordinary PostgreSQL 18.6, and live runtime verified. `CurriculumCourse` now references Course, CurriculumVersion and CourseAssessmentTemplate through department-aware composite foreign keys with `ON DELETE RESTRICT / ON UPDATE RESTRICT`. Live PostgreSQL rejects cross-department Course, CurriculumVersion and CourseAssessmentTemplate bindings at the exact new constraints. Referenced parent deletion and parent department-identity mutation are restricted. Existing business data remained unchanged, mismatch count is zero, Prisma drift is absent, repeated migration deployment is a no-op, source migration bytes exactly match the live Prisma checksum, and direct/Nginx runtime health remains HTTP 200.
+
+### Verification incident status
+
+The earlier verifier incidents are resolved.
+
+They did not require weakening any Lexora security or tenant-isolation control.
+
+The ordinary-database deployment-order incident is considered operationally
+recovered because:
+
+- the migration completed successfully;
+- business data was preserved;
+- the source implementation was subsequently committed and pushed;
+- migration checksum history and source bytes were reconciled without editing
+  Prisma migration history;
+- server source was aligned;
+- Prisma status is clean;
+- repeated deployment is a no-op;
+- live catalog and behavioral tests passed;
+- Prisma drift is absent;
+- runtime health is stable.
+
+The incident remains documented as part of the audit-ready engineering record.
+
+### Supersession note
+
+This checkpoint supersedes earlier statements that the
+`CurriculumCourse -> Course`, `CurriculumCourse -> CurriculumVersion`, and
+`CurriculumCourse -> CourseAssessmentTemplate` relationships are protected only
+by independent single-column parent foreign keys.
+
+The current ordinary database state uses department-aware composite parent
+foreign keys for all three relationships.
+
+Earlier statements that broader PostgreSQL row-level isolation or universal
+tenant-aware composite foreign keys remain pending are not superseded.
+
+### Next safe step
+
+After this runtime checkpoint is reviewed and committed, reassess the next
+focused curriculum/academic hardening task from the latest source-of-truth
+documents.
+
+Do not combine the next task with:
+
+- historical backfill;
+- broad PostgreSQL RLS;
+- frontend work;
+- unrelated curriculum CRUD;
+- result/transcript work
+
+unless a separate source-driven scope explicitly requires it.
