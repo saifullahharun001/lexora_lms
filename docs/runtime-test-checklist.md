@@ -28969,3 +28969,659 @@ This verdict applies only to the operational backend management bundle described
 It does not mean canonical AcademicSession/StudentBatch academic configuration, the
 Admin UI, Student-to-Batch assignment, Coordinator governance, the complete Course
 Outline workflow, or the complete Lexora LMS is complete.
+
+## CourseOffering → StudentBatch Dedicated Operational Binding Ordinary-Runtime Verification — 2026-08-24
+
+### Scope and supersession
+
+This checkpoint records ordinary-runtime verification of the dedicated operational:
+
+`CourseOffering → StudentBatch`
+
+binding workflow.
+
+The earlier:
+
+**CourseOffering → StudentBatch Nullable Binding Foundation and PostgreSQL 18.6 Runtime Verification**
+
+checkpoint remains valid historical evidence.
+
+That schema/database checkpoint intentionally established the nullable tenant-safe
+CourseOffering → StudentBatch relation while leaving the dedicated operational
+application workflow, full programme-chain validation and operational binding audit
+for later work.
+
+This checkpoint supersedes earlier pending wording only to the extent that the
+following remained unverified:
+
+- dedicated application-layer CourseOffering → StudentBatch binding workflow;
+- exact application-level programme-chain validation;
+- exact operational StudentBatch-binding authorization;
+- operational binding success audit;
+- atomic rollback when the required binding audit fails.
+
+This checkpoint does not create or retain canonical AcademicSession or StudentBatch
+business rows.
+
+It does not perform canonical or historical CourseOffering batch backfill.
+
+It does not implement Student → StudentBatch assignment or Coordinator governance.
+
+### Implementation provenance
+
+Dedicated operational binding implementation commit:
+
+`f88f3c4e606de1fbaede72ec37da05baa5fa83a5`
+
+Commit subject:
+
+`Implement course offering student batch binding`
+
+Git provenance inspection verified that the following were introduced together by
+that commit:
+
+- dedicated controller route;
+- dedicated policy constant;
+- repository implementation;
+- exact authorization exclusion/provenance rule;
+- focused repository tests.
+
+The implementation commit changed `18` files with:
+
+- `1888` insertions;
+- `54` deletions.
+
+The implementation included:
+
+- authorization provisioning definition;
+- provisioning tests;
+- repository port contract;
+- AcademicService binding workflow;
+- dedicated service tests;
+- audit event;
+- policy names;
+- Prisma repository implementation;
+- focused repository tests;
+- dedicated DTO and DTO tests;
+- CourseOffering controller route and tests;
+- AuthorizationService exact-grant behavior and tests;
+- permission constants.
+
+No new code change was required during this runtime-verification cycle.
+
+Runtime verification was performed against the currently deployed descendant HEAD:
+
+`2bc40066c8a89c802f8fd665c7b458dfb8a86442`
+
+### Dedicated API
+
+Operational route:
+
+`PUT /api/v1/course-offerings/:id/student-batch-binding`
+
+Dedicated request body:
+
+`studentBatchId`
+
+The binding is deliberately separated from generic CourseOffering PATCH behavior.
+
+Generic CourseOffering update does not expose StudentBatch rebinding as an ordinary
+mutable field.
+
+### Authorization model
+
+Dedicated policy:
+
+`course-management.student-batch-binding.manage`
+
+Dedicated permission identity:
+
+- resource: `course-management.student-batch-binding`;
+- action: `manage`;
+- scope: `DEPARTMENT`.
+
+The policy is intentionally excluded from broad Department Admin
+`course-management.*` authority.
+
+A Department Admin therefore requires exact valid permission provenance.
+
+The exact grant must correspond to the authenticated principal's loaded:
+
+- Department Admin role assignment;
+- role identity;
+- active department;
+- permission identity.
+
+Teacher and Student do not gain this authority even if a permission-shaped grant is
+presented outside the required Department Admin provenance.
+
+The service also revalidates the required active database authority before entering
+the repository mutation path.
+
+### Department-scope authority
+
+The authenticated principal's real department remains authoritative.
+
+A caller-supplied:
+
+`x-department-id`
+
+does not override a valid authenticated principal's department.
+
+The repository also scopes CourseOffering and dependent identities by department.
+
+Cross-department direct StudentBatch targets therefore fail safely.
+
+### Binding invariants
+
+The operational binding requires the CourseOffering to already have a
+CurriculumCourse identity.
+
+A new binding validates the exact academic programme chain:
+
+`Course.academicProgramId`
+
+must equal:
+
+`CurriculumVersion.academicProgramId`
+
+which must equal:
+
+`StudentBatch.academicProgramId`.
+
+The binding workflow also validates tenant/dependency consistency across the
+CourseOffering, Course, CurriculumCourse, CurriculumVersion and StudentBatch chain.
+
+A malformed or cross-scope dependency fails closed.
+
+### Binding lifecycle
+
+The dedicated lifecycle is intentionally narrow:
+
+`null → X`
+
+is allowed after all authorization, scope and programme checks pass.
+
+`X → X`
+
+is idempotent.
+
+`X → Y`
+
+is rejected as a binding conflict.
+
+Ordinary rebinding to another StudentBatch is not permitted.
+
+Generic CourseOffering PATCH cannot bypass this lifecycle.
+
+A new binding to an archived StudentBatch is not permitted.
+
+### Transaction and audit behavior
+
+The repository performs the first successful binding transactionally.
+
+The operation includes the required success audit:
+
+`course-management.offering.student-batch-bound`
+
+The success audit records accountable binding context including the tested:
+
+- CourseOffering identity;
+- StudentBatch identity;
+- Course identity;
+- CurriculumCourse identity;
+- CurriculumVersion identity;
+- Course academic programme identity;
+- Curriculum academic programme identity;
+- StudentBatch academic programme identity;
+- previous binding value;
+- new binding value;
+- authenticated actor;
+- department;
+- request context.
+
+The first successful:
+
+`null → StudentBatch`
+
+binding creates exactly one success audit.
+
+A same-target idempotent repeat does not create a duplicate success audit.
+
+The required audit is transactionally coupled with the business mutation.
+
+If the required audit fails, the StudentBatch binding rolls back.
+
+### Runtime preflight
+
+Before the mutation matrix, a read-only server/runtime inspection verified:
+
+- server HEAD/origin aligned;
+- repository clean;
+- PM2 healthy;
+- direct API HTTP `200`;
+- Nginx API HTTP `200`;
+- Law department active;
+- exact binding permission row count: `1`;
+- canonical Law Department Admin healthy;
+- active Department Admin assignment count: `1`;
+- exact binding grant assignment count: `1`;
+- binding authority ready;
+- Law AcademicSession baseline: `0`;
+- Law StudentBatch baseline: `0`;
+- already StudentBatch-bound Law CourseOffering count: `0`;
+- historical binding audit count: `0`.
+
+Five safe curriculum-bound and StudentBatch-unbound Law CourseOffering candidates were
+identified.
+
+A same-department programme-mismatch target was available.
+
+A controlled cross-department BUS fixture foundation was also available.
+
+The preflight itself performed no mutation.
+
+### Runtime target
+
+The controlled runtime binding target was:
+
+`offering_law_enrollment_runtime_positive`
+
+Its expected programme was:
+
+`program_law_sca_runtime`
+
+The target was already curriculum-bound and had:
+
+`studentBatchId = null`
+
+before verification.
+
+A separate curriculum-unbound CourseOffering was used only for the corresponding
+negative test.
+
+Temporary AcademicSession and StudentBatch fixtures were created only for controlled
+runtime verification and were removed afterward.
+
+No canonical AcademicSession or StudentBatch business configuration was created.
+
+### Deployed authorization verification
+
+The deployed AuthorizationService behavior was inspected/exercised before the API
+mutation matrix.
+
+Verified:
+
+- broad Department Admin authority without exact grant → DENIED;
+- exact valid Department Admin grant → ALLOWED;
+- Teacher with the same permission-shaped grant → DENIED.
+
+Therefore the dedicated policy remained excluded from broad Department Admin wildcard
+authority at runtime.
+
+### Real PostgreSQL forced audit-failure rollback
+
+Before ordinary successful binding, the compiled
+`PrismaAcademicRepository` was exercised directly against the ordinary PostgreSQL
+runtime.
+
+A deliberately nonexistent audit actor identity was supplied only to the controlled
+repository verifier.
+
+The existing audit actor foreign-key boundary caused the required success-audit insert
+to fail.
+
+Verified:
+
+- forced audit FK failure: OBSERVED;
+- StudentBatch business binding residue: ZERO;
+- failed audit residue: ZERO.
+
+Result:
+
+`Binding audit atomicity: ROLLBACK PASS`
+
+No API principal, authorization configuration, database schema, trigger or production
+secret was changed to create this failure.
+
+### Authenticated principals
+
+Canonical runtime principals were authenticated through the ordinary login flow:
+
+- Law Department Admin;
+- Law Teacher;
+- Law Student.
+
+All three logins returned HTTP `201` and principal identity was verified.
+
+Raw passwords were not printed and were unset after login.
+
+Raw access tokens were not printed and were retained only in temporary protected
+runtime files for the duration of the verifier.
+
+### Authorization negative matrix
+
+Ordinary API verification passed:
+
+- unauthenticated dedicated binding request → HTTP `401`;
+- Teacher dedicated binding request → HTTP `403`;
+- Student dedicated binding request → HTTP `403`.
+
+The dedicated route therefore remained protected by the existing authentication and
+policy boundaries.
+
+### Generic mass-assignment boundary
+
+A Department Admin attempted to mutate:
+
+`studentBatchId`
+
+through generic:
+
+`PATCH /api/v1/course-offerings/:id`
+
+The request returned:
+
+HTTP `400`.
+
+Authoritative PostgreSQL verification immediately afterward confirmed:
+
+`studentBatchId = null`
+
+Therefore generic CourseOffering PATCH cannot bypass the dedicated binding workflow.
+
+### Dependency and isolation negative matrix
+
+The following ordinary-runtime cases were verified:
+
+#### Curriculum prerequisite
+
+Binding a StudentBatch to a CourseOffering without a CurriculumCourse identity:
+
+HTTP `400`.
+
+#### Cross-department target
+
+Law Department Admin targeting a BUS StudentBatch:
+
+HTTP `404`.
+
+The cross-department target therefore remained safely undisclosed.
+
+#### Programme mismatch
+
+A same-department StudentBatch belonging to a different AcademicProgram:
+
+HTTP `400`.
+
+This verifies the application-level programme-chain boundary.
+
+#### Archived StudentBatch
+
+Attempting a new binding to an archived StudentBatch:
+
+HTTP `404`.
+
+No rejected negative case changed the target CourseOffering binding.
+
+### First exact successful binding
+
+The Law Department Admin then performed the first exact binding:
+
+`null → controlled Law StudentBatch`.
+
+A forged BUS:
+
+`x-department-id`
+
+header was deliberately included.
+
+The request returned:
+
+HTTP `200`.
+
+The response verified:
+
+- CourseOffering department remained Law;
+- expected `studentBatchId` was present;
+- expected nested StudentBatch relation was present.
+
+Therefore the forged department header did not override the authenticated principal's
+real department scope.
+
+### Authoritative PostgreSQL persistence
+
+After the successful API request, PostgreSQL verification confirmed the expected
+StudentBatch binding persisted on the target CourseOffering.
+
+The persisted binding matched the exact controlled StudentBatch.
+
+### Success audit verification
+
+After the first successful binding:
+
+- success audit cardinality: exactly `1`;
+- audit actor identity: verified;
+- audit request identity: verified;
+- audit department identity: verified;
+- programme accountability context: verified;
+- `previousBindingValue = null`: verified;
+- `newBindingValue = controlled StudentBatch`: verified.
+
+The audit therefore represents the exact first binding transition.
+
+### Idempotency verification
+
+The same Department Admin repeated the exact same:
+
+`X → X`
+
+binding request.
+
+Result:
+
+HTTP `200`.
+
+The original binding remained unchanged.
+
+The success audit cardinality remained:
+
+exactly `1`.
+
+Therefore a same-target idempotent repeat does not create duplicate binding audit
+records.
+
+### Different-target rebinding conflict
+
+The same already-bound CourseOffering was then targeted at a second compatible Law
+StudentBatch.
+
+Result:
+
+HTTP `409`.
+
+Authoritative PostgreSQL verification confirmed the original StudentBatch binding was
+preserved.
+
+Therefore:
+
+`X → Y`
+
+rebinding is blocked.
+
+### Controlled cleanup
+
+All temporary verification fixtures were removed.
+
+The controlled target CourseOffering was restored to:
+
+`studentBatchId = null`.
+
+Final Law baseline:
+
+- AcademicSession: `0`;
+- StudentBatch: `0`;
+- dedicated binding audit residue: `0`.
+
+The controlled cross-department runtime fixture rows created by this verifier were
+also removed.
+
+No canonical StudentBatch or AcademicSession row was retained.
+
+### Final platform integrity
+
+After cleanup:
+
+- PM2 PID remained `27739 → 27739`;
+- direct API remained HTTP `200`;
+- Nginx API remained HTTP `200`;
+- API listener remained loopback-only;
+- HEAD/origin remained aligned;
+- repository remained clean;
+- target CourseOffering binding was restored to `null`;
+- Law AcademicSession count returned to `0`;
+- Law StudentBatch count returned to `0`;
+- dedicated binding audit residue returned to `0`;
+- passwords were not retained;
+- access tokens were temporary only.
+
+No server restart was required.
+
+### Security and architecture preservation
+
+This checkpoint preserves:
+
+- AuthGuard;
+- PolicyGuard;
+- `@RequirePolicy()`;
+- exact Department Admin permission provenance;
+- principal-authoritative department isolation;
+- `x-department-id` non-override behavior;
+- safe cross-department direct-object handling;
+- CourseOffering curriculum prerequisite;
+- exact application-level programme-chain validation;
+- StudentBatch archived-target rejection;
+- dedicated immutable/idempotent binding lifecycle;
+- generic CourseOffering mass-assignment protection;
+- transactional binding audit;
+- fail-closed audit atomicity;
+- existing result/publication boundaries;
+- existing transcript boundaries;
+- existing attendance boundaries;
+- existing notification isolation.
+
+No raw:
+
+- password;
+- access token;
+- refresh token;
+- database credential;
+- production secret;
+- transcript verification token
+
+is preserved by this checkpoint.
+
+### Current verified classification
+
+The dedicated CourseOffering → StudentBatch operational binding is now:
+
+- implemented;
+- implementation provenance verified;
+- source inspected/reviewed;
+- focused-test-covered;
+- deployed;
+- exact permission provisioned;
+- exact Department Admin authority runtime verified;
+- broad Department Admin wildcard exclusion verified;
+- Teacher/Student exclusion verified;
+- unauthenticated denial verified;
+- principal-authoritative department isolation verified;
+- forged department-header resistance verified;
+- curriculum prerequisite verified;
+- cross-department safe-not-found behavior verified;
+- same-department programme mismatch rejection verified;
+- archived StudentBatch new-binding rejection verified;
+- generic PATCH mass-assignment protection verified;
+- `null → X` successful binding verified;
+- `X → X` idempotency verified;
+- duplicate success-audit prevention verified;
+- `X → Y` conflict behavior verified;
+- original binding preservation verified;
+- authoritative PostgreSQL persistence verified;
+- success-audit identity/cardinality verified;
+- programme-accountability audit context verified;
+- real PostgreSQL forced audit-failure rollback verified;
+- cleanup/baseline restoration verified;
+- API/Nginx non-disruption verified;
+- loopback-only API exposure preserved;
+- repository cleanliness/origin alignment verified.
+
+### Superseded pending statements
+
+Earlier pending statements are superseded only to the extent that they stated or
+implied that the following were still unverified:
+
+- dedicated application-layer CourseOffering → StudentBatch binding;
+- full operational programme-chain validation for new binding;
+- exact operational StudentBatch-binding authority;
+- operational StudentBatch-binding audit;
+- transactional rollback when that required audit fails.
+
+Historical schema/database checkpoints remain valid for the state they documented at
+that time.
+
+### Still pending
+
+The following remain pending unless separately implemented and runtime verified:
+
+- canonical/operational AcademicSession business configuration;
+- canonical/operational StudentBatch business configuration;
+- canonical CourseOffering → StudentBatch binding/backfill;
+- historical CourseOffering → StudentBatch backfill;
+- Student → StudentBatch assignment;
+- StudentCurriculumAssignment → StudentBatch binding;
+- Enrollment → StudentBatch binding;
+- first-class Section model where still required;
+- BatchCoordinatorAssignment;
+- exact Batch Coordinator runtime authority;
+- Coordinator APIs;
+- Coordinator frontend;
+- Programme Coordinator authority where independently required;
+- CourseOutlineVersion StudentBatch snapshot;
+- Course Outline `SUBMITTED_BY_TEACHER → COORDINATOR_REVIEW`;
+- coordinator return-for-correction workflow;
+- Course Outline approval/activation workflow;
+- result StudentBatch integration;
+- attendance StudentBatch integration;
+- complete production hardening;
+- complete Lexora LMS.
+
+The concepts:
+
+- `AcademicSession`;
+- `AcademicTerm`;
+- `StudentBatch`;
+- result-publication batch identity;
+- attendance-import batch identity
+
+remain distinct.
+
+`CurriculumVersion.effectiveAcademicSessionCode` remains curriculum metadata and must
+not become an authorization key.
+
+Future Batch Coordinator authority must remain scoped by exact:
+
+`StudentBatch + AcademicTerm`
+
+identity.
+
+### Final narrow verdict
+
+> **CourseOffering → StudentBatch Dedicated Operational Binding = IMPLEMENTED / PROVENANCE VERIFIED / SOURCE-REVIEWED / FOCUSED-TEST-COVERED / DEPLOYED / EXACT-AUTHORITY ORDINARY-RUNTIME VERIFIED / BROAD-WILDCARD EXCLUSION VERIFIED / DEPARTMENT-ISOLATED / CROSS-DEPARTMENT NEGATIVE TESTED / PROGRAMME-CHAIN VERIFIED / GENERIC-PATCH BYPASS BLOCKED / NULL→X VERIFIED / X→X IDEMPOTENT VERIFIED / X→Y CONFLICT VERIFIED / SUCCESS-AUDIT VERIFIED / REAL-POSTGRESQL AUDIT-FAILURE ROLLBACK VERIFIED / CLEANUP VERIFIED / NON-DISRUPTION VERIFIED / READY FOR DOCUMENTATION CLOSURE**
+
+This verdict applies only to the dedicated operational CourseOffering → StudentBatch
+binding workflow.
+
+It does not mean canonical StudentBatch configuration, canonical CourseOffering batch
+backfill, Student-to-Batch assignment, Coordinator governance, the complete Course
+Outline workflow, or the complete Lexora LMS is complete.
