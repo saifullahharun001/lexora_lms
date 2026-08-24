@@ -27293,3 +27293,392 @@ and must not derive authority from `effectiveAcademicSessionCode`.
 This does not mean StudentBatch management, Student batch assignment, Batch Coordinator
 authority, Course Outline coordinator workflow, result/attendance StudentBatch
 integration, or the complete Lexora LMS is complete.
+
+## Course Academic Programme Change Hardening — Runtime Verification (2026-08-24)
+
+### Scope
+
+This checkpoint records the focused implementation, deployment and ordinary-runtime
+verification of hardened `Course.academicProgramId` changes.
+
+Implementation commit:
+
+`f4fe5dcb83e63601316757f97ae0ebaa26d7e5dd`
+
+Parent:
+
+`f88f3c4e606de1fbaede72ec37da05baa5fa83a5`
+
+Commit subject:
+
+`Harden course programme changes`
+
+This is a narrow Course programme-change checkpoint. It does not claim completion of
+curriculum governance, database tenant hardening, concurrent CurriculumCourse creation,
+Programme Coordinator authority, Batch Coordinator authority, or the complete LMS.
+
+### Exact implementation boundary
+
+The implementation changed exactly five files:
+
+- `apps/api/src/modules/academic/application/ports/academic.repository.port.ts`
+- `apps/api/src/modules/academic/application/services/academic.service.ts`
+- `apps/api/src/modules/academic/application/services/course-programme-change.service.test.ts`
+- `apps/api/src/modules/academic/infrastructure/repositories/course-programme-change.repository.test.ts`
+- `apps/api/src/modules/academic/infrastructure/repositories/prisma-academic.repository.ts`
+
+No Prisma schema or migration changed.
+
+### Implemented rule
+
+For Course academic-programme identity:
+
+- same programme `A → A` remains allowed;
+- actual `A → B` movement is allowed only when no CurriculumCourse dependency exists;
+- `A → null` removal is allowed only when no CurriculumCourse dependency exists;
+- any actual movement/removal with one or more CurriculumCourse dependencies fails closed;
+- malformed cross-department CurriculumCourse dependency also fails closed;
+- wrong-department target AcademicProgram is rejected.
+
+The service mapping is:
+
+- scoped Course missing → `404 Course not found`;
+- target AcademicProgram outside active department →
+  `400 Academic program does not belong to the active department`;
+- CurriculumCourse dependency conflict →
+  `409 Course academic program conflicts with existing curriculum dependencies`.
+
+### Locking boundary
+
+Source inspection verified the programme-change transaction locks:
+
+1. department-scoped Course with `FOR UPDATE`;
+2. non-null target AcademicProgram with `FOR UPDATE`;
+3. CurriculumCourse dependencies for that Course, ordered by ID, with `FOR UPDATE`.
+
+The path does not acquire CourseOffering locks.
+
+CurriculumVersion rows are not queried or locked as permission for Course programme
+movement.
+
+The ordered locking behavior is source/static verified.
+
+A dedicated live concurrent-transaction race test was not performed in this checkpoint.
+
+### Static and build verification
+
+Before deployment:
+
+- focused programme-change tests: `14/14` passed;
+- combined Academic, authorization, provisioning, StudentBatch, curriculum, syllabus and
+  CourseOutline regression set: `423/423` passed;
+- API typecheck: passed;
+- API build: passed;
+- `git diff --check`: passed;
+- exact five-file boundary: passed;
+- Prisma/schema/migration delta: none.
+
+### Ubuntu promotion
+
+Pre-pull server state:
+
+- server HEAD:
+  `f88f3c4e606de1fbaede72ec37da05baa5fa83a5`;
+- target:
+  `f4fe5dcb83e63601316757f97ae0ebaa26d7e5dd`;
+- working tree: clean;
+- commit delta: exactly one;
+- file delta: exactly the five reviewed files;
+- fast-forward eligibility: passed;
+- Direct API health: `HTTP 200`;
+- Nginx API health: `HTTP 200`;
+- API listener: loopback `127.0.0.1:4000`.
+
+The server was promoted with an exact fast-forward pull.
+
+After pull:
+
+- HEAD matched the implementation commit;
+- API typecheck passed;
+- API build passed;
+- working tree remained clean.
+
+### PM2 activation and health
+
+Controlled PM2 activation changed PID:
+
+`69499 → 93253`
+
+Immediately after activation:
+
+- PM2 status: online;
+- Direct API health: `HTTP 200`;
+- Nginx API health: `HTTP 200`;
+- API remained bound to `127.0.0.1:4000`;
+- working tree remained clean.
+
+The PM2 error log displayed historical
+`MALWARE_SCANNER_HOST` validation output, but the error-log file modification timestamp
+was `2026-07-30`; it was not new deployment-failure evidence.
+
+A later sanity check still observed PID `93253` and both health paths at `HTTP 200`.
+
+At the beginning of the focused programme-change runtime matrix the active API PID was
+`1676`.
+
+The cause of the intervening `93253 → 1676` process transition was not established by
+this checkpoint.
+
+Therefore uninterrupted PID continuity between initial activation and the later focused
+runtime matrix is not claimed.
+
+During the focused runtime matrix itself:
+
+`1676 → 1676`
+
+and the process remained healthy.
+
+### Ordinary runtime baseline
+
+Before disposable fixture creation, Law-department counts were:
+
+- AcademicProgram: `3`;
+- Course: `62`;
+- CurriculumCourse: `61`.
+
+A disposable Law programme and disposable Law Course were created specifically for this
+runtime test.
+
+Existing canonical/historical curriculum Course rows were not repurposed for destructive
+programme-change testing.
+
+### Runtime verification — dependency-free Course
+
+Authenticated Law Department Admin runtime verification produced:
+
+#### `A → A`
+
+Result:
+
+- HTTP success;
+- persisted programme remained A;
+- passed.
+
+#### `A → B`
+
+With no CurriculumCourse dependency:
+
+- HTTP success;
+- persisted programme changed to B;
+- passed.
+
+#### `B → A`
+
+With no CurriculumCourse dependency:
+
+- HTTP success;
+- programme restored to A;
+- passed.
+
+#### `A → null`
+
+Through the public Course PATCH API:
+
+- HTTP `200`;
+- persisted `academic_program_id` became `NULL`;
+- passed.
+
+A subsequent `null → A` request succeeded and restored the programme.
+
+Therefore programme removal is reachable through the current HTTP DTO/controller path
+and is runtime verified.
+
+### Cross-department target rejection
+
+A Law Course was targeted at the existing Business-department BBA AcademicProgram.
+
+Result:
+
+- request rejected with the safe `400` programme-scope behavior;
+- persisted Law Course programme remained unchanged;
+- passed.
+
+Verified service message:
+
+`Academic program does not belong to the active department`
+
+### Authenticated principal scope versus x-department-id
+
+While authenticated as the Law principal, a request supplied:
+
+`x-department-id: dept_bus_test`
+
+The header did not replace the authenticated principal's actual department scope.
+
+Result:
+
+- Law principal scope remained authoritative;
+- passed.
+
+### Runtime database hardening finding — malformed CurriculumCourse identity
+
+A controlled malformed CurriculumCourse row was temporarily created where its own
+`department_id` represented the Business department while its referenced Course and
+curriculum/template relationships were Law records.
+
+The ordinary PostgreSQL schema permitted this relationally inconsistent row.
+
+This demonstrates that the current independent foreign keys do not by themselves enforce
+complete composite department identity across these CurriculumCourse relationships.
+
+The Course programme-change implementation then encountered this existing malformed
+dependency.
+
+Result:
+
+- attempted programme movement failed closed;
+- Course programme remained unchanged;
+- dependency-conflict behavior was returned;
+- passed.
+
+The malformed row was removed immediately after the test.
+
+This is a database defense-in-depth hardening finding, not evidence that application
+department isolation failed.
+
+Existing AuthGuard, PolicyGuard, request context, scoped queries and object-level
+authorization remain required and must not be weakened.
+
+### Runtime verification — same-department CurriculumCourse dependency
+
+A controlled same-department CurriculumCourse dependency was then attached to the
+disposable Course.
+
+With the dependency present:
+
+#### `A → B`
+
+- rejected;
+- HTTP `409`;
+- programme remained A;
+- passed.
+
+#### `A → null`
+
+- rejected;
+- HTTP `409`;
+- programme remained A;
+- passed.
+
+#### `A → A`
+
+- allowed;
+- programme remained A;
+- passed.
+
+Verified sanitized conflict message:
+
+`Course academic program conflicts with existing curriculum dependencies`
+
+### Cleanup and baseline restoration
+
+The disposable CurriculumCourse, Course and AcademicProgram fixtures were removed.
+
+Post-test Law counts returned exactly to:
+
+- AcademicProgram: `3`;
+- Course: `62`;
+- CurriculumCourse: `61`.
+
+Measured baseline restoration:
+
+- programmes: `3 → 3`;
+- courses: `62 → 62`;
+- CurriculumCourse rows: `61 → 61`.
+
+Final focused-runtime integrity:
+
+- PM2 PID during matrix: `1676 → 1676`;
+- Direct API health: `HTTP 200`;
+- Nginx API health: `HTTP 200`;
+- repository HEAD:
+  `f4fe5dcb83e63601316757f97ae0ebaa26d7e5dd`;
+- repository working tree before this documentation mutation: clean.
+
+### Evidence boundary
+
+This checkpoint newly runtime verified:
+
+- dependency-free `A → A`;
+- dependency-free `A → B`;
+- dependency-free `B → A`;
+- dependency-free `A → null`;
+- `null → A` restoration;
+- cross-department target-programme rejection;
+- authenticated-principal resistance to `x-department-id` scope override;
+- fail-closed handling of an existing malformed cross-department CurriculumCourse;
+- dependency-protected `A → B`;
+- dependency-protected `A → null`;
+- dependency-preserving `A → A`;
+- disposable-fixture cleanup;
+- measured ordinary-data baseline restoration;
+- Direct and Nginx health after the focused matrix.
+
+This checkpoint did not newly runtime verify:
+
+- unauthenticated Course PATCH rejection;
+- Teacher Course PATCH rejection;
+- Student Course PATCH rejection;
+- audit-table persistence for the success/conflict cases;
+- live concurrent Course programme movement versus CurriculumCourse creation;
+- complete DB-level composite department identity.
+
+The existing Course PATCH policy requirement remains in source and was not removed.
+
+### Still pending / future hardening
+
+The following remain pending:
+
+- additive database-level department-identity hardening for CurriculumCourse relationships;
+- audit of existing CurriculumCourse rows before any future composite-FK migration;
+- disposable PostgreSQL verification before such schema hardening;
+- safe non-destructive migration/backfill design;
+- concurrent CurriculumCourse-creation versus Course programme-change serialization review;
+- dedicated live race testing if locking is changed;
+- runtime audit-table verification for programme-change outcomes;
+- broader PostgreSQL tenant defense-in-depth / RLS;
+- broader curriculum-management governance.
+
+The runtime finding that a malformed cross-department CurriculumCourse relational identity
+can currently be persisted is consistent with the existing broader security backlog item
+for database-level department-isolation defense-in-depth.
+
+No historical migration was changed and no schema hardening was attempted in this
+checkpoint.
+
+### Current classification
+
+Course academic-programme change hardening at commit
+`f4fe5dcb83e63601316757f97ae0ebaa26d7e5dd` is now:
+
+- implemented;
+- focused-test verified;
+- broader regression verified;
+- typecheck verified;
+- build verified;
+- committed and pushed;
+- server fast-forward deployed;
+- PM2 activated;
+- Direct API health verified;
+- Nginx API health verified;
+- loopback-only API exposure preserved;
+- focused ordinary-runtime behavior verified;
+- cross-department target rejection verified;
+- authenticated principal department authority verified;
+- malformed dependency fail-closed behavior verified;
+- ordinary-data cleanup and measured baseline restoration verified.
+
+The narrow sequential programme-change behavior corrected by this commit is runtime
+verified.
+
+Concurrent CurriculumCourse creation remains a separate unresolved hardening boundary.
