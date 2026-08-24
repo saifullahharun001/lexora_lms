@@ -29625,3 +29625,490 @@ binding workflow.
 It does not mean canonical StudentBatch configuration, canonical CourseOffering batch
 backfill, Student-to-Batch assignment, Coordinator governance, the complete Course
 Outline workflow, or the complete Lexora LMS is complete.
+
+## Batch Coordinator Assignment Scoped Schema Foundation and PostgreSQL 18.6 Runtime Verification — 2026-08-25
+
+### Scope and supersession
+
+This checkpoint records the completed narrow schema/database foundation for
+`BatchCoordinatorAssignment`.
+
+It supersedes earlier statements only to the extent that
+`BatchCoordinatorAssignment` itself remained pending as a schema foundation.
+
+It does **not** supersede or close the still-pending Batch Coordinator authorization,
+policy, API, frontend or Course Outline coordinator workflow.
+
+The approved authority boundary remains:
+
+`StudentBatch + AcademicTerm`
+
+This checkpoint does not introduce or approve a broad/global Coordinator role.
+
+Department Admin is not treated as an implicit Coordinator.
+
+`AcademicTerm` is not a substitute for `StudentBatch`.
+
+`effectiveAcademicSessionCode` remains curriculum metadata and is not an authorization
+scope key.
+
+Programme Coordinator authority remains unresolved and is not invented by this
+checkpoint.
+
+### Implementation identity
+
+Implementation commit:
+
+`6dd4289c8f95da90a6c8bdfd284b60b4672db9ab`
+
+Commit message:
+
+`Add batch coordinator assignment foundation`
+
+The implementation commit changed exactly five files:
+
+- `.gitattributes`;
+- `.gitignore`;
+- `apps/api/prisma/schema.prisma`;
+- `apps/api/prisma/batch-coordinator-assignment-foundation.schema.test.ts`;
+- `apps/api/prisma/migrations/202608240002_add_batch_coordinator_assignment_foundation/migration.sql`.
+
+Migration:
+
+`202608240002_add_batch_coordinator_assignment_foundation`
+
+Reviewed and committed migration SHA-256:
+
+`9815e64cac99c472f47f22a8034f3f549f5d4d156b3c637f9c5639bda77a22af`
+
+A path-specific `.gitattributes` `-text` rule protects the migration from
+cross-platform newline normalization so that Prisma migration-checksum identity remains
+stable.
+
+### Schema foundation implemented
+
+A dedicated enum was introduced:
+
+`BatchCoordinatorAssignmentStatus`
+
+with exactly:
+
+- `ACTIVE`;
+- `INACTIVE`;
+- `ARCHIVED`.
+
+`BatchCoordinatorAssignment` uses exact assignment authority identity:
+
+- `departmentId`;
+- `studentBatchId`;
+- `academicTermId`;
+- `coordinatorUserId`.
+
+The assignment also records:
+
+- `assignedByUserId`;
+- lifecycle status;
+- assignment timestamp;
+- optional expiry;
+- optional unassignment timestamp;
+- optional archive timestamp;
+- created/updated timestamps.
+
+The database foundation preserves exact tenant-safe parent identities:
+
+- `User(id, departmentId)`;
+- `AcademicTerm(id, departmentId)`;
+- existing `StudentBatch(id, departmentId)`.
+
+The assignment relations use department-safe composite foreign-key identity where
+required.
+
+All five assignment foreign keys are validated and use:
+
+- `ON DELETE RESTRICT`;
+- `ON UPDATE RESTRICT`.
+
+The exact scope/user uniqueness is:
+
+`departmentId + studentBatchId + academicTermId + coordinatorUserId`
+
+The schema intentionally does **not** make
+`departmentId + studentBatchId + academicTermId` unique by itself.
+
+Therefore more than one Coordinator user can exist for the same exact Batch + Term
+scope if future approved governance allows it.
+
+The migration adds two validated temporal constraints:
+
+- `expiresAt` must be null or later than `assignedAt`;
+- `unassignedAt` must be null or not earlier than `assignedAt`.
+
+No assignment rows are automatically seeded or backfilled.
+
+### Static and focused verification
+
+Before ordinary deployment, the implementation passed:
+
+- Prisma formatting;
+- Prisma schema validation;
+- Prisma Client generation;
+- API typecheck;
+- API build;
+- focused `BatchCoordinatorAssignment` schema verification `9/9`;
+- staged diff validation;
+- exact migration byte-identity verification.
+
+The focused compiled schema test was initially invoked from repository root and failed
+with `ENOENT` because that test resolves `prisma/schema.prisma` from `process.cwd()`.
+
+That was a verifier invocation error, not a product or schema defect.
+
+The same compiled test was rerun from the correct `apps/api` working directory and
+passed `9/9`.
+
+No implementation change was required for that verifier correction.
+
+### Disposable PostgreSQL verification
+
+Before ordinary deployment, the exact reviewed migration was independently exercised
+against disposable PostgreSQL `18.6`.
+
+The disposable verification established:
+
+- exact-current ordinary database snapshot restore;
+- exact migration checksum identity;
+- successful migration application;
+- exactly one completed target migration record;
+- no incomplete or rolled-back target migration;
+- exact enum values;
+- target table creation;
+- zero automatic assignment rows;
+- required tenant candidate identities;
+- exact assignment indexes;
+- exact scope/user uniqueness;
+- five validated `RESTRICT / RESTRICT` foreign keys;
+- exact composite foreign-key identities;
+- two temporal CHECK constraints;
+- preserved selected existing business data;
+- same Batch + Term with a different Coordinator user allowed;
+- duplicate exact assignment rejected;
+- cross-department StudentBatch rejected;
+- cross-department AcademicTerm rejected;
+- cross-department Coordinator User rejected;
+- cross-department assigning User rejected;
+- invalid expiry rejected;
+- invalid unassignment rejected;
+- parent DELETE/identity UPDATE restrictive behavior verified;
+- transactional cleanup verified;
+- no ordinary database mutation during disposable verification;
+- Prisma database-to-datamodel drift none;
+- migration status up to date.
+
+### Commit and Ubuntu promotion
+
+The implementation was committed and pushed as:
+
+`6dd4289c8f95da90a6c8bdfd284b60b4672db9ab`
+
+Post-push verification established:
+
+- local `HEAD`;
+- `origin/main`;
+- actual remote `main`;
+
+all aligned to the implementation commit with zero divergence and a clean working
+tree.
+
+The Ubuntu runtime repository was then fast-forwarded from:
+
+`a61dcf0154fac45784bd7b000dc371128b675235`
+
+to:
+
+`6dd4289c8f95da90a6c8bdfd284b60b4672db9ab`
+
+Server-side verification passed:
+
+- committed migration SHA identity;
+- migration `-text` protection;
+- Prisma validate;
+- Prisma Client generation;
+- API typecheck;
+- API build;
+- focused compiled schema test `9/9` from the correct `apps/api` working directory;
+- clean/origin-aligned repository state.
+
+### Ordinary PostgreSQL pre-deployment evidence
+
+Ordinary runtime database:
+
+`lexora_lms`
+
+PostgreSQL:
+
+`18.6`
+
+Before ordinary deployment:
+
+- target migration history row was absent;
+- target table was absent;
+- target enum was absent;
+- new User candidate identity was absent;
+- new AcademicTerm candidate identity was absent;
+- exactly one repository migration was pending;
+- that migration was exactly
+  `202608240002_add_batch_coordinator_assignment_foundation`;
+- incomplete Prisma migration history count was zero;
+- selected existing business/academic counts were stable.
+
+A private rollback backup was created before ordinary deployment:
+
+`/home/sh002/lexora-private-backups/lexora_lms-before-202608240002_add_batch_coordinator_assignment_foundation-20260824T180209Z.dump`
+
+Backup properties:
+
+- custom-format PostgreSQL dump;
+- size: `824762` bytes;
+- TOC entries: `773`;
+- directory mode: `0700`;
+- file mode: `0600`;
+- archive listing validated;
+- SHA-256:
+
+`3b93a1e3a6593babaeced15102a1b3b3bad798a6d11284ac967bbcb5e648276b`
+
+The backup remains private and retained.
+
+### PM2 verifier incident before migration
+
+An initial final deployment guard compared the live PM2 PID against a previously
+observed historical PID `27739`.
+
+Before migration application, the guard found that the live PID had changed and
+stopped.
+
+No migration had been applied by that failed guard.
+
+The cause of the intervening PID change was not established and is not attributed to
+this schema work.
+
+A fresh live baseline was then established:
+
+- PM2 PID: `1568`;
+- Direct API: HTTP `200`;
+- Nginx API: HTTP `200`;
+- no restart was performed by the migration workflow.
+
+The fresh PID remained stable across the actual ordinary migration window:
+
+`1568 → 1568`
+
+This is the authoritative non-disruption evidence for this deployment.
+
+### Ordinary PostgreSQL deployment
+
+The reviewed migration was applied to ordinary PostgreSQL `18.6`.
+
+Migration history after deployment:
+
+- target rows: exactly `1`;
+- completed: `1`;
+- incomplete: `0`;
+- rolled back: `0`;
+- recorded Prisma checksum exactly matched the reviewed migration SHA-256.
+
+Live ordinary catalog verification established:
+
+- enum exactly `ACTIVE,INACTIVE,ARCHIVED`;
+- `batch_coordinator_assignments` present;
+- automatic assignment rows exactly `0`;
+- `User(id, departmentId)` candidate identity present and valid;
+- `AcademicTerm(id, departmentId)` candidate identity present and valid;
+- `StudentBatch(id, departmentId)` candidate identity valid;
+- assignment index set verified;
+- exact scope/user unique identity verified;
+- five validated `RESTRICT / RESTRICT` foreign keys;
+- two validated temporal CHECK constraints.
+
+Selected existing business/academic row counts were preserved across deployment.
+
+Prisma migration status reported the ordinary database up to date.
+
+Direct API and Nginx health both remained HTTP `200`.
+
+The NestJS API listener remained loopback-only on `127.0.0.1:4000`.
+
+### Final closure verification
+
+A first drift-check attempt incorrectly extracted `DATABASE_URL` text manually from
+`.env` and Prisma returned `P1013`.
+
+That was a verifier datasource-parsing defect.
+
+The failed drift-check attempt did not apply another migration or change the schema.
+
+The corrected drift verifier used Prisma's schema datasource directly.
+
+Final closure then verified:
+
+- `No difference detected.`;
+- ordinary database-to-datamodel drift = none;
+- second `prisma migrate deploy` = safe no-op;
+- `No pending migrations to apply.`;
+- final Prisma migration status = up to date;
+- migration history remained exactly one completed target record;
+- incomplete target migration count remained zero;
+- rolled-back target migration count remained zero;
+- PM2 PID remained `1568 → 1568` during final closure;
+- Direct API remained HTTP `200`;
+- Nginx API remained HTTP `200`;
+- API remained loopback-only;
+- rollback backup remained valid;
+- repository remained clean and aligned with `origin/main`.
+
+### Security and architecture preservation
+
+This checkpoint did not introduce:
+
+- a Coordinator HTTP API;
+- Coordinator authorization policies;
+- Coordinator role provisioning;
+- a broad/global Coordinator platform role;
+- Department Admin as implicit Coordinator;
+- Course Outline coordinator review transitions;
+- Programme Coordinator authority;
+- Coordinator frontend behavior.
+
+It did not weaken or remove:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- `@RequirePolicy()`;
+- authenticated request context;
+- department isolation;
+- object-level authorization;
+- Teacher assigned-course checks;
+- Student own-resource checks;
+- safe not-found behavior;
+- result publication locks;
+- result amendment controls;
+- GPA/CGPA controlled recalculation;
+- transcript immutable snapshots;
+- transcript token hashing/expiry/revocation;
+- minimal public transcript verification;
+- attendance active-session enforcement;
+- Teacher-only attendance capture;
+- required override reasons;
+- notification isolation;
+- critical-locked preference protection;
+- audit requirements for sensitive operations.
+
+No new privileged runtime authorization was granted by this schema checkpoint.
+
+### Current verified classification
+
+The **Batch Coordinator Assignment Scoped Schema Foundation** is now:
+
+- source-audited;
+- implemented;
+- independently reviewed;
+- exact migration identity verified;
+- statically verified;
+- Prisma validate verified;
+- Prisma Client generation verified;
+- API typecheck verified;
+- API build verified;
+- focused schema test `9/9` verified;
+- exact reviewed artifact committed and pushed;
+- Ubuntu runtime source promoted;
+- disposable PostgreSQL `18.6` migration verified;
+- disposable relational behavior verified;
+- disposable cross-department isolation verified;
+- disposable restrictive-parent behavior verified;
+- ordinary PostgreSQL `18.6` deployed;
+- ordinary migration history verified;
+- ordinary live catalog verified;
+- no automatic coordinator-assignment backfill verified;
+- selected existing business data preserved;
+- Prisma drift verified as none;
+- migration idempotency verified;
+- validated rollback backup retained;
+- PM2 migration-window non-disruption verified;
+- Direct API health verified;
+- Nginx API health verified;
+- loopback-only API exposure preserved;
+- repository cleanliness/origin alignment verified.
+
+The **Batch Coordinator Assignment Scoped Schema Foundation** is technically complete
+and ordinary-runtime verified.
+
+This classification closes only the narrow schema/database foundation.
+
+### Explicitly still pending
+
+The following remain pending unless separately implemented and runtime verified:
+
+- Batch Coordinator assignment management API;
+- Batch Coordinator assignment service/repository behavior;
+- exact assignment create/update/archive lifecycle;
+- assignment-level object authorization;
+- Coordinator runtime policy definitions;
+- Coordinator permission provisioning;
+- assignment-scoped Coordinator authority evaluation;
+- exact active/expired/inactive assignment semantics;
+- audit events for Coordinator assignment management;
+- Batch Coordinator frontend;
+- Course Outline `SUBMITTED_BY_TEACHER → COORDINATOR_REVIEW`;
+- Course Outline `COORDINATOR_REVIEW → RETURNED_FOR_CORRECTION`;
+- corrected Course Outline resubmission semantics;
+- Course Outline approval;
+- Course Outline activation;
+- Course Outline archival;
+- `CourseOutlineVersion` StudentBatch snapshot behavior;
+- Programme Coordinator authority;
+- Coordinator/Admin Course Outline frontend;
+- broader Coordinator governance.
+
+The complete Coordinator feature remains incomplete.
+
+The complete Course Outline lifecycle remains incomplete.
+
+### Next safe step
+
+The next narrow implementation checkpoint should begin with a fresh source audit of
+the current authorization and assignment-management architecture.
+
+The next authority work must preserve the exact scope:
+
+`StudentBatch + AcademicTerm`
+
+Coordinator authority must be derived from an explicit active
+`BatchCoordinatorAssignment` and must fail closed outside that exact scope.
+
+Do not grant authority merely because a user has a broad Coordinator label.
+
+Do not use Department Admin as an implicit Coordinator shortcut.
+
+Do not derive Coordinator authority from:
+
+- `effectiveAcademicSessionCode`;
+- AcademicTerm alone;
+- StudentBatch alone;
+- CourseOffering alone;
+- result-publication batch codes;
+- attendance-import batch identities.
+
+Programme Coordinator authority remains unresolved and must not be invented as part of
+Batch Coordinator implementation.
+
+Before Course Outline coordinator transitions are implemented, exact Coordinator
+assignment lookup, department isolation, object-level authorization, lifecycle
+semantics and audit behavior must be independently implemented and runtime verified.
+
+> **Batch Coordinator Assignment Scoped Schema Foundation = IMPLEMENTED / INDEPENDENTLY REVIEWED / STATICALLY VERIFIED / FOCUSED 9/9 PASS / DISPOSABLE POSTGRESQL 18.6 VERIFIED / ORDINARY POSTGRESQL 18.6 DEPLOYED / LIVE-CATALOG VERIFIED / NO-AUTOMATIC-ASSIGNMENT VERIFIED / DRIFT-FREE / IDEMPOTENT / NON-DISRUPTION VERIFIED / DOCUMENTATION READY FOR REVIEW / TECHNICALLY CLOSED**
+
+This verdict applies only to the schema/database foundation.
+
+It does not mean Batch Coordinator authorization, Coordinator assignment management,
+Course Outline coordinator review, Programme Coordinator governance or the complete
+Lexora LMS is complete.
