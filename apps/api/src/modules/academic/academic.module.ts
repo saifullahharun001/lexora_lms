@@ -8,6 +8,7 @@ import { PlatformModule } from "@/platform/platform.module";
 import { AcademicService } from "./application/services/academic.service";
 import { ACADEMIC_REPOSITORY } from "./domain/academic.constants";
 import { PrismaAcademicRepository } from "./infrastructure/repositories/prisma-academic.repository";
+import { AcademicSessionsController } from "./presentation/http/academic-sessions.controller";
 import { AcademicTermsController } from "./presentation/http/academic-terms.controller";
 import { AcademicYearsController } from "./presentation/http/academic-years.controller";
 import { CourseOfferingsController } from "./presentation/http/course-offerings.controller";
@@ -15,6 +16,7 @@ import { CoursesController } from "./presentation/http/courses.controller";
 import { CurriculumVersionsController } from "./presentation/http/curriculum-versions.controller";
 import { EnrollmentsController } from "./presentation/http/enrollments.controller";
 import { ProgramsController } from "./presentation/http/programs.controller";
+import { StudentBatchesController } from "./presentation/http/student-batches.controller";
 import { StudentCurriculumAssignmentsController } from "./presentation/http/student-curriculum-assignments.controller";
 import { SyllabusVersionsController } from "./presentation/http/syllabus-versions.controller";
 import { TeacherAssignmentsController } from "./presentation/http/teacher-assignments.controller";
@@ -29,6 +31,8 @@ import { TeacherAssignmentsController } from "./presentation/http/teacher-assign
   controllers: [
     AcademicYearsController,
     AcademicTermsController,
+    AcademicSessionsController,
+    StudentBatchesController,
     ProgramsController,
     CoursesController,
     CourseOfferingsController,

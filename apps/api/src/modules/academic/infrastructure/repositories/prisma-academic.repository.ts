@@ -15,6 +15,7 @@ import { PrismaService } from "@/common/prisma/prisma.service";
 
 import type {
   AcademicRepositoryPort,
+  AcademicSessionListFilters,
   AcademicTermListFilters,
   AcademicYearListFilters,
   BindCourseOfferingCurriculumInput,
@@ -23,6 +24,7 @@ import type {
   CourseListFilters,
   CourseOfferingLearningOutcomesView,
   CourseOfferingListFilters,
+  CreateAcademicSessionWriteInput,
   CreateAcademicTermInput,
   CreateAcademicYearInput,
   CreateCourseInput,
@@ -30,17 +32,21 @@ import type {
   CreateCourseOutlineVersionInput,
   CreateEnrollmentInput,
   CreateProgramInput,
+  CreateStudentBatchWriteInput,
   CreateStudentCurriculumAssignmentInput,
   CreateSyllabusVersionInput,
   CreateTeacherAssignmentInput,
   EnrollmentListFilters,
   ProgramListFilters,
+  StudentBatchListFilters,
+  StudentBatchView,
   StudentCourseOfferingListFilters,
   SubmitCourseOutlineVersionInput,
   SyllabusVersionListFilters,
   TeacherAssignmentListFilters,
   TransitionCurriculumVersionInput,
   TransitionSyllabusVersionInput,
+  UpdateAcademicSessionWriteInput,
   UpdateAcademicTermInput,
   UpdateAcademicYearInput,
   UpdateCourseInput,
@@ -48,6 +54,7 @@ import type {
   UpdateCourseOutlineVersionInput,
   UpdateEnrollmentInput,
   UpdateProgramInput,
+  UpdateStudentBatchWriteInput,
 } from "../../application/ports/academic.repository.port";
 import { ACADEMIC_AUDIT_EVENTS } from "../../domain/academic.audit-events";
 import {
@@ -1297,6 +1304,80 @@ function syllabusVersionUniqueConflict(error: unknown) {
   return null;
 }
 
+const studentBatchManagementSelect = {
+  id: true,
+  departmentId: true,
+  academicProgramId: true,
+  academicSessionId: true,
+  code: true,
+  name: true,
+  archivedAt: true,
+  createdAt: true,
+  updatedAt: true,
+  academicProgram: {
+    select: {
+      id: true,
+      departmentId: true,
+      code: true,
+      name: true,
+      archivedAt: true,
+    },
+  },
+  academicSession: {
+    select: {
+      id: true,
+      departmentId: true,
+      code: true,
+      name: true,
+      archivedAt: true,
+    },
+  },
+} satisfies Prisma.StudentBatchSelect;
+
+type StudentBatchManagementRecord = Prisma.StudentBatchGetPayload<{
+  select: typeof studentBatchManagementSelect;
+}>;
+
+function sanitizeStudentBatchManagementRead(
+  batch: StudentBatchManagementRecord,
+  departmentId: string,
+): StudentBatchView | null {
+  if (
+    batch.departmentId !== departmentId ||
+    batch.archivedAt !== null ||
+    batch.academicProgram.id !== batch.academicProgramId ||
+    batch.academicProgram.departmentId !== departmentId ||
+    batch.academicProgram.archivedAt !== null ||
+    batch.academicSession.id !== batch.academicSessionId ||
+    batch.academicSession.departmentId !== departmentId ||
+    batch.academicSession.archivedAt !== null
+  ) {
+    return null;
+  }
+
+  return {
+    id: batch.id,
+    departmentId: batch.departmentId,
+    academicProgramId: batch.academicProgramId,
+    academicSessionId: batch.academicSessionId,
+    code: batch.code,
+    name: batch.name,
+    archivedAt: batch.archivedAt,
+    createdAt: batch.createdAt,
+    updatedAt: batch.updatedAt,
+    academicProgram: {
+      id: batch.academicProgram.id,
+      code: batch.academicProgram.code,
+      name: batch.academicProgram.name,
+    },
+    academicSession: {
+      id: batch.academicSession.id,
+      code: batch.academicSession.code,
+      name: batch.academicSession.name,
+    },
+  };
+}
+
 @Injectable()
 export class PrismaAcademicRepository implements AcademicRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
@@ -1540,6 +1621,344 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
           academicYear: true,
         },
       });
+    });
+  }
+
+  findAcademicSessions(filters: AcademicSessionListFilters) {
+    return this.prisma.academicSession.findMany({
+      where: {
+        departmentId: filters.departmentId,
+        archivedAt: null,
+        OR: filters.search
+          ? [
+              { code: { contains: filters.search } },
+              { name: { contains: filters.search } },
+            ]
+          : undefined,
+      },
+      orderBy: [{ code: "desc" }, { createdAt: "desc" }],
+    });
+  }
+
+  findAcademicSessionById(departmentId: string, id: string) {
+    return this.prisma.academicSession.findFirst({
+      where: { id, departmentId, archivedAt: null },
+    });
+  }
+
+  createAcademicSession(input: CreateAcademicSessionWriteInput) {
+    return this.prisma.$transaction(async (tx) => {
+      const created = await tx.academicSession.create({
+        data: {
+          departmentId: input.departmentId,
+          code: input.code,
+          name: input.name,
+        },
+        select: { id: true },
+      });
+
+      const academicSession = await tx.academicSession.findFirst({
+        where: {
+          id: created.id,
+          departmentId: input.departmentId,
+          archivedAt: null,
+        },
+      });
+      if (!academicSession) {
+        throw new Error("CREATED_ACADEMIC_SESSION_INTEGRITY_CHECK_FAILED");
+      }
+
+      await tx.auditLog.create({
+        data: {
+          requestId: input.requestId,
+          actorUserId: input.actorUserId,
+          actorType: "USER",
+          departmentId: input.departmentId,
+          action: ACADEMIC_AUDIT_EVENTS.ACADEMIC_SESSION_CREATED,
+          targetType: "academic_session",
+          targetId: academicSession.id,
+          outcome: "SUCCESS",
+          ipAddress: input.ipAddress,
+          userAgent: input.userAgent,
+          contextJson: { code: input.code },
+        },
+      });
+
+      return academicSession;
+    });
+  }
+
+  updateAcademicSession(input: UpdateAcademicSessionWriteInput) {
+    return this.prisma.$transaction(async (tx) => {
+      const result = await tx.academicSession.updateMany({
+        where: {
+          id: input.academicSessionId,
+          departmentId: input.departmentId,
+          archivedAt: null,
+        },
+        data: input.changes,
+      });
+
+      if (result.count === 0) return null;
+
+      const academicSession = await tx.academicSession.findFirst({
+        where: {
+          id: input.academicSessionId,
+          departmentId: input.departmentId,
+          archivedAt: null,
+        },
+      });
+      if (!academicSession) {
+        throw new Error("UPDATED_ACADEMIC_SESSION_INTEGRITY_CHECK_FAILED");
+      }
+
+      await tx.auditLog.create({
+        data: {
+          requestId: input.requestId,
+          actorUserId: input.actorUserId,
+          actorType: "USER",
+          departmentId: input.departmentId,
+          action: ACADEMIC_AUDIT_EVENTS.ACADEMIC_SESSION_UPDATED,
+          targetType: "academic_session",
+          targetId: academicSession.id,
+          outcome: "SUCCESS",
+          ipAddress: input.ipAddress,
+          userAgent: input.userAgent,
+          contextJson: { updatedFields: Object.keys(input.changes) },
+        },
+      });
+
+      return academicSession;
+    });
+  }
+
+  async findStudentBatches(filters: StudentBatchListFilters) {
+    const batches = await this.prisma.studentBatch.findMany({
+      where: {
+        departmentId: filters.departmentId,
+        archivedAt: null,
+        academicProgramId: filters.academicProgramId,
+        academicSessionId: filters.academicSessionId,
+        academicProgram: {
+          departmentId: filters.departmentId,
+          archivedAt: null,
+        },
+        academicSession: {
+          departmentId: filters.departmentId,
+          archivedAt: null,
+        },
+        OR: filters.search
+          ? [
+              { code: { contains: filters.search } },
+              { name: { contains: filters.search } },
+            ]
+          : undefined,
+      },
+      select: studentBatchManagementSelect,
+      orderBy: [{ createdAt: "desc" }, { code: "asc" }],
+    });
+
+    return batches
+      .map((batch) =>
+        sanitizeStudentBatchManagementRead(batch, filters.departmentId),
+      )
+      .filter((batch): batch is StudentBatchView => batch !== null);
+  }
+
+  async findStudentBatchById(departmentId: string, id: string) {
+    const batch = await this.prisma.studentBatch.findFirst({
+      where: {
+        id,
+        departmentId,
+        archivedAt: null,
+        academicProgram: { departmentId, archivedAt: null },
+        academicSession: { departmentId, archivedAt: null },
+      },
+      select: studentBatchManagementSelect,
+    });
+
+    return batch
+      ? sanitizeStudentBatchManagementRead(batch, departmentId)
+      : null;
+  }
+
+  createStudentBatch(input: CreateStudentBatchWriteInput) {
+    return this.prisma.$transaction(async (tx) => {
+      const lockedProgram = await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`
+          SELECT "id"
+          FROM "academic_programs"
+          WHERE "id" = ${input.academicProgramId}
+            AND "department_id" = ${input.departmentId}
+            AND "archived_at" IS NULL
+          FOR UPDATE
+        `,
+      );
+      if (lockedProgram.length !== 1) return null;
+
+      const lockedSession = await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`
+          SELECT "id"
+          FROM "academic_sessions"
+          WHERE "id" = ${input.academicSessionId}
+            AND "department_id" = ${input.departmentId}
+            AND "archived_at" IS NULL
+          FOR UPDATE
+        `,
+      );
+      if (lockedSession.length !== 1) return null;
+
+      const created = await tx.studentBatch.create({
+        data: {
+          departmentId: input.departmentId,
+          academicProgramId: input.academicProgramId,
+          academicSessionId: input.academicSessionId,
+          code: input.code,
+          name: input.name,
+        },
+        select: { id: true },
+      });
+
+      const batch = await tx.studentBatch.findFirst({
+        where: {
+          id: created.id,
+          departmentId: input.departmentId,
+          archivedAt: null,
+          academicProgram: {
+            departmentId: input.departmentId,
+            archivedAt: null,
+          },
+          academicSession: {
+            departmentId: input.departmentId,
+            archivedAt: null,
+          },
+        },
+        select: studentBatchManagementSelect,
+      });
+      const safeBatch = batch
+        ? sanitizeStudentBatchManagementRead(batch, input.departmentId)
+        : null;
+      if (!safeBatch) {
+        throw new Error("CREATED_STUDENT_BATCH_INTEGRITY_CHECK_FAILED");
+      }
+
+      await tx.auditLog.create({
+        data: {
+          requestId: input.requestId,
+          actorUserId: input.actorUserId,
+          actorType: "USER",
+          departmentId: input.departmentId,
+          action: ACADEMIC_AUDIT_EVENTS.STUDENT_BATCH_CREATED,
+          targetType: "student_batch",
+          targetId: safeBatch.id,
+          outcome: "SUCCESS",
+          ipAddress: input.ipAddress,
+          userAgent: input.userAgent,
+          contextJson: {
+            academicProgramId: input.academicProgramId,
+            academicSessionId: input.academicSessionId,
+            code: input.code,
+          },
+        },
+      });
+
+      return safeBatch;
+    });
+  }
+
+  updateStudentBatch(input: UpdateStudentBatchWriteInput) {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.studentBatch.findFirst({
+        where: {
+          id: input.studentBatchId,
+          departmentId: input.departmentId,
+          archivedAt: null,
+        },
+        select: {
+          id: true,
+          academicProgramId: true,
+          academicSessionId: true,
+        },
+      });
+      if (!existing) return null;
+
+      const lockedProgram = await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`
+          SELECT "id"
+          FROM "academic_programs"
+          WHERE "id" = ${existing.academicProgramId}
+            AND "department_id" = ${input.departmentId}
+            AND "archived_at" IS NULL
+          FOR UPDATE
+        `,
+      );
+      if (lockedProgram.length !== 1) return null;
+
+      const lockedSession = await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`
+          SELECT "id"
+          FROM "academic_sessions"
+          WHERE "id" = ${existing.academicSessionId}
+            AND "department_id" = ${input.departmentId}
+            AND "archived_at" IS NULL
+          FOR UPDATE
+        `,
+      );
+      if (lockedSession.length !== 1) return null;
+
+      const result = await tx.studentBatch.updateMany({
+        where: {
+          id: input.studentBatchId,
+          departmentId: input.departmentId,
+          archivedAt: null,
+          academicProgramId: existing.academicProgramId,
+          academicSessionId: existing.academicSessionId,
+        },
+        data: input.changes,
+      });
+
+      if (result.count === 0) return null;
+
+      const batch = await tx.studentBatch.findFirst({
+        where: {
+          id: input.studentBatchId,
+          departmentId: input.departmentId,
+          archivedAt: null,
+          academicProgram: {
+            departmentId: input.departmentId,
+            archivedAt: null,
+          },
+          academicSession: {
+            departmentId: input.departmentId,
+            archivedAt: null,
+          },
+        },
+        select: studentBatchManagementSelect,
+      });
+      const safeBatch = batch
+        ? sanitizeStudentBatchManagementRead(batch, input.departmentId)
+        : null;
+      if (!safeBatch) {
+        throw new Error("UPDATED_STUDENT_BATCH_INTEGRITY_CHECK_FAILED");
+      }
+
+      await tx.auditLog.create({
+        data: {
+          requestId: input.requestId,
+          actorUserId: input.actorUserId,
+          actorType: "USER",
+          departmentId: input.departmentId,
+          action: ACADEMIC_AUDIT_EVENTS.STUDENT_BATCH_UPDATED,
+          targetType: "student_batch",
+          targetId: safeBatch.id,
+          outcome: "SUCCESS",
+          ipAddress: input.ipAddress,
+          userAgent: input.userAgent,
+          contextJson: { updatedFields: Object.keys(input.changes) },
+        },
+      });
+
+      return safeBatch;
     });
   }
 

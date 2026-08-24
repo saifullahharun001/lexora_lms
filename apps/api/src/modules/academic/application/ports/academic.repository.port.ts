@@ -34,6 +34,50 @@ export interface AcademicTermListFilters {
   status?: AcademicTermStatus;
 }
 
+export interface AcademicSessionListFilters {
+  departmentId: string;
+  search?: string;
+}
+
+export interface StudentBatchListFilters {
+  departmentId: string;
+  academicProgramId?: string;
+  academicSessionId?: string;
+  search?: string;
+}
+
+export interface AcademicSessionView {
+  id: string;
+  departmentId: string;
+  code: string;
+  name: string;
+  archivedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface StudentBatchView {
+  id: string;
+  departmentId: string;
+  academicProgramId: string;
+  academicSessionId: string;
+  code: string;
+  name: string;
+  archivedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  academicProgram: {
+    id: string;
+    code: string;
+    name: string;
+  };
+  academicSession: {
+    id: string;
+    code: string;
+    name: string;
+  };
+}
+
 export interface CourseListFilters {
   departmentId: string;
   academicProgramId?: string;
@@ -249,6 +293,60 @@ export interface UpdateAcademicTermInput {
   enrollmentStartAt?: Date | null;
   enrollmentEndAt?: Date | null;
   status?: AcademicTermStatus;
+}
+
+export interface CreateAcademicSessionInput {
+  departmentId: string;
+  code: string;
+  name: string;
+}
+
+export interface UpdateAcademicSessionInput {
+  code?: string;
+  name?: string;
+}
+
+export interface CreateStudentBatchInput {
+  departmentId: string;
+  academicProgramId: string;
+  academicSessionId: string;
+  code: string;
+  name: string;
+}
+
+export interface UpdateStudentBatchInput {
+  code?: string;
+  name?: string;
+}
+
+export interface AcademicManagementWriteContext {
+  departmentId: string;
+  actorUserId: string;
+  requestId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export interface CreateAcademicSessionWriteInput extends AcademicManagementWriteContext {
+  code: string;
+  name: string;
+}
+
+export interface UpdateAcademicSessionWriteInput extends AcademicManagementWriteContext {
+  academicSessionId: string;
+  changes: UpdateAcademicSessionInput;
+}
+
+export interface CreateStudentBatchWriteInput extends AcademicManagementWriteContext {
+  academicProgramId: string;
+  academicSessionId: string;
+  code: string;
+  name: string;
+}
+
+export interface UpdateStudentBatchWriteInput extends AcademicManagementWriteContext {
+  studentBatchId: string;
+  changes: UpdateStudentBatchInput;
 }
 
 export interface CreateCourseInput {
@@ -583,6 +681,32 @@ export interface AcademicRepositoryPort {
     id: string,
     input: UpdateAcademicTermInput,
   ): Promise<unknown | null>;
+  findAcademicSessions(
+    filters: AcademicSessionListFilters,
+  ): Promise<AcademicSessionView[]>;
+  findAcademicSessionById(
+    departmentId: string,
+    id: string,
+  ): Promise<AcademicSessionView | null>;
+  createAcademicSession(
+    input: CreateAcademicSessionWriteInput,
+  ): Promise<AcademicSessionView>;
+  updateAcademicSession(
+    input: UpdateAcademicSessionWriteInput,
+  ): Promise<AcademicSessionView | null>;
+  findStudentBatches(
+    filters: StudentBatchListFilters,
+  ): Promise<StudentBatchView[]>;
+  findStudentBatchById(
+    departmentId: string,
+    id: string,
+  ): Promise<StudentBatchView | null>;
+  createStudentBatch(
+    input: CreateStudentBatchWriteInput,
+  ): Promise<StudentBatchView | null>;
+  updateStudentBatch(
+    input: UpdateStudentBatchWriteInput,
+  ): Promise<StudentBatchView | null>;
   findCourses(filters: CourseListFilters): Promise<unknown[]>;
   findCourseById(departmentId: string, id: string): Promise<unknown | null>;
   createCourse(input: CreateCourseInput): Promise<unknown>;

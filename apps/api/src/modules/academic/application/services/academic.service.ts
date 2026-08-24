@@ -27,11 +27,13 @@ import { ACADEMIC_AUDIT_EVENTS } from "../../domain/academic.audit-events";
 import { ACADEMIC_REPOSITORY } from "../../domain/academic.constants";
 import type {
   AcademicRepositoryPort,
+  AcademicSessionListFilters,
   AcademicTermListFilters,
   AcademicYearListFilters,
   CourseListFilters,
   CourseOfferingLearningOutcomesView,
   CourseOfferingListFilters,
+  CreateAcademicSessionInput,
   CreateAcademicTermInput,
   CreateAcademicYearInput,
   CreateCourseInput,
@@ -39,15 +41,18 @@ import type {
   CreateCourseOutlineVersionInput,
   CreateEnrollmentInput,
   CreateProgramInput,
+  CreateStudentBatchInput,
   CreateSyllabusVersionInput,
   CreateTeacherAssignmentInput,
   CurriculumVersionLifecycleAction,
   EnrollmentListFilters,
   ProgramListFilters,
+  StudentBatchListFilters,
   StudentCourseOfferingListFilters,
   SubmitCourseOutlineVersionInput,
   SyllabusVersionLifecycleAction,
   SyllabusVersionListFilters,
+  UpdateAcademicSessionInput,
   UpdateAcademicTermInput,
   UpdateAcademicYearInput,
   UpdateCourseInput,
@@ -55,6 +60,7 @@ import type {
   UpdateCourseOutlineVersionInput,
   UpdateEnrollmentInput,
   UpdateProgramInput,
+  UpdateStudentBatchInput,
 } from "../ports/academic.repository.port";
 import type { CourseOutlineDraftFields } from "../../domain/course-outline-draft-fields";
 import {
@@ -402,6 +408,150 @@ export class AcademicService {
       this.rethrowKnownError(
         error,
         "Academic term code already exists in this department",
+      );
+    }
+  }
+
+  listAcademicSessions(
+    filters: Omit<AcademicSessionListFilters, "departmentId">,
+  ) {
+    return this.repository.findAcademicSessions({
+      departmentId: this.getDepartmentId(),
+      ...filters,
+    });
+  }
+
+  async getAcademicSession(id: string) {
+    const academicSession = await this.repository.findAcademicSessionById(
+      this.getDepartmentId(),
+      id,
+    );
+
+    if (!academicSession) {
+      throw new NotFoundException("Academic session not found");
+    }
+
+    return academicSession;
+  }
+
+  async createAcademicSession(
+    input: Omit<CreateAcademicSessionInput, "departmentId">,
+  ) {
+    const departmentId = this.getDepartmentId();
+
+    try {
+      const academicSession = await this.repository.createAcademicSession({
+        ...this.getAcademicManagementWriteContext(departmentId),
+        ...input,
+      });
+
+      return academicSession;
+    } catch (error) {
+      this.rethrowKnownError(
+        error,
+        "Academic session code already exists in this department",
+      );
+    }
+  }
+
+  async updateAcademicSession(id: string, input: UpdateAcademicSessionInput) {
+    this.assertUpdateHasAtLeastOneDefinedField(
+      input as Record<string, unknown>,
+      "At least one academic session field must be provided",
+    );
+
+    const departmentId = this.getDepartmentId();
+
+    try {
+      const academicSession = await this.repository.updateAcademicSession({
+        ...this.getAcademicManagementWriteContext(departmentId),
+        academicSessionId: id,
+        changes: input,
+      });
+
+      if (!academicSession) {
+        throw new NotFoundException("Academic session not found");
+      }
+
+      return academicSession;
+    } catch (error) {
+      this.rethrowKnownError(
+        error,
+        "Academic session code already exists in this department",
+      );
+    }
+  }
+
+  listStudentBatches(filters: Omit<StudentBatchListFilters, "departmentId">) {
+    return this.repository.findStudentBatches({
+      departmentId: this.getDepartmentId(),
+      ...filters,
+    });
+  }
+
+  async getStudentBatch(id: string) {
+    const studentBatch = await this.repository.findStudentBatchById(
+      this.getDepartmentId(),
+      id,
+    );
+
+    if (!studentBatch) {
+      throw new NotFoundException("Student batch not found");
+    }
+
+    return studentBatch;
+  }
+
+  async createStudentBatch(
+    input: Omit<CreateStudentBatchInput, "departmentId">,
+  ) {
+    const departmentId = this.getDepartmentId();
+    await this.assertProgramInDepartment(input.academicProgramId);
+    await this.assertAcademicSessionInDepartment(input.academicSessionId);
+
+    try {
+      const studentBatch = await this.repository.createStudentBatch({
+        ...this.getAcademicManagementWriteContext(departmentId),
+        ...input,
+      });
+
+      if (!studentBatch) {
+        throw new NotFoundException("Student batch dependency not found");
+      }
+
+      return studentBatch;
+    } catch (error) {
+      this.rethrowKnownError(
+        error,
+        "Student batch code already exists for this program and academic session",
+      );
+    }
+  }
+
+  async updateStudentBatch(id: string, input: UpdateStudentBatchInput) {
+    this.assertUpdateHasAtLeastOneDefinedField(
+      input as Record<string, unknown>,
+      "At least one student batch field must be provided",
+    );
+
+    const departmentId = this.getDepartmentId();
+
+    try {
+      const studentBatch = await this.repository.updateStudentBatch({
+        ...this.getAcademicManagementWriteContext(departmentId),
+        studentBatchId: id,
+        changes: input,
+      });
+
+      if (!studentBatch) {
+        throw new NotFoundException("Student batch not found");
+      }
+
+      return studentBatch;
+    } catch (error) {
+      this.rethrowKnownError(
+        error,
+        "Student batch code already exists for this program and academic session",
       );
     }
   }
@@ -1651,6 +1801,19 @@ export class AcademicService {
     return academicYear as AcademicYear;
   }
 
+  private async assertAcademicSessionInDepartment(academicSessionId: string) {
+    const academicSession = await this.repository.findAcademicSessionById(
+      this.getDepartmentId(),
+      academicSessionId,
+    );
+
+    if (!academicSession) {
+      throw new BadRequestException(
+        "Academic session does not belong to the active department",
+      );
+    }
+  }
+
   private async assertCourseOfferingInDepartment(courseOfferingId: string) {
     const offering = await this.repository.findCourseOfferingById(
       this.getDepartmentId(),
@@ -2311,6 +2474,18 @@ export class AcademicService {
     }
 
     return principal.actorId;
+  }
+
+  private getAcademicManagementWriteContext(departmentId: string) {
+    const requestContext = this.requestContextService.get();
+
+    return {
+      departmentId,
+      actorUserId: this.getActorId(),
+      requestId: requestContext?.requestId,
+      ipAddress: requestContext?.audit.ipAddress,
+      userAgent: requestContext?.audit.userAgent,
+    };
   }
 
   private hasRole(role: "department_admin" | "teacher" | "student") {
