@@ -736,6 +736,7 @@ model Course {
   courseOfferings   CourseOffering[]
   curriculumCourses CurriculumCourse[]
 
+  @@unique([id, departmentId], map: "course_id_department_uq")
   @@unique([departmentId, code])
   @@index([departmentId])
   @@index([academicProgramId])
@@ -834,6 +835,7 @@ model CourseAssessmentTemplate {
   components        AssessmentTemplateComponent[]
   curriculumCourses CurriculumCourse[]
 
+  @@unique([id, departmentId], map: "assessment_template_id_department_uq")
   @@unique([departmentId, code, versionNumber], map: "assessment_template_dept_code_version_uq")
   @@index([departmentId, status], map: "assessment_template_dept_status_idx")
   @@index([departmentId, academicProgramId], map: "assessment_template_dept_program_idx")
@@ -879,9 +881,9 @@ model CurriculumCourse {
   createdAt             DateTime                       @default(now()) @map("created_at")
   updatedAt             DateTime                       @updatedAt @map("updated_at")
   department            Department                     @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  curriculumVersion     CurriculumVersion              @relation(fields: [curriculumVersionId], references: [id], onDelete: Restrict)
-  course                Course                         @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  assessmentTemplate    CourseAssessmentTemplate       @relation(fields: [assessmentTemplateId], references: [id], onDelete: Restrict)
+  curriculumVersion     CurriculumVersion              @relation(fields: [curriculumVersionId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "curriculum_course_dept_version_fkey")
+  course                Course                         @relation(fields: [courseId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "curriculum_course_dept_course_fkey")
+  assessmentTemplate    CourseAssessmentTemplate       @relation(fields: [assessmentTemplateId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "curriculum_course_dept_template_fkey")
   syllabusVersions      SyllabusVersion[]
   courseOutlineVersions CourseOutlineVersion[]
   courseOfferings       CourseOffering[]
