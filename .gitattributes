@@ -6,3 +6,4 @@ ops/malware-scanning/clamav-evaluation/Dockerfile.clamav text eol=lf
 ops/malware-scanning/clamav-evaluation/*.yml text eol=lf
 ops/malware-scanning/clamav-evaluation/*.conf text eol=lf
 apps/api/prisma/migrations/202608240001_harden_curriculum_course_department_identity/migration.sql -text
+apps/api/prisma/migrations/202608240002_add_batch_coordinator_assignment_foundation/migration.sql -text

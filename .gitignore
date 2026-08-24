@@ -50,6 +50,8 @@ apps/api/prisma/migrations/*
 !apps/api/prisma/migrations/202608210001_add_course_offering_student_batch_binding_foundation/migration.sql
 !apps/api/prisma/migrations/202608240001_harden_curriculum_course_department_identity/
 !apps/api/prisma/migrations/202608240001_harden_curriculum_course_department_identity/migration.sql
+!apps/api/prisma/migrations/202608240002_add_batch_coordinator_assignment_foundation/
+!apps/api/prisma/migrations/202608240002_add_batch_coordinator_assignment_foundation/migration.sql
 *.log
 
 

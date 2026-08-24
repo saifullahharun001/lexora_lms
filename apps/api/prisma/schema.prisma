@@ -176,6 +176,12 @@ enum TeacherAssignmentStatus {
   ARCHIVED
 }
 
+enum BatchCoordinatorAssignmentStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
 enum EnrollmentStatus {
   PENDING
   APPROVED
@@ -439,6 +445,7 @@ model Department {
   academicPrograms              AcademicProgram[]
   academicSessions              AcademicSession[]
   studentBatches                StudentBatch[]
+  batchCoordinatorAssignments   BatchCoordinatorAssignment[]
   curriculumVersions            CurriculumVersion[]
   curriculumCourses             CurriculumCourse[]
   programLearningOutcomes       ProgramLearningOutcome[]
@@ -526,6 +533,8 @@ model User {
   twoFactorMethods                   TwoFactorMethod[]
   academicConfigsUpdated             DepartmentAcademicConfig[]    @relation("AcademicConfigUpdatedBy")
   teachingAssignments                TeacherCourseAssignment[]     @relation("TeacherAssignments")
+  batchCoordinatorAssignments        BatchCoordinatorAssignment[]  @relation("BatchCoordinatorUser")
+  batchCoordinatorAssignedBy         BatchCoordinatorAssignment[]  @relation("BatchCoordinatorAssignedBy")
   studentEnrollments                 Enrollment[]                  @relation("StudentEnrollments")
   enrollmentApprovals                Enrollment[]                  @relation("EnrollmentApprovedBy")
   studentCurriculumAssignments       StudentCurriculumAssignment[] @relation("StudentCurriculumAssignments")
@@ -576,6 +585,7 @@ model User {
   overrideApprovals                  OverrideAction[]              @relation("OverrideApprover")
   fileObjects                        FileObject[]                  @relation("FileUploadedBy")
 
+  @@unique([id, departmentId], map: "user_id_department_uq")
   @@index([departmentId])
   @@map("users")
 }
@@ -644,19 +654,20 @@ model AcademicSession {
 }
 
 model StudentBatch {
-  id                String           @id @default(cuid())
-  departmentId      String           @map("department_id")
-  academicProgramId String           @map("academic_program_id")
-  academicSessionId String           @map("academic_session_id")
-  code              String           @db.VarChar(64)
+  id                String                       @id @default(cuid())
+  departmentId      String                       @map("department_id")
+  academicProgramId String                       @map("academic_program_id")
+  academicSessionId String                       @map("academic_session_id")
+  code              String                       @db.VarChar(64)
   name              String
-  archivedAt        DateTime?        @map("archived_at")
-  createdAt         DateTime         @default(now()) @map("created_at")
-  updatedAt         DateTime         @updatedAt @map("updated_at")
-  department        Department       @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "student_batch_department_fkey")
-  academicProgram   AcademicProgram  @relation(fields: [academicProgramId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "student_batch_program_identity_fkey")
-  academicSession   AcademicSession  @relation(fields: [academicSessionId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "student_batch_session_identity_fkey")
+  archivedAt        DateTime?                    @map("archived_at")
+  createdAt         DateTime                     @default(now()) @map("created_at")
+  updatedAt         DateTime                     @updatedAt @map("updated_at")
+  department        Department                   @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "student_batch_department_fkey")
+  academicProgram   AcademicProgram              @relation(fields: [academicProgramId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "student_batch_program_identity_fkey")
+  academicSession   AcademicSession              @relation(fields: [academicSessionId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "student_batch_session_identity_fkey")
   courseOfferings   CourseOffering[]
+  coordinatorDuties BatchCoordinatorAssignment[]
 
   @@unique([id, departmentId], map: "student_batch_id_department_uq")
   @@unique([departmentId, academicProgramId, academicSessionId, code], map: "student_batch_department_program_session_code_uq")
@@ -685,22 +696,22 @@ model AcademicYear {
 }
 
 model AcademicTerm {
-  id                       String                   @id @default(cuid())
-  departmentId             String                   @map("department_id")
-  academicYearId           String                   @map("academic_year_id")
+  id                       String                       @id @default(cuid())
+  departmentId             String                       @map("department_id")
+  academicYearId           String                       @map("academic_year_id")
   code                     String
   name                     String
   sequence                 Int
-  startDate                DateTime                 @map("start_date")
-  endDate                  DateTime                 @map("end_date")
-  enrollmentStartAt        DateTime?                @map("enrollment_start_at")
-  enrollmentEndAt          DateTime?                @map("enrollment_end_at")
-  status                   AcademicTermStatus       @default(PLANNED)
-  archivedAt               DateTime?                @map("archived_at")
-  createdAt                DateTime                 @default(now()) @map("created_at")
-  updatedAt                DateTime                 @updatedAt @map("updated_at")
-  department               Department               @relation(fields: [departmentId], references: [id])
-  academicYear             AcademicYear             @relation(fields: [academicYearId], references: [id])
+  startDate                DateTime                     @map("start_date")
+  endDate                  DateTime                     @map("end_date")
+  enrollmentStartAt        DateTime?                    @map("enrollment_start_at")
+  enrollmentEndAt          DateTime?                    @map("enrollment_end_at")
+  status                   AcademicTermStatus           @default(PLANNED)
+  archivedAt               DateTime?                    @map("archived_at")
+  createdAt                DateTime                     @default(now()) @map("created_at")
+  updatedAt                DateTime                     @updatedAt @map("updated_at")
+  department               Department                   @relation(fields: [departmentId], references: [id])
+  academicYear             AcademicYear                 @relation(fields: [academicYearId], references: [id])
   courseOfferings          CourseOffering[]
   enrollments              Enrollment[]
   eligibilityRuleBindings  EligibilityRuleBinding[]
@@ -710,11 +721,41 @@ model AcademicTerm {
   resultPublicationBatches ResultPublicationBatch[]
   transcriptTermSummaries  TranscriptTermSummary[]
   notices                  Notice[]
+  coordinatorDuties        BatchCoordinatorAssignment[]
 
   @@unique([departmentId, code])
+  @@unique([id, departmentId], map: "academic_term_id_department_uq")
   @@index([departmentId])
   @@index([academicYearId])
   @@map("academic_terms")
+}
+
+model BatchCoordinatorAssignment {
+  id                String                           @id @default(cuid())
+  departmentId      String                           @map("department_id")
+  studentBatchId    String                           @map("student_batch_id")
+  academicTermId    String                           @map("academic_term_id")
+  coordinatorUserId String                           @map("coordinator_user_id")
+  assignedByUserId  String                           @map("assigned_by_user_id")
+  status            BatchCoordinatorAssignmentStatus @default(ACTIVE)
+  assignedAt        DateTime                         @default(now()) @map("assigned_at")
+  expiresAt         DateTime?                        @map("expires_at")
+  unassignedAt      DateTime?                        @map("unassigned_at")
+  archivedAt        DateTime?                        @map("archived_at")
+  createdAt         DateTime                         @default(now()) @map("created_at")
+  updatedAt         DateTime                         @updatedAt @map("updated_at")
+  department        Department                       @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "batch_coordinator_assignment_department_fkey")
+  studentBatch      StudentBatch                     @relation(fields: [studentBatchId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "batch_coordinator_assignment_batch_identity_fkey")
+  academicTerm      AcademicTerm                     @relation(fields: [academicTermId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "batch_coordinator_assignment_term_identity_fkey")
+  coordinatorUser   User                             @relation("BatchCoordinatorUser", fields: [coordinatorUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "batch_coordinator_assignment_user_identity_fkey")
+  assignedByUser    User                             @relation("BatchCoordinatorAssignedBy", fields: [assignedByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "batch_coordinator_assignment_assigner_identity_fkey")
+
+  @@unique([id, departmentId], map: "batch_coordinator_assignment_id_department_uq")
+  @@unique([departmentId, studentBatchId, academicTermId, coordinatorUserId], map: "batch_coord_assign_scope_user_uq")
+  @@index([departmentId, studentBatchId, academicTermId, status], map: "batch_coord_assign_scope_status_idx")
+  @@index([departmentId, coordinatorUserId, status], map: "batch_coord_assign_user_status_idx")
+  @@index([departmentId, assignedByUserId], map: "batch_coord_assign_assigner_idx")
+  @@map("batch_coordinator_assignments")
 }
 
 model Course {
