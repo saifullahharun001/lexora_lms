@@ -81,6 +81,7 @@ function harness(initialAssignments: Assignment[] = []) {
   };
   const transactions: unknown[] = [];
   const rawSql: string[] = [];
+  const advisoryLockIdentityKeys: string[] = [];
   const authorityQueries: Array<Record<string, unknown>> = [];
   let transactionTail = Promise.resolve();
 
@@ -92,7 +93,10 @@ function harness(initialAssignments: Assignment[] = []) {
       if (/JOIN "role_permissions"/.test(sql)) {
         return parentAvailability.management ? [{ id: "admin-a" }] : [];
       }
-      if (/pg_advisory_xact_lock/.test(sql)) return [{ locked: true }];
+      if (/pg_advisory_xact_lock/.test(sql)) {
+        advisoryLockIdentityKeys.push(values[0]!);
+        return [{ locked: true }];
+      }
       if (/FROM "student_batches"/.test(sql)) {
         return parentAvailability.batch ? [{ id: "batch-a" }] : [];
       }
@@ -267,6 +271,7 @@ function harness(initialAssignments: Assignment[] = []) {
     snapshot: () => structuredClone(state),
     transactions,
     rawSql,
+    advisoryLockIdentityKeys,
     authorityQueries,
     parentAvailability,
     departmentState,
@@ -339,6 +344,46 @@ test("create is department-scoped, parent-validated, transactionally audited, id
         Prisma.TransactionIsolationLevel.Serializable,
     ),
   );
+});
+
+test("create binds a deterministic, boundary-safe PostgreSQL advisory-lock identity", async () => {
+  async function lockKey(
+    overrides: Partial<CreateBatchCoordinatorAssignmentInput> = {},
+  ) {
+    const h = harness();
+    const input = { ...createInput(), ...overrides };
+    assert.equal((await h.repository.create(input)).outcome, "CREATED");
+    assert.ok(h.rawSql.some((sql) => /pg_advisory_xact_lock/.test(sql)));
+    assert.equal(h.advisoryLockIdentityKeys.length, 1);
+    return h.advisoryLockIdentityKeys[0]!;
+  }
+
+  const expected = JSON.stringify([
+    "department-a",
+    "batch-a",
+    "term-a",
+    "coordinator-a",
+  ]);
+  const first = await lockKey();
+  const repeated = await lockKey();
+
+  assert.equal(first, expected);
+  assert.equal(repeated, expected);
+  assert.equal(first.includes("\u0000"), false);
+
+  assert.notEqual(
+    await lockKey({ departmentId: "department-ab", studentBatchId: "c" }),
+    await lockKey({ departmentId: "department-a", studentBatchId: "bc" }),
+  );
+
+  for (const override of [
+    { departmentId: "department-b" },
+    { studentBatchId: "batch-b" },
+    { academicTermId: "term-b" },
+    { coordinatorUserId: "coordinator-b" },
+  ]) {
+    assert.notEqual(await lockKey(override), expected);
+  }
 });
 
 test("cross-department or inactive parent shapes fail closed without mutation", async () => {

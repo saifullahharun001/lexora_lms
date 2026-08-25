@@ -105,12 +105,12 @@ export class PrismaBatchCoordinatorAssignmentRepository implements BatchCoordina
           return { outcome: "INVALID_EXPIRY" } as const;
         }
 
-        const identityKey = [
+        const identityKey = JSON.stringify([
           input.departmentId,
           input.studentBatchId,
           input.academicTermId,
           input.coordinatorUserId,
-        ].join("\u0000");
+        ]);
         await tx.$queryRaw(
           Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${identityKey}, 0))`,
         );
