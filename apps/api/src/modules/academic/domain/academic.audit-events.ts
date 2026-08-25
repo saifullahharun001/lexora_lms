@@ -39,6 +39,16 @@ export const ACADEMIC_AUDIT_EVENTS = {
     "course-management.teacher-assignment.assigned",
   TEACHER_ASSIGNMENT_UNASSIGNED:
     "course-management.teacher-assignment.unassigned",
+  BATCH_COORDINATOR_ASSIGNMENT_ASSIGNED:
+    "course-management.batch-coordinator-assignment.assigned",
+  BATCH_COORDINATOR_ASSIGNMENT_UPDATED:
+    "course-management.batch-coordinator-assignment.updated",
+  BATCH_COORDINATOR_ASSIGNMENT_UNASSIGNED:
+    "course-management.batch-coordinator-assignment.unassigned",
+  BATCH_COORDINATOR_ASSIGNMENT_REACTIVATED:
+    "course-management.batch-coordinator-assignment.reactivated",
+  BATCH_COORDINATOR_ASSIGNMENT_ARCHIVED:
+    "course-management.batch-coordinator-assignment.archived",
   ENROLLMENT_CREATED: "enrollment.record.created",
   ENROLLMENT_UPDATED: "enrollment.record.updated",
 } as const;

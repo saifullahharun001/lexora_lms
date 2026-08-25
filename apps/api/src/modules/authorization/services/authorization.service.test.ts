@@ -272,6 +272,85 @@ test("StudentBatch binding is excluded from broad role authority and requires an
   }
 });
 
+test("Batch Coordinator assignment management excludes wildcard authority and requires exact Department Admin provenance", () => {
+  const service = new AuthorizationService();
+  const policy = "course-management.batch-coordinator-assignment.manage";
+  const adminAssignment = {
+    userRoleId: "admin-assignment",
+    roleId: "admin-role",
+    departmentId: "department-a",
+    role: "department_admin" as const
+  };
+  const exactGrant = grant(
+    {
+      userRoleId: adminAssignment.userRoleId,
+      roleId: adminAssignment.roleId
+    },
+    {
+      resource: "course-management.batch-coordinator-assignment",
+      action: "manage",
+      scope: "department"
+    }
+  );
+
+  assert.equal(
+    service.isAllowed(
+      principal({ roleAssignments: [adminAssignment], permissions: [] }),
+      policy
+    ),
+    false
+  );
+  assert.equal(
+    service.isAllowed(
+      principal({
+        roleAssignments: [adminAssignment],
+        permissions: [exactGrant]
+      }),
+      policy
+    ),
+    true
+  );
+
+  for (const invalid of [
+    { ...exactGrant, resource: "course-management.student-batch-binding" },
+    { ...exactGrant, action: "read" },
+    { ...exactGrant, scope: "self" as const },
+    {
+      ...exactGrant,
+      source: { ...exactGrant.source, userRoleId: "fabricated" }
+    },
+    { ...exactGrant, source: { ...exactGrant.source, roleId: "other-role" } },
+    {
+      ...exactGrant,
+      source: { ...exactGrant.source, departmentId: "department-b" }
+    }
+  ]) {
+    assert.equal(
+      service.isAllowed(
+        principal({
+          roleAssignments: [adminAssignment],
+          permissions: [invalid]
+        }),
+        policy
+      ),
+      false
+    );
+  }
+
+  for (const role of ["teacher", "student"] as const) {
+    assert.equal(
+      service.isAllowed(
+        principal({
+          roleAssignments: [{ ...adminAssignment, role }],
+          permissions: [exactGrant]
+        }),
+        policy
+      ),
+      false
+    );
+  }
+});
+
 test("AuthorizationService accepts service principals with empty authority", () => {
   const service = new AuthorizationService();
   assert.deepEqual(

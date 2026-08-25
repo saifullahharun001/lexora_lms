@@ -53,6 +53,8 @@ export const PERMISSIONS = {
     SYLLABUS_BINDING_MANAGE: "course-management.syllabus-binding.manage",
     STUDENT_BATCH_BINDING_MANAGE:
       "course-management.student-batch-binding.manage",
+    BATCH_COORDINATOR_ASSIGNMENT_MANAGE:
+      "course-management.batch-coordinator-assignment.manage",
     SYLLABUS_VERSION_MANAGE: "course-management.syllabus-version.manage",
     SYLLABUS_VERSION_LIFECYCLE_MANAGE:
       "course-management.syllabus-version.lifecycle.manage"

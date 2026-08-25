@@ -21,6 +21,11 @@ const EXPLICIT_DEPARTMENT_ADMIN_PERMISSION_POLICIES = {
     resource: "course-management.student-batch-binding",
     action: "manage",
     scope: "department"
+  },
+  [PERMISSIONS.COURSE_MANAGEMENT.BATCH_COORDINATOR_ASSIGNMENT_MANAGE]: {
+    resource: "course-management.batch-coordinator-assignment",
+    action: "manage",
+    scope: "department"
   }
 } as const;
 

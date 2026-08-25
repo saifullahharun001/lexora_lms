@@ -59,11 +59,25 @@ export const STUDENT_BATCH_BINDING_MANAGE_PROVISIONING = {
   auditAction: "authorization.student-batch-binding-manage.provisioned",
 } as const;
 
+export const BATCH_COORDINATOR_ASSIGNMENT_MANAGE_PROVISIONING = {
+  permission: {
+    code: PERMISSIONS.COURSE_MANAGEMENT.BATCH_COORDINATOR_ASSIGNMENT_MANAGE,
+    resource: "course-management.batch-coordinator-assignment",
+    action: "manage",
+    scope: PermissionScope.DEPARTMENT,
+    description:
+      "Manage Batch Coordinator assignments within the active department governance scope",
+  },
+  targetRoleCode: PLATFORM_ROLES.DEPARTMENT_ADMIN,
+  auditAction: "authorization.batch-coordinator-assignment-manage.provisioned",
+} as const;
+
 export const AUTHORIZATION_PROVISIONING_DEFINITIONS = [
   SYLLABUS_VERSION_MANAGE_PROVISIONING,
   SYLLABUS_VERSION_LIFECYCLE_MANAGE_PROVISIONING,
   SYLLABUS_BINDING_MANAGE_PROVISIONING,
   STUDENT_BATCH_BINDING_MANAGE_PROVISIONING,
+  BATCH_COORDINATOR_ASSIGNMENT_MANAGE_PROVISIONING,
 ] as const;
 
 export type AuthorizationProvisioningDefinition =
