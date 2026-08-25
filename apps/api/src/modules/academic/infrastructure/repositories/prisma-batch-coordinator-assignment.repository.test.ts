@@ -95,7 +95,7 @@ function harness(initialAssignments: Assignment[] = []) {
       }
       if (/pg_advisory_xact_lock/.test(sql)) {
         advisoryLockIdentityKeys.push(values[0]!);
-        return [{ locked: true }];
+        return [{ locked: 1 }];
       }
       if (/FROM "student_batches"/.test(sql)) {
         return parentAvailability.batch ? [{ id: "batch-a" }] : [];
@@ -347,6 +347,24 @@ test("create is department-scoped, parent-validated, transactionally audited, id
 });
 
 test("create binds a deterministic, boundary-safe PostgreSQL advisory-lock identity", async () => {
+  const sqlHarness = harness();
+  assert.equal(
+    (await sqlHarness.repository.create(createInput())).outcome,
+    "CREATED",
+  );
+  const lockSql = sqlHarness.rawSql.find((sql) =>
+    /pg_advisory_xact_lock/.test(sql),
+  );
+  assert.ok(lockSql);
+  const normalizedLockSql = lockSql.replace(/\s+/g, " ").trim();
+  assert.match(normalizedLockSql, /WITH acquired_lock AS MATERIALIZED \(/);
+  assert.match(normalizedLockSql, /pg_advisory_xact_lock\(/);
+  assert.match(normalizedLockSql, /hashtextextended\(/);
+  assert.match(
+    normalizedLockSql,
+    /SELECT 1::int AS "locked" FROM acquired_lock$/,
+  );
+
   async function lockKey(
     overrides: Partial<CreateBatchCoordinatorAssignmentInput> = {},
   ) {

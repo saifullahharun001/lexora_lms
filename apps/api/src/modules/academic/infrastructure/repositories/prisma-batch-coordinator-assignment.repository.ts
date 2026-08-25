@@ -111,8 +111,16 @@ export class PrismaBatchCoordinatorAssignmentRepository implements BatchCoordina
           input.academicTermId,
           input.coordinatorUserId,
         ]);
-        await tx.$queryRaw(
-          Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${identityKey}, 0))`,
+        await tx.$queryRaw<Array<{ locked: number }>>(
+          Prisma.sql`
+            WITH acquired_lock AS MATERIALIZED (
+              SELECT pg_advisory_xact_lock(
+                hashtextextended(${identityKey}, 0)
+              )
+            )
+            SELECT 1::int AS "locked"
+            FROM acquired_lock
+          `,
         );
 
         const parentFailure = await this.lockAndValidateParents(tx, input);
