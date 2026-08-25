@@ -30112,3 +30112,730 @@ This verdict applies only to the schema/database foundation.
 It does not mean Batch Coordinator authorization, Coordinator assignment management,
 Course Outline coordinator review, Programme Coordinator governance or the complete
 Lexora LMS is complete.
+
+## Batch Coordinator Assignment Management Backend and Ordinary Runtime Verification — 2026-08-25
+
+### Scope and supersession
+
+This checkpoint records the completed source implementation, independent review,
+correction lineage, deployment and ordinary Ubuntu/PostgreSQL `18.6` runtime
+verification of the Batch Coordinator Assignment Management Backend through server
+commit:
+
+`ce88983406c848ee49ecd6d13cd2b23bd379c162`
+
+The earlier **Batch Coordinator Assignment Scoped Schema Foundation and PostgreSQL
+18.6 Runtime Verification — 2026-08-25** remains valid historical evidence for the
+state it documented at that time.
+
+This later checkpoint does not rewrite or erase that history. It supersedes earlier
+pending wording only to the extent that later implementation and runtime evidence now
+establish:
+
+- the Batch Coordinator assignment management API;
+- Batch Coordinator assignment service/repository management behavior;
+- create/read/list/update/unassign/reactivate/archive lifecycle behavior;
+- the dedicated assignment-management runtime policy;
+- permanent Department Admin management-permission provisioning;
+- assignment-scoped Batch Coordinator authority evaluation;
+- ordinary-runtime `ACTIVE`, `INACTIVE` and terminal `ARCHIVED` authority behavior;
+- assignment-management success-audit events;
+- transactional assignment/audit atomicity;
+- ordinary-runtime concurrency behavior for the tested management paths.
+
+The approved academic authority boundary remains exactly:
+
+`StudentBatch + AcademicTerm`
+
+Academic Coordinator authority derives from an explicit valid, active
+`BatchCoordinatorAssignment` for the exact:
+
+- department;
+- StudentBatch;
+- AcademicTerm;
+- Coordinator user.
+
+This checkpoint does **not** introduce or imply:
+
+- a broad/global Coordinator authority shortcut;
+- Department Admin as an implicit Batch Coordinator;
+- AcademicTerm-only Coordinator authority;
+- StudentBatch-only Coordinator authority;
+- CourseOffering-only Coordinator authority;
+- `effectiveAcademicSessionCode` as an authorization key;
+- result-publication batch identity as Coordinator scope;
+- attendance-import batch identity as Coordinator scope;
+- unresolved Programme Coordinator semantics.
+
+The complete Coordinator feature, complete Course Outline lifecycle and complete Lexora
+LMS remain incomplete.
+
+### Implementation and correction lineage
+
+The verified lineage is:
+
+1. Schema foundation:
+
+   - commit:
+     `6dd4289c8f95da90a6c8bdfd284b60b4672db9ab`;
+   - commit message:
+     `Add batch coordinator assignment foundation`.
+
+2. Scoped assignment-management implementation:
+
+   - commit:
+     `08a76075662b715e270aed59b94578d6c4f1a104`;
+   - commit message:
+     `feat: add scoped batch coordinator assignment management`.
+
+3. PostgreSQL-safe advisory-lock identity correction:
+
+   - commit:
+     `2bb5150dfc2bc6067c36fc36c02ebfbe6d938385`;
+   - commit message:
+     `fix: make batch coordinator advisory lock postgres safe`.
+
+4. Prisma-safe advisory-lock result correction:
+
+   - commit:
+     `daa9da1ad82d8347b68d4ec13e03072c5cb6dd53`;
+   - commit message:
+     `fix: make coordinator advisory lock prisma safe`.
+
+5. Raw Serializable-conflict retry-classification correction:
+
+   - commit:
+     `ce88983406c848ee49ecd6d13cd2b23bd379c162`;
+   - commit message:
+     `fix: retry raw serializable coordinator conflicts`.
+
+The management implementation introduced no additional Prisma schema change or
+migration. The three runtime interoperability corrections changed only the focused
+Batch Coordinator Prisma repository and its focused repository test.
+
+Final source/static verification for the committed implementation included:
+
+- API typecheck: PASS;
+- API build: PASS;
+- focused Batch Coordinator repository tests: `14/14` PASS;
+- adjacent Batch Coordinator/authorization/provisioning/schema regressions: `54/54`
+  PASS;
+- combined focused/affected verification: `68/68` PASS;
+- final server repository branch: `main`;
+- final server `HEAD` and `origin/main`: both
+  `ce88983406c848ee49ecd6d13cd2b23bd379c162`;
+- final server repository: clean and aligned.
+
+### Management API surface and route protection
+
+The verified management surface is:
+
+- `POST /api/v1/batch-coordinator-assignments` — create;
+- `GET /api/v1/batch-coordinator-assignments` — list;
+- `GET /api/v1/batch-coordinator-assignments/:id` — read by ID;
+- `PATCH /api/v1/batch-coordinator-assignments/:id` — update expiry;
+- `POST /api/v1/batch-coordinator-assignments/:id/unassign` — unassign;
+- `POST /api/v1/batch-coordinator-assignments/:id/reactivate` — explicitly
+  reactivate;
+- `POST /api/v1/batch-coordinator-assignments/:id/archive` — terminal archive.
+
+Every route is protected by:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- `@RequirePolicy()`;
+- the dedicated Batch Coordinator assignment-management policy.
+
+The permanent permission identity is:
+
+`course-management.batch-coordinator-assignment.manage`
+
+with scope:
+
+`DEPARTMENT`
+
+The authorization layer excludes this dedicated policy from broad Department Admin
+wildcard authority. Access requires an exact loaded permission grant with provenance
+from the exact active-department Department Admin role assignment. The management
+authorizer then revalidates the active user, active department, unrevoked/unexpired
+role assignment, exact Department Admin role and exact permission against current
+database state.
+
+This makes Batch Coordinator assignment **management** a Department Admin management
+capability. It does not make Department Admin an academic Batch Coordinator.
+
+### Permanent provisioning and fresh-principal verification
+
+Permanent provisioning was ordinary-runtime verified with exact cardinality:
+
+- permanent management permission: `1`;
+- exact Department Admin role-permission link: `1`;
+- provisioning `SUCCESS` audit: `1`.
+
+Repeated provisioning was idempotent and planned/applied no duplicate permission,
+role-permission link or success audit.
+
+Fresh-principal verification established:
+
+- fresh Law Department Admin login: HTTP `201`;
+- target management permission in the fresh Department Admin principal: PRESENT;
+- target permission in a fresh Teacher principal: ABSENT;
+- target permission in a fresh Student principal: ABSENT;
+- unauthenticated management-route request: HTTP `401`;
+- Department Admin management-route access: allowed;
+- Teacher management-route access: denied;
+- Student management-route access: denied.
+
+A forged `x-department-id` naming another department did not replace or broaden the
+authenticated Law principal's active department scope.
+
+The permanent permission, Department Admin role-permission link and provisioning
+success audit survived final disposable-fixture cleanup.
+
+No password or authentication-token value is recorded by this checkpoint.
+
+### Management transaction and lifecycle controls
+
+The implementation retains:
+
+- Prisma `Serializable` write transactions;
+- management-authority locking/revalidation inside each write transaction;
+- exact assignment row `FOR UPDATE` locking for lifecycle mutations;
+- parent StudentBatch, AcademicTerm and Coordinator-user locking/validation;
+- PostgreSQL transaction-scoped advisory locking for create identity serialization;
+- the exact four-part assignment identity;
+- conditional lifecycle mutations that fail closed on concurrent state change;
+- mutation and required `SUCCESS` audit in the same transaction;
+- bounded whole-transaction retry;
+- exact duplicate idempotency;
+- explicit rather than silent reactivation;
+- terminal archive semantics;
+- department-filtered direct-object access and safe-not-found behavior.
+
+The exact create/advisory-lock identity remains:
+
+- `departmentId`;
+- `studentBatchId`;
+- `academicTermId`;
+- `coordinatorUserId`.
+
+The advisory lock is not replaced by application-memory, Redis or unlocked
+read-before-write coordination.
+
+### Advisory-lock interoperability defects and valid-create closure
+
+#### PostgreSQL text/NUL defect
+
+The first valid-create runtime attempt reached PostgreSQL advisory-lock acquisition and
+failed because the original lock-key encoding joined the four components with literal
+NUL characters.
+
+Ordinary PostgreSQL reported:
+
+`null character not permitted`
+
+PostgreSQL text cannot carry a literal NUL byte. The correction changed only the lock
+key's transport encoding to deterministic JSON serialization of the same ordered
+four-component identity:
+
+`[departmentId, studentBatchId, academicTermId, coordinatorUserId]`
+
+The JSON array is deterministic, PostgreSQL-text-safe and preserves component
+boundaries unambiguously. This was not an authorization-boundary change and did not
+broaden or narrow assignment identity.
+
+#### Prisma void-deserialization defect
+
+After the text-safe identity correction, direct PostgreSQL execution of the advisory
+lock succeeded, but Prisma `$queryRaw` failed when the query exposed the PostgreSQL
+`void` result of `pg_advisory_xact_lock(...)` directly.
+
+The observed Prisma error was:
+
+- Prisma code: `P2010`;
+- detail: `Failed to deserialize column of type 'void'`.
+
+The correction retained the same transaction-scoped advisory lock and
+`hashtextextended(identityKey, 0)`, but acquired it through a materialized CTE and
+returned a Prisma-supported integer scalar:
+
+```sql
+WITH acquired_lock AS MATERIALIZED (
+  SELECT pg_advisory_xact_lock(
+    hashtextextended(<safe-bound-identity>, 0)
+  )
+)
+SELECT 1::int AS "locked"
+FROM acquired_lock
+```
+
+Because the final query references the materialized CTE, PostgreSQL executes lock
+acquisition. Because the call remains inside the surrounding Serializable Prisma
+transaction, the transaction-scoped advisory lock remains held until that transaction
+commits or rolls back.
+
+After both advisory-lock corrections, ordinary-runtime create verification established:
+
+- valid create: HTTP `201`;
+- exact PostgreSQL assignment row: `1`;
+- exact transactional assigned `SUCCESS` audit: `1`;
+- Direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- repository: clean and aligned.
+
+### Sequential lifecycle and exact authority verification
+
+Ordinary-runtime sequential lifecycle verification established:
+
+- exact duplicate create returned HTTP `201` and the same assignment ID;
+- exact duplicate create did not add another assigned audit;
+- create with a different active configuration returned HTTP `409`;
+- future-expiry PATCH returned HTTP `200`;
+- exact PATCH retry was idempotent and did not add another update audit;
+- active exact assignment authority was allowed;
+- wrong StudentBatch authority identity was denied;
+- wrong AcademicTerm authority identity was denied;
+- wrong department identity was denied;
+- wrong Coordinator-user identity was denied;
+- a forged department header was ignored in favor of authenticated principal scope;
+- unassign returned HTTP `201` and persisted `INACTIVE`;
+- repeated unassign was idempotent;
+- `INACTIVE` assignment authority was denied;
+- create did not silently reactivate the inactive assignment;
+- reactivation without explicit `expiresAt` returned HTTP `400`;
+- reactivation with a past expiry returned HTTP `400`;
+- explicit reactivation with `expiresAt: null` returned HTTP `201`;
+- exact assignment authority was restored after explicit reactivation;
+- archive returned HTTP `201` and persisted `ARCHIVED`;
+- repeated archive was idempotent;
+- archived reactivation returned HTTP `409`;
+- archived expiry PATCH returned HTTP `409`;
+- `ARCHIVED` assignment authority was denied.
+
+On the sequential lifecycle fixture, each required management success-audit action was
+observed exactly once:
+
+- `course-management.batch-coordinator-assignment.assigned`;
+- `course-management.batch-coordinator-assignment.updated`;
+- `course-management.batch-coordinator-assignment.unassigned`;
+- `course-management.batch-coordinator-assignment.reactivated`;
+- `course-management.batch-coordinator-assignment.archived`.
+
+Idempotent retries did not create duplicate success audits.
+
+### Expiry-verification precision
+
+This checkpoint does not overstate wall-clock expiry evidence.
+
+Ordinary-runtime verification established:
+
+- current/past expiry input rejection;
+- future finite expiry configuration through the management PATCH path.
+
+Repository-focused tests establish that an otherwise active assignment with
+`expiresAt <= evaluatedAt` does not grant active authority.
+
+This checkpoint did **not** separately retain a live `ACTIVE` fixture until its
+wall-clock expiry passed and then re-query authority.
+
+Therefore:
+
+- `ACTIVE` authority behavior: ordinary-runtime verified;
+- `INACTIVE` authority behavior: ordinary-runtime verified;
+- terminal `ARCHIVED` authority behavior: ordinary-runtime verified;
+- expired-by-time authority predicate: source/focused-test verified, but not separately
+  wall-clock ordinary-runtime observed in this checkpoint.
+
+### Real PostgreSQL concurrency verification
+
+Three management concurrency scenarios were exercised against real ordinary
+PostgreSQL.
+
+#### Race 1 — concurrent exact duplicate create
+
+Observed results:
+
+- concurrent public responses: HTTP `201` + HTTP `201`;
+- both responses returned the same assignment ID;
+- exact PostgreSQL assignment row count: `1`;
+- assigned `SUCCESS` audit count: `1`.
+
+The race converged idempotently without a duplicate row or duplicate success audit.
+
+#### Race 2 — concurrent different-configuration create
+
+Observed results:
+
+- concurrent public responses: HTTP `201` + HTTP `409`;
+- exact PostgreSQL assignment row count: `1`;
+- winner configuration preserved;
+- loser overwrite blocked;
+- assigned `SUCCESS` audit count: `1`.
+
+#### Race 3 — archive versus reactivate
+
+The initial real race exposed a third runtime interoperability defect:
+
+- archive committed successfully;
+- competing reactivate unexpectedly returned HTTP `500`;
+- final PostgreSQL state nevertheless remained `ARCHIVED`;
+- no false reactivation `SUCCESS` audit committed.
+
+Direct real-Prisma diagnosis conclusively observed:
+
+- error class: `PrismaClientKnownRequestError`;
+- Prisma code: `P2010`;
+- structured PostgreSQL SQLSTATE in `meta.code`: `40001`;
+- PostgreSQL detail: `could not serialize access due to concurrent update`.
+
+The root cause was retry classification, not missing locking or invalid terminal-state
+logic. The repository retried Prisma `P2034`, but did not yet recognize a raw-query
+`P2010` carrying structured PostgreSQL SQLSTATE `40001` as the same class of retryable
+Serializable conflict.
+
+Correction commit:
+
+`ce88983406c848ee49ecd6d13cd2b23bd379c162`
+
+The final structured retry predicate is:
+
+- Prisma `P2034`: retryable;
+- Prisma `P2010` only when `error.meta.code === "40001"`: retryable;
+- generic Prisma `P2010`: not retryable;
+- non-Prisma/application errors: not retryable;
+- message-text matching: not used;
+- unrelated SQLSTATEs, including `40P01`: not added by this correction.
+
+The correction preserved:
+
+- maximum attempts: exactly `3`;
+- isolation: `Serializable`;
+- `maxWait`: `10,000` milliseconds;
+- transaction `timeout`: `30,000` milliseconds;
+- whole-transaction retry rather than partial-operation replay.
+
+The final deterministic real PostgreSQL verification observed:
+
+- raw Prisma `P2010` / PostgreSQL `40001`: observed exactly in the race;
+- archive operation: `FULFILLED / ARCHIVED`;
+- competing reactivate after whole-transaction retry:
+  `FULFILLED / ASSIGNMENT_ARCHIVED`;
+- Serializable transaction starts across both operations and the retry: `3`;
+- escaped Prisma exception: none;
+- false reactivation `SUCCESS` audit: none;
+- subsequent public archived reactivation: HTTP `409`;
+- unexpected HTTP `500` for this retry-classification defect: closed.
+
+No claim is made that a Prisma `P2034` event itself was observed in ordinary runtime.
+Existing P2034 behavior remains source/focused-test verified.
+
+### Real PostgreSQL audit-failure rollback
+
+A forced real transaction-failure checkpoint used a dedicated disposable StudentBatch.
+
+Before the target operation:
+
+- target Coordinator assignment rows: `0`;
+- target Coordinator `SUCCESS` audits: `0`.
+
+Inside the real Serializable Prisma/PostgreSQL transaction:
+
+- the Coordinator assignment identity and mutation were generated/executed;
+- the required assigned `SUCCESS` audit write was deliberately forced to throw an
+  application-side test exception;
+- that application exception remained non-retryable;
+- Serializable transaction attempts: exactly `1`.
+
+Authoritative PostgreSQL verification after the failed transaction established:
+
+- target Coordinator assignment row: `0`;
+- target Coordinator `SUCCESS` audit: `0`;
+- disposable StudentBatch: still present;
+- assignment mutation and required audit rollback: atomic.
+
+Therefore Batch Coordinator assignment-management audit atomicity is real-runtime
+verified, not supported only by a fake transaction harness.
+
+### Controlled cleanup and private evidence preservation
+
+The exact pre-cleanup disposable-fixture inventory was:
+
+- disposable AcademicSession rows: `1`;
+- disposable StudentBatch rows: `5`;
+- disposable BatchCoordinatorAssignment rows: `4`;
+- fixture-target audit rows: `20`;
+- unknown StudentBatch rows under that disposable session: none.
+
+A sanitized private evidence file was retained at:
+
+`/home/sh002/lexora-runtime-evidence-archive/batch-coordinator-management-20260825T182315Z/pre-cleanup-runtime-evidence.txt`
+
+Evidence-file properties:
+
+- mode: `0600`;
+- SHA-256:
+  `970b451044ba9772f75d095bea2ccb4276f7c1ee85de83f4ecdafb6c6d997416`.
+
+The first evidence secret scan matched descriptive phrases such as `access token` and
+`refresh token` even though no secret value was present. That was a
+verification-harness false positive, not an implementation defect.
+
+A corrected value-sensitive scan passed.
+
+The evidence file preserves no raw:
+
+- access-token value;
+- refresh-token value;
+- password;
+- `DATABASE_URL` value;
+- database credential;
+- password hash;
+- production secret.
+
+Transactional cleanup committed exact deletes:
+
+- audit rows: `20`;
+- Coordinator assignments: `4`;
+- StudentBatches: `5`;
+- AcademicSession: `1`.
+
+Post-cleanup disposable residue was exactly:
+
+- AcademicSession: `0`;
+- StudentBatch: `0`;
+- Coordinator assignment: `0`;
+- fixture-target audit: `0`.
+
+Permanent authorization after cleanup remained:
+
+- management permission: exactly `1`;
+- Department Admin role-permission link: exactly `1`;
+- provisioning `SUCCESS` audit: exactly `1`.
+
+Final runtime state after cleanup:
+
+- PM2 `lexora-api` PID: `64137`, unchanged during cleanup;
+- Direct API: HTTP `200`;
+- Nginx API: HTTP `200`;
+- repository: clean and aligned;
+- evidence SHA-256: unchanged;
+- evidence-file mode: `0600`.
+
+### Verification incidents and harness notes
+
+The verification history includes the following incidents and corrections:
+
+- A server power/storage incident left committed working-tree files at zero bytes.
+  The affected files were restored from their committed Git objects without Git-history
+  loss. This was an environment/storage incident, not a source-history rewrite.
+- The original NUL-delimited advisory key was invalid PostgreSQL text and produced
+  `null character not permitted`. The deterministic JSON lock-key correction closed
+  that defect.
+- Directly exposing `pg_advisory_xact_lock(...)` returned PostgreSQL `void`, which
+  Prisma `$queryRaw` could not deserialize. The materialized-CTE/integer-scalar
+  correction closed that defect without removing the lock.
+- The real archive/reactivate race exposed raw Prisma `P2010` with structured SQLSTATE
+  `40001`. The final retry-classification correction closed the unexpected HTTP `500`.
+- One diagnostic SQL query used `AuditLog.created_at` rather than the actual
+  `occurred_at`. This was a diagnostic-harness column-name error only.
+- The first direct Node diagnostic ran from the monorepo root and could not resolve
+  `@prisma/client`. Rerunning from the API package working directory corrected the
+  module-resolution context. This was a harness working-directory issue only.
+- The initial evidence scanner matched descriptive token terminology without a secret
+  value. The corrected value-sensitive scan passed.
+
+These harness mistakes did not themselves mutate production state. The product defects
+listed above were separately diagnosed, corrected, reviewed, committed, promoted and
+reverified.
+
+### Security and architecture preservation
+
+This checkpoint did not weaken or remove:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- `@RequirePolicy()`;
+- authenticated request context;
+- department isolation;
+- authenticated principal department precedence over `x-department-id`;
+- object-level authorization expectations;
+- Teacher assigned-course checks;
+- Student own-resource checks;
+- safe not-found behavior;
+- result publication locks;
+- result amendment controls;
+- GPA/CGPA controlled recalculation;
+- transcript immutable snapshots;
+- transcript token hashing, expiry and revocation;
+- minimal public transcript verification;
+- attendance active-session enforcement;
+- Teacher-only attendance capture;
+- required attendance override reasons;
+- notification isolation;
+- critical-locked preference protection;
+- audit requirements for sensitive operations.
+
+Batch Coordinator assignment management authority is a Department Admin management
+capability.
+
+Batch Coordinator academic authority is **not** granted merely by Department Admin
+status or by holding the management permission.
+
+Academic authority derives from the explicit active assignment identity:
+
+`department + StudentBatch + AcademicTerm + Coordinator user`
+
+and additionally requires valid lifecycle state and valid, department-matching parent
+records.
+
+The authority evaluator uses the authenticated principal's current actor and active
+department; it does not accept a caller-selected Coordinator identity or caller-selected
+department as authoritative.
+
+### Object-authorization precision
+
+This checkpoint's ordinary-runtime evidence established:
+
+- authenticated principal-department scoping;
+- forged-header resistance;
+- denial for an exact wrong-department authority identity.
+
+Current source and focused regression coverage preserve department-filtered direct-ID
+management lookup and safe not-found behavior. Broader Lexora cross-department
+safe-not-found behavior is already established in earlier checkpoints.
+
+This management checkpoint does not claim that it created a new opposite-department
+BatchCoordinatorAssignment solely to exercise a BUS assignment direct-ID lookup when
+no such dedicated runtime fixture was used.
+
+### Current verified classification
+
+The **Batch Coordinator Assignment Management Backend** is now:
+
+- implemented;
+- independently reviewed;
+- committed and pushed;
+- deployed to the ordinary Ubuntu runtime;
+- API typecheck verified;
+- API build verified;
+- focused-test verified;
+- permanent management permission provisioned;
+- fresh-principal policy verified;
+- Department Admin management authority verified;
+- Teacher/Student management exclusion verified;
+- unauthenticated denial verified;
+- department-scoped;
+- forged-header resistant;
+- exact `StudentBatch + AcademicTerm` academic authority model preserved;
+- create verified;
+- read/list/update/unassign/reactivate/archive lifecycle verified;
+- idempotency verified;
+- `ACTIVE` / `INACTIVE` / `ARCHIVED` authority behavior verified;
+- expired-by-time predicate source/focused-test verified with the wall-clock runtime
+  limitation stated above;
+- transactional success audits verified;
+- real PostgreSQL management concurrency verified;
+- raw Prisma `P2010` / PostgreSQL `40001` Serializable retry verified;
+- archive terminality verified;
+- real PostgreSQL audit-failure rollback verified;
+- controlled cleanup verified;
+- private sanitized evidence preserved;
+- PM2/API/Nginx non-disruption verified;
+- repository cleanliness/origin alignment verified;
+- ordinary-runtime verified within the exact scope of this checkpoint.
+
+### Superseded pending statements
+
+Earlier pending statements are superseded only to the extent that they said or implied
+that the following remained unimplemented or unverified:
+
+- Batch Coordinator assignment management API;
+- Batch Coordinator assignment service/repository management behavior;
+- create/read/list/update/unassign/reactivate/archive management lifecycle;
+- dedicated management runtime policy;
+- permanent management permission provisioning;
+- assignment-scoped authority foundation and evaluation;
+- ordinary-runtime `ACTIVE` and `INACTIVE` authority semantics;
+- terminal `ARCHIVED` lifecycle and authority semantics;
+- assignment-management audit events;
+- transactional success-audit atomicity;
+- tested assignment-management concurrency behavior;
+- real PostgreSQL rollback when the required assignment success audit fails.
+
+For the earlier wording:
+
+`exact active/expired/inactive assignment semantics`
+
+supersession is deliberately partial and precise:
+
+- `ACTIVE`, `INACTIVE` and terminal `ARCHIVED` semantics are ordinary-runtime verified;
+- expired-by-time denial is source/focused-test verified;
+- this checkpoint did not separately observe a live active fixture cross its wall-clock
+  expiry and then re-query authority.
+
+Historical checkpoints remain valid evidence for the state they documented at their
+respective times.
+
+### Still pending
+
+The following remain pending unless separately implemented and runtime verified:
+
+- wall-clock expired-`ACTIVE` assignment authority observation, if full runtime
+  observation of that expiry edge is required before relying on that path;
+- Batch Coordinator frontend;
+- Course Outline `SUBMITTED_BY_TEACHER → COORDINATOR_REVIEW`;
+- Course Outline `COORDINATOR_REVIEW → RETURNED_FOR_CORRECTION`;
+- corrected Course Outline resubmission semantics;
+- Course Outline approval;
+- Course Outline activation;
+- Course Outline archival;
+- `CourseOutlineVersion` StudentBatch snapshot behavior;
+- exact Course Outline reviewer-governance decisions where Batch Coordinator and
+  Programme Coordinator responsibilities differ;
+- Programme Coordinator authority;
+- Coordinator/Admin Course Outline frontend;
+- broader Coordinator governance;
+- complete Course Outline lifecycle;
+- complete Lexora LMS.
+
+No Programme Coordinator authority is invented by this checkpoint.
+
+The approved site specification continues to require additional scoped roles such as
+Batch Coordinator and Programme Coordinator to remain department-scoped,
+assignment-scoped, time-bound where appropriate, and workflow-stage-aware.
+
+### Next safe step
+
+Do not implement a broad Coordinator role as the next step.
+
+After this documentation checkpoint is reviewed and committed, the next Course Outline
+work should begin with a fresh source/current-code audit for the smallest
+assignment-scoped Coordinator authorization integration required by the next Course
+Outline transition.
+
+That work must preserve:
+
+- exact `StudentBatch + AcademicTerm` Coordinator scope;
+- CourseOffering StudentBatch binding;
+- authenticated department identity;
+- exact `BatchCoordinatorAssignment`;
+- assignment validity, including lifecycle and time bounds;
+- exact workflow state;
+- safe direct-object handling;
+- same-transaction locking/revalidation for Coordinator-sensitive mutations;
+- transactional audit.
+
+Programme Coordinator authority remains unresolved and must not be inferred or
+invented.
+
+### Final narrow verdict
+
+> **Batch Coordinator Assignment Management Backend = IMPLEMENTED / INDEPENDENTLY REVIEWED / COMMITTED AND PUSHED / DEPLOYED / API TYPECHECK VERIFIED / API BUILD VERIFIED / FOCUSED TEST VERIFIED / PERMANENT MANAGEMENT PERMISSION PROVISIONED / FRESH-PRINCIPAL POLICY VERIFIED / DEPARTMENT-SCOPED / FORGED-HEADER RESISTANT / EXACT STUDENTBATCH+ACADEMICTERM AUTHORITY MODEL PRESERVED / CREATE VERIFIED / LIFECYCLE VERIFIED / IDEMPOTENCY VERIFIED / ACTIVE-INACTIVE-ARCHIVED AUTHORITY VERIFIED / TRANSACTIONAL SUCCESS AUDITS VERIFIED / REAL POSTGRESQL CONCURRENCY VERIFIED / RAW P2010-40001 SERIALIZABLE RETRY VERIFIED / ARCHIVE TERMINALITY VERIFIED / REAL POSTGRESQL AUDIT-FAILURE ROLLBACK VERIFIED / CONTROLLED CLEANUP VERIFIED / PRIVATE EVIDENCE PRESERVED / NON-DISRUPTION VERIFIED / ORDINARY-RUNTIME VERIFIED**
+
+This verdict applies only to the Batch Coordinator Assignment Management Backend and
+the exact runtime paths described in this checkpoint.
+
+It does not claim separate wall-clock expiry-edge observation, Batch Coordinator
+frontend completion, Course Outline Coordinator transition completion, Programme
+Coordinator authority, broader Coordinator governance, the complete Course Outline
+lifecycle or the complete Lexora LMS.
