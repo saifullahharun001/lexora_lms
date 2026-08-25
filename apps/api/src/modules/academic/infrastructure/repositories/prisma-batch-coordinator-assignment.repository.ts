@@ -698,6 +698,12 @@ export class PrismaBatchCoordinatorAssignmentRepository implements BatchCoordina
     );
   }
 
+  private isRetryableSerializableConflict(error: unknown) {
+    if (!(error instanceof PrismaClientKnownRequestError)) return false;
+    if (error.code === "P2034") return true;
+    return error.code === "P2010" && error.meta?.code === "40001";
+  }
+
   private async serializable<T>(
     operation: (tx: Prisma.TransactionClient) => Promise<T>,
   ): Promise<T> {
@@ -709,11 +715,7 @@ export class PrismaBatchCoordinatorAssignmentRepository implements BatchCoordina
           timeout: 30_000,
         });
       } catch (error) {
-        if (
-          attempt >= 2 ||
-          !(error instanceof PrismaClientKnownRequestError) ||
-          error.code !== "P2034"
-        ) {
+        if (attempt >= 2 || !this.isRetryableSerializableConflict(error)) {
           throw error;
         }
       }

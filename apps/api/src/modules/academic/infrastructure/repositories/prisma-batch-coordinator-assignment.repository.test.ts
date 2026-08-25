@@ -6,6 +6,7 @@ import {
   DepartmentStatus,
   Prisma,
 } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 import type {
   CreateBatchCoordinatorAssignmentInput,
@@ -42,6 +43,11 @@ type Assignment = ReturnType<typeof record>;
 interface State {
   assignments: Assignment[];
   audits: Array<Record<string, unknown>>;
+}
+
+interface TransactionFailure {
+  error: unknown;
+  afterRollback?: (state: State) => void;
 }
 
 function sqlText(query: unknown) {
@@ -83,6 +89,7 @@ function harness(initialAssignments: Assignment[] = []) {
   const rawSql: string[] = [];
   const advisoryLockIdentityKeys: string[] = [];
   const authorityQueries: Array<Record<string, unknown>> = [];
+  const transactionFailures: TransactionFailure[] = [];
   let transactionTail = Promise.resolve();
 
   const client = (working: State) => ({
@@ -258,6 +265,11 @@ function harness(initialAssignments: Assignment[] = []) {
       try {
         const working = structuredClone(state);
         const result = await operation(client(working));
+        const failure = transactionFailures.shift();
+        if (failure) {
+          failure.afterRollback?.(state);
+          throw failure.error;
+        }
         state = working;
         return result;
       } finally {
@@ -275,6 +287,12 @@ function harness(initialAssignments: Assignment[] = []) {
     authorityQueries,
     parentAvailability,
     departmentState,
+    failNextTransaction(
+      error: unknown,
+      afterRollback?: TransactionFailure["afterRollback"],
+    ) {
+      transactionFailures.push({ error, afterRollback });
+    },
     failAudit() {
       auditFailure = true;
     },
@@ -312,6 +330,14 @@ function transitionInput(
     assignmentId,
     transitionAt,
   };
+}
+
+function knownRequestError(code: string, meta?: Record<string, unknown>) {
+  return new PrismaClientKnownRequestError("test Prisma failure", {
+    code,
+    clientVersion: "6.19.3",
+    meta,
+  });
 }
 
 test("create is department-scoped, parent-validated, transactionally audited, idempotent, and multi-Coordinator", async () => {
@@ -743,4 +769,105 @@ test("concurrent unassign/reactivate serializes to one valid lifecycle state", a
     }),
     true,
   );
+});
+
+test("Serializable transactions continue to retry P2034", async () => {
+  const h = harness();
+  h.failNextTransaction(knownRequestError("P2034"));
+
+  assert.equal((await h.repository.create(createInput())).outcome, "CREATED");
+  assert.equal(h.transactions.length, 2);
+  assert.equal(h.snapshot().assignments.length, 1);
+  assert.equal(h.snapshot().audits.length, 1);
+});
+
+test("P2010 with SQLSTATE 40001 retries and observes a competing terminal archive", async () => {
+  const h = harness([
+    record("coordinator-a", {
+      status: BatchCoordinatorAssignmentStatus.INACTIVE,
+      unassignedAt: assignedAt,
+    }),
+  ]);
+  h.failNextTransaction(
+    knownRequestError("P2010", { code: "40001" }),
+    (state) => {
+      const assignment = state.assignments[0]!;
+      Object.assign(assignment, {
+        status: BatchCoordinatorAssignmentStatus.ARCHIVED,
+        archivedAt: later,
+      });
+      state.audits.push({
+        action: "course-management.batch-coordinator-assignment.archived",
+        outcome: "SUCCESS",
+      });
+    },
+  );
+
+  const result = await h.repository.reactivate({
+    ...transitionInput(
+      "assignment-coordinator-a",
+      new Date("2026-08-25T12:00:00.000Z"),
+    ),
+    expiresAt: null,
+  });
+
+  assert.equal(result.outcome, "ASSIGNMENT_ARCHIVED");
+  assert.equal(h.transactions.length, 2);
+  assert.equal(
+    h.snapshot().assignments[0]!.status,
+    BatchCoordinatorAssignmentStatus.ARCHIVED,
+  );
+  assert.deepEqual(
+    h.snapshot().audits.map((audit) => audit.action),
+    ["course-management.batch-coordinator-assignment.archived"],
+  );
+});
+
+test("generic P2010, unrelated Prisma errors, and application errors are not retried", async () => {
+  for (const error of [
+    knownRequestError("P2010"),
+    knownRequestError("P2010", { code: "42601" }),
+    knownRequestError("P2010", { code: 40001 }),
+    knownRequestError("P2028"),
+    new Error("APPLICATION_FAILURE"),
+  ]) {
+    const h = harness();
+    h.failNextTransaction(error);
+
+    await assert.rejects(
+      h.repository.create(createInput()),
+      (caught: unknown) => caught === error,
+    );
+    assert.equal(h.transactions.length, 1);
+    assert.deepEqual(h.snapshot(), { assignments: [], audits: [] });
+  }
+});
+
+test("retryable Serializable conflicts stop after exactly three attempts", async () => {
+  const h = harness();
+  const error = knownRequestError("P2010", { code: "40001" });
+  h.failNextTransaction(error);
+  h.failNextTransaction(error);
+  h.failNextTransaction(error);
+
+  await assert.rejects(
+    h.repository.create(createInput()),
+    (caught: unknown) => caught === error,
+  );
+  assert.equal(h.transactions.length, 3);
+  assert.ok(
+    h.transactions.every(
+      (options) =>
+        (
+          options as {
+            isolationLevel: unknown;
+            maxWait: number;
+            timeout: number;
+          }
+        ).isolationLevel === Prisma.TransactionIsolationLevel.Serializable &&
+        (options as { maxWait: number }).maxWait === 10_000 &&
+        (options as { timeout: number }).timeout === 30_000,
+    ),
+  );
+  assert.deepEqual(h.snapshot(), { assignments: [], audits: [] });
 });
