@@ -49,6 +49,7 @@ import type {
   ProgramListFilters,
   StudentBatchListFilters,
   StudentCourseOfferingListFilters,
+  StartCourseOutlineCoordinatorReviewInput,
   SubmitCourseOutlineVersionInput,
   SyllabusVersionLifecycleAction,
   SyllabusVersionListFilters,
@@ -943,6 +944,51 @@ export class AcademicService {
         );
       case "VERSION_CONFLICT":
         throw new ConflictException("Course Outline submission conflict");
+    }
+  }
+
+  async startCourseOutlineCoordinatorReview(
+    courseOfferingId: string,
+    courseOutlineVersionId: string,
+  ) {
+    const principal = this.requestContextService.get()?.principal;
+    if (
+      !principal ||
+      principal.isAuthenticated !== true ||
+      principal.actorType !== "user" ||
+      !principal.actorId ||
+      !principal.activeDepartmentId
+    ) {
+      throw new BadRequestException(
+        "Authenticated department user context is required",
+      );
+    }
+
+    const requestContext = this.requestContextService.get();
+    const result = await this.repository.startCourseOutlineCoordinatorReview({
+      departmentId: principal.activeDepartmentId,
+      courseOfferingId,
+      courseOutlineVersionId,
+      actorUserId: principal.actorId,
+      requestId: requestContext?.requestId,
+      ipAddress: requestContext?.audit.ipAddress,
+      userAgent: requestContext?.audit.userAgent,
+    } satisfies StartCourseOutlineCoordinatorReviewInput);
+
+    switch (result.outcome) {
+      case "COORDINATOR_REVIEW_STARTED":
+        return result.courseOutlineVersion;
+      case "OFFERING_OR_AUTHORITY_NOT_FOUND":
+      case "OUTLINE_NOT_FOUND":
+        throw new NotFoundException("Course Outline version not found");
+      case "OUTLINE_NOT_REVIEWABLE":
+        throw new ConflictException(
+          "Course Outline version cannot enter Coordinator review in its current status",
+        );
+      case "CONCURRENT_CONFLICT":
+        throw new ConflictException(
+          "Course Outline Coordinator review conflict",
+        );
     }
   }
 

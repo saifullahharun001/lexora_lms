@@ -94,27 +94,6 @@ const academicRepository = readFileSync(
   ),
   "utf8",
 );
-const policySources = [
-  join(
-    apiRoot,
-    "src",
-    "modules",
-    "academic",
-    "domain",
-    "academic.policy-names.ts",
-  ),
-  join(
-    apiRoot,
-    "src",
-    "modules",
-    "course-management",
-    "domain",
-    "course-management.policy-names.ts",
-  ),
-]
-  .map((path) => readFileSync(path, "utf8"))
-  .join("\n");
-
 function model(name: string) {
   return (
     schema.match(new RegExp(`model ${name} \\{[\\s\\S]*?\\n\\}`))?.[0] ?? ""
@@ -344,14 +323,8 @@ test("no adjacent academic model or loose session identity is repurposed", () =>
   );
 });
 
-test("foundation introduces no Coordinator authority or assignment model", () => {
-  assert.doesNotMatch(
-    schema,
-    /model (?:BatchCoordinatorAssignment|ProgrammeCoordinatorAssignment) \{/,
-  );
+test("StudentBatch-binding foundation migration introduces no Coordinator authority artifact", () => {
   assert.doesNotMatch(migration, /coordinator|policy|permission|role|audit/i);
-  assert.doesNotMatch(policySources, /batch[-_.]coordinator/i);
-  assert.doesNotMatch(courseOfferingsController, /batch[-_.]?coordinator/i);
 });
 
 test("all explicit PostgreSQL identifiers fit the 63-byte identifier limit", () => {

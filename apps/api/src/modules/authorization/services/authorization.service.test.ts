@@ -351,6 +351,74 @@ test("Batch Coordinator assignment management excludes wildcard authority and re
   }
 });
 
+test("Course Outline Coordinator review admits only active-department Teacher and Department Admin roles", () => {
+  const service = new AuthorizationService();
+  const policy = "course-management.course-outline.coordinator-review";
+
+  for (const role of ["department_admin", "teacher", "student", "auditor", "support"] as const) {
+    assert.equal(
+      service.isAllowed(
+        principal({
+          roleAssignments: [
+            {
+              userRoleId: `${role}-assignment`,
+              roleId: `${role}-role`,
+              departmentId: "department-a",
+              role
+            }
+          ]
+        }),
+        policy
+      ),
+      role === "department_admin" || role === "teacher"
+    );
+  }
+
+  assert.equal(
+    service.isAllowed(
+      principal({
+        roleAssignments: [
+          {
+            userRoleId: "admin-assignment",
+            roleId: "admin-role",
+            departmentId: "department-b",
+            role: "department_admin"
+          }
+        ]
+      }),
+      policy
+    ),
+    false
+  );
+});
+
+test("Course Outline Coordinator review cannot be admitted by a wildcard permission alone", () => {
+  const service = new AuthorizationService();
+  const supportAssignment = {
+    userRoleId: "support-assignment",
+    roleId: "support-role",
+    departmentId: "department-a",
+    role: "support" as const
+  };
+  const wildcard = grant(
+    {
+      userRoleId: supportAssignment.userRoleId,
+      roleId: supportAssignment.roleId
+    },
+    { resource: "course-management", action: "*" }
+  );
+  const supportPrincipal = principal({
+    roleAssignments: [supportAssignment],
+    permissions: [wildcard]
+  });
+
+  assert.equal(service.resolvePolicies(supportPrincipal).has("course-management.*"), true);
+  assert.equal(
+    service.isAllowed(supportPrincipal, "course-management.course-outline.coordinator-review"),
+    false
+  );
+});
+
 test("AuthorizationService accepts service principals with empty authority", () => {
   const service = new AuthorizationService();
   assert.deepEqual(

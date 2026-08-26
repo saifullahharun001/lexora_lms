@@ -164,6 +164,13 @@ export interface SubmitCourseOutlineVersionInput
   transitionAt: Date;
 }
 
+export interface StartCourseOutlineCoordinatorReviewInput
+  extends CourseOutlineWriteAuditInput {
+  departmentId: string;
+  courseOfferingId: string;
+  courseOutlineVersionId: string;
+}
+
 export type CreateCourseOutlineVersionResult =
   | { outcome: "CREATED"; courseOutlineVersion: CourseOutlineVersionView }
   | {
@@ -193,6 +200,19 @@ export type SubmitCourseOutlineVersionResult =
         | "OUTLINE_NOT_FOUND"
         | "OUTLINE_NOT_SUBMITTABLE"
         | "VERSION_CONFLICT";
+    };
+
+export type StartCourseOutlineCoordinatorReviewResult =
+  | {
+      outcome: "COORDINATOR_REVIEW_STARTED";
+      courseOutlineVersion: CourseOutlineVersionView;
+    }
+  | {
+      outcome:
+        | "OFFERING_OR_AUTHORITY_NOT_FOUND"
+        | "OUTLINE_NOT_FOUND"
+        | "OUTLINE_NOT_REVIEWABLE"
+        | "CONCURRENT_CONFLICT";
     };
 
 export interface ProgramLearningOutcomeReadView {
@@ -775,6 +795,9 @@ export interface AcademicRepositoryPort {
   submitCourseOutlineVersion(
     input: SubmitCourseOutlineVersionInput,
   ): Promise<SubmitCourseOutlineVersionResult>;
+  startCourseOutlineCoordinatorReview(
+    input: StartCourseOutlineCoordinatorReviewInput,
+  ): Promise<StartCourseOutlineCoordinatorReviewResult>;
   createCourseOffering(input: CreateCourseOfferingInput): Promise<unknown>;
   updateCourseOffering(
     departmentId: string,

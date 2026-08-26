@@ -47,6 +47,7 @@ function harness(
     createResult?: unknown;
     updateResult?: unknown;
     submitResult?: unknown;
+    coordinatorReviewResult?: unknown;
     listResult?: unknown;
     detailResult?: unknown;
   } = {},
@@ -96,6 +97,19 @@ function harness(
         }
       );
     },
+    startCourseOutlineCoordinatorReview: async (...args: unknown[]) => {
+      calls.push({ method: "coordinator-review", args });
+      return (
+        options.coordinatorReviewResult ?? {
+          outcome: "COORDINATOR_REVIEW_STARTED",
+          courseOutlineVersion: {
+            ...outline,
+            status: CourseOutlineStatus.COORDINATOR_REVIEW,
+            submittedAt: new Date("2026-08-20T01:00:00.000Z"),
+          },
+        }
+      );
+    },
   };
   const roles = [role, ...(options.additionalRoles ?? [])];
   const context = {
@@ -104,6 +118,8 @@ function harness(
     department: { departmentId: "forged-header-department" },
     principal: {
       actorId: `${role}-user`,
+      actorType: "user",
+      isAuthenticated: true,
       activeDepartmentId: "department-a",
       roleAssignments: roles.map((assignedRole, index) => ({
         userRoleId: `${assignedRole}-assignment-${index}`,
@@ -117,6 +133,7 @@ function harness(
 
   return {
     calls,
+    context,
     service: new AcademicService(
       repository as never,
       {} as never,
@@ -482,5 +499,89 @@ test("submission repository outcomes map to safe not-found and controlled confli
       h.service.submitCourseOutlineVersion("offering-a", "outline-a"),
       ConflictException,
     );
+  }
+});
+
+test("Coordinator review derives actor and department from the authenticated principal without forwarding authority identities", async () => {
+  for (const role of ["teacher", "department_admin"] as const) {
+    const h = harness(role);
+    const result = await h.service.startCourseOutlineCoordinatorReview(
+      "offering-a",
+      "outline-a",
+    );
+    assert.equal(result.status, CourseOutlineStatus.COORDINATOR_REVIEW);
+
+    const input = h.calls[0]!.args[0] as Record<string, unknown>;
+    assert.equal(input.departmentId, "department-a");
+    assert.equal(input.actorUserId, `${role}-user`);
+    assert.equal(input.courseOfferingId, "offering-a");
+    assert.equal(input.courseOutlineVersionId, "outline-a");
+    assert.equal(input.requestId, "request-a");
+    assert.equal(input.ipAddress, "127.0.0.1");
+    assert.equal(input.userAgent, "test-agent");
+    for (const forbiddenField of [
+      "studentBatchId",
+      "academicTermId",
+      "batchCoordinatorAssignmentId",
+      "status",
+      "transitionAt",
+    ]) {
+      assert.equal(forbiddenField in input, false);
+    }
+  }
+});
+
+test("Teacher and Department Admin coarse admission does not bypass exact Coordinator assignment authority", async () => {
+  for (const role of ["teacher", "department_admin"] as const) {
+    const h = harness(role, {
+      coordinatorReviewResult: {
+        outcome: "OFFERING_OR_AUTHORITY_NOT_FOUND",
+      },
+    });
+    await assert.rejects(
+      h.service.startCourseOutlineCoordinatorReview("offering-a", "outline-a"),
+      NotFoundException,
+    );
+  }
+});
+
+test("Coordinator review maps hidden scope to 404 and lifecycle or exhausted concurrency to 409", async () => {
+  for (const outcome of [
+    "OFFERING_OR_AUTHORITY_NOT_FOUND",
+    "OUTLINE_NOT_FOUND",
+  ] as const) {
+    const h = harness("teacher", { coordinatorReviewResult: { outcome } });
+    await assert.rejects(
+      h.service.startCourseOutlineCoordinatorReview("offering-a", "outline-a"),
+      NotFoundException,
+    );
+  }
+
+  for (const outcome of [
+    "OUTLINE_NOT_REVIEWABLE",
+    "CONCURRENT_CONFLICT",
+  ] as const) {
+    const h = harness("teacher", { coordinatorReviewResult: { outcome } });
+    await assert.rejects(
+      h.service.startCourseOutlineCoordinatorReview("offering-a", "outline-a"),
+      ConflictException,
+    );
+  }
+});
+
+test("Coordinator review requires a complete authenticated user principal before repository access", async () => {
+  for (const principalOverride of [
+    { isAuthenticated: false },
+    { actorType: "service" },
+    { actorId: "" },
+    { activeDepartmentId: null },
+  ]) {
+    const h = harness("teacher");
+    Object.assign(h.context.principal, principalOverride);
+    await assert.rejects(
+      h.service.startCourseOutlineCoordinatorReview("offering-a", "outline-a"),
+      BadRequestException,
+    );
+    assert.deepEqual(h.calls, []);
   }
 });

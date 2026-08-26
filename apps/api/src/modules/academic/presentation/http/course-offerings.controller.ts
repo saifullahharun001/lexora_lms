@@ -109,6 +109,19 @@ export class CourseOfferingsController {
     );
   }
 
+  @Post(
+    ":id/course-outline-versions/:courseOutlineVersionId/coordinator-review",
+  )
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_COORDINATOR_REVIEW)
+  startCourseOutlineCoordinatorReview(
+    @Param() params: CourseOutlineVersionParamDto,
+  ) {
+    return this.academicService.startCourseOutlineCoordinatorReview(
+      params.id,
+      params.courseOutlineVersionId,
+    );
+  }
+
   @Patch(":id")
   @RequirePolicy(ACADEMIC_POLICY_NAMES.OFFERING_MANAGE)
   update(@Param() params: ResourceIdParamDto, @Body() body: UpdateCourseOfferingDto) {

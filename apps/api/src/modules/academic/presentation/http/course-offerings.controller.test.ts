@@ -483,6 +483,12 @@ test("Course Outline endpoints are nested, guarded, and use dedicated read/write
       RequestMethod.POST,
       ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_SUBMIT,
     ],
+    [
+      "startCourseOutlineCoordinatorReview",
+      ":id/course-outline-versions/:courseOutlineVersionId/coordinator-review",
+      RequestMethod.POST,
+      ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_COORDINATOR_REVIEW,
+    ],
   ] as const;
 
   assert.deepEqual(
@@ -506,6 +512,7 @@ test("Course Outline routes forward only nested identities and whitelisted DTO d
       "getCourseOutlineVersion",
       "updateCourseOutlineVersion",
       "submitCourseOutlineVersion",
+      "startCourseOutlineCoordinatorReview",
     ].map((method) => [
       method,
       async (...args: unknown[]) => {
@@ -538,6 +545,19 @@ test("Course Outline routes forward only nested identities and whitelisted DTO d
     status: "APPROVED",
     submittedAt: "attacker-controlled",
   } as never);
+  assert.equal(
+    CourseOfferingsController.prototype.startCourseOutlineCoordinatorReview
+      .length,
+    1,
+  );
+  await controller.startCourseOutlineCoordinatorReview({
+    id: "offering-a",
+    courseOutlineVersionId: "outline-a",
+    studentBatchId: "attacker-batch",
+    academicTermId: "attacker-term",
+    batchCoordinatorAssignmentId: "attacker-assignment",
+    status: "APPROVED",
+  } as never);
 
   assert.deepEqual(calls, [
     {
@@ -555,6 +575,10 @@ test("Course Outline routes forward only nested identities and whitelisted DTO d
     },
     {
       method: "submitCourseOutlineVersion",
+      args: ["offering-a", "outline-a"],
+    },
+    {
+      method: "startCourseOutlineCoordinatorReview",
       args: ["offering-a", "outline-a"],
     },
   ]);
@@ -584,6 +608,7 @@ test("dedicated Course Outline policies admit Teacher and Department Admin but d
     ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_READ,
     ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_WRITE,
     ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_SUBMIT,
+    ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_COORDINATOR_REVIEW,
   ]) {
     assert.equal(authorization.isAllowed(principal("teacher"), policy), true);
     assert.equal(

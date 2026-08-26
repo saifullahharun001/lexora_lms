@@ -9,6 +9,7 @@ import {
   isPermissionGrantFromLoadedRole,
   isRoleAssignmentInActiveDepartment
 } from "@/common/authorization/principal-authority";
+import { COURSE_MANAGEMENT_POLICY_NAMES } from "@/modules/course-management/domain/course-management.policy-names";
 import { PERMISSIONS } from "@/modules/identity-access/authorization/permissions.constants";
 
 const EXPLICIT_DEPARTMENT_ADMIN_PERMISSION_POLICIES = {
@@ -28,6 +29,13 @@ const EXPLICIT_DEPARTMENT_ADMIN_PERMISSION_POLICIES = {
     scope: "department"
   }
 } as const;
+
+const SENSITIVE_ROLE_ADMISSION_POLICIES = {
+  [COURSE_MANAGEMENT_POLICY_NAMES.COURSE_OUTLINE_COORDINATOR_REVIEW]: [
+    "teacher",
+    "department_admin"
+  ]
+} as const satisfies Partial<Record<string, readonly PlatformRole[]>>;
 
 const STATIC_ROLE_POLICIES: Record<PlatformRole, string[]> = {
   department_admin: [
@@ -227,6 +235,22 @@ export class AuthorizationService {
   }
 
   isAllowed(principal: PrincipalContext, requiredPolicy: string): boolean {
+    const admittedRoles =
+      SENSITIVE_ROLE_ADMISSION_POLICIES[
+        requiredPolicy as keyof typeof SENSITIVE_ROLE_ADMISSION_POLICIES
+      ];
+
+    if (admittedRoles) {
+      return principal.roleAssignments.some(
+        (assignment) =>
+          admittedRoles.some((role) => role === assignment.role) &&
+          isRoleAssignmentInActiveDepartment(
+            principal.activeDepartmentId,
+            assignment
+          )
+      );
+    }
+
     const explicitPermission =
       EXPLICIT_DEPARTMENT_ADMIN_PERMISSION_POLICIES[
         requiredPolicy as keyof typeof EXPLICIT_DEPARTMENT_ADMIN_PERMISSION_POLICIES

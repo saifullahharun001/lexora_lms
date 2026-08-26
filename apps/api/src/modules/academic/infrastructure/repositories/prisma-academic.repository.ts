@@ -2,9 +2,11 @@ import { Injectable } from "@nestjs/common";
 import {
   AcademicProgramStatus,
   AcademicVersionStatus,
+  BatchCoordinatorAssignmentStatus,
   CourseOfferingStatus,
   CourseOutlineStatus,
   CourseStatus,
+  DepartmentStatus,
   EnrollmentStatus,
   Prisma,
   UserStatus,
@@ -41,6 +43,7 @@ import type {
   StudentBatchListFilters,
   StudentBatchView,
   StudentCourseOfferingListFilters,
+  StartCourseOutlineCoordinatorReviewInput,
   SubmitCourseOutlineVersionInput,
   SyllabusVersionListFilters,
   TeacherAssignmentListFilters,
@@ -3047,6 +3050,263 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
     });
   }
 
+  async startCourseOutlineCoordinatorReview(
+    input: StartCourseOutlineCoordinatorReviewInput,
+  ) {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await this.prisma.$transaction(
+          async (tx) => {
+            const lockedOfferings = await tx.$queryRaw<
+              Array<{
+                id: string;
+                departmentId: string;
+                studentBatchId: string | null;
+                academicTermId: string;
+                curriculumCourseId: string | null;
+                syllabusVersionId: string | null;
+              }>
+            >(Prisma.sql`
+              SELECT
+                co."id",
+                co."department_id" AS "departmentId",
+                co."student_batch_id" AS "studentBatchId",
+                co."academic_term_id" AS "academicTermId",
+                co."curriculum_course_id" AS "curriculumCourseId",
+                co."syllabus_version_id" AS "syllabusVersionId"
+              FROM "course_offerings" co
+              WHERE co."id" = ${input.courseOfferingId}
+                AND co."department_id" = ${input.departmentId}
+                AND co."archived_at" IS NULL
+              FOR UPDATE OF co
+            `);
+            if (lockedOfferings.length !== 1) {
+              return { outcome: "OFFERING_OR_AUTHORITY_NOT_FOUND" } as const;
+            }
+
+            const offering = lockedOfferings[0]!;
+            if (
+              !offering.studentBatchId ||
+              !offering.curriculumCourseId ||
+              !offering.syllabusVersionId
+            ) {
+              return { outcome: "OFFERING_OR_AUTHORITY_NOT_FOUND" } as const;
+            }
+
+            const lockedAssignments = await tx.$queryRaw<
+              Array<{ id: string }>
+            >(Prisma.sql`
+              SELECT bca."id"
+              FROM "batch_coordinator_assignments" bca
+              WHERE bca."department_id" = ${input.departmentId}
+                AND bca."student_batch_id" = ${offering.studentBatchId}
+                AND bca."academic_term_id" = ${offering.academicTermId}
+                AND bca."coordinator_user_id" = ${input.actorUserId}
+              FOR UPDATE OF bca
+            `);
+            if (lockedAssignments.length !== 1) {
+              return { outcome: "OFFERING_OR_AUTHORITY_NOT_FOUND" } as const;
+            }
+
+            const transitionAt = new Date();
+            const assignment = await tx.batchCoordinatorAssignment.findFirst({
+              where: {
+                id: lockedAssignments[0]!.id,
+                departmentId: input.departmentId,
+                studentBatchId: offering.studentBatchId,
+                academicTermId: offering.academicTermId,
+                coordinatorUserId: input.actorUserId,
+                status: BatchCoordinatorAssignmentStatus.ACTIVE,
+                archivedAt: null,
+                unassignedAt: null,
+                assignedAt: { lte: transitionAt },
+                OR: [{ expiresAt: null }, { expiresAt: { gt: transitionAt } }],
+                department: {
+                  is: {
+                    id: input.departmentId,
+                    status: DepartmentStatus.ACTIVE,
+                    archivedAt: null,
+                    deletedAt: null,
+                  },
+                },
+                studentBatch: {
+                  is: {
+                    id: offering.studentBatchId,
+                    departmentId: input.departmentId,
+                    archivedAt: null,
+                    academicProgram: {
+                      is: {
+                        departmentId: input.departmentId,
+                        archivedAt: null,
+                      },
+                    },
+                    academicSession: {
+                      is: {
+                        departmentId: input.departmentId,
+                        archivedAt: null,
+                      },
+                    },
+                  },
+                },
+                academicTerm: {
+                  is: {
+                    id: offering.academicTermId,
+                    departmentId: input.departmentId,
+                    archivedAt: null,
+                  },
+                },
+                coordinatorUser: {
+                  is: {
+                    id: input.actorUserId,
+                    departmentId: input.departmentId,
+                    status: UserStatus.ACTIVE,
+                    archivedAt: null,
+                    deletedAt: null,
+                  },
+                },
+              },
+              select: { id: true },
+            });
+            if (!assignment) {
+              return { outcome: "OFFERING_OR_AUTHORITY_NOT_FOUND" } as const;
+            }
+
+            const existing = await tx.courseOutlineVersion.findFirst({
+              where: {
+                id: input.courseOutlineVersionId,
+                departmentId: input.departmentId,
+                courseOfferingId: offering.id,
+              },
+              select: courseOutlineVersionSelect,
+            });
+            if (
+              !existing ||
+              existing.curriculumCourseId !== offering.curriculumCourseId ||
+              existing.syllabusVersionId !== offering.syllabusVersionId
+            ) {
+              return { outcome: "OUTLINE_NOT_FOUND" } as const;
+            }
+            if (
+              existing.status !== CourseOutlineStatus.SUBMITTED_BY_TEACHER ||
+              existing.submittedAt === null ||
+              existing.approvedAt !== null ||
+              existing.activatedAt !== null ||
+              existing.archivedAt !== null
+            ) {
+              return { outcome: "OUTLINE_NOT_REVIEWABLE" } as const;
+            }
+
+            const mutation = await tx.courseOutlineVersion.updateMany({
+              where: {
+                id: input.courseOutlineVersionId,
+                departmentId: input.departmentId,
+                courseOfferingId: offering.id,
+                curriculumCourseId: offering.curriculumCourseId,
+                syllabusVersionId: offering.syllabusVersionId,
+                status: CourseOutlineStatus.SUBMITTED_BY_TEACHER,
+                submittedAt: { not: null },
+                approvedAt: null,
+                activatedAt: null,
+                archivedAt: null,
+              },
+              data: { status: CourseOutlineStatus.COORDINATOR_REVIEW },
+            });
+
+            if (mutation.count === 0) {
+              const current = await tx.courseOutlineVersion.findFirst({
+                where: {
+                  id: input.courseOutlineVersionId,
+                  departmentId: input.departmentId,
+                  courseOfferingId: offering.id,
+                  curriculumCourseId: offering.curriculumCourseId,
+                  syllabusVersionId: offering.syllabusVersionId,
+                },
+                select: {
+                  status: true,
+                  submittedAt: true,
+                  approvedAt: true,
+                  activatedAt: true,
+                  archivedAt: true,
+                },
+              });
+              if (!current) return { outcome: "OUTLINE_NOT_FOUND" } as const;
+              if (
+                current.status !== CourseOutlineStatus.SUBMITTED_BY_TEACHER ||
+                current.submittedAt === null ||
+                current.approvedAt !== null ||
+                current.activatedAt !== null ||
+                current.archivedAt !== null
+              ) {
+                return { outcome: "OUTLINE_NOT_REVIEWABLE" } as const;
+              }
+              return { outcome: "CONCURRENT_CONFLICT" } as const;
+            }
+
+            const courseOutlineVersion =
+              await tx.courseOutlineVersion.findFirst({
+                where: {
+                  id: input.courseOutlineVersionId,
+                  departmentId: input.departmentId,
+                  courseOfferingId: offering.id,
+                  curriculumCourseId: offering.curriculumCourseId,
+                  syllabusVersionId: offering.syllabusVersionId,
+                },
+                select: courseOutlineVersionSelect,
+              });
+            if (!courseOutlineVersion) {
+              throw new Error(
+                "Coordinator-review Course Outline version could not be reloaded",
+              );
+            }
+
+            await tx.auditLog.create({
+              data: {
+                requestId: input.requestId,
+                actorUserId: input.actorUserId,
+                actorType: "USER",
+                departmentId: input.departmentId,
+                action:
+                  ACADEMIC_AUDIT_EVENTS.COURSE_OUTLINE_COORDINATOR_REVIEW_STARTED,
+                targetType: "course_outline_version",
+                targetId: courseOutlineVersion.id,
+                outcome: "SUCCESS",
+                occurredAt: transitionAt,
+                ipAddress: input.ipAddress,
+                userAgent: input.userAgent,
+                contextJson: {
+                  courseOutlineVersionId: courseOutlineVersion.id,
+                  courseOfferingId: courseOutlineVersion.courseOfferingId,
+                  studentBatchId: offering.studentBatchId,
+                  academicTermId: offering.academicTermId,
+                  curriculumCourseId: courseOutlineVersion.curriculumCourseId,
+                  syllabusVersionId: courseOutlineVersion.syllabusVersionId,
+                  versionNumber: courseOutlineVersion.versionNumber,
+                  batchCoordinatorAssignmentId: assignment.id,
+                  previousStatus: CourseOutlineStatus.SUBMITTED_BY_TEACHER,
+                  newStatus: CourseOutlineStatus.COORDINATOR_REVIEW,
+                  transitionTimestamp: transitionAt.toISOString(),
+                },
+              },
+            });
+
+            return {
+              outcome: "COORDINATOR_REVIEW_STARTED",
+              courseOutlineVersion,
+            } as const;
+          },
+          {
+            isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+            maxWait: 10_000,
+            timeout: 30_000,
+          },
+        );
+      } catch (error) {
+        if (!this.isRetryableCoordinatorReviewConflict(error)) throw error;
+        if (attempt >= 2) return { outcome: "CONCURRENT_CONFLICT" } as const;
+      }
+    }
+  }
+
   async createCourseOffering(input: CreateCourseOfferingInput) {
     const offering = await this.prisma.courseOffering.create({
       data: {
@@ -5069,5 +5329,11 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
         },
       },
     };
+  }
+
+  private isRetryableCoordinatorReviewConflict(error: unknown) {
+    if (!(error instanceof PrismaClientKnownRequestError)) return false;
+    if (error.code === "P2034") return true;
+    return error.code === "P2010" && error.meta?.code === "40001";
   }
 }
