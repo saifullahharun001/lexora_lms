@@ -31548,3 +31548,311 @@ Before implementation, define:
 - nested direct-object authorization.
 
 Do not combine that transition with approval, activation, archival, frontend work, Lesson Plan, attendance, assessment, or unrelated modules.
+
+## Course Outline Return-for-Correction Transition and PostgreSQL Concurrency Verification — 2026-08-26
+
+### 1. Scope and supersession
+
+This checkpoint closes only:
+
+`COORDINATOR_REVIEW → RETURNED_FOR_CORRECTION`
+
+It supersedes earlier pending wording only for:
+
+- the Batch Coordinator-authorised Return-for-Correction transition;
+- mandatory correction reason for this transition;
+- immutable correction-request history for this transition;
+- Teacher editability after a successful return;
+- repeated-return conflict behavior;
+- the exact runtime/security/concurrency behavior verified below.
+
+This checkpoint does NOT claim that generic "review reason governance" is completed if a separate review-stage reason is later required.
+
+This checkpoint does NOT claim completion of corrected-version resubmission, approval, activation, archival, Programme Coordinator governance, frontend work, Lesson Plan, or the complete Course Outline lifecycle.
+
+### 2. Implementation identity
+
+- **Implementation commit:** `ee070fdcd2c0eccbab64e6465ca64b249e041fcb`
+- **Parent:** `ba9a6d812e03851e5d87b30586a20b98bfc2d807`
+- **Commit message:** `Add course outline return-for-correction transition`
+- **Migration:** `202608260001_add_course_outline_correction_request_foundation`
+- **Migration SHA-256:** `b144af77cd74b289927c95ac090adcb5437ddffc4f0033bb01e438a3e76b9b90`
+
+The implementation introduced the dedicated immutable `CourseOutlineCorrectionRequest` history foundation.
+
+Multiple legitimate correction cycles are append-only and are not prevented by a unique constraint on `CourseOutlineVersion`.
+
+### 3. Mandatory correction reason
+
+The HTTP DTO requires a correction reason and trims it.
+
+Runtime verification passed for:
+
+- whitespace-only reason → HTTP 400;
+- 1001-character reason → HTTP 400;
+- valid reason accepted;
+- stored valid reason normalized/trimmed.
+
+Database protection was independently runtime verified:
+
+- reason `NOT NULL`;
+- whitespace-aware `CHECK`;
+- normalized nonblank length 1..1000;
+- whitespace-only reason produced `CHECK` violation;
+- 1001 characters produced `CHECK` violation;
+- 1000 characters passed the `CHECK` and reached the foreign-key boundary.
+
+### 4. Migration/database verification
+
+Ordinary PostgreSQL migration deployment succeeded.
+
+- **Migration history:** exactly 1 completed row.
+- **Stored migration checksum:** matched the reviewed SHA-256.
+- **Live table:** `course_outline_correction_requests`
+- **Live foreign keys:** exactly 4.
+- All four use:
+  - `ON DELETE RESTRICT`
+  - `ON UPDATE RESTRICT`
+- Expected indexes were verified.
+- The second prisma migrate deploy was a safe no-op.
+- Prisma migrate status reported the database schema up to date.
+- Ordinary business row counts were preserved through migration deployment.
+- Migration/table foundation remained present after final runtime cleanup.
+- A validated private rollback backup was retained: `/home/sh002/lexora-private-backups/lexora_lms-before-202608260001_add_course_outline_correction_request_foundation-20260826T143911Z.dump`
+- **Backup SHA-256:** `9276868f4ba0c465c1fd68190d72f44f442aab3a8cc508dfa0a590664da34d8c`
+
+### 5. Static/Linux verification
+
+- **Prisma validate:** PASS
+- **Prisma generate:** PASS
+- **Prisma Client:** 6.19.3
+- **API typecheck:** PASS
+- **API build:** PASS
+- **Focused schema test:** 3/3 PASS
+- **Compiled focused/regression Course Outline tests:** 122/122 PASS
+- **Combined independently observed focused evidence:** 125/125 PASS
+
+The `MODULE_TYPELESS_PACKAGE_JSON` message was informational. No NodeNext/full-ESM/package "type": "module" migration was performed.
+
+### 6. Deployment/activation
+
+Server source was fast-forwarded from: `ba9a6d812e03851e5d87b30586a20b98bfc2d807` to `ee070fdcd2c0eccbab64e6465ca64b249e041fcb`.
+
+- Migration bytes matched the reviewed SHA on Ubuntu.
+- **Before activation PM2 PID:** 1443
+- **After controlled restart PM2 PID:** 37961
+- **Direct API health:** HTTP 200
+- **Nginx API health:** HTTP 200
+- **Final API listener:** 127.0.0.1:4000 only
+
+### 7. Exact authority model
+
+Runtime verified authority remained:
+
+- authenticated principal department
+- + CourseOffering StudentBatch
+- + CourseOffering AcademicTerm
+- + exact BatchCoordinatorAssignment
+- + authenticated actor as Coordinator
+- + assignment lifecycle/time validity
+
+Department Admin was NOT an implicit Coordinator.
+A Department Admin could perform Return-for-Correction only when that same Admin user held the exact valid `BatchCoordinatorAssignment`.
+Teacher Coordinator authority did not automatically create Teacher CourseOffering edit authority.
+`x-department-id` could not override the authenticated principal department.
+
+### 8. Ordinary HTTP/security runtime matrix
+
+Verified results:
+
+- Unauthenticated: 401
+- Student: 403
+- Teacher outside exact Coordinator scope: 404
+- Department Admin without exact Coordinator assignment: 404
+- wrong AcademicTerm assignment: 404
+- wrong nested CourseOutlineVersion: 404
+- null-StudentBatch/unbound offering: 404
+- cross-department direct CourseOffering: 404
+- DRAFT lifecycle return attempt: 409
+- whitespace-only reason: 400
+- oversized reason: 400
+- exact assigned Teacher Coordinator: 201
+- exact assigned Department Admin Coordinator: 201
+- forged `x-department-id: dept_bus_test` while authenticated Law Teacher Coordinator: 201 against the valid Law object, proving the forged header did not replace principal department scope
+- repeated return: 409
+
+After successful return:
+Teacher `PATCH` on the same returned outline succeeded with HTTP 200 only where exact `TeacherCourseAssignment` separately existed.
+A Coordinator who lacked `TeacherCourseAssignment` received safe 404 on Teacher `PATCH`.
+
+### 9. Lifecycle/history/audit verification
+
+Successful transition preserved the same `CourseOutlineVersion` and changed only the intended lifecycle state to: `RETURNED_FOR_CORRECTION`.
+
+- `submittedAt` remained non-null.
+- `approvedAt`: null
+- `activatedAt`: null
+- `archivedAt`: null
+
+The correction history recorded exact:
+- department;
+- CourseOffering;
+- CourseOutlineVersion;
+- BatchCoordinatorAssignment;
+- actor;
+- reason;
+- returnedAt.
+
+For the ordinary positive matrix:
+- 3 successful transitions
+- 3 immutable correction-history rows
+- 3 success audits
+
+Each success audit structurally linked to its correction-history row through: `courseOutlineCorrectionRequestId`.
+Audit context also contained the structural Course Outline/offering/assignment/status identifiers.
+Correction reason was NOT copied into generic audit context.
+Teacher-owned Course Outline narrative bodies were NOT copied into the Return-for-Correction audit context.
+History `returnedAt` and success audit `occurredAt` were verified equal for the transition.
+
+### 10. Real PostgreSQL concurrency
+
+The historical PostgreSQL deadlock counter before this checkpoint was: 1.
+This checkpoint introduced: zero new deadlocks.
+Final deadlock counter: 1.
+
+Verified concurrency cases:
+
+- **simultaneous Return-for-Correction:** one HTTP 201, one HTTP 409, exactly one correction history, exactly one success audit
+- **unassign-first:** management HTTP 201, later Return-for-Correction HTTP 404, no false success history/audit
+- **archive-first:** management HTTP 201, later Return-for-Correction HTTP 404, no false success history/audit
+- **finite-expiry-update-first:** management PATCH HTTP 200, later Return-for-Correction HTTP 404, no false success history/audit
+- **live wall-clock expiry while the Return request waited:** Return-for-Correction HTTP 404, assignment remained ACTIVE as a lifecycle status but was expired by time, no false success history/audit
+- **same-user Department Admin Coordinator return-first:** Return-for-Correction HTTP 201, later self-unassign HTTP 201, exactly one correction history/audit
+
+### 11. Transactional audit-failure rollback
+
+Controlled PostgreSQL failure injection forced the required Return-for-Correction success-audit insert to fail.
+
+- **Endpoint response:** HTTP 500, expected for this controlled failure test.
+- **Verified rollback:**
+  - `CourseOutlineVersion` remained `COORDINATOR_REVIEW`;
+  - `updatedAt` rolled back;
+  - `CourseOutlineCorrectionRequest` row rolled back;
+  - no false Return-for-Correction success audit remained.
+
+Temporary PostgreSQL trigger/function used for failure injection were removed.
+This verifies real PostgreSQL same-transaction atomicity for: lifecycle transition + immutable correction history + success audit.
+
+### 12. Runtime verifier incidents
+
+- first post-migration catalog verifier attempted text concatenation with PostgreSQL internal "char" fields `confdeltype`/`confupdtype` and failed with an ambiguous operator error; corrected verifier cast them to text; migration itself had already applied successfully;
+- first read-only inventory query incorrectly referenced nonexistent `CurriculumVersion.version_number`; corrected inventory used actual `CurriculumVersion` fields; no mutation had occurred;
+- first login helper used piped credentials together with python heredoc stdin and failed with "Login input incomplete."; corrected helper used `python3 -c`; both failed attempts happened before business endpoint calls.
+
+### 13. Disposable fixture cleanup
+
+Pre-cleanup measured fixture state:
+1|12|1|26|6|12|12|5|5
+for: `academic_sessions`, `student_batches`, `syllabus_versions`, `course_offerings`, `teacher_course_assignments`, `batch_coordinator_assignments`, `course_outline_versions`, `course_outline_correction_requests`, Return-for-Correction success audits.
+
+Fixture-target audit rows removed: 11.
+
+Final restored ordinary business baseline:
+0|0|0|14|5|0|0|0|0
+for the same ordered business counters.
+
+Zero disposable fixture residue was verified. Authentication/session/login telemetry was intentionally preserved.
+Migration history/table were NOT cleaned up and remained valid permanent platform state.
+
+### 14. Final platform state
+
+- repository clean;
+- local/server HEAD aligned with origin/main at implementation commit;
+- PM2 PID 37961 unchanged after runtime matrix/cleanup;
+- Direct API HTTP 200;
+- Nginx API HTTP 200;
+- API listener loopback-only 127.0.0.1:4000;
+- migration retained and verified;
+- private rollback backup retained and verified;
+- new PostgreSQL deadlock delta zero;
+- temporary failure-injection DDL absent.
+
+### 15. Current verified classification
+
+The narrow Course Outline Return-for-Correction Transition (`COORDINATOR_REVIEW → RETURNED_FOR_CORRECTION`) is technically complete and runtime verified.
+
+The classification includes:
+- source-audited;
+- implemented;
+- independently reviewed;
+- statically verified;
+- committed and pushed;
+- Ubuntu deployed;
+- migration runtime verified;
+- mandatory correction-reason boundary verified;
+- exact Batch Coordinator authority verified;
+- Teacher Coordinator verified;
+- assigned Department Admin Coordinator verified;
+- implicit Admin bypass rejected;
+- Student denial verified;
+- department isolation verified;
+- forged-header resistance verified;
+- nested object authorization verified;
+- lifecycle conflict behavior verified;
+- Teacher editability-after-return verified;
+- Teacher assignment boundary preserved;
+- immutable correction history verified;
+- audit minimization verified;
+- simultaneous-return concurrency verified;
+- unassign/archive/expiry fail-closed behavior verified;
+- live wall-clock expiry verified;
+- same-user Admin concurrency verified;
+- real PostgreSQL audit-failure rollback verified;
+- new-deadlock delta zero;
+- disposable cleanup verified;
+- ordinary baseline restoration verified;
+- final runtime health verified;
+- repository alignment verified.
+
+### 16. Still pending
+
+The complete Course Outline lifecycle remains pending.
+The following remain pending unless separately implemented/runtime verified:
+
+- `RETURNED_FOR_CORRECTION → SUBMITTED_BY_TEACHER` corrected-version resubmission semantics;
+- approval;
+- activation;
+- archival;
+- post-approval immutability/amendment governance beyond already verified boundaries;
+- exact active CourseOutlineVersion binding;
+- active/latest outline semantics;
+- CourseOutlineVersion StudentBatch snapshot behavior if still unresolved in the latest checklist;
+- topic-to-CLO normalized mapping;
+- supplemental offering-owned resources;
+- weekly plan;
+- Lesson Plan;
+- assessment schedule;
+- Teacher Course Outline frontend;
+- Coordinator/Admin review frontend;
+- complete Teacher Course Workspace integration;
+- Programme Coordinator governance wherever separately required.
+
+### 17. Next logical checkpoint
+
+The next narrow Course Outline lifecycle checkpoint is:
+
+`RETURNED_FOR_CORRECTION → SUBMITTED_BY_TEACHER`
+
+Before implementation, require a fresh source/current-code audit to decide exact corrected-version resubmission semantics.
+
+Explicitly determine whether resubmission:
+- reuses the same CourseOutlineVersion or creates another version;
+- preserves immutable correction-request history;
+- requires evidence that Teacher changes occurred;
+- uses a new submittedAt timestamp;
+- clears or preserves any lifecycle metadata;
+- permits only the exact assigned Teacher;
+- requires the offering to remain fully bound;
+- preserves exact StudentBatch/term/department identity;
+- requires transactional audit;
+- handles repeated/resubmission concurrency safely.
