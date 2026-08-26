@@ -542,7 +542,7 @@ export class PrismaBatchCoordinatorAssignmentRepository implements BatchCoordina
         AND p."resource" = 'course-management.batch-coordinator-assignment'
         AND p."action" = 'manage'
         AND p."scope" = 'DEPARTMENT'::"PermissionScope"
-      FOR UPDATE OF u, d, ur, r, rp, p
+      FOR SHARE OF u, d FOR UPDATE OF ur, r, rp, p
     `);
     return rows.length === 1;
   }

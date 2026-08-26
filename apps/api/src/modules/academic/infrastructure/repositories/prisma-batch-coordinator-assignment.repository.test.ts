@@ -871,3 +871,52 @@ test("retryable Serializable conflicts stop after exactly three attempts", async
   );
   assert.deepEqual(h.snapshot(), { assignments: [], audits: [] });
 });
+
+test("management-authority SQL uses FOR SHARE on User and Department and FOR UPDATE on permission provenance rows", async () => {
+  // Use unassign so that both management-authority SQL and assignment-lock SQL
+  // are emitted within the same transaction, enabling the ordering assertion.
+  const h = harness([record()]);
+  const id = "assignment-coordinator-a";
+  await h.repository.unassign(transitionInput(id));
+
+  const authoritySql = h.rawSql.find((sql) =>
+    /JOIN "role_permissions"/.test(sql),
+  );
+  assert.ok(authoritySql, "management-authority SQL must be present");
+
+  // The new split form must be present.
+  assert.match(authoritySql, /FOR SHARE OF u, d/);
+  assert.match(authoritySql, /FOR UPDATE OF ur, r, rp, p/);
+
+  // The old combined form must no longer exist.
+  assert.doesNotMatch(authoritySql, /FOR UPDATE OF u, d, ur, r, rp, p/);
+
+  // Management authority must be issued before assignment lock.
+  const authorityIndex = h.rawSql.findIndex((sql) =>
+    /JOIN "role_permissions"/.test(sql),
+  );
+  const assignmentIndex = h.rawSql.findIndex((sql) =>
+    /FROM "batch_coordinator_assignments"/.test(sql),
+  );
+  assert.ok(assignmentIndex !== -1, "assignment-lock SQL must be present");
+  assert.ok(
+    authorityIndex < assignmentIndex,
+    "management authority SQL must precede assignment-lock SQL",
+  );
+});
+
+test("P2010 with SQLSTATE 40P01 (PostgreSQL deadlock) is not retried", async () => {
+  // SQLSTATE 40P01 is the PostgreSQL deadlock error. The retry policy only
+  // retries 40001 (serialization failure). Deadlock (40P01) must not be
+  // retried so the lock-mode correction—not a retry—is the primary fix.
+  const deadlockError = knownRequestError("P2010", { code: "40P01" });
+  const h = harness();
+  h.failNextTransaction(deadlockError);
+
+  await assert.rejects(
+    h.repository.create(createInput()),
+    (caught: unknown) => caught === deadlockError,
+  );
+  assert.equal(h.transactions.length, 1);
+  assert.deepEqual(h.snapshot(), { assignments: [], audits: [] });
+});

@@ -696,6 +696,9 @@ test("only raw P2010 SQLSTATE 40001 retries", async () => {
     knownRequestError("P2010"),
     knownRequestError("P2010", { code: "42601" }),
     knownRequestError("P2010", { code: 40001 }),
+    // 40P01 is PostgreSQL deadlock SQLSTATE. The lock-mode correction prevents
+    // the deadlock from occurring; retrying it would hide the real winner.
+    knownRequestError("P2010", { code: "40P01" }),
     knownRequestError("P2028"),
     new Error("application failure"),
   ]) {
