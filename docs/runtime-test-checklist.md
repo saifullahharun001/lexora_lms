@@ -31856,3 +31856,400 @@ Explicitly determine whether resubmission:
 - preserves exact StudentBatch/term/department identity;
 - requires transactional audit;
 - handles repeated/resubmission concurrency safely.
+
+## Course Outline Corrected Resubmission and PostgreSQL Concurrency Verification — 2026-08-27
+
+### 1. Scope and supersession
+
+This section closes only:
+
+`RETURNED_FOR_CORRECTION → SUBMITTED_BY_TEACHER`
+
+Earlier pending statements remain valid historical evidence for the repository/runtime state that existed when those checkpoints were written and are intentionally preserved rather than rewritten. This newer checkpoint supersedes those earlier pending statements only when determining current verified status for corrected-version resubmission and the exact behavior verified here.
+
+This checkpoint explicitly does NOT claim completion of:
+
+- approval
+- activation
+- archival
+- post-approval amendment/new-version governance
+- exact active CourseOutlineVersion binding
+- CourseOutlineVersion StudentBatch snapshot
+- topic-CLO alignment
+- supplemental offering resources
+- weekly plan
+- Lesson Plan
+- assessment schedule
+- Teacher Course Outline frontend
+- Coordinator/Admin review frontend
+- complete Teacher Course Workspace integration
+- Programme Coordinator governance wherever independently required
+- complete Course Outline lifecycle
+
+### 2. Implementation identity
+
+- **Implementation commit:** `7a029e3b549bac3ecee29b7fcafe701b9a78397e`
+- **Parent:** `66269f67935f7b348732b87eb225480e5d05338a`
+- **Commit message:** `feat: add corrected course outline resubmission`
+
+No migration was required.
+
+The implementation reused the existing Teacher submit route and policy rather than introducing a separate resubmit endpoint.
+
+### 3. Verified lifecycle semantics
+
+A valid corrected resubmission requires the same existing `CourseOutlineVersion` to be:
+
+- status `RETURNED_FOR_CORRECTION`
+- `submittedAt` non-null
+- `approvedAt` null
+- `activatedAt` null
+- `archivedAt` null
+
+And requires the exact fully-bound offering identity:
+
+- authenticated principal department
+- nonarchived CourseOffering
+- active exact TeacherCourseAssignment
+- StudentBatch present
+- AcademicTerm present
+- CurriculumCourse present
+- SyllabusVersion present
+- exact nested CourseOutlineVersion
+- matching curriculum/syllabus identity
+
+No `CourseOutlineVersion` StudentBatch snapshot was introduced.
+
+Verified successful behavior:
+
+- same CourseOutlineVersion ID is retained
+- same versionNumber is retained
+- status changes to `SUBMITTED_BY_TEACHER`
+- `submittedAt` is replaced with a fresh server-controlled timestamp
+- `approvedAt` remains null
+- `activatedAt` remains null
+- `archivedAt` remains null
+- Teacher edits made while `RETURNED_FOR_CORRECTION` are retained
+- `PATCH` after resubmission is blocked
+- resubmission does not create/update/delete correction history
+
+### 4. Current-cycle correction chronology
+
+The repository enforces a fail-closed chronology requirement:
+
+`previousSubmittedAt <= CourseOutlineCorrectionRequest.returnedAt <= attempted transition time`
+
+The repository selects the current qualifying correction request in deterministic descending order by:
+
+- `returnedAt`
+- `createdAt`
+- `id`
+
+Static/repository verification covered:
+
+- missing correction history
+- stale previous-cycle correction history
+- future correction timestamp
+- malformed returned lifecycle metadata
+- incomplete structural identity
+
+These malformed cases fail closed and produce no success audit.
+
+### 5. Audit behavior
+
+Dedicated audit action:
+
+`course-management.course-outline.resubmitted`
+
+The success audit is structural and includes:
+
+- courseOutlineVersionId
+- courseOfferingId
+- studentBatchId
+- academicTermId
+- curriculumCourseId
+- syllabusVersionId
+- versionNumber
+- current CourseOutlineCorrectionRequest ID
+- previousSubmittedAt
+- previousStatus = `RETURNED_FOR_CORRECTION`
+- newStatus = `SUBMITTED_BY_TEACHER`
+- transitionTimestamp
+
+Runtime verification confirmed no correction reason or Course Outline narrative bodies leaked into the resubmission audit context.
+
+### 6. Linux deployment and static verification
+
+Ubuntu server promotion:
+
+- previous server HEAD: `66269f67935f7b348732b87eb225480e5d05338a`
+- promoted implementation: `7a029e3b549bac3ecee29b7fcafe701b9a78397e`
+- fast-forward only
+- exactly 3 implementation files changed
+- repository clean/aligned
+
+Verification:
+
+- `pnpm --filter @lexora/api typecheck` — PASS
+- `pnpm --filter @lexora/api build` — PASS
+- built CommonJS focused repository test artifact executed on Ubuntu
+- `course-outline-submission.repository.test.js`:
+  - 22 tests
+  - 22 pass
+  - 0 fail
+
+PM2 activation:
+
+- PM2 PID before restart: 1446
+- PM2 PID after restart: 16032
+- an immediate post-restart health probe briefly encountered connection refusal during process startup
+- retry loop recovered
+- final direct API HTTP 200
+- final Nginx API HTTP 200
+- API remained bound only to 127.0.0.1:4000
+
+Note: The transient connection refusal was observed only during process startup. The retry loop recovered, final Direct/Nginx health was HTTP 200, no continuing runtime health failure was observed, and the incident was not classified as a Lexora product defect.
+
+### 7. Deterministic real HTTP/PostgreSQL matrix
+
+Runtime fixture used a disposable fully-bound Law-department academic structure.
+
+Important runtime IDs documented (non-secret evidence):
+
+- AcademicSession: `academic_session_law_co_rs_20260826T175451Z`
+- StudentBatch: `student_batch_law_co_rs_20260826T175451Z`
+- SyllabusVersion: `syllabus_law_co_rs_20260826T175451Z`
+- CourseOffering: `offering_law_co_rs_20260826T175451Z`
+- TeacherCourseAssignment: `teacher_assignment_law_co_rs_20260826T175451Z`
+- BatchCoordinatorAssignment: `bca_law_co_rs_20260826T175451Z`
+- CourseOutlineVersion: `cmtaehlxj000j2idcqbi1auv4`
+- First correction request: `cmtaehmyg000t2idcv90usk16`
+- Second correction request: `cmtaesd29001r2idcrquylnp6`
+- Third correction request: `cmtaewr8c00272idci8xrve1t`
+
+Passwords, access tokens, refresh tokens, DB credentials, and secrets were explicitly not recorded.
+
+Verified HTTP lifecycle:
+
+`DRAFT → SUBMITTED_BY_TEACHER → COORDINATOR_REVIEW → RETURNED_FOR_CORRECTION → Teacher PATCH → SUBMITTED_BY_TEACHER`
+
+- Initial submittedAt: `2026-08-26T18:01:36.555Z`
+- First corrected resubmittedAt: `2026-08-26T18:01:38.076Z`
+
+Record:
+
+- same CourseOutlineVersion
+- same version number 1
+- corrected narrative retained
+- fresh submittedAt
+- correction history count remained exactly 1 after first resubmission
+- dedicated resubmission success audit exactly 1
+- repeated resubmit returned HTTP 409
+- PATCH after resubmit returned HTTP 409
+
+Authorization/security matrix also passed:
+
+- unauthenticated submit → 401
+- Department Admin Teacher-submit attempt → 403
+- Student Teacher-submit attempt → 403
+- forged `x-department-id` did not override valid Law principal scope
+- cross-department nested direct-object access returned safe 404
+
+### 8. Real PostgreSQL concurrency evidence
+
+A second legitimate correction cycle was created.
+
+Runtime result for two simultaneous corrected resubmission requests:
+
+- request A → HTTP 409
+- request B → HTTP 201
+- expected combined result → exactly 201 + 409
+
+Database verification:
+
+- exactly one concurrent winner
+- exactly one controlled loser
+- same CourseOutlineVersion retained
+- same version number retained
+- second-cycle Teacher edit retained
+- correction history exactly 2 and immutable
+- exactly 2 total successful corrected-resubmission audits after the second cycle
+- race created exactly one new success audit
+- latest success audit bound the second/current correction request
+- previousSubmittedAt referenced the immediately preceding successful submission
+
+This is real PostgreSQL/API concurrency evidence, not merely the local serialized test harness.
+
+### 9. Real audit-failure rollback evidence
+
+A third legitimate correction cycle reached `RETURNED_FOR_CORRECTION`.
+
+Before injected failure:
+
+- correction history exactly 3
+- successful resubmission audits exactly 2
+- total resubmission audits exactly 2
+
+A temporary PostgreSQL trigger/function was installed with scope limited to:
+
+- department: `dept_law_test`
+- target type: `course_outline_version`
+- the exact disposable CourseOutlineVersion
+- action: `course-management.course-outline.resubmitted`
+- outcome: `SUCCESS`
+
+The injected success-audit failure caused:
+
+- HTTP 500 as expected
+- CourseOutlineVersion status rolled back to `RETURNED_FOR_CORRECTION`
+- `submittedAt` rolled back/preserved
+- `updatedAt` rolled back/preserved
+- `approvedAt`/`activatedAt`/`archivedAt` unchanged
+- correction history remained exactly 3
+- correction-history fingerprint unchanged
+- no false success audit
+- no unexpected resubmission audit
+- transactional atomicity PASS
+
+The temporary trigger and function were immediately removed and verified absent.
+
+The exact same corrected resubmission was then retried:
+
+- HTTP 201
+- final status `SUBMITTED_BY_TEACHER`
+- same CourseOutlineVersion
+- same version number
+- correction history exactly 3 / immutable
+- successful corrected-resubmission audits exactly 3
+- third success audit bound the third/current correction request
+- rollback recovery PASS
+
+### 10. Test-harness correction notes
+
+The following are recorded as test-harness issues, NOT Lexora product defects:
+
+1. An attempted Teacher-login concurrency wrapper initially received HTTP 401 before any mutation. A subsequent retry wrapper using a heredoc-fed child bash caused HTTP 400 because interactive password input was not reliably sourced from the terminal. The corrected `/dev/tty` login probe returned HTTP 201. No Course Outline mutation occurred during those failed login attempts.
+2. The first audit-failure precheck used psql variable syntax `:'trigger_name'` inside a `-c` invocation and failed with a PostgreSQL syntax error before any fault-injection DDL was installed. By then the legitimate third correction cycle had already reached `RETURNED_FOR_CORRECTION`. Testing resumed from that exact verified state. No temporary trigger/function existed from the failed precheck.
+
+### 11. Cleanup and baseline restoration
+
+Before cleanup the exact disposable target contained:
+
+- AcademicSession: 1
+- StudentBatch: 1
+- SyllabusVersion: 1
+- CourseOffering: 1
+- Teacher assignment: 1
+- Coordinator assignment: 1
+- CourseOutlineVersion: 1
+- correction history: 3
+- target Course Outline success audits: exactly 13
+
+Audit cardinality before cleanup:
+
+- created: 1
+- updated: 2
+- initial submitted: 1
+- coordinator-review-started: 3
+- returned-for-correction: 3
+- corrected-resubmitted: 3
+
+Unexpected target audit actions: none.
+Unexpected target audit outcomes: none.
+
+Guarded transactional cleanup deleted exactly:
+
+- target audit rows: 13
+- correction rows: 3
+- outline rows: 1
+- coordinator assignments: 1
+- Teacher assignments: 1
+- CourseOfferings: 1
+- SyllabusVersions: 1
+- StudentBatches: 1
+- AcademicSessions: 1
+
+Ordinary Law academic baseline after cleanup:
+
+- academic_sessions: 0
+- student_batches: 0
+- syllabus_versions: 0
+- course_offerings: 13
+- teacher_course_assignments: 5
+- batch_coordinator_assignments: 0
+- course_outline_versions: 0
+- course_outline_correction_requests: 0
+- corrected-resubmission success audits: 0
+- measured Course Outline lifecycle audits: 0
+- dedicated fixture residue: zero
+
+Authentication/session telemetry was intentionally preserved.
+Private temporary fixture metadata file was removed.
+Temporary fault-injection trigger/function remained absent.
+
+Final platform state:
+
+- PM2 PID: 16032 before and after cleanup
+- Direct API HTTP 200
+- Nginx API HTTP 200
+- API listener loopback-only 127.0.0.1:4000
+- repository clean
+- local/server implementation state aligned with origin/main before documentation changes
+
+### 12. Current verified classification
+
+This narrow checkpoint is now:
+
+- source-audited
+- implemented
+- independently reviewed
+- statically verified
+- committed and pushed
+- Ubuntu deployed
+- real HTTP/PostgreSQL runtime verified
+- real duplicate-concurrency verified
+- audit-transaction rollback verified
+- cleanup verified
+- ordinary academic baseline restored
+
+Therefore:
+
+`RETURNED_FOR_CORRECTION → SUBMITTED_BY_TEACHER`
+
+is technically complete and runtime verified.
+
+The complete Course Outline lifecycle remains incomplete.
+
+### 13. Next logical Course Outline checkpoint
+
+The next narrow Course Outline work is a fresh source/current-code audit for the approval transition and approval authority.
+
+Do not assume the exact approval source state before that audit.
+
+The audit must determine whether the source-backed approval path begins from:
+
+- `SUBMITTED_BY_TEACHER` after corrected resubmission;
+- `COORDINATOR_REVIEW`;
+- or another specification-backed lifecycle context.
+
+It must also determine:
+
+- exact approver authority;
+- Batch Coordinator responsibilities;
+- Programme Coordinator responsibilities if independently required by the specification;
+- whether a resubmitted outline must enter COORDINATOR_REVIEW again before approval;
+- exact lifecycle prerequisites;
+- mandatory approval comment/reason requirements, if any;
+- transactional success audit structure;
+- immutable correction-history preservation;
+- Teacher immutability after approval;
+- repeated/concurrent approval semantics;
+- department isolation;
+- nested direct-object authorization;
+- behavior when relevant Coordinator authority is unassigned/archived/expired during the race.
+
+Do not invent Programme Coordinator authority.
+
+Do not implement or document a final approval transition source until the fresh source/current-code audit resolves it.
+
+Do not combine this future approval work with activation, archival, frontend, Lesson Plan, assessment, attendance, or unrelated work.
