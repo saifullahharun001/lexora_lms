@@ -22,6 +22,8 @@ export const ACADEMIC_AUDIT_EVENTS = {
   COURSE_OUTLINE_SUBMITTED: "course-management.course-outline.submitted",
   COURSE_OUTLINE_COORDINATOR_REVIEW_STARTED:
     "course-management.course-outline.coordinator-review-started",
+  COURSE_OUTLINE_RETURNED_FOR_CORRECTION:
+    "course-management.course-outline.returned-for-correction",
   CURRICULUM_VERSION_APPROVED:
     "course-management.curriculum-version.approved",
   CURRICULUM_VERSION_ACTIVATED:

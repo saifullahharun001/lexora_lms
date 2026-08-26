@@ -48,6 +48,7 @@ function harness(
     updateResult?: unknown;
     submitResult?: unknown;
     coordinatorReviewResult?: unknown;
+    returnForCorrectionResult?: unknown;
     listResult?: unknown;
     detailResult?: unknown;
   } = {},
@@ -107,6 +108,30 @@ function harness(
             status: CourseOutlineStatus.COORDINATOR_REVIEW,
             submittedAt: new Date("2026-08-20T01:00:00.000Z"),
           },
+        }
+      );
+    },
+    returnCourseOutlineForCorrection: async (...args: unknown[]) => {
+      calls.push({ method: "return-for-correction", args });
+      return (
+        options.returnForCorrectionResult ?? {
+          outcome: "RETURNED_FOR_CORRECTION",
+          courseOutlineVersion: {
+            ...outline,
+            status: CourseOutlineStatus.RETURNED_FOR_CORRECTION,
+            submittedAt: new Date("2026-08-20T01:00:00.000Z"),
+          },
+          courseOutlineCorrectionRequest: {
+            id: "correction-req-1",
+            departmentId: "department-a",
+            courseOfferingId: "offering-a",
+            courseOutlineVersionId: "outline-a",
+            batchCoordinatorAssignmentId: "coordinator-assignment-a",
+            actorUserId: "coordinator-a",
+            reason: "Needs more info",
+            returnedAt: new Date("2026-08-20T01:00:00.000Z"),
+            createdAt: new Date("2026-08-20T01:00:00.000Z"),
+          }
         }
       );
     },
@@ -580,6 +605,108 @@ test("Coordinator review requires a complete authenticated user principal before
     Object.assign(h.context.principal, principalOverride);
     await assert.rejects(
       h.service.startCourseOutlineCoordinatorReview("offering-a", "outline-a"),
+      BadRequestException,
+    );
+    assert.deepEqual(h.calls, []);
+  }
+});
+
+test("Return for correction derives actor and department from authenticated principal without forwarding authority identities", async () => {
+  for (const role of ["teacher", "department_admin"] as const) {
+    const h = harness(role);
+    const result = await h.service.returnCourseOutlineForCorrection(
+      "offering-a",
+      "outline-a",
+      "Needs more details",
+    );
+    assert.equal(result.courseOutlineVersion.status, CourseOutlineStatus.RETURNED_FOR_CORRECTION);
+
+    const input = h.calls[0]!.args[0] as Record<string, unknown>;
+    assert.equal(input.departmentId, "department-a");
+    assert.equal(input.actorUserId, `${role}-user`);
+    assert.equal(input.courseOfferingId, "offering-a");
+    assert.equal(input.courseOutlineVersionId, "outline-a");
+    assert.equal(input.reason, "Needs more details");
+    assert.equal(input.requestId, "request-a");
+    assert.equal(input.ipAddress, "127.0.0.1");
+    assert.equal(input.userAgent, "test-agent");
+    for (const forbiddenField of [
+      "studentBatchId",
+      "academicTermId",
+      "batchCoordinatorAssignmentId",
+      "status",
+      "returnedAt",
+    ]) {
+      assert.equal(forbiddenField in input, false);
+    }
+  }
+});
+
+test("Return for correction requires exact Coordinator assignment authority (coarse admission bypass fails)", async () => {
+  for (const role of ["teacher", "department_admin"] as const) {
+    const h = harness(role, {
+      returnForCorrectionResult: {
+        outcome: "OFFERING_OR_AUTHORITY_NOT_FOUND",
+      },
+    });
+    await assert.rejects(
+      h.service.returnCourseOutlineForCorrection(
+        "offering-a",
+        "outline-a",
+        "reason",
+      ),
+      NotFoundException,
+    );
+  }
+});
+
+test("Return for correction maps hidden scope to 404 and lifecycle or concurrency to 409", async () => {
+  for (const outcome of [
+    "OFFERING_OR_AUTHORITY_NOT_FOUND",
+    "OUTLINE_NOT_FOUND",
+  ] as const) {
+    const h = harness("teacher", { returnForCorrectionResult: { outcome } });
+    await assert.rejects(
+      h.service.returnCourseOutlineForCorrection(
+        "offering-a",
+        "outline-a",
+        "reason",
+      ),
+      NotFoundException,
+    );
+  }
+
+  for (const outcome of [
+    "OUTLINE_NOT_RETURNABLE",
+    "CONCURRENT_CONFLICT",
+  ] as const) {
+    const h = harness("teacher", { returnForCorrectionResult: { outcome } });
+    await assert.rejects(
+      h.service.returnCourseOutlineForCorrection(
+        "offering-a",
+        "outline-a",
+        "reason",
+      ),
+      ConflictException,
+    );
+  }
+});
+
+test("Return for correction requires a complete authenticated user principal before repository access", async () => {
+  for (const principalOverride of [
+    { isAuthenticated: false },
+    { actorType: "service" },
+    { actorId: "" },
+    { activeDepartmentId: null },
+  ]) {
+    const h = harness("teacher");
+    Object.assign(h.context.principal, principalOverride);
+    await assert.rejects(
+      h.service.returnCourseOutlineForCorrection(
+        "offering-a",
+        "outline-a",
+        "reason",
+      ),
       BadRequestException,
     );
     assert.deepEqual(h.calls, []);

@@ -16,6 +16,7 @@ import { CreateTeacherAssignmentDto } from "../dto/create-teacher-assignment.dto
 import { ListCourseOfferingsQueryDto } from "../dto/list-course-offerings-query.dto";
 import { ListMyCourseOfferingsQueryDto } from "../dto/list-my-course-offerings-query.dto";
 import { ResourceIdParamDto } from "../dto/resource-id-param.dto";
+import { ReturnCourseOutlineForCorrectionDto } from "../dto/return-course-outline-for-correction.dto";
 import { UpdateCourseOfferingDto } from "../dto/update-course-offering.dto";
 import { UpdateCourseOutlineVersionDto } from "../dto/update-course-outline-version.dto";
 
@@ -119,6 +120,21 @@ export class CourseOfferingsController {
     return this.academicService.startCourseOutlineCoordinatorReview(
       params.id,
       params.courseOutlineVersionId,
+    );
+  }
+
+  @Post(
+    ":id/course-outline-versions/:courseOutlineVersionId/return-for-correction",
+  )
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_RETURN_FOR_CORRECTION)
+  returnCourseOutlineForCorrection(
+    @Param() params: CourseOutlineVersionParamDto,
+    @Body() body: ReturnCourseOutlineForCorrectionDto,
+  ) {
+    return this.academicService.returnCourseOutlineForCorrection(
+      params.id,
+      params.courseOutlineVersionId,
+      body.reason,
     );
   }
 

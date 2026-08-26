@@ -47,6 +47,7 @@ import type {
   CurriculumVersionLifecycleAction,
   EnrollmentListFilters,
   ProgramListFilters,
+  ReturnCourseOutlineForCorrectionInput,
   StudentBatchListFilters,
   StudentCourseOfferingListFilters,
   StartCourseOutlineCoordinatorReviewInput,
@@ -988,6 +989,56 @@ export class AcademicService {
       case "CONCURRENT_CONFLICT":
         throw new ConflictException(
           "Course Outline Coordinator review conflict",
+        );
+    }
+  }
+
+  async returnCourseOutlineForCorrection(
+    courseOfferingId: string,
+    courseOutlineVersionId: string,
+    reason: string,
+  ) {
+    const principal = this.requestContextService.get()?.principal;
+    if (
+      !principal ||
+      principal.isAuthenticated !== true ||
+      principal.actorType !== "user" ||
+      !principal.actorId ||
+      !principal.activeDepartmentId
+    ) {
+      throw new BadRequestException(
+        "Authenticated department user context is required",
+      );
+    }
+
+    const requestContext = this.requestContextService.get();
+    const result = await this.repository.returnCourseOutlineForCorrection({
+      departmentId: principal.activeDepartmentId,
+      courseOfferingId,
+      courseOutlineVersionId,
+      reason,
+      actorUserId: principal.actorId,
+      requestId: requestContext?.requestId,
+      ipAddress: requestContext?.audit.ipAddress,
+      userAgent: requestContext?.audit.userAgent,
+    } satisfies ReturnCourseOutlineForCorrectionInput);
+
+    switch (result.outcome) {
+      case "RETURNED_FOR_CORRECTION":
+        return {
+          courseOutlineVersion: result.courseOutlineVersion,
+          courseOutlineCorrectionRequest: result.courseOutlineCorrectionRequest,
+        };
+      case "OFFERING_OR_AUTHORITY_NOT_FOUND":
+      case "OUTLINE_NOT_FOUND":
+        throw new NotFoundException("Course Outline version not found");
+      case "OUTLINE_NOT_RETURNABLE":
+        throw new ConflictException(
+          "Course Outline version cannot be returned for correction in its current status",
+        );
+      case "CONCURRENT_CONFLICT":
+        throw new ConflictException(
+          "Course Outline return-for-correction conflict",
         );
     }
   }

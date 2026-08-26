@@ -422,108 +422,109 @@ enum NoticePriority {
 }
 
 model Department {
-  id                            String                            @id @default(cuid())
-  code                          String                            @unique
-  slug                          String                            @unique
-  name                          String
-  status                        DepartmentStatus                  @default(ACTIVE)
-  archivedAt                    DateTime?                         @map("archived_at")
-  deletedAt                     DateTime?                         @map("deleted_at")
-  createdAt                     DateTime                          @default(now()) @map("created_at")
-  updatedAt                     DateTime                          @updatedAt @map("updated_at")
-  users                         User[]
-  roles                         Role[]
-  userRoles                     UserRole[]
-  sessions                      Session[]
-  emailVerifications            EmailVerification[]
-  passwordResets                PasswordReset[]
-  loginAttempts                 LoginAttempt[]
-  stepUpRequirements            StepUpRequirement[]
-  suspiciousLoginEvents         SuspiciousLoginEvent[]
-  twoFactorMethods              TwoFactorMethod[]
-  academicConfig                DepartmentAcademicConfig?
-  academicPrograms              AcademicProgram[]
-  academicSessions              AcademicSession[]
-  studentBatches                StudentBatch[]
-  batchCoordinatorAssignments   BatchCoordinatorAssignment[]
-  curriculumVersions            CurriculumVersion[]
-  curriculumCourses             CurriculumCourse[]
-  programLearningOutcomes       ProgramLearningOutcome[]
-  courseLearningOutcomes        CourseLearningOutcome[]
-  cloPloMappings                CourseLearningOutcomePloMapping[]
-  syllabusVersions              SyllabusVersion[]
-  syllabusObjectives            SyllabusObjective[]
-  syllabusContentTopics         SyllabusContentTopic[]
-  syllabusLearningResources     SyllabusLearningResource[]
-  curriculumCoursePrerequisites CurriculumCoursePrerequisite[]
-  courseOutlineVersions         CourseOutlineVersion[]
-  studentCurriculumAssignments  StudentCurriculumAssignment[]
-  courseAssessmentTemplates     CourseAssessmentTemplate[]
-  assessmentTemplateComponents  AssessmentTemplateComponent[]
-  academicYears                 AcademicYear[]
-  academicTerms                 AcademicTerm[]
-  courses                       Course[]
-  courseOfferings               CourseOffering[]
-  teacherAssignments            TeacherCourseAssignment[]
-  enrollments                   Enrollment[]
-  classSessions                 ClassSession[]
-  attendanceRecords             AttendanceRecord[]
-  attendanceImportBatches       AttendanceImportBatch[]
-  eligibilityRuleDefinitions    EligibilityRuleDefinition[]
-  eligibilityRuleBindings       EligibilityRuleBinding[]
-  assignments                   Assignment[]
-  assignmentSubmissions         AssignmentSubmission[]
-  submissionFiles               SubmissionFile[]
-  quizzes                       Quiz[]
-  quizQuestions                 QuizQuestion[]
-  quizOptions                   QuizOption[]
-  quizAttempts                  QuizAttempt[]
-  quizResponses                 QuizResponse[]
-  gradingRecords                GradingRecord[]
-  gradeScales                   GradeScale[]
-  resultRecords                 ResultRecord[]
-  resultComponents              ResultComponent[]
-  gpaRecords                    GPARecord[]
-  cgpaRecords                   CGPARecord[]
-  resultPublicationBatches      ResultPublicationBatch[]
-  resultAmendmentRecords        ResultAmendmentRecord[]
-  transcriptRecords             TranscriptRecord[]
-  transcriptVersions            TranscriptVersion[]
-  transcriptTermSummaries       TranscriptTermSummary[]
-  transcriptCourseLines         TranscriptCourseLine[]
-  transcriptVerificationTokens  TranscriptVerificationToken[]
-  transcriptRevocationRecords   TranscriptRevocationRecord[]
-  transcriptSealMetadatas       TranscriptSealMetadata[]
-  notificationEvents            NotificationEvent[]
-  notifications                 Notification[]
-  notificationDeliveries        NotificationDelivery[]
-  notificationTemplates         NotificationTemplate[]
-  notificationPreferences       NotificationPreference[]
-  notices                       Notice[]
-  pushSubscriptions             PushSubscription[]
-  settings                      DepartmentSetting[]
-  auditLogs                     AuditLog[]
-  overrideActions               OverrideAction[]
-  fileObjects                   FileObject[]
-  fileMalwareScanJobs           FileMalwareScanJob[]
+  id                              String                            @id @default(cuid())
+  code                            String                            @unique
+  slug                            String                            @unique
+  name                            String
+  status                          DepartmentStatus                  @default(ACTIVE)
+  archivedAt                      DateTime?                         @map("archived_at")
+  deletedAt                       DateTime?                         @map("deleted_at")
+  createdAt                       DateTime                          @default(now()) @map("created_at")
+  updatedAt                       DateTime                          @updatedAt @map("updated_at")
+  users                           User[]
+  roles                           Role[]
+  userRoles                       UserRole[]
+  sessions                        Session[]
+  emailVerifications              EmailVerification[]
+  passwordResets                  PasswordReset[]
+  loginAttempts                   LoginAttempt[]
+  stepUpRequirements              StepUpRequirement[]
+  suspiciousLoginEvents           SuspiciousLoginEvent[]
+  twoFactorMethods                TwoFactorMethod[]
+  academicConfig                  DepartmentAcademicConfig?
+  academicPrograms                AcademicProgram[]
+  academicSessions                AcademicSession[]
+  studentBatches                  StudentBatch[]
+  batchCoordinatorAssignments     BatchCoordinatorAssignment[]
+  curriculumVersions              CurriculumVersion[]
+  curriculumCourses               CurriculumCourse[]
+  programLearningOutcomes         ProgramLearningOutcome[]
+  courseLearningOutcomes          CourseLearningOutcome[]
+  cloPloMappings                  CourseLearningOutcomePloMapping[]
+  syllabusVersions                SyllabusVersion[]
+  syllabusObjectives              SyllabusObjective[]
+  syllabusContentTopics           SyllabusContentTopic[]
+  syllabusLearningResources       SyllabusLearningResource[]
+  curriculumCoursePrerequisites   CurriculumCoursePrerequisite[]
+  courseOutlineVersions           CourseOutlineVersion[]
+  studentCurriculumAssignments    StudentCurriculumAssignment[]
+  courseAssessmentTemplates       CourseAssessmentTemplate[]
+  assessmentTemplateComponents    AssessmentTemplateComponent[]
+  academicYears                   AcademicYear[]
+  academicTerms                   AcademicTerm[]
+  courses                         Course[]
+  courseOfferings                 CourseOffering[]
+  teacherAssignments              TeacherCourseAssignment[]
+  enrollments                     Enrollment[]
+  classSessions                   ClassSession[]
+  attendanceRecords               AttendanceRecord[]
+  attendanceImportBatches         AttendanceImportBatch[]
+  eligibilityRuleDefinitions      EligibilityRuleDefinition[]
+  eligibilityRuleBindings         EligibilityRuleBinding[]
+  assignments                     Assignment[]
+  assignmentSubmissions           AssignmentSubmission[]
+  submissionFiles                 SubmissionFile[]
+  quizzes                         Quiz[]
+  quizQuestions                   QuizQuestion[]
+  quizOptions                     QuizOption[]
+  quizAttempts                    QuizAttempt[]
+  quizResponses                   QuizResponse[]
+  gradingRecords                  GradingRecord[]
+  gradeScales                     GradeScale[]
+  resultRecords                   ResultRecord[]
+  resultComponents                ResultComponent[]
+  gpaRecords                      GPARecord[]
+  cgpaRecords                     CGPARecord[]
+  resultPublicationBatches        ResultPublicationBatch[]
+  resultAmendmentRecords          ResultAmendmentRecord[]
+  transcriptRecords               TranscriptRecord[]
+  transcriptVersions              TranscriptVersion[]
+  transcriptTermSummaries         TranscriptTermSummary[]
+  transcriptCourseLines           TranscriptCourseLine[]
+  transcriptVerificationTokens    TranscriptVerificationToken[]
+  transcriptRevocationRecords     TranscriptRevocationRecord[]
+  transcriptSealMetadatas         TranscriptSealMetadata[]
+  notificationEvents              NotificationEvent[]
+  notifications                   Notification[]
+  notificationDeliveries          NotificationDelivery[]
+  notificationTemplates           NotificationTemplate[]
+  notificationPreferences         NotificationPreference[]
+  notices                         Notice[]
+  pushSubscriptions               PushSubscription[]
+  settings                        DepartmentSetting[]
+  auditLogs                       AuditLog[]
+  overrideActions                 OverrideAction[]
+  fileObjects                     FileObject[]
+  fileMalwareScanJobs             FileMalwareScanJob[]
+  courseOutlineCorrectionRequests CourseOutlineCorrectionRequest[]
 
   @@map("departments")
 }
 
 model User {
-  id                                 String                        @id @default(cuid())
-  departmentId                       String                        @map("department_id")
-  email                              String                        @unique
-  normalizedEmail                    String                        @unique @map("normalized_email")
-  passwordHash                       String?                       @map("password_hash")
-  displayName                        String                        @map("display_name")
-  status                             UserStatus                    @default(INVITED)
-  lastLoginAt                        DateTime?                     @map("last_login_at")
-  archivedAt                         DateTime?                     @map("archived_at")
-  deletedAt                          DateTime?                     @map("deleted_at")
-  createdAt                          DateTime                      @default(now()) @map("created_at")
-  updatedAt                          DateTime                      @updatedAt @map("updated_at")
-  department                         Department                    @relation(fields: [departmentId], references: [id])
+  id                                 String                           @id @default(cuid())
+  departmentId                       String                           @map("department_id")
+  email                              String                           @unique
+  normalizedEmail                    String                           @unique @map("normalized_email")
+  passwordHash                       String?                          @map("password_hash")
+  displayName                        String                           @map("display_name")
+  status                             UserStatus                       @default(INVITED)
+  lastLoginAt                        DateTime?                        @map("last_login_at")
+  archivedAt                         DateTime?                        @map("archived_at")
+  deletedAt                          DateTime?                        @map("deleted_at")
+  createdAt                          DateTime                         @default(now()) @map("created_at")
+  updatedAt                          DateTime                         @updatedAt @map("updated_at")
+  department                         Department                       @relation(fields: [departmentId], references: [id])
   userRoles                          UserRole[]
   sessions                           Session[]
   emailVerifications                 EmailVerification[]
@@ -531,59 +532,60 @@ model User {
   passwordResets                     PasswordReset[]
   suspiciousLoginEvents              SuspiciousLoginEvent[]
   twoFactorMethods                   TwoFactorMethod[]
-  academicConfigsUpdated             DepartmentAcademicConfig[]    @relation("AcademicConfigUpdatedBy")
-  teachingAssignments                TeacherCourseAssignment[]     @relation("TeacherAssignments")
-  batchCoordinatorAssignments        BatchCoordinatorAssignment[]  @relation("BatchCoordinatorUser")
-  batchCoordinatorAssignedBy         BatchCoordinatorAssignment[]  @relation("BatchCoordinatorAssignedBy")
-  studentEnrollments                 Enrollment[]                  @relation("StudentEnrollments")
-  enrollmentApprovals                Enrollment[]                  @relation("EnrollmentApprovedBy")
-  studentCurriculumAssignments       StudentCurriculumAssignment[] @relation("StudentCurriculumAssignments")
-  curriculumAssignmentsAssigned      StudentCurriculumAssignment[] @relation("CurriculumAssignmentsAssignedBy")
-  attendanceAsStudent                AttendanceRecord[]            @relation("AttendanceStudent")
-  gradedRecords                      GradingRecord[]               @relation("GradingRecords")
-  attendanceMarked                   AttendanceRecord[]            @relation("AttendanceMarkedBy")
-  attendanceOverrides                AttendanceRecord[]            @relation("AttendanceOverrideBy")
-  attendanceImportBatchesUploaded    AttendanceImportBatch[]       @relation("AttendanceImportUploadedBy")
-  attendanceImportBatchesReviewed    AttendanceImportBatch[]       @relation("AttendanceImportReviewedBy")
-  gradeScalesUpdated                 GradeScale[]                  @relation("GradeScaleUpdatedBy")
-  resultsComputed                    ResultRecord[]                @relation("ResultComputedBy")
-  resultsVerified                    ResultRecord[]                @relation("ResultVerifiedBy")
-  resultsPublished                   ResultRecord[]                @relation("ResultPublishedBy")
-  gpaStudentRecords                  GPARecord[]                   @relation("GPAStudentRecords")
-  gpaRecordsComputed                 GPARecord[]                   @relation("GPAComputedBy")
-  gpaRecordsPublished                GPARecord[]                   @relation("GPAPublishedBy")
-  cgpaStudentRecords                 CGPARecord[]                  @relation("CGPAStudentRecords")
-  cgpaRecordsComputed                CGPARecord[]                  @relation("CGPAComputedBy")
-  cgpaRecordsPublished               CGPARecord[]                  @relation("CGPAPublishedBy")
-  resultPublicationBatchesInitiated  ResultPublicationBatch[]      @relation("ResultPublicationBatchInitiatedBy")
-  resultPublicationBatchesPublished  ResultPublicationBatch[]      @relation("ResultPublicationBatchPublishedBy")
-  resultAmendmentsRequested          ResultAmendmentRecord[]       @relation("ResultAmendmentRequestedBy")
-  resultAmendmentsApproved           ResultAmendmentRecord[]       @relation("ResultAmendmentApprovedBy")
-  resultAmendmentsApplied            ResultAmendmentRecord[]       @relation("ResultAmendmentAppliedBy")
-  transcriptRecordsAsStudent         TranscriptRecord[]            @relation("TranscriptStudentRecords")
-  transcriptRecordsGenerated         TranscriptRecord[]            @relation("TranscriptRecordGeneratedBy")
-  transcriptVersionsGenerated        TranscriptVersion[]           @relation("TranscriptVersionGeneratedBy")
-  transcriptVersionsIssued           TranscriptVersion[]           @relation("TranscriptVersionIssuedBy")
-  transcriptVerificationTokensIssued TranscriptVerificationToken[] @relation("TranscriptVerificationTokenIssuedBy")
-  transcriptRevocationsRequested     TranscriptRevocationRecord[]  @relation("TranscriptRevocationRequestedBy")
-  transcriptRevocationsApplied       TranscriptRevocationRecord[]  @relation("TranscriptRevocationAppliedBy")
-  transcriptRevocationsRejected      TranscriptRevocationRecord[]  @relation("TranscriptRevocationRejectedBy")
-  notificationEventsTriggered        NotificationEvent[]           @relation("NotificationEventTriggeredBy")
-  notificationsRecipient             Notification[]                @relation("NotificationRecipient")
-  notificationsCreated               Notification[]                @relation("NotificationCreatedBy")
-  notificationDeliveriesProcessed    NotificationDelivery[]        @relation("NotificationDeliveryProcessedBy")
-  notificationTemplatesCreated       NotificationTemplate[]        @relation("NotificationTemplateCreatedBy")
-  notificationTemplatesUpdated       NotificationTemplate[]        @relation("NotificationTemplateUpdatedBy")
+  academicConfigsUpdated             DepartmentAcademicConfig[]       @relation("AcademicConfigUpdatedBy")
+  teachingAssignments                TeacherCourseAssignment[]        @relation("TeacherAssignments")
+  batchCoordinatorAssignments        BatchCoordinatorAssignment[]     @relation("BatchCoordinatorUser")
+  batchCoordinatorAssignedBy         BatchCoordinatorAssignment[]     @relation("BatchCoordinatorAssignedBy")
+  studentEnrollments                 Enrollment[]                     @relation("StudentEnrollments")
+  enrollmentApprovals                Enrollment[]                     @relation("EnrollmentApprovedBy")
+  studentCurriculumAssignments       StudentCurriculumAssignment[]    @relation("StudentCurriculumAssignments")
+  curriculumAssignmentsAssigned      StudentCurriculumAssignment[]    @relation("CurriculumAssignmentsAssignedBy")
+  attendanceAsStudent                AttendanceRecord[]               @relation("AttendanceStudent")
+  gradedRecords                      GradingRecord[]                  @relation("GradingRecords")
+  attendanceMarked                   AttendanceRecord[]               @relation("AttendanceMarkedBy")
+  attendanceOverrides                AttendanceRecord[]               @relation("AttendanceOverrideBy")
+  attendanceImportBatchesUploaded    AttendanceImportBatch[]          @relation("AttendanceImportUploadedBy")
+  attendanceImportBatchesReviewed    AttendanceImportBatch[]          @relation("AttendanceImportReviewedBy")
+  gradeScalesUpdated                 GradeScale[]                     @relation("GradeScaleUpdatedBy")
+  resultsComputed                    ResultRecord[]                   @relation("ResultComputedBy")
+  resultsVerified                    ResultRecord[]                   @relation("ResultVerifiedBy")
+  resultsPublished                   ResultRecord[]                   @relation("ResultPublishedBy")
+  gpaStudentRecords                  GPARecord[]                      @relation("GPAStudentRecords")
+  gpaRecordsComputed                 GPARecord[]                      @relation("GPAComputedBy")
+  gpaRecordsPublished                GPARecord[]                      @relation("GPAPublishedBy")
+  cgpaStudentRecords                 CGPARecord[]                     @relation("CGPAStudentRecords")
+  cgpaRecordsComputed                CGPARecord[]                     @relation("CGPAComputedBy")
+  cgpaRecordsPublished               CGPARecord[]                     @relation("CGPAPublishedBy")
+  resultPublicationBatchesInitiated  ResultPublicationBatch[]         @relation("ResultPublicationBatchInitiatedBy")
+  resultPublicationBatchesPublished  ResultPublicationBatch[]         @relation("ResultPublicationBatchPublishedBy")
+  resultAmendmentsRequested          ResultAmendmentRecord[]          @relation("ResultAmendmentRequestedBy")
+  resultAmendmentsApproved           ResultAmendmentRecord[]          @relation("ResultAmendmentApprovedBy")
+  resultAmendmentsApplied            ResultAmendmentRecord[]          @relation("ResultAmendmentAppliedBy")
+  transcriptRecordsAsStudent         TranscriptRecord[]               @relation("TranscriptStudentRecords")
+  transcriptRecordsGenerated         TranscriptRecord[]               @relation("TranscriptRecordGeneratedBy")
+  transcriptVersionsGenerated        TranscriptVersion[]              @relation("TranscriptVersionGeneratedBy")
+  transcriptVersionsIssued           TranscriptVersion[]              @relation("TranscriptVersionIssuedBy")
+  transcriptVerificationTokensIssued TranscriptVerificationToken[]    @relation("TranscriptVerificationTokenIssuedBy")
+  transcriptRevocationsRequested     TranscriptRevocationRecord[]     @relation("TranscriptRevocationRequestedBy")
+  transcriptRevocationsApplied       TranscriptRevocationRecord[]     @relation("TranscriptRevocationAppliedBy")
+  transcriptRevocationsRejected      TranscriptRevocationRecord[]     @relation("TranscriptRevocationRejectedBy")
+  notificationEventsTriggered        NotificationEvent[]              @relation("NotificationEventTriggeredBy")
+  notificationsRecipient             Notification[]                   @relation("NotificationRecipient")
+  notificationsCreated               Notification[]                   @relation("NotificationCreatedBy")
+  notificationDeliveriesProcessed    NotificationDelivery[]           @relation("NotificationDeliveryProcessedBy")
+  notificationTemplatesCreated       NotificationTemplate[]           @relation("NotificationTemplateCreatedBy")
+  notificationTemplatesUpdated       NotificationTemplate[]           @relation("NotificationTemplateUpdatedBy")
   notificationPreferences            NotificationPreference[]
-  noticesCreated                     Notice[]                      @relation("NoticeCreatedBy")
-  noticesUpdated                     Notice[]                      @relation("NoticeUpdatedBy")
-  noticesPublished                   Notice[]                      @relation("NoticePublishedBy")
+  noticesCreated                     Notice[]                         @relation("NoticeCreatedBy")
+  noticesUpdated                     Notice[]                         @relation("NoticeUpdatedBy")
+  noticesPublished                   Notice[]                         @relation("NoticePublishedBy")
   pushSubscriptions                  PushSubscription[]
-  auditLogs                          AuditLog[]                    @relation("AuditActor")
-  settingsUpdated                    DepartmentSetting[]           @relation("DepartmentSettingUpdatedBy")
-  overrideActions                    OverrideAction[]              @relation("OverrideActor")
-  overrideApprovals                  OverrideAction[]              @relation("OverrideApprover")
-  fileObjects                        FileObject[]                  @relation("FileUploadedBy")
+  auditLogs                          AuditLog[]                       @relation("AuditActor")
+  settingsUpdated                    DepartmentSetting[]              @relation("DepartmentSettingUpdatedBy")
+  overrideActions                    OverrideAction[]                 @relation("OverrideActor")
+  overrideApprovals                  OverrideAction[]                 @relation("OverrideApprover")
+  fileObjects                        FileObject[]                     @relation("FileUploadedBy")
+  correctionRequestsActed            CourseOutlineCorrectionRequest[] @relation("CourseOutlineCorrectionRequestActor")
 
   @@unique([id, departmentId], map: "user_id_department_uq")
   @@index([departmentId])
@@ -731,24 +733,25 @@ model AcademicTerm {
 }
 
 model BatchCoordinatorAssignment {
-  id                String                           @id @default(cuid())
-  departmentId      String                           @map("department_id")
-  studentBatchId    String                           @map("student_batch_id")
-  academicTermId    String                           @map("academic_term_id")
-  coordinatorUserId String                           @map("coordinator_user_id")
-  assignedByUserId  String                           @map("assigned_by_user_id")
-  status            BatchCoordinatorAssignmentStatus @default(ACTIVE)
-  assignedAt        DateTime                         @default(now()) @map("assigned_at")
-  expiresAt         DateTime?                        @map("expires_at")
-  unassignedAt      DateTime?                        @map("unassigned_at")
-  archivedAt        DateTime?                        @map("archived_at")
-  createdAt         DateTime                         @default(now()) @map("created_at")
-  updatedAt         DateTime                         @updatedAt @map("updated_at")
-  department        Department                       @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "batch_coordinator_assignment_department_fkey")
-  studentBatch      StudentBatch                     @relation(fields: [studentBatchId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "batch_coordinator_assignment_batch_identity_fkey")
-  academicTerm      AcademicTerm                     @relation(fields: [academicTermId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "batch_coordinator_assignment_term_identity_fkey")
-  coordinatorUser   User                             @relation("BatchCoordinatorUser", fields: [coordinatorUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "batch_coordinator_assignment_user_identity_fkey")
-  assignedByUser    User                             @relation("BatchCoordinatorAssignedBy", fields: [assignedByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "batch_coordinator_assignment_assigner_identity_fkey")
+  id                 String                           @id @default(cuid())
+  departmentId       String                           @map("department_id")
+  studentBatchId     String                           @map("student_batch_id")
+  academicTermId     String                           @map("academic_term_id")
+  coordinatorUserId  String                           @map("coordinator_user_id")
+  assignedByUserId   String                           @map("assigned_by_user_id")
+  status             BatchCoordinatorAssignmentStatus @default(ACTIVE)
+  assignedAt         DateTime                         @default(now()) @map("assigned_at")
+  expiresAt          DateTime?                        @map("expires_at")
+  unassignedAt       DateTime?                        @map("unassigned_at")
+  archivedAt         DateTime?                        @map("archived_at")
+  createdAt          DateTime                         @default(now()) @map("created_at")
+  updatedAt          DateTime                         @updatedAt @map("updated_at")
+  department         Department                       @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "batch_coordinator_assignment_department_fkey")
+  studentBatch       StudentBatch                     @relation(fields: [studentBatchId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "batch_coordinator_assignment_batch_identity_fkey")
+  academicTerm       AcademicTerm                     @relation(fields: [academicTermId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "batch_coordinator_assignment_term_identity_fkey")
+  coordinatorUser    User                             @relation("BatchCoordinatorUser", fields: [coordinatorUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "batch_coordinator_assignment_user_identity_fkey")
+  assignedByUser     User                             @relation("BatchCoordinatorAssignedBy", fields: [assignedByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "batch_coordinator_assignment_assigner_identity_fkey")
+  correctionRequests CourseOutlineCorrectionRequest[]
 
   @@unique([id, departmentId], map: "batch_coordinator_assignment_id_department_uq")
   @@unique([departmentId, studentBatchId, academicTermId, coordinatorUserId], map: "batch_coord_assign_scope_user_uq")
@@ -1147,35 +1150,57 @@ model CourseOffering {
 }
 
 model CourseOutlineVersion {
-  id                 String              @id @default(cuid())
-  departmentId       String              @map("department_id")
-  courseOfferingId   String              @map("course_offering_id")
-  curriculumCourseId String              @map("curriculum_course_id")
-  syllabusVersionId  String              @map("syllabus_version_id")
-  versionNumber      Int                 @map("version_number") @db.SmallInt
-  status             CourseOutlineStatus @default(DRAFT)
-  courseSummary      String?             @map("course_summary")
-  deliveryPlan       String?             @map("delivery_plan")
-  teachingStrategies String?             @map("teaching_strategies")
-  assessmentStrategy String?             @map("assessment_strategy")
-  evaluationPolicy   String?             @map("evaluation_policy")
-  makeUpProcedure    String?             @map("make_up_procedure")
-  submittedAt        DateTime?           @map("submitted_at")
-  approvedAt         DateTime?           @map("approved_at")
-  activatedAt        DateTime?           @map("activated_at")
-  archivedAt         DateTime?           @map("archived_at")
-  createdAt          DateTime            @default(now()) @map("created_at")
-  updatedAt          DateTime            @updatedAt @map("updated_at")
-  department         Department          @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_department_fkey")
-  courseOffering     CourseOffering      @relation(fields: [courseOfferingId, departmentId, curriculumCourseId, syllabusVersionId], references: [id, departmentId, curriculumCourseId, syllabusVersionId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_offering_identity_fkey")
-  curriculumCourse   CurriculumCourse    @relation(fields: [curriculumCourseId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_curriculum_course_fkey")
-  syllabusVersion    SyllabusVersion     @relation(fields: [syllabusVersionId, departmentId, curriculumCourseId], references: [id, departmentId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_syllabus_identity_fkey")
+  id                 String                           @id @default(cuid())
+  departmentId       String                           @map("department_id")
+  courseOfferingId   String                           @map("course_offering_id")
+  curriculumCourseId String                           @map("curriculum_course_id")
+  syllabusVersionId  String                           @map("syllabus_version_id")
+  versionNumber      Int                              @map("version_number") @db.SmallInt
+  status             CourseOutlineStatus              @default(DRAFT)
+  courseSummary      String?                          @map("course_summary")
+  deliveryPlan       String?                          @map("delivery_plan")
+  teachingStrategies String?                          @map("teaching_strategies")
+  assessmentStrategy String?                          @map("assessment_strategy")
+  evaluationPolicy   String?                          @map("evaluation_policy")
+  makeUpProcedure    String?                          @map("make_up_procedure")
+  submittedAt        DateTime?                        @map("submitted_at")
+  approvedAt         DateTime?                        @map("approved_at")
+  activatedAt        DateTime?                        @map("activated_at")
+  archivedAt         DateTime?                        @map("archived_at")
+  createdAt          DateTime                         @default(now()) @map("created_at")
+  updatedAt          DateTime                         @updatedAt @map("updated_at")
+  department         Department                       @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_department_fkey")
+  courseOffering     CourseOffering                   @relation(fields: [courseOfferingId, departmentId, curriculumCourseId, syllabusVersionId], references: [id, departmentId, curriculumCourseId, syllabusVersionId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_offering_identity_fkey")
+  curriculumCourse   CurriculumCourse                 @relation(fields: [curriculumCourseId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_curriculum_course_fkey")
+  syllabusVersion    SyllabusVersion                  @relation(fields: [syllabusVersionId, departmentId, curriculumCourseId], references: [id, departmentId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_syllabus_identity_fkey")
+  correctionRequests CourseOutlineCorrectionRequest[]
 
   @@unique([departmentId, courseOfferingId, versionNumber], map: "course_outline_version_dept_offering_number_uq")
   @@unique([id, departmentId, courseOfferingId], map: "course_outline_version_id_dept_offering_uq")
   @@index([departmentId, courseOfferingId, status], map: "course_outline_version_dept_offering_status_idx")
   @@index([departmentId, syllabusVersionId], map: "course_outline_version_dept_syllabus_idx")
   @@map("course_outline_versions")
+}
+
+model CourseOutlineCorrectionRequest {
+  id                           String                     @id @default(cuid())
+  departmentId                 String                     @map("department_id")
+  courseOfferingId             String                     @map("course_offering_id")
+  courseOutlineVersionId       String                     @map("course_outline_version_id")
+  batchCoordinatorAssignmentId String                     @map("batch_coordinator_assignment_id")
+  actorUserId                  String                     @map("actor_user_id")
+  reason                       String
+  returnedAt                   DateTime                   @map("returned_at")
+  createdAt                    DateTime                   @default(now()) @map("created_at")
+  department                   Department                 @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_correction_request_department_fkey")
+  courseOutlineVersion         CourseOutlineVersion       @relation(fields: [courseOutlineVersionId, departmentId, courseOfferingId], references: [id, departmentId, courseOfferingId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_correction_request_outline_identity_fkey")
+  batchCoordinatorAssignment   BatchCoordinatorAssignment @relation(fields: [batchCoordinatorAssignmentId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_correction_request_coordinator_identity_fkey")
+  actorUser                    User                       @relation("CourseOutlineCorrectionRequestActor", fields: [actorUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_correction_request_actor_identity_fkey")
+
+  @@index([departmentId, courseOutlineVersionId], map: "course_outline_correction_request_dept_outline_idx")
+  @@index([departmentId, courseOfferingId], map: "course_outline_correction_request_dept_offering_idx")
+  @@index([departmentId, batchCoordinatorAssignmentId], map: "course_outline_correction_request_dept_assignment_idx")
+  @@map("course_outline_correction_requests")
 }
 
 model TeacherCourseAssignment {

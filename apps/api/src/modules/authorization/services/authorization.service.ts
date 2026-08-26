@@ -34,6 +34,10 @@ const SENSITIVE_ROLE_ADMISSION_POLICIES = {
   [COURSE_MANAGEMENT_POLICY_NAMES.COURSE_OUTLINE_COORDINATOR_REVIEW]: [
     "teacher",
     "department_admin"
+  ],
+  [COURSE_MANAGEMENT_POLICY_NAMES.COURSE_OUTLINE_RETURN_FOR_CORRECTION]: [
+    "teacher",
+    "department_admin"
   ]
 } as const satisfies Partial<Record<string, readonly PlatformRole[]>>;
 

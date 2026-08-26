@@ -134,6 +134,18 @@ export interface CourseOutlineVersionView {
   updatedAt: Date;
 }
 
+export interface CourseOutlineCorrectionRequestView {
+  id: string;
+  departmentId: string;
+  courseOfferingId: string;
+  courseOutlineVersionId: string;
+  batchCoordinatorAssignmentId: string;
+  actorUserId: string;
+  reason: string;
+  returnedAt: Date;
+  createdAt: Date;
+}
+
 interface CourseOutlineWriteAuditInput {
   actorUserId: string;
   requestId?: string;
@@ -212,6 +224,28 @@ export type StartCourseOutlineCoordinatorReviewResult =
         | "OFFERING_OR_AUTHORITY_NOT_FOUND"
         | "OUTLINE_NOT_FOUND"
         | "OUTLINE_NOT_REVIEWABLE"
+        | "CONCURRENT_CONFLICT";
+    };
+
+export interface ReturnCourseOutlineForCorrectionInput
+  extends CourseOutlineWriteAuditInput {
+  departmentId: string;
+  courseOfferingId: string;
+  courseOutlineVersionId: string;
+  reason: string;
+}
+
+export type ReturnCourseOutlineForCorrectionResult =
+  | {
+      outcome: "RETURNED_FOR_CORRECTION";
+      courseOutlineVersion: CourseOutlineVersionView;
+      courseOutlineCorrectionRequest: CourseOutlineCorrectionRequestView;
+    }
+  | {
+      outcome:
+        | "OFFERING_OR_AUTHORITY_NOT_FOUND"
+        | "OUTLINE_NOT_FOUND"
+        | "OUTLINE_NOT_RETURNABLE"
         | "CONCURRENT_CONFLICT";
     };
 
@@ -798,6 +832,9 @@ export interface AcademicRepositoryPort {
   startCourseOutlineCoordinatorReview(
     input: StartCourseOutlineCoordinatorReviewInput,
   ): Promise<StartCourseOutlineCoordinatorReviewResult>;
+  returnCourseOutlineForCorrection(
+    input: ReturnCourseOutlineForCorrectionInput,
+  ): Promise<ReturnCourseOutlineForCorrectionResult>;
   createCourseOffering(input: CreateCourseOfferingInput): Promise<unknown>;
   updateCourseOffering(
     departmentId: string,
