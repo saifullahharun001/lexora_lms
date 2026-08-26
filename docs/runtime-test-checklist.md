@@ -30839,3 +30839,712 @@ It does not claim separate wall-clock expiry-edge observation, Batch Coordinator
 frontend completion, Course Outline Coordinator transition completion, Programme
 Coordinator authority, broader Coordinator governance, the complete Course Outline
 lifecycle or the complete Lexora LMS.
+
+
+## Course Outline Batch Coordinator Review Transition and PostgreSQL Concurrency Verification — 2026-08-26
+
+### Scope and supersession
+
+This checkpoint closes only the narrow Course Outline lifecycle transition:
+
+`SUBMITTED_BY_TEACHER → COORDINATOR_REVIEW`
+
+It supersedes earlier pending wording only for the exact Batch Coordinator-authorised Course Outline review transition and the runtime/concurrency behavior documented below.
+
+Earlier pending statements remain valid historical evidence for the repository/runtime state that existed when those checkpoints were written. They are intentionally not deleted or rewritten.
+
+This checkpoint does **not** claim completion of the complete Course Outline lifecycle.
+
+The approved lifecycle remains:
+
+    DRAFT
+    → SUBMITTED_BY_TEACHER
+    → COORDINATOR_REVIEW
+    → RETURNED_FOR_CORRECTION
+    → APPROVED
+    → ACTIVE
+    → ARCHIVED
+
+The previously closed Teacher submission transition:
+
+`DRAFT → SUBMITTED_BY_TEACHER`
+
+remains independently runtime verified by its earlier dedicated checkpoint.
+
+### Implementation and correction lineage
+
+Original Coordinator-review implementation commit:
+
+`bcf60fc7aedd2970283daa4d75573a507b01ca7b`
+
+Commit message:
+
+`feat: add batch coordinator course outline review transition`
+
+Implementation parent:
+
+`8199f55ae2774c2b2f9fef8363a0bbc4b94b33aa`
+
+PostgreSQL deadlock correction commit:
+
+`458e77b1ba59d518d015d5b9f2ed4ba88dd3df05`
+
+Commit message:
+
+`fix: prevent coordinator review deadlock`
+
+Correction parent:
+
+`bcf60fc7aedd2970283daa4d75573a507b01ca7b`
+
+The correction introduced no Prisma schema or migration change.
+
+### Exact authorization model
+
+No global/platform Coordinator role is introduced or implied by this transition.
+
+Definitive academic Coordinator authority remains an exact valid `BatchCoordinatorAssignment` scoped by:
+
+`department + StudentBatch + AcademicTerm + coordinator user`
+
+The transition derives StudentBatch and AcademicTerm from the exact target CourseOffering.
+
+Coarse route admission permits an authenticated active-department:
+
+- Teacher; or
+- Department Admin.
+
+Coarse role admission alone is not academic Coordinator authority.
+
+Therefore:
+
+- Teacher alone is not a Coordinator;
+- Department Admin alone is not a Coordinator;
+- Department Admin wildcard authority is not an implicit Coordinator shortcut;
+- an assigned Teacher Coordinator may perform the transition;
+- an assigned Department Admin Coordinator may perform the transition;
+- Student is denied;
+- unsupported roles remain non-exercisable;
+- cross-department direct-object access remains fail-closed;
+- authenticated principal department remains authoritative over `x-department-id`.
+
+Programme Coordinator governance remains separate and unresolved wherever independently required.
+
+### HTTP and lifecycle contract
+
+Verified route:
+
+`POST /api/v1/course-offerings/:id/course-outline-versions/:courseOutlineVersionId/coordinator-review`
+
+The route is bodyless.
+
+Dedicated policy:
+
+`course-management.course-outline.coordinator-review`
+
+Success audit event:
+
+`course-management.course-outline.coordinator-review-started`
+
+The client does not supply authoritative:
+
+- department;
+- StudentBatch;
+- AcademicTerm;
+- Coordinator assignment identity;
+- source lifecycle state;
+- destination lifecycle state;
+- transition timestamp.
+
+The only transition closed here is:
+
+`SUBMITTED_BY_TEACHER → COORDINATOR_REVIEW`
+
+A `DRAFT` cannot enter Coordinator review directly.
+
+A repeated review does not create another successful transition and returns a controlled lifecycle conflict.
+
+### Reviewed transaction design
+
+The Coordinator-review transaction preserves:
+
+1. explicit Serializable transaction;
+2. exact department-scoped non-archived CourseOffering row lock;
+3. StudentBatch and AcademicTerm derivation from the locked CourseOffering;
+4. exact four-part BatchCoordinatorAssignment row lock;
+5. transition timestamp established after assignment lock acquisition;
+6. post-lock assignment lifecycle and expiry validation;
+7. exact nested CourseOutlineVersion validation;
+8. exact lifecycle conditional/CAS mutation;
+9. same-transaction structural success audit.
+
+Teacher narrative data is not placed into the structural success audit.
+
+### Static verification of the correction
+
+Post-correction verification passed:
+
+- Batch Coordinator assignment repository tests: `16/16`;
+- Coordinator-review repository tests: `15/15`;
+- Academic infrastructure repository regression tests: `253/253`;
+- API typecheck: PASS;
+- API build: PASS;
+- `git diff --check`: PASS.
+
+The correction changed exactly three files:
+
+- `apps/api/src/modules/academic/infrastructure/repositories/prisma-batch-coordinator-assignment.repository.ts`;
+- `apps/api/src/modules/academic/infrastructure/repositories/prisma-batch-coordinator-assignment.repository.test.ts`;
+- the existing Coordinator-review repository test file.
+
+Coordinator-review production code itself was not changed by the deadlock correction.
+
+### Ordinary deterministic HTTP/security runtime matrix
+
+The disposable PostgreSQL/API matrix verified:
+
+- unauthenticated request → HTTP `401`;
+- Student → HTTP `403`;
+- Teacher outside exact StudentBatch Coordinator scope → safe HTTP `404`;
+- Department Admin without exact Coordinator assignment → safe HTTP `404`;
+- wrong AcademicTerm scope → safe HTTP `404`;
+- null CourseOffering StudentBatch → safe HTTP `404`;
+- wrong nested CourseOutlineVersion → safe HTTP `404`;
+- cross-department direct object → safe HTTP `404`;
+- `DRAFT → COORDINATOR_REVIEW` → HTTP `409`;
+- assigned Teacher Coordinator → HTTP `201`;
+- forged `x-department-id: dept_bus_test` did not override authenticated Law scope;
+- assigned Department Admin Coordinator → HTTP `201`;
+- repeated Coordinator review → HTTP `409`.
+
+Successful audit verification confirmed:
+
+- correct actor;
+- correct department;
+- exact BatchCoordinatorAssignment identity;
+- previous status `SUBMITTED_BY_TEACHER`;
+- new status `COORDINATOR_REVIEW`;
+- server transition timestamp;
+- structural context only;
+- no Course Outline narrative leakage.
+
+The deterministic fixture was fully removed and the ordinary academic baseline restored.
+
+### Historical PostgreSQL concurrency defect
+
+The first real PostgreSQL concurrency matrix exposed one genuine defect.
+
+Before correction, these cases already passed:
+
+1. simultaneous Coordinator review;
+2. unassign-first;
+3. archive-first;
+4. expiry-update-first;
+5. live wall-clock expiry while review waited.
+
+The failing ordering was:
+
+`Coordinator review wins first → later Batch Coordinator unassign`
+
+Expected:
+
+- review succeeds;
+- later unassign succeeds.
+
+Observed before correction:
+
+- review returned HTTP `500`.
+
+PostgreSQL confirmed:
+
+`ERROR: deadlock detected`
+
+The database deadlock counter increased by one.
+
+The deadlock victim statement was the Coordinator-review transactional:
+
+`INSERT INTO audit_logs`
+
+The competing activity involved:
+
+`batch_coordinator_assignments`
+
+The failed disposable fixture was removed and the ordinary academic baseline restored.
+
+This discovered defect is intentionally preserved as historical runtime evidence.
+
+### Confirmed deadlock root cause
+
+Read-only lock-order review established the effective Coordinator-review order:
+
+    CourseOffering FOR UPDATE
+    → BatchCoordinatorAssignment FOR UPDATE
+    → authority revalidation
+    → CourseOutlineVersion CAS
+    → transactional audit INSERT
+    → audit FK parent protection on User / Department
+
+The Batch Coordinator management path used:
+
+    management authority
+    → User + Department + permission-provenance rows FOR UPDATE
+    → BatchCoordinatorAssignment FOR UPDATE
+    → mutation
+    → transactional audit
+
+This created the inversion:
+
+    Coordinator review:
+    owns BatchCoordinatorAssignment
+    → waits for User/Department audit-FK protection
+
+    Batch Coordinator unassign:
+    owns User/Department
+    → waits for BatchCoordinatorAssignment
+
+The management-authority-before-assignment transaction ordering itself was preserved.
+
+### Narrow lock-compatibility correction
+
+The management-authority locking clause changed from:
+
+`FOR UPDATE OF u, d, ur, r, rp, p`
+
+to:
+
+`FOR SHARE OF u, d FOR UPDATE OF ur, r, rp, p`
+
+Where:
+
+- `u` = User;
+- `d` = Department;
+- `ur` = UserRole;
+- `r` = Role;
+- `rp` = RolePermission;
+- `p` = Permission.
+
+User and Department remain tuple locked; they were not changed to unlocked reads.
+
+Permission-provenance rows remain `FOR UPDATE`.
+
+The following remained unchanged:
+
+- authorization predicates;
+- joined authority rows;
+- actor identity;
+- department identity;
+- Serializable transaction;
+- management-authority-before-assignment ordering;
+- assignment lifecycle mutation;
+- transactional success audit.
+
+### Retry policy preservation
+
+SQLSTATE:
+
+`40P01`
+
+was deliberately **not** added as a retryable error.
+
+The confirmed deadlock was corrected at the lock-compatibility boundary rather than hidden through generic deadlock retry behavior.
+
+This preserves winner semantics: a review transaction that legitimately acquired exact assignment authority first must not be aborted and retried after a waiting unassign has been allowed to commit.
+
+Existing narrowly supported Serializable-conflict retry behavior remains unchanged.
+
+### Commit, push and Ubuntu promotion
+
+Correction commit:
+
+`458e77b1ba59d518d015d5b9f2ed4ba88dd3df05`
+
+Local push verification established:
+
+- local HEAD = correction commit;
+- `origin/main` = correction commit;
+- live remote `main` = correction commit;
+- repository clean.
+
+Ubuntu promotion verified:
+
+- previous server HEAD:
+  `bcf60fc7aedd2970283daa4d75573a507b01ca7b`;
+- promoted server HEAD:
+  `458e77b1ba59d518d015d5b9f2ed4ba88dd3df05`;
+- exact delta: three files;
+- schema change: none;
+- migration change: none;
+- corrected lock clause present;
+- old combined lock clause absent;
+- API typecheck: PASS;
+- API build: PASS.
+
+PM2:
+
+- PID before activation: `40055`;
+- PID after activation: `64415`.
+
+Post-activation:
+
+- Direct API health → HTTP `200`;
+- Nginx API health → HTTP `200`;
+- API listener → `127.0.0.1:4000`;
+- repository → clean and origin-aligned.
+
+### Targeted post-fix verification of the formerly failing ordering
+
+The exact formerly failing review-first/later-unassign ordering was reproduced under controlled real PostgreSQL locking.
+
+Before releasing the controlled CourseOutlineVersion lock, the harness proved:
+
+    Review:
+    BatchCoordinatorAssignment acquired
+    → CourseOutlineVersion CAS waiting
+
+    Unassign:
+    management authority acquired
+    → BatchCoordinatorAssignment waiting
+
+After release:
+
+- Coordinator review → HTTP `201`;
+- later Batch Coordinator unassign → HTTP `201`.
+
+Final database state:
+
+- CourseOutlineVersion → `COORDINATOR_REVIEW`;
+- BatchCoordinatorAssignment → `INACTIVE`.
+
+Audit cardinality:
+
+- review success audits = exactly `1`;
+- unassign success audits = exactly `1`.
+
+Deadlock counter:
+
+- before = `1`;
+- after = `1`;
+- delta = `0`.
+
+The targeted fixture was removed and the ordinary academic baseline restored exactly.
+
+### Final post-fix PostgreSQL concurrency closure matrix
+
+A fresh disposable closure fixture contained:
+
+- one AcademicSession;
+- seven StudentBatches;
+- one SyllabusVersion;
+- seven CourseOfferings;
+- seven CourseOutlineVersions;
+- seven BatchCoordinatorAssignments.
+
+Fresh canonical Law Admin and Teacher logins both returned HTTP `201`.
+
+Raw passwords and access tokens were not printed or retained.
+
+#### Simultaneous review
+
+Two concurrent reviews produced:
+
+`201 + 409`
+
+Final outline state:
+
+`COORDINATOR_REVIEW`
+
+Exactly one review success audit existed.
+
+Result: PASS.
+
+#### Unassign-first
+
+Batch Coordinator unassign committed while review was deliberately blocked:
+
+`201`
+
+After release, review returned:
+
+`404`
+
+Outline remained:
+
+`SUBMITTED_BY_TEACHER`
+
+No false review success audit existed.
+
+Result: PASS.
+
+#### Archive-first
+
+Batch Coordinator archive committed first:
+
+`201`
+
+After release, review returned:
+
+`404`
+
+Outline remained:
+
+`SUBMITTED_BY_TEACHER`
+
+No false review success audit existed.
+
+Result: PASS.
+
+#### Finite expiry-update-first
+
+Finite expiry update committed first:
+
+`200`
+
+After effective expiry and lock release, review returned:
+
+`404`
+
+Outline remained:
+
+`SUBMITTED_BY_TEACHER`
+
+No false review success audit existed.
+
+Result: PASS.
+
+#### Live wall-clock expiry
+
+An active assignment crossed its real wall-clock expiry while review was waiting.
+
+After release:
+
+- assignment lifecycle status remained `ACTIVE`;
+- effective expiry had passed;
+- review returned `404`;
+- outline remained `SUBMITTED_BY_TEACHER`;
+- no false review success audit existed.
+
+Result: PASS.
+
+#### Same-user Department Admin Coordinator review-first / self-unassign
+
+The Department Admin was the exact active Coordinator for the target StudentBatch and AcademicTerm.
+
+After controlled serialization:
+
+- assigned Department Admin review-first → HTTP `201`;
+- same Admin later self-unassign → HTTP `201`.
+
+Final state:
+
+- outline → `COORDINATOR_REVIEW`;
+- assignment → `INACTIVE`;
+- exactly one review success audit.
+
+This directly exercised the same-user audit-User-FK edge of the corrected lock graph.
+
+Result: PASS.
+
+#### Transactional audit-failure rollback
+
+A narrowly target-scoped temporary PostgreSQL trigger forced failure only for the selected Coordinator-review success-audit insert.
+
+Endpoint result:
+
+HTTP `500`
+
+Database verification confirmed:
+
+- outline status rolled back to `SUBMITTED_BY_TEACHER`;
+- `updatedAt` rolled back;
+- no false success audit remained.
+
+The temporary trigger and function were removed immediately.
+
+Result: PASS.
+
+### Post-fix deadlock evidence
+
+Deadlock counter before final closure matrix:
+
+`1`
+
+Deadlock counter after final closure matrix:
+
+`1`
+
+Delta:
+
+`0`
+
+No new PostgreSQL deadlock was recorded during the complete post-fix closure matrix.
+
+### Final cleanup and ordinary baseline restoration
+
+Closure-fixture cleanup removed:
+
+- seven fixture audit rows;
+- seven CourseOutlineVersions;
+- seven BatchCoordinatorAssignments;
+- seven CourseOfferings;
+- one SyllabusVersion;
+- seven StudentBatches;
+- one AcademicSession.
+
+Measured ordinary academic baseline after cleanup:
+
+    syllabus_versions         = 0
+    course_offerings          = 14
+    student_batches           = 0
+    coordinator_assignments   = 0
+    course_outline_versions   = 0
+    coordinator_review_audits = 0
+
+Temporary failure-injection trigger/function:
+
+`ABSENT`
+
+Final platform state:
+
+- HEAD = `458e77b1ba59d518d015d5b9f2ed4ba88dd3df05`;
+- `origin/main` = `458e77b1ba59d518d015d5b9f2ed4ba88dd3df05`;
+- repository = clean;
+- Direct API = HTTP `200`;
+- Nginx API = HTTP `200`;
+- API listener = `127.0.0.1:4000`;
+- temporary DB DDL = none;
+- post-fix deadlock delta = `0`;
+- raw authentication material = not printed or retained.
+
+### Security and architecture preservation
+
+The verified transition and correction preserve:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- `@RequirePolicy()`;
+- authenticated request context;
+- authenticated-principal department authority;
+- department isolation;
+- safe cross-department object handling;
+- nested CourseOffering/CourseOutlineVersion object authorization;
+- exact StudentBatch + AcademicTerm + Coordinator-user assignment authority;
+- assignment lifecycle and expiry checks;
+- Department Admin not being an implicit Coordinator;
+- Teacher not being an implicit Coordinator;
+- server-derived transition state;
+- server-derived transition timestamp;
+- Teacher narrative immutability during review;
+- Serializable transaction handling;
+- exact lifecycle CAS;
+- same-transaction audit;
+- minimized structural audit context;
+- transactional audit rollback;
+- narrow retry classification;
+- loopback-only NestJS API exposure.
+
+`x-department-id` does not override a valid authenticated principal's department.
+
+### Current verified classification
+
+The narrow **Course Outline Batch Coordinator Review Transition**:
+
+`SUBMITTED_BY_TEACHER → COORDINATOR_REVIEW`
+
+is now:
+
+- source-audited;
+- implemented;
+- independently reviewed;
+- statically verified;
+- committed and pushed;
+- Ubuntu deployed;
+- API typecheck verified;
+- API build verified;
+- runtime activated under PM2;
+- ordinary HTTP runtime verified;
+- exact Batch Coordinator assignment authority verified;
+- Teacher Coordinator runtime verified;
+- assigned Department Admin Coordinator runtime verified;
+- implicit Department Admin Coordinator bypass rejected;
+- Student denial verified;
+- department isolation verified;
+- forged `x-department-id` resistance verified;
+- nested object authorization verified;
+- lifecycle conflict behavior verified;
+- structural transactional audit verified;
+- narrative audit non-leakage verified;
+- original PostgreSQL deadlock discovered and preserved;
+- deadlock root cause independently reviewed;
+- narrow lock-compatibility correction implemented;
+- `40P01` retry intentionally not added;
+- formerly failing review-first/later-unassign ordering runtime verified;
+- simultaneous-review concurrency verified;
+- unassign-first fail-closed behavior verified;
+- archive-first fail-closed behavior verified;
+- expiry-update-first fail-closed behavior verified;
+- live wall-clock expiry fail-closed behavior verified;
+- same-user Department Admin Coordinator concurrency verified;
+- transactional audit-failure rollback verified;
+- post-fix PostgreSQL deadlock delta verified as zero;
+- temporary database DDL removal verified;
+- disposable cleanup verified;
+- ordinary academic baseline restoration verified;
+- Direct/Nginx health verified;
+- loopback-only API exposure verified;
+- repository cleanliness/origin alignment verified.
+
+The narrow **Course Outline Batch Coordinator Review Transition is technically complete and runtime verified**.
+
+This closes only:
+
+`SUBMITTED_BY_TEACHER → COORDINATOR_REVIEW`
+
+The complete Course Outline lifecycle remains incomplete.
+
+### Still pending Course Outline work
+
+The following remain pending unless separately implemented and runtime verified:
+
+- `COORDINATOR_REVIEW → RETURNED_FOR_CORRECTION`;
+- mandatory correction/review reason governance where required;
+- Teacher editability after return;
+- `RETURNED_FOR_CORRECTION → SUBMITTED_BY_TEACHER` resubmission semantics;
+- approval workflow;
+- activation workflow;
+- archival workflow;
+- post-approval immutability/amendment governance beyond already verified boundaries;
+- exact active CourseOutlineVersion binding;
+- active/latest outline semantics;
+- topic-to-CLO normalized mapping;
+- supplemental offering-owned resources;
+- weekly plan;
+- Lesson Plan;
+- assessment schedule;
+- Teacher Course Outline frontend;
+- Coordinator/Admin review frontend;
+- complete Teacher Course Workspace integration;
+- Programme Coordinator governance wherever independently required.
+
+Department Admin must continue to require an exact valid Coordinator assignment for Coordinator-sensitive academic actions.
+
+### Next logical Course Outline checkpoint
+
+The next narrow lifecycle task is:
+
+`COORDINATOR_REVIEW → RETURNED_FOR_CORRECTION`
+
+Before implementation, define:
+
+- exact actor authority;
+- exact Batch Coordinator assignment requirement;
+- whether a mandatory correction reason is required;
+- server-controlled lifecycle transition;
+- transactional audit structure;
+- Teacher editability after return;
+- resubmission semantics;
+- repeated-transition behavior;
+- concurrency against assignment unassign/archive/expiry;
+- department isolation;
+- nested direct-object authorization.
+
+Do not combine that transition with approval, activation, archival, frontend work, Lesson Plan, attendance, assessment, or unrelated modules.
