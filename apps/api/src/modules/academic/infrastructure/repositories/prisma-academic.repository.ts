@@ -2882,12 +2882,22 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
       const lockedAuthority = await tx.$queryRaw<
         Array<{
           courseOfferingId: string;
+          departmentId: string;
+          studentBatchId: string | null;
+          academicTermId: string;
+          curriculumCourseId: string | null;
+          syllabusVersionId: string | null;
           teacherCourseAssignmentId: string;
         }>
       >(
         Prisma.sql`
           SELECT
             co."id" AS "courseOfferingId",
+            co."department_id" AS "departmentId",
+            co."student_batch_id" AS "studentBatchId",
+            co."academic_term_id" AS "academicTermId",
+            co."curriculum_course_id" AS "curriculumCourseId",
+            co."syllabus_version_id" AS "syllabusVersionId",
             tca."id" AS "teacherCourseAssignmentId"
           FROM "course_offerings" co
           INNER JOIN "teacher_course_assignments" tca
@@ -2926,11 +2936,25 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
         select: {
           id: true,
           departmentId: true,
+          studentBatchId: true,
+          academicTermId: true,
           curriculumCourseId: true,
           syllabusVersionId: true,
         },
       });
       if (!offering) return { outcome: "OFFERING_NOT_FOUND" } as const;
+
+      const lockedOffering = lockedAuthority[0]!;
+      if (
+        offering.id !== lockedOffering.courseOfferingId ||
+        offering.departmentId !== lockedOffering.departmentId ||
+        offering.studentBatchId !== lockedOffering.studentBatchId ||
+        offering.academicTermId !== lockedOffering.academicTermId ||
+        offering.curriculumCourseId !== lockedOffering.curriculumCourseId ||
+        offering.syllabusVersionId !== lockedOffering.syllabusVersionId
+      ) {
+        return { outcome: "OFFERING_NOT_FOUND" } as const;
+      }
 
       const existing = await tx.courseOutlineVersion.findFirst({
         where: {
@@ -2948,15 +2972,64 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
       ) {
         return { outcome: "OUTLINE_NOT_FOUND" } as const;
       }
-      if (
-        existing.status !== CourseOutlineStatus.DRAFT ||
-        existing.submittedAt !== null ||
-        existing.approvedAt !== null ||
-        existing.activatedAt !== null ||
-        existing.archivedAt !== null
-      ) {
+      const isInitialSubmission =
+        existing.status === CourseOutlineStatus.DRAFT &&
+        existing.submittedAt === null &&
+        existing.approvedAt === null &&
+        existing.activatedAt === null &&
+        existing.archivedAt === null;
+      const isCorrectedResubmission =
+        existing.status === CourseOutlineStatus.RETURNED_FOR_CORRECTION &&
+        existing.submittedAt !== null &&
+        existing.approvedAt === null &&
+        existing.activatedAt === null &&
+        existing.archivedAt === null;
+      if (!isInitialSubmission && !isCorrectedResubmission) {
         return { outcome: "OUTLINE_NOT_SUBMITTABLE" } as const;
       }
+
+      const previousStatus = existing.status;
+      const previousSubmittedAt = existing.submittedAt;
+
+      if (
+        isCorrectedResubmission &&
+        (!offering.studentBatchId ||
+          !offering.academicTermId ||
+          !offering.curriculumCourseId ||
+          !offering.syllabusVersionId)
+      ) {
+        return { outcome: "OFFERING_NOT_FOUND" } as const;
+      }
+
+      const latestCorrectionRequest = isCorrectedResubmission
+        ? await tx.courseOutlineCorrectionRequest.findFirst({
+            where: {
+              departmentId: input.departmentId,
+              courseOfferingId: input.courseOfferingId,
+              courseOutlineVersionId: input.courseOutlineVersionId,
+              returnedAt: {
+                gte: previousSubmittedAt!,
+                lte: input.transitionAt,
+              },
+            },
+            select: { id: true },
+            orderBy: [
+              { returnedAt: "desc" },
+              { createdAt: "desc" },
+              { id: "desc" },
+            ],
+          })
+        : null;
+      if (isCorrectedResubmission && !latestCorrectionRequest) {
+        return { outcome: "OUTLINE_NOT_SUBMITTABLE" } as const;
+      }
+
+      const transitionAt =
+        isCorrectedResubmission &&
+        previousSubmittedAt &&
+        input.transitionAt.getTime() <= previousSubmittedAt.getTime()
+          ? new Date(previousSubmittedAt.getTime() + 1)
+          : input.transitionAt;
 
       const mutation = await tx.courseOutlineVersion.updateMany({
         where: {
@@ -2965,15 +3038,15 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
           courseOfferingId: input.courseOfferingId,
           curriculumCourseId: offering.curriculumCourseId ?? undefined,
           syllabusVersionId: offering.syllabusVersionId ?? undefined,
-          status: CourseOutlineStatus.DRAFT,
-          submittedAt: null,
+          status: previousStatus,
+          submittedAt: previousSubmittedAt,
           approvedAt: null,
           activatedAt: null,
           archivedAt: null,
         },
         data: {
           status: CourseOutlineStatus.SUBMITTED_BY_TEACHER,
-          submittedAt: input.transitionAt,
+          submittedAt: transitionAt,
         },
       });
 
@@ -2995,13 +3068,19 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
           },
         });
         if (!current) return { outcome: "OUTLINE_NOT_FOUND" } as const;
-        if (
-          current.status !== CourseOutlineStatus.DRAFT ||
-          current.submittedAt !== null ||
-          current.approvedAt !== null ||
-          current.activatedAt !== null ||
-          current.archivedAt !== null
-        ) {
+        const remainsInitiallySubmittable =
+          current.status === CourseOutlineStatus.DRAFT &&
+          current.submittedAt === null &&
+          current.approvedAt === null &&
+          current.activatedAt === null &&
+          current.archivedAt === null;
+        const remainsCorrectlyResubmittable =
+          current.status === CourseOutlineStatus.RETURNED_FOR_CORRECTION &&
+          current.submittedAt !== null &&
+          current.approvedAt === null &&
+          current.activatedAt === null &&
+          current.archivedAt === null;
+        if (!remainsInitiallySubmittable && !remainsCorrectlyResubmittable) {
           return { outcome: "OUTLINE_NOT_SUBMITTABLE" } as const;
         }
         return { outcome: "VERSION_CONFLICT" } as const;
@@ -3027,23 +3106,40 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
           actorUserId: input.actorUserId,
           actorType: "USER",
           departmentId: input.departmentId,
-          action: ACADEMIC_AUDIT_EVENTS.COURSE_OUTLINE_SUBMITTED,
+          action: isCorrectedResubmission
+            ? ACADEMIC_AUDIT_EVENTS.COURSE_OUTLINE_RESUBMITTED
+            : ACADEMIC_AUDIT_EVENTS.COURSE_OUTLINE_SUBMITTED,
           targetType: "course_outline_version",
           targetId: courseOutlineVersion.id,
           outcome: "SUCCESS",
-          occurredAt: input.transitionAt,
+          occurredAt: transitionAt,
           ipAddress: input.ipAddress,
           userAgent: input.userAgent,
-          contextJson: {
-            courseOutlineVersionId: courseOutlineVersion.id,
-            courseOfferingId: courseOutlineVersion.courseOfferingId,
-            curriculumCourseId: courseOutlineVersion.curriculumCourseId,
-            syllabusVersionId: courseOutlineVersion.syllabusVersionId,
-            versionNumber: courseOutlineVersion.versionNumber,
-            previousStatus: CourseOutlineStatus.DRAFT,
-            newStatus: CourseOutlineStatus.SUBMITTED_BY_TEACHER,
-            transitionTimestamp: input.transitionAt.toISOString(),
-          },
+          contextJson: isCorrectedResubmission
+            ? {
+                courseOutlineVersionId: courseOutlineVersion.id,
+                courseOfferingId: courseOutlineVersion.courseOfferingId,
+                studentBatchId: offering.studentBatchId!,
+                academicTermId: offering.academicTermId,
+                curriculumCourseId: courseOutlineVersion.curriculumCourseId,
+                syllabusVersionId: courseOutlineVersion.syllabusVersionId,
+                versionNumber: courseOutlineVersion.versionNumber,
+                courseOutlineCorrectionRequestId: latestCorrectionRequest!.id,
+                previousSubmittedAt: previousSubmittedAt!.toISOString(),
+                previousStatus: CourseOutlineStatus.RETURNED_FOR_CORRECTION,
+                newStatus: CourseOutlineStatus.SUBMITTED_BY_TEACHER,
+                transitionTimestamp: transitionAt.toISOString(),
+              }
+            : {
+                courseOutlineVersionId: courseOutlineVersion.id,
+                courseOfferingId: courseOutlineVersion.courseOfferingId,
+                curriculumCourseId: courseOutlineVersion.curriculumCourseId,
+                syllabusVersionId: courseOutlineVersion.syllabusVersionId,
+                versionNumber: courseOutlineVersion.versionNumber,
+                previousStatus: CourseOutlineStatus.DRAFT,
+                newStatus: CourseOutlineStatus.SUBMITTED_BY_TEACHER,
+                transitionTimestamp: transitionAt.toISOString(),
+              },
         },
       });
 

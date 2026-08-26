@@ -20,6 +20,7 @@ export const ACADEMIC_AUDIT_EVENTS = {
   COURSE_OUTLINE_CREATED: "course-management.course-outline.created",
   COURSE_OUTLINE_UPDATED: "course-management.course-outline.updated",
   COURSE_OUTLINE_SUBMITTED: "course-management.course-outline.submitted",
+  COURSE_OUTLINE_RESUBMITTED: "course-management.course-outline.resubmitted",
   COURSE_OUTLINE_COORDINATOR_REVIEW_STARTED:
     "course-management.course-outline.coordinator-review-started",
   COURSE_OUTLINE_RETURNED_FOR_CORRECTION:
