@@ -123,6 +123,15 @@ export class CourseOfferingsController {
     );
   }
 
+  @Post(":id/course-outline-versions/:courseOutlineVersionId/approve")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_APPROVE)
+  approveCourseOutlineVersion(@Param() params: CourseOutlineVersionParamDto) {
+    return this.academicService.approveCourseOutlineVersion(
+      params.id,
+      params.courseOutlineVersionId,
+    );
+  }
+
   @Post(
     ":id/course-outline-versions/:courseOutlineVersionId/return-for-correction",
   )

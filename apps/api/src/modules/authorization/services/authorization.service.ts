@@ -30,6 +30,14 @@ const EXPLICIT_DEPARTMENT_ADMIN_PERMISSION_POLICIES = {
   }
 } as const;
 
+const EXACT_PERMISSION_POLICIES = {
+  [PERMISSIONS.COURSE_MANAGEMENT.COURSE_OUTLINE_APPROVE]: {
+    resource: "course-management.course-outline",
+    action: "approve",
+    scope: "department"
+  }
+} as const;
+
 const SENSITIVE_ROLE_ADMISSION_POLICIES = {
   [COURSE_MANAGEMENT_POLICY_NAMES.COURSE_OUTLINE_COORDINATOR_REVIEW]: [
     "teacher",
@@ -252,6 +260,21 @@ export class AuthorizationService {
             principal.activeDepartmentId,
             assignment
           )
+      );
+    }
+
+    const exactPermission =
+      EXACT_PERMISSION_POLICIES[
+        requiredPolicy as keyof typeof EXACT_PERMISSION_POLICIES
+      ];
+
+    if (exactPermission) {
+      return principal.permissions.some(
+        (permission) =>
+          permission.resource === exactPermission.resource &&
+          permission.action === exactPermission.action &&
+          permission.scope === exactPermission.scope &&
+          isPermissionGrantFromLoadedRole(principal, permission)
       );
     }
 

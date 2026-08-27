@@ -495,6 +495,12 @@ test("Course Outline endpoints are nested, guarded, and use dedicated read/write
       RequestMethod.POST,
       ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_RETURN_FOR_CORRECTION,
     ],
+    [
+      "approveCourseOutlineVersion",
+      ":id/course-outline-versions/:courseOutlineVersionId/approve",
+      RequestMethod.POST,
+      ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_APPROVE,
+    ],
   ] as const;
 
   assert.deepEqual(
@@ -520,6 +526,7 @@ test("Course Outline routes forward only nested identities and whitelisted DTO d
       "submitCourseOutlineVersion",
       "startCourseOutlineCoordinatorReview",
       "returnCourseOutlineForCorrection",
+      "approveCourseOutlineVersion",
     ].map((method) => [
       method,
       async (...args: unknown[]) => {
@@ -577,6 +584,22 @@ test("Course Outline routes forward only nested identities and whitelisted DTO d
     } as never,
     { reason: "Needs more info", status: "APPROVED" } as never,
   );
+  assert.equal(
+    CourseOfferingsController.prototype.approveCourseOutlineVersion.length,
+    1,
+  );
+  await controller.approveCourseOutlineVersion({
+    id: "offering-a",
+    courseOutlineVersionId: "outline-a",
+    departmentId: "attacker-department",
+    status: "ACTIVE",
+    approvedAt: "attacker-controlled",
+    approverUserId: "attacker-user",
+    studentBatchId: "attacker-batch",
+    academicTermId: "attacker-term",
+    curriculumCourseId: "attacker-course",
+    syllabusVersionId: "attacker-syllabus",
+  } as never);
 
   assert.deepEqual(calls, [
     {
@@ -604,7 +627,94 @@ test("Course Outline routes forward only nested identities and whitelisted DTO d
       method: "returnCourseOutlineForCorrection",
       args: ["offering-a", "outline-a", "Needs more info"],
     },
+    {
+      method: "approveCourseOutlineVersion",
+      args: ["offering-a", "outline-a"],
+    },
   ]);
+});
+
+test("Course Outline approval excludes wildcard authority and requires exact loaded permission provenance", () => {
+  const authorization = new AuthorizationService();
+  const assignment = (
+    role: "department_admin" | "teacher" | "student" | "auditor" | "support",
+  ) => ({
+    userRoleId: `${role}-assignment-a`,
+    roleId: `${role}-role-a`,
+    departmentId: "department-a",
+    role,
+  });
+  const principal = (
+    role: "department_admin" | "teacher" | "student" | "auditor" | "support",
+    permissionOverrides?: Record<string, unknown>,
+  ) => {
+    const sourceAssignment = assignment(role);
+    return {
+      actorId: `${role}-a`,
+      actorType: "user",
+      isAuthenticated: true,
+      activeDepartmentId: "department-a",
+      roleAssignments: [sourceAssignment],
+      permissions: permissionOverrides
+        ? [
+            {
+              resource: "course-management.course-outline",
+              action: "approve",
+              scope: "department",
+              source: {
+                departmentId: "department-a",
+                userRoleId: sourceAssignment.userRoleId,
+                roleId: sourceAssignment.roleId,
+              },
+              ...permissionOverrides,
+            },
+          ]
+        : [],
+    } as never;
+  };
+
+  for (const role of [
+    "department_admin",
+    "teacher",
+    "student",
+    "auditor",
+    "support",
+  ] as const) {
+    assert.equal(
+      authorization.isAllowed(
+        principal(role),
+        ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_APPROVE,
+      ),
+      false,
+    );
+  }
+  assert.equal(
+    authorization.isAllowed(
+      principal("support", {}),
+      ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_APPROVE,
+    ),
+    true,
+  );
+  for (const invalid of [
+    { action: "manage" },
+    { resource: "course-management" },
+    { scope: "self" },
+    {
+      source: {
+        departmentId: "department-b",
+        userRoleId: "support-assignment-a",
+        roleId: "support-role-a",
+      },
+    },
+  ]) {
+    assert.equal(
+      authorization.isAllowed(
+        principal("support", invalid),
+        ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_APPROVE,
+      ),
+      false,
+    );
+  }
 });
 
 test("dedicated Course Outline policies admit Teacher and Department Admin but deny Student and unsupported roles", () => {

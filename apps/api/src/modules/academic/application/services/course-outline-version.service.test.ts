@@ -40,6 +40,23 @@ const outline = {
   updatedAt: new Date("2026-08-20T00:00:00.000Z"),
 };
 
+function approvalGrant(
+  role: Role,
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    resource: "course-management.course-outline",
+    action: "approve",
+    scope: "department",
+    source: {
+      departmentId: "department-a",
+      userRoleId: `${role}-assignment-0`,
+      roleId: `${role}-role-0`,
+    },
+    ...overrides,
+  };
+}
+
 function harness(
   role: Role,
   options: {
@@ -49,6 +66,8 @@ function harness(
     submitResult?: unknown;
     coordinatorReviewResult?: unknown;
     returnForCorrectionResult?: unknown;
+    approvalResult?: unknown;
+    permissions?: unknown[];
     listResult?: unknown;
     detailResult?: unknown;
   } = {},
@@ -135,6 +154,20 @@ function harness(
         }
       );
     },
+    approveCourseOutlineVersion: async (...args: unknown[]) => {
+      calls.push({ method: "approve", args });
+      return (
+        options.approvalResult ?? {
+          outcome: "APPROVED",
+          courseOutlineVersion: {
+            ...outline,
+            status: CourseOutlineStatus.APPROVED,
+            submittedAt: new Date("2026-08-20T01:00:00.000Z"),
+            approvedAt: new Date("2026-08-20T02:00:00.000Z"),
+          },
+        }
+      );
+    },
   };
   const roles = [role, ...(options.additionalRoles ?? [])];
   const context = {
@@ -152,7 +185,7 @@ function harness(
         departmentId: "department-a",
         role: assignedRole,
       })),
-      permissions: [],
+      permissions: options.permissions ?? [],
     },
   };
 
@@ -711,4 +744,144 @@ test("Return for correction requires a complete authenticated user principal bef
     );
     assert.deepEqual(h.calls, []);
   }
+});
+
+test("approval derives actor, department, audit metadata, and exact permission provenance only from the principal", async () => {
+  const h = harness("support", { permissions: [approvalGrant("support")] });
+  const result = await h.service.approveCourseOutlineVersion(
+    "offering-a",
+    "outline-a",
+  );
+  assert.equal(result.status, CourseOutlineStatus.APPROVED);
+
+  const input = h.calls[0]!.args[0] as Record<string, unknown>;
+  assert.deepEqual(input, {
+    departmentId: "department-a",
+    courseOfferingId: "offering-a",
+    courseOutlineVersionId: "outline-a",
+    actorUserId: "support-user",
+    authorizationUserRoleId: "support-assignment-0",
+    authorizationRoleId: "support-role-0",
+    requestId: "request-a",
+    ipAddress: "127.0.0.1",
+    userAgent: "test-agent",
+  });
+  for (const clientControlledField of [
+    "status",
+    "approvedAt",
+    "approverUserId",
+    "studentBatchId",
+    "academicTermId",
+    "curriculumCourseId",
+    "syllabusVersionId",
+    "transitionAt",
+  ]) {
+    assert.equal(clientControlledField in input, false);
+  }
+});
+
+test("ordinary role labels and malformed permission provenance cannot authorize approval", async () => {
+  for (const role of [
+    "department_admin",
+    "teacher",
+    "student",
+    "auditor",
+    "support",
+  ] as const) {
+    const h = harness(role);
+    await assert.rejects(
+      h.service.approveCourseOutlineVersion("offering-a", "outline-a"),
+      ForbiddenException,
+    );
+    assert.deepEqual(h.calls, []);
+  }
+
+  for (const permission of [
+    approvalGrant("support", { action: "manage" }),
+    approvalGrant("support", { scope: "self" }),
+    approvalGrant("support", {
+      source: {
+        departmentId: "department-b",
+        userRoleId: "support-assignment-0",
+        roleId: "support-role-0",
+      },
+    }),
+  ]) {
+    const h = harness("support", { permissions: [permission] });
+    await assert.rejects(
+      h.service.approveCourseOutlineVersion("offering-a", "outline-a"),
+      ForbiddenException,
+    );
+    assert.deepEqual(h.calls, []);
+  }
+});
+
+test("approval rejects incomplete authenticated user context before repository mutation", async () => {
+  for (const principalOverride of [
+    { isAuthenticated: false },
+    { actorType: "service" },
+    { actorId: "" },
+    { activeDepartmentId: null },
+  ]) {
+    const h = harness("support", { permissions: [approvalGrant("support")] });
+    Object.assign(h.context.principal, principalOverride);
+    await assert.rejects(
+      h.service.approveCourseOutlineVersion("offering-a", "outline-a"),
+      BadRequestException,
+    );
+    assert.deepEqual(h.calls, []);
+  }
+});
+
+test("approval maps hidden scope to 404 and lifecycle or concurrency outcomes to 409", async () => {
+  for (const outcome of [
+    "OFFERING_OR_AUTHORITY_NOT_FOUND",
+    "OUTLINE_NOT_FOUND",
+  ] as const) {
+    const h = harness("support", {
+      permissions: [approvalGrant("support")],
+      approvalResult: { outcome },
+    });
+    await assert.rejects(
+      h.service.approveCourseOutlineVersion("offering-a", "outline-a"),
+      NotFoundException,
+    );
+  }
+  for (const outcome of [
+    "OUTLINE_NOT_APPROVABLE",
+    "CONCURRENT_CONFLICT",
+  ] as const) {
+    const h = harness("support", {
+      permissions: [approvalGrant("support")],
+      approvalResult: { outcome },
+    });
+    await assert.rejects(
+      h.service.approveCourseOutlineVersion("offering-a", "outline-a"),
+      ConflictException,
+    );
+  }
+});
+
+test("an approved Course Outline remains non-editable by its Teacher author", async () => {
+  const h = harness("teacher", {
+    permissions: [approvalGrant("teacher")],
+    updateResult: { outcome: "OUTLINE_NOT_EDITABLE" },
+  });
+  const approved = await h.service.approveCourseOutlineVersion(
+    "offering-a",
+    "outline-a",
+  );
+  assert.equal(approved.id, "outline-a");
+  assert.equal(approved.status, CourseOutlineStatus.APPROVED);
+
+  await assert.rejects(
+    h.service.updateCourseOutlineVersion("offering-a", "outline-a", {
+      courseSummary: "Attacker rewrite after approval",
+    }),
+    ConflictException,
+  );
+  assert.deepEqual(
+    h.calls.map((call) => call.method),
+    ["approve", "update"],
+  );
 });

@@ -27,6 +27,7 @@ import { ACADEMIC_AUDIT_EVENTS } from "../../domain/academic.audit-events";
 import { ACADEMIC_REPOSITORY } from "../../domain/academic.constants";
 import type {
   AcademicRepositoryPort,
+  ApproveCourseOutlineVersionInput,
   AcademicSessionListFilters,
   AcademicTermListFilters,
   AcademicYearListFilters,
@@ -108,6 +109,12 @@ const STUDENT_BATCH_BINDING_PERMISSION = {
   code: PERMISSIONS.COURSE_MANAGEMENT.STUDENT_BATCH_BINDING_MANAGE,
   resource: "course-management.student-batch-binding",
   action: "manage",
+} as const;
+
+const COURSE_OUTLINE_APPROVAL_PERMISSION = {
+  code: PERMISSIONS.COURSE_MANAGEMENT.COURSE_OUTLINE_APPROVE,
+  resource: "course-management.course-outline",
+  action: "approve",
 } as const;
 
 @Injectable()
@@ -1040,6 +1047,64 @@ export class AcademicService {
         throw new ConflictException(
           "Course Outline return-for-correction conflict",
         );
+    }
+  }
+
+  async approveCourseOutlineVersion(
+    courseOfferingId: string,
+    courseOutlineVersionId: string,
+  ) {
+    const requestContext = this.requestContextService.get();
+    const principal = requestContext?.principal;
+    if (
+      !principal ||
+      principal.isAuthenticated !== true ||
+      principal.actorType !== "user" ||
+      !principal.actorId ||
+      !principal.activeDepartmentId
+    ) {
+      throw new BadRequestException(
+        "Authenticated department user context is required",
+      );
+    }
+
+    const approvalGrant = principal.permissions.find(
+      (permission) =>
+        permission.resource === COURSE_OUTLINE_APPROVAL_PERMISSION.resource &&
+        permission.action === COURSE_OUTLINE_APPROVAL_PERMISSION.action &&
+        permission.scope === "department" &&
+        isPermissionGrantFromLoadedRole(principal, permission),
+    );
+    if (!approvalGrant) {
+      throw new ForbiddenException(
+        "Exact Course Outline approval permission is required",
+      );
+    }
+
+    const result = await this.repository.approveCourseOutlineVersion({
+      departmentId: principal.activeDepartmentId,
+      courseOfferingId,
+      courseOutlineVersionId,
+      actorUserId: principal.actorId,
+      authorizationUserRoleId: approvalGrant.source.userRoleId,
+      authorizationRoleId: approvalGrant.source.roleId,
+      requestId: requestContext?.requestId,
+      ipAddress: requestContext?.audit.ipAddress,
+      userAgent: requestContext?.audit.userAgent,
+    } satisfies ApproveCourseOutlineVersionInput);
+
+    switch (result.outcome) {
+      case "APPROVED":
+        return result.courseOutlineVersion;
+      case "OFFERING_OR_AUTHORITY_NOT_FOUND":
+      case "OUTLINE_NOT_FOUND":
+        throw new NotFoundException("Course Outline version not found");
+      case "OUTLINE_NOT_APPROVABLE":
+        throw new ConflictException(
+          "Course Outline version cannot be approved in its current status",
+        );
+      case "CONCURRENT_CONFLICT":
+        throw new ConflictException("Course Outline approval conflict");
     }
   }
 

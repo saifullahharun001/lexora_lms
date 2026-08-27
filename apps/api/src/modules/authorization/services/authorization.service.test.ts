@@ -351,6 +351,93 @@ test("Batch Coordinator assignment management excludes wildcard authority and re
   }
 });
 
+test("Course Outline approval excludes every role wildcard and requires exact loaded DEPARTMENT permission provenance", () => {
+  const service = new AuthorizationService();
+  const policy = "course-management.course-outline.approve";
+  const assignment = {
+    userRoleId: "approver-assignment",
+    roleId: "approver-role",
+    departmentId: "department-a",
+    role: "support" as const
+  };
+  const exactGrant = grant(
+    {
+      userRoleId: assignment.userRoleId,
+      roleId: assignment.roleId
+    },
+    {
+      resource: "course-management.course-outline",
+      action: "approve",
+      scope: "department"
+    }
+  );
+
+  for (const role of ["department_admin", "teacher", "student", "auditor", "support"] as const) {
+    assert.equal(
+      service.isAllowed(
+        principal({
+          roleAssignments: [{ ...assignment, role }],
+          permissions: []
+        }),
+        policy
+      ),
+      false
+    );
+  }
+  assert.equal(
+    service.isAllowed(
+      principal({ roleAssignments: [assignment], permissions: [exactGrant] }),
+      policy
+    ),
+    true
+  );
+
+  for (const invalidGrant of [
+    { ...exactGrant, resource: "course-management" },
+    { ...exactGrant, action: "manage" },
+    { ...exactGrant, scope: "self" as const },
+    {
+      ...exactGrant,
+      source: { ...exactGrant.source, departmentId: "department-b" }
+    },
+    {
+      ...exactGrant,
+      source: { ...exactGrant.source, userRoleId: "other-assignment" }
+    },
+    { ...exactGrant, source: { ...exactGrant.source, roleId: "other-role" } }
+  ]) {
+    assert.equal(
+      service.isAllowed(
+        principal({
+          roleAssignments: [assignment],
+          permissions: [invalidGrant]
+        }),
+        policy
+      ),
+      false
+    );
+  }
+
+  const wildcardGrant = {
+    ...exactGrant,
+    resource: "course-management",
+    action: "*"
+  };
+  assert.equal(
+    service.resolvePolicies(
+      principal({ roleAssignments: [assignment], permissions: [wildcardGrant] })
+    ).has("course-management.*"),
+    true
+  );
+  assert.equal(
+    service.isAllowed(
+      principal({ roleAssignments: [assignment], permissions: [wildcardGrant] }),
+      policy
+    ),
+    false
+  );
+});
+
 test("Course Outline Coordinator review admits only active-department Teacher and Department Admin roles", () => {
   const service = new AuthorizationService();
   const policy = "course-management.course-outline.coordinator-review";
