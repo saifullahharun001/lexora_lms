@@ -57,6 +57,20 @@ function approvalGrant(
   };
 }
 
+function activationGrant(role: Role, overrides: Record<string, unknown> = {}) {
+  return {
+    resource: "course-management.course-outline",
+    action: "activate",
+    scope: "department",
+    source: {
+      departmentId: "department-a",
+      userRoleId: `${role}-assignment-0`,
+      roleId: `${role}-role-0`,
+    },
+    ...overrides,
+  };
+}
+
 function harness(
   role: Role,
   options: {
@@ -67,6 +81,7 @@ function harness(
     coordinatorReviewResult?: unknown;
     returnForCorrectionResult?: unknown;
     approvalResult?: unknown;
+    activationResult?: unknown;
     permissions?: unknown[];
     listResult?: unknown;
     detailResult?: unknown;
@@ -164,6 +179,21 @@ function harness(
             status: CourseOutlineStatus.APPROVED,
             submittedAt: new Date("2026-08-20T01:00:00.000Z"),
             approvedAt: new Date("2026-08-20T02:00:00.000Z"),
+          },
+        }
+      );
+    },
+    activateCourseOutlineVersion: async (...args: unknown[]) => {
+      calls.push({ method: "activate", args });
+      return (
+        options.activationResult ?? {
+          outcome: "ACTIVATED",
+          courseOutlineVersion: {
+            ...outline,
+            status: CourseOutlineStatus.ACTIVE,
+            submittedAt: new Date("2026-08-20T01:00:00.000Z"),
+            approvedAt: new Date("2026-08-20T02:00:00.000Z"),
+            activatedAt: new Date("2026-08-20T03:00:00.000Z"),
           },
         }
       );
@@ -884,4 +914,128 @@ test("an approved Course Outline remains non-editable by its Teacher author", as
     h.calls.map((call) => call.method),
     ["approve", "update"],
   );
+});
+
+test("activation derives department, actor, audit context, and exact permission provenance only from the principal", async () => {
+  const h = harness("support", { permissions: [activationGrant("support")] });
+  const result = await h.service.activateCourseOutlineVersion(
+    "offering-a",
+    "outline-a",
+  );
+  assert.equal(result.status, CourseOutlineStatus.ACTIVE);
+
+  const input = h.calls[0]!.args[0] as Record<string, unknown>;
+  assert.deepEqual(input, {
+    departmentId: "department-a",
+    courseOfferingId: "offering-a",
+    courseOutlineVersionId: "outline-a",
+    actorUserId: "support-user",
+    authorizationUserRoleId: "support-assignment-0",
+    authorizationRoleId: "support-role-0",
+    requestId: "request-a",
+    ipAddress: "127.0.0.1",
+    userAgent: "test-agent",
+  });
+  for (const clientControlledField of [
+    "status",
+    "activatedAt",
+    "activeCourseOutlineVersionId",
+    "departmentHeader",
+    "studentBatchId",
+    "academicTermId",
+    "curriculumCourseId",
+    "syllabusVersionId",
+    "transitionAt",
+  ]) {
+    assert.equal(clientControlledField in input, false);
+  }
+});
+
+test("ordinary roles, wildcard authority, and malformed provenance cannot authorize activation", async () => {
+  for (const role of [
+    "department_admin",
+    "teacher",
+    "student",
+    "auditor",
+    "support",
+  ] as const) {
+    const h = harness(role);
+    await assert.rejects(
+      h.service.activateCourseOutlineVersion("offering-a", "outline-a"),
+      ForbiddenException,
+    );
+    assert.deepEqual(h.calls, []);
+  }
+
+  for (const permission of [
+    activationGrant("support", {
+      resource: "course-management",
+      action: "*",
+    }),
+    activationGrant("support", { action: "manage" }),
+    activationGrant("support", { scope: "self" }),
+    activationGrant("support", {
+      source: {
+        departmentId: "department-b",
+        userRoleId: "support-assignment-0",
+        roleId: "support-role-0",
+      },
+    }),
+  ]) {
+    const h = harness("support", { permissions: [permission] });
+    await assert.rejects(
+      h.service.activateCourseOutlineVersion("offering-a", "outline-a"),
+      ForbiddenException,
+    );
+    assert.deepEqual(h.calls, []);
+  }
+});
+
+test("activation rejects incomplete authenticated user context before repository mutation", async () => {
+  for (const principalOverride of [
+    { isAuthenticated: false },
+    { actorType: "service" },
+    { actorId: "" },
+    { activeDepartmentId: null },
+  ]) {
+    const h = harness("support", {
+      permissions: [activationGrant("support")],
+    });
+    Object.assign(h.context.principal, principalOverride);
+    await assert.rejects(
+      h.service.activateCourseOutlineVersion("offering-a", "outline-a"),
+      BadRequestException,
+    );
+    assert.deepEqual(h.calls, []);
+  }
+});
+
+test("activation maps hidden outcomes to 404 and lifecycle, existing-active, or concurrent outcomes to 409", async () => {
+  for (const outcome of [
+    "OFFERING_OR_AUTHORITY_NOT_FOUND",
+    "OUTLINE_NOT_FOUND",
+  ] as const) {
+    const h = harness("support", {
+      permissions: [activationGrant("support")],
+      activationResult: { outcome },
+    });
+    await assert.rejects(
+      h.service.activateCourseOutlineVersion("offering-a", "outline-a"),
+      NotFoundException,
+    );
+  }
+  for (const outcome of [
+    "OUTLINE_NOT_ACTIVATABLE",
+    "ACTIVE_OUTLINE_ALREADY_EXISTS",
+    "CONCURRENT_CONFLICT",
+  ] as const) {
+    const h = harness("support", {
+      permissions: [activationGrant("support")],
+      activationResult: { outcome },
+    });
+    await assert.rejects(
+      h.service.activateCourseOutlineVersion("offering-a", "outline-a"),
+      ConflictException,
+    );
+  }
 });

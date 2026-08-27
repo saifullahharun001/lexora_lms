@@ -54,6 +54,8 @@ apps/api/prisma/migrations/*
 !apps/api/prisma/migrations/202608240002_add_batch_coordinator_assignment_foundation/migration.sql
 !apps/api/prisma/migrations/202608260001_add_course_outline_correction_request_foundation/
 !apps/api/prisma/migrations/202608260001_add_course_outline_correction_request_foundation/migration.sql
+!apps/api/prisma/migrations/202608270001_add_course_outline_active_version_binding/
+!apps/api/prisma/migrations/202608270001_add_course_outline_active_version_binding/migration.sql
 *.log
 
 

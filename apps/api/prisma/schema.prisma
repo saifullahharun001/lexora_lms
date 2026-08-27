@@ -1103,49 +1103,53 @@ model CurriculumCoursePrerequisite {
 }
 
 model CourseOffering {
-  id                      String                    @id @default(cuid())
-  departmentId            String                    @map("department_id")
-  courseId                String                    @map("course_id")
-  academicTermId          String                    @map("academic_term_id")
-  studentBatchId          String?                   @map("student_batch_id")
-  curriculumCourseId      String?                   @map("curriculum_course_id")
-  syllabusVersionId       String?                   @map("syllabus_version_id")
-  sectionCode             String                    @map("section_code")
-  capacity                Int?
-  status                  CourseOfferingStatus      @default(PLANNED)
-  visibilityStartAt       DateTime?                 @map("visibility_start_at")
-  visibilityEndAt         DateTime?                 @map("visibility_end_at")
-  archivedAt              DateTime?                 @map("archived_at")
-  createdAt               DateTime                  @default(now()) @map("created_at")
-  updatedAt               DateTime                  @updatedAt @map("updated_at")
-  department              Department                @relation(fields: [departmentId], references: [id])
-  course                  Course                    @relation(fields: [courseId], references: [id])
-  academicTerm            AcademicTerm              @relation(fields: [academicTermId], references: [id])
-  studentBatch            StudentBatch?             @relation(fields: [studentBatchId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "course_offering_student_batch_identity_fkey")
-  curriculumCourse        CurriculumCourse?         @relation(fields: [curriculumCourseId], references: [id], onDelete: Restrict)
-  syllabusVersion         SyllabusVersion?          @relation(fields: [syllabusVersionId, departmentId, curriculumCourseId], references: [id, departmentId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "course_offering_syllabus_identity_fkey")
-  courseOutlineVersions   CourseOutlineVersion[]
-  teacherAssignments      TeacherCourseAssignment[]
-  enrollments             Enrollment[]
-  classSessions           ClassSession[]
-  attendanceImportBatches AttendanceImportBatch[]
-  eligibilityRuleBindings EligibilityRuleBinding[]
-  assignments             Assignment[]
-  quizzes                 Quiz[]
-  quizAttempts            QuizAttempt[]
-  gradingRecords          GradingRecord[]
-  resultRecords           ResultRecord[]
-  transcriptCourseLines   TranscriptCourseLine[]
-  notices                 Notice[]
+  id                           String                    @id @default(cuid())
+  departmentId                 String                    @map("department_id")
+  courseId                     String                    @map("course_id")
+  academicTermId               String                    @map("academic_term_id")
+  studentBatchId               String?                   @map("student_batch_id")
+  curriculumCourseId           String?                   @map("curriculum_course_id")
+  syllabusVersionId            String?                   @map("syllabus_version_id")
+  activeCourseOutlineVersionId String?                   @map("active_course_outline_version_id")
+  sectionCode                  String                    @map("section_code")
+  capacity                     Int?
+  status                       CourseOfferingStatus      @default(PLANNED)
+  visibilityStartAt            DateTime?                 @map("visibility_start_at")
+  visibilityEndAt              DateTime?                 @map("visibility_end_at")
+  archivedAt                   DateTime?                 @map("archived_at")
+  createdAt                    DateTime                  @default(now()) @map("created_at")
+  updatedAt                    DateTime                  @updatedAt @map("updated_at")
+  department                   Department                @relation(fields: [departmentId], references: [id])
+  course                       Course                    @relation(fields: [courseId], references: [id])
+  academicTerm                 AcademicTerm              @relation(fields: [academicTermId], references: [id])
+  studentBatch                 StudentBatch?             @relation(fields: [studentBatchId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "course_offering_student_batch_identity_fkey")
+  curriculumCourse             CurriculumCourse?         @relation(fields: [curriculumCourseId], references: [id], onDelete: Restrict)
+  syllabusVersion              SyllabusVersion?          @relation(fields: [syllabusVersionId, departmentId, curriculumCourseId], references: [id, departmentId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "course_offering_syllabus_identity_fkey")
+  courseOutlineVersions        CourseOutlineVersion[]    @relation("CourseOfferingOutlineVersions")
+  activeCourseOutlineVersion   CourseOutlineVersion?     @relation("CourseOfferingActiveOutline", fields: [activeCourseOutlineVersionId, departmentId, id], references: [id, departmentId, courseOfferingId], onDelete: Restrict, onUpdate: Restrict, map: "course_offering_active_outline_identity_fkey")
+  teacherAssignments           TeacherCourseAssignment[]
+  enrollments                  Enrollment[]
+  classSessions                ClassSession[]
+  attendanceImportBatches      AttendanceImportBatch[]
+  eligibilityRuleBindings      EligibilityRuleBinding[]
+  assignments                  Assignment[]
+  quizzes                      Quiz[]
+  quizAttempts                 QuizAttempt[]
+  gradingRecords               GradingRecord[]
+  resultRecords                ResultRecord[]
+  transcriptCourseLines        TranscriptCourseLine[]
+  notices                      Notice[]
 
   /// Uniqueness is enforced by PostgreSQL partial unique indexes because Prisma 6.x cannot represent them.
   @@unique([id, departmentId, curriculumCourseId, syllabusVersionId], map: "course_offering_outline_identity_uq")
+  @@unique([activeCourseOutlineVersionId, departmentId, id], map: "course_offering_active_outline_relation_uq")
   @@index([departmentId])
   @@index([courseId])
   @@index([academicTermId])
   @@index([departmentId, academicTermId, studentBatchId], map: "course_offering_department_term_student_batch_idx")
   @@index([departmentId, curriculumCourseId], map: "course_offering_dept_curriculum_course_idx")
   @@index([departmentId, syllabusVersionId], map: "course_offering_dept_syllabus_version_idx")
+  @@index([departmentId, activeCourseOutlineVersionId], map: "course_offering_dept_active_outline_idx")
   @@map("course_offerings")
 }
 
@@ -1170,13 +1174,15 @@ model CourseOutlineVersion {
   createdAt          DateTime                         @default(now()) @map("created_at")
   updatedAt          DateTime                         @updatedAt @map("updated_at")
   department         Department                       @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_department_fkey")
-  courseOffering     CourseOffering                   @relation(fields: [courseOfferingId, departmentId, curriculumCourseId, syllabusVersionId], references: [id, departmentId, curriculumCourseId, syllabusVersionId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_offering_identity_fkey")
+  courseOffering     CourseOffering                   @relation("CourseOfferingOutlineVersions", fields: [courseOfferingId, departmentId, curriculumCourseId, syllabusVersionId], references: [id, departmentId, curriculumCourseId, syllabusVersionId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_offering_identity_fkey")
+  activeForOffering  CourseOffering?                  @relation("CourseOfferingActiveOutline")
   curriculumCourse   CurriculumCourse                 @relation(fields: [curriculumCourseId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_curriculum_course_fkey")
   syllabusVersion    SyllabusVersion                  @relation(fields: [syllabusVersionId, departmentId, curriculumCourseId], references: [id, departmentId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_syllabus_identity_fkey")
   correctionRequests CourseOutlineCorrectionRequest[]
 
   @@unique([departmentId, courseOfferingId, versionNumber], map: "course_outline_version_dept_offering_number_uq")
   @@unique([id, departmentId, courseOfferingId], map: "course_outline_version_id_dept_offering_uq")
+  /// At most one ACTIVE row per department and CourseOffering is enforced by a PostgreSQL partial unique index because Prisma 6.x cannot represent partial indexes.
   @@index([departmentId, courseOfferingId, status], map: "course_outline_version_dept_offering_status_idx")
   @@index([departmentId, syllabusVersionId], map: "course_outline_version_dept_syllabus_idx")
   @@map("course_outline_versions")

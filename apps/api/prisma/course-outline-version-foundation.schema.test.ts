@@ -158,7 +158,7 @@ test("CourseOutlineVersion binds to the exact fully bound CourseOffering identit
   );
   assert.match(
     courseOutlineVersion,
-    /courseOffering\s+CourseOffering\s+@relation\(fields: \[courseOfferingId, departmentId, curriculumCourseId, syllabusVersionId\], references: \[id, departmentId, curriculumCourseId, syllabusVersionId\], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_offering_identity_fkey"\)/,
+    /courseOffering\s+CourseOffering\s+@relation\("CourseOfferingOutlineVersions", fields: \[courseOfferingId, departmentId, curriculumCourseId, syllabusVersionId\], references: \[id, departmentId, curriculumCourseId, syllabusVersionId\], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_offering_identity_fkey"\)/,
   );
   assert.match(
     migration,
@@ -319,7 +319,7 @@ test("version identity is offering-scoped and ready for a future exact binding",
   );
 });
 
-test("required back-relations are present without an active-outline pointer", () => {
+test("required foundation back-relations remain present after later exact active binding", () => {
   assert.match(department, /courseOutlineVersions\s+CourseOutlineVersion\[\]/);
   assert.match(
     courseOffering,
@@ -333,7 +333,10 @@ test("required back-relations are present without an active-outline pointer", ()
     syllabusVersion,
     /courseOutlineVersions\s+CourseOutlineVersion\[\]/,
   );
-  assert.doesNotMatch(courseOffering, /courseOutlineVersionId/);
+  assert.match(
+    courseOffering,
+    /activeCourseOutlineVersionId\s+String\?\s+@map\("active_course_outline_version_id"\)/,
+  );
 });
 
 test("migration enforces positive SMALLINT version numbers", () => {

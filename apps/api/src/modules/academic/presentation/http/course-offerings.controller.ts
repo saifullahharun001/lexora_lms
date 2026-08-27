@@ -132,6 +132,15 @@ export class CourseOfferingsController {
     );
   }
 
+  @Post(":id/course-outline-versions/:courseOutlineVersionId/activate")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_ACTIVATE)
+  activateCourseOutlineVersion(@Param() params: CourseOutlineVersionParamDto) {
+    return this.academicService.activateCourseOutlineVersion(
+      params.id,
+      params.courseOutlineVersionId,
+    );
+  }
+
   @Post(
     ":id/course-outline-versions/:courseOutlineVersionId/return-for-correction",
   )

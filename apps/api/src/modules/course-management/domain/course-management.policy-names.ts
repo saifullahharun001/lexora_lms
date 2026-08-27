@@ -19,6 +19,7 @@ export const COURSE_MANAGEMENT_POLICY_NAMES = {
   COURSE_OUTLINE_RETURN_FOR_CORRECTION:
     "course-management.course-outline.return-for-correction",
   COURSE_OUTLINE_APPROVE: "course-management.course-outline.approve",
+  COURSE_OUTLINE_ACTIVATE: "course-management.course-outline.activate",
   CURRICULUM_BINDING_MANAGE: "course-management.curriculum-binding.manage",
   SYLLABUS_BINDING_MANAGE: "course-management.syllabus-binding.manage",
   STUDENT_BATCH_BINDING_MANAGE:
