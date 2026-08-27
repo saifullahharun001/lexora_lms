@@ -32253,3 +32253,561 @@ Do not invent Programme Coordinator authority.
 Do not implement or document a final approval transition source until the fresh source/current-code audit resolves it.
 
 Do not combine this future approval work with activation, archival, frontend, Lesson Plan, assessment, attendance, or unrelated work.
+
+## Course Outline Approval Transition Ordinary PostgreSQL/API Runtime Verification — 2026-08-27
+
+### Scope and supersession
+
+This checkpoint implements, independently reviews, statically verifies, commits, deploys, runtime-activates and ordinary PostgreSQL/API-verifies the narrow Course Outline lifecycle transition:
+
+`COORDINATOR_REVIEW → APPROVED`
+
+Implementation commit:
+
+- `76b286140a70ca10c1b91cee5fc0da4fc973b105`
+- message: `feat: add course outline approval transition`
+- parent: `1ce3ab3d70549274aff71dc260ea180d53097e88`
+
+The implementation changed exactly 13 API/source/test files.
+
+This checkpoint introduced:
+
+- no Prisma schema change;
+- no migration;
+- no permanent authorization provisioning;
+- no permanent role assignment;
+- no institutional approver-role decision;
+- no activation transition;
+- no archival transition;
+- no active CourseOutlineVersion pointer/binding.
+
+It supersedes earlier pending wording only for the technical Course Outline approval transition capability and its verified runtime security/integrity behavior.
+
+It does not establish which institutional office or role permanently owns Course Outline final approval.
+
+### Source/governance boundary
+
+The available authoritative/source-derived project material defines the Course Outline lifecycle as including:
+
+`COORDINATOR_REVIEW → APPROVED → ACTIVE → ARCHIVED`
+
+but the fresh source/current-code audit did not identify a sufficiently explicit authoritative rule assigning permanent Course Outline final-approval ownership to any one of:
+
+- Batch Coordinator;
+- Programme Coordinator;
+- Department Admin;
+- Department Chairman / POE;
+- Academic Committee.
+
+Therefore the implementation deliberately separates:
+
+- technical approval capability; from
+- permanent institutional approval authority/provisioning.
+
+The dedicated technical permission is:
+
+`course-management.course-outline.approve`
+
+with exact permission identity:
+
+- resource: `course-management.course-outline`
+- action: `approve`
+- scope: `DEPARTMENT`
+
+No permanent role receives this permission in source-controlled provisioning as of this checkpoint.
+
+A broad Department Admin `course-management.*` wildcard is not sufficient for Course Outline approval.
+
+Ordinary canonical users therefore remain unable to perform positive Course Outline approval after disposable runtime authorization cleanup.
+
+### Authorization and object-security contract
+
+The approval route is protected by the existing:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- exact `@RequirePolicy()` contract;
+- authenticated principal/request context.
+
+The approval service/repository requires:
+
+- authenticated principal department authority;
+- exact loaded approval permission provenance;
+- live database revalidation of User;
+- live UserRole validation;
+- live Role validation;
+- live RolePermission validation;
+- exact Permission code/resource/action/scope validation;
+- valid non-revoked/non-expired authority;
+- exact department ownership.
+
+The authenticated principal department remains authoritative.
+
+A forged `x-department-id` does not override a valid authenticated principal department.
+
+Direct nested-object and cross-department access use safe not-found behavior.
+
+### Approval lifecycle/integrity prerequisites
+
+Approval is accepted only from exact:
+
+`COORDINATOR_REVIEW`
+
+with:
+
+- `submittedAt` non-null;
+- `approvedAt` null;
+- `activatedAt` null;
+- `archivedAt` null.
+
+The target CourseOffering must be fully and consistently bound to the authoritative academic chain.
+
+Approval revalidates:
+
+- Department;
+- CourseOffering;
+- Course;
+- AcademicTerm;
+- AcademicYear;
+- StudentBatch;
+- StudentBatch AcademicProgram;
+- StudentBatch AcademicSession;
+- CurriculumCourse;
+- CurriculumVersion;
+- SyllabusVersion;
+- CourseOutlineVersion.
+
+The programme chain must satisfy:
+
+`Course.academicProgramId == CurriculumVersion.academicProgramId == StudentBatch.academicProgramId`
+
+and the Course programme must be non-null.
+
+Same-department malformed programme chains fail closed.
+
+The approval path independently rejects both CourseOffering archive representations:
+
+- `archivedAt != null`;
+- `status = ARCHIVED`.
+
+### Transaction, concurrency and audit contract
+
+Approval executes through a serializable transaction.
+
+The verified conceptual lock/mutation order is:
+
+1. CourseOffering;
+2. exact approval permission/provenance rows;
+3. authoritative academic dependency validation;
+4. CourseOutlineVersion lifecycle validation/CAS;
+5. approval success audit.
+
+The final lifecycle mutation uses compare-and-set semantics.
+
+Repeated approval does not rewrite the authoritative approval timestamp.
+
+Successful approval creates:
+
+`course-management.course-outline.approved`
+
+in the same transaction.
+
+Approval audit verification confirmed:
+
+- exact actor;
+- exact department;
+- exact CourseOutlineVersion;
+- exact CourseOffering;
+- exact StudentBatch;
+- exact AcademicTerm;
+- exact CurriculumCourse;
+- exact SyllabusVersion;
+- previous status `COORDINATOR_REVIEW`;
+- new status `APPROVED`;
+- audit occurrence timestamp equal to authoritative `approvedAt`;
+- no Teacher narrative/content leakage into approval audit context.
+
+### Static/local verification
+
+The reviewed implementation was independently source-reviewed before commit.
+
+Two review findings were corrected before commit:
+
+1. CourseOffering logical `ARCHIVED` status had to be rejected independently from `archivedAt`;
+2. final approval had to revalidate the full Course/CurriculumVersion/StudentBatch AcademicProgram chain.
+
+After correction:
+
+- focused approval repository tests passed;
+- selected Course Outline/controller/service/authorization/DTO/schema regressions passed `182/182`;
+- API typecheck passed;
+- API build passed;
+- `git diff --check` passed;
+- no schema/migration/provisioning change was introduced.
+
+### Ubuntu deployment and activation
+
+Ubuntu server promotion verified:
+
+- server HEAD: `76b286140a70ca10c1b91cee5fc0da4fc973b105`;
+- `origin/main`: same commit;
+- repository clean;
+- API typecheck passed on Ubuntu;
+- API build passed on Ubuntu;
+- PM2 `lexora-api` activated successfully;
+- Direct API health HTTP `200`;
+- Nginx API health HTTP `200`;
+- API listener remained loopback-only on `127.0.0.1:4000`.
+
+The promotion introduced no database migration and no permanent authorization provisioning.
+
+### Ordinary PostgreSQL/API deterministic runtime matrix
+
+Pre-fixture Law academic baseline:
+
+`0|0|0|13|5|0|0|0|0`
+
+representing:
+
+- academic sessions: `0`;
+- student batches: `0`;
+- syllabus versions: `0`;
+- course offerings: `13`;
+- Teacher assignments: `5`;
+- Batch Coordinator assignments: `0`;
+- CourseOutlineVersions: `0`;
+- correction requests: `0`;
+- Course Outline approval success audits: `0`.
+
+Approval permission rows before runtime fixture:
+
+- exact approval Permission: `0`;
+- permanent/existing RolePermission links: `0`.
+
+Disposable runtime verification confirmed:
+
+- unauthenticated approval → HTTP `401`;
+- Student approval → HTTP `403`;
+- Teacher without exact approval grant → HTTP `403`;
+- Department Admin broad wildcard without exact approval grant → HTTP `403`;
+- fresh temporary exact approval permission loaded into authenticated principal;
+- valid `COORDINATOR_REVIEW → APPROVED` → HTTP `201`;
+- authoritative `approvedAt` populated;
+- `activatedAt` remained null;
+- `archivedAt` remained null;
+- repeat approval → HTTP `409`;
+- exactly one success audit for the repeated target;
+- forged `x-department-id: dept_bus_test` against Law target remained in authenticated Law scope and valid approval returned HTTP `201`;
+- wrong nested CourseOutlineVersion → HTTP `404`;
+- cross-department direct CourseOffering access → HTTP `404`;
+- direct `DRAFT → APPROVED` attempt → HTTP `409`;
+- Teacher PATCH against approved outline → HTTP `409`;
+- approved Teacher narrative remained unchanged;
+- approval audit actor/department/academic IDs/status/timestamp verified;
+- approval audit narrative leakage: none.
+
+### Live post-login authority revocation verification
+
+A fresh approver login was issued while a disposable exact approval grant existed.
+
+The exact RolePermission was then removed from the live database.
+
+A subsequent approval attempt using the already-issued principal failed closed.
+
+The target remained:
+
+- `COORDINATOR_REVIEW`;
+- `approvedAt = null`;
+- no approval success audit.
+
+This confirmed that a previously issued authenticated principal cannot rely only on stale loaded authority when the live exact database provenance has been revoked.
+
+### Real duplicate-concurrency verification
+
+Two simultaneous first-approval HTTP requests were issued against one disposable `COORDINATOR_REVIEW` target.
+
+Observed responses:
+
+- one HTTP `201`;
+- one HTTP `409`.
+
+Final authoritative state:
+
+- exactly one `APPROVED` transition;
+- exactly one authoritative `approvedAt`;
+- exactly one approval success audit.
+
+No duplicate approval mutation occurred.
+
+### Live permission-revocation serialization verification
+
+A dedicated RolePermission row was locked in one PostgreSQL transaction.
+
+That transaction intentionally held the exact RolePermission lock, delayed for approximately three seconds, deleted the RolePermission, and committed.
+
+While the lock was held, the approval HTTP request was issued using a principal that had previously loaded the exact permission.
+
+A focused corrected timing probe used Python `time.monotonic_ns()`.
+
+Observed result:
+
+- approval response: HTTP `404`;
+- monotonic request elapsed time: `2747.113 ms`;
+- expected blocking window: at least `2000 ms` and at most `10000 ms`;
+- CourseOutlineVersion remained `COORDINATOR_REVIEW`;
+- `approvedAt` remained null;
+- false approval success audits: `0`;
+- RolePermission was removed.
+
+This verifies that the approval transaction serialized behind the live authority-revocation lock and then failed closed after revocation became authoritative.
+
+### Controlled audit-failure rollback verification
+
+A narrow temporary PostgreSQL trigger/function was installed only for the disposable approval target's success-audit insert.
+
+The controlled audit write failed.
+
+Observed approval response:
+
+- HTTP `500`.
+
+After the forced audit failure:
+
+- CourseOutlineVersion remained `COORDINATOR_REVIEW`;
+- original `submittedAt` remained present;
+- `approvedAt` remained null;
+- `activatedAt` remained null;
+- `archivedAt` remained null;
+- approval success audit count remained `0`.
+
+This verifies transactional rollback of the approval lifecycle mutation when success-audit persistence fails.
+
+After removing the temporary fault injection:
+
+- retry approval returned HTTP `201`;
+- final status became `APPROVED`;
+- authoritative `approvedAt` was populated;
+- exactly one success audit existed.
+
+### PostgreSQL deadlock observation
+
+PostgreSQL `pg_stat_database.deadlocks` was measured around the hardening run.
+
+Observed:
+
+- deadlocks before: `0`;
+- deadlocks after: `0`;
+- deadlock delta: `0`.
+
+No approval hardening deadlock was observed.
+
+### Verification-harness corrections and evidence quality
+
+Two verification-harness issues occurred during this checkpoint.
+
+They did not require production implementation changes.
+
+#### Login-response parser correction
+
+The first deterministic harness attempt expected role information at a top-level login-response `roles` property.
+
+The current Lexora login contract returns:
+
+- top-level `accessToken`;
+- authority inside `user.roles`;
+- `user.permissions`;
+- `user.departmentId`.
+
+The first attempt stopped during login parsing before creation of the Course Outline/approval fixture.
+
+The corrected harness used the current response contract and additionally verified the exact approval permission after the temporary grant.
+
+No raw password or access token was printed or documented.
+
+#### Initial elapsed-time measurement discarded
+
+The first hardening harness printed an impossible authority-revocation duration:
+
+`2949695807 ms`
+
+That value is invalid and must not be treated as runtime timing evidence.
+
+The functional result of that run still showed:
+
+- HTTP `404`;
+- no target mutation;
+- no false success audit;
+- RolePermission revoked.
+
+However the duration itself was discarded.
+
+A dedicated follow-up probe replaced the invalid measurement with monotonic timing using Python `time.monotonic_ns()`.
+
+The authoritative timing evidence is:
+
+`2747.113 ms`
+
+The monotonic follow-up also independently verified:
+
+- HTTP `404`;
+- no outline mutation;
+- no false success audit;
+- exact RolePermission revocation;
+- cleanup;
+- baseline restoration;
+- final API health.
+
+### Cleanup and baseline restoration
+
+All dedicated Course Outline approval runtime academic/authz fixtures were disposable.
+
+Final measured Law academic baseline was restored exactly to:
+
+`0|0|0|13|5|0|0|0|0`
+
+Dedicated fixture residue after cleanup:
+
+- AcademicSession: `0`;
+- StudentBatch: `0`;
+- SyllabusVersion: `0`;
+- disposable CourseOfferings: `0`;
+- disposable CourseOutlineVersions: `0`;
+- disposable approval Permission: `0`;
+- disposable Role: `0`;
+- disposable UserRole: `0`;
+- disposable RolePermission: `0`;
+- temporary audit-failure trigger: `0`;
+- temporary audit-failure function: `0`.
+
+Authentication/session telemetry was intentionally preserved.
+
+No raw access token, refresh token, password or database credential was written to project documentation.
+
+Final platform state remained:
+
+- repository clean;
+- server HEAD/origin aligned;
+- Direct API HTTP `200`;
+- Nginx API HTTP `200`;
+- API port `4000` loopback-only.
+
+### Current verified classification
+
+The narrow Course Outline approval transition is now:
+
+- source/current-code audited;
+- implemented;
+- independently reviewed;
+- security-corrected before commit;
+- committed and pushed;
+- deployed to Ubuntu;
+- Ubuntu typecheck/build verified;
+- runtime activated under PM2;
+- dedicated exact approval permission architecture verified;
+- broad Department Admin wildcard denial verified;
+- ordinary unauthenticated/Student/Teacher denial verified;
+- authenticated department isolation verified;
+- forged department-header resistance verified;
+- nested direct-object safe-not-found verified;
+- cross-department direct-object safe-not-found verified;
+- lifecycle conflict behavior verified;
+- positive `COORDINATOR_REVIEW → APPROVED` verified;
+- repeat conflict verified;
+- approved-outline Teacher PATCH immutability verified;
+- approval audit atomicity and minimization verified;
+- live authority revocation fail-closed verified;
+- real simultaneous first-approval concurrency verified;
+- single authoritative approval mutation verified;
+- single concurrency success audit verified;
+- live RolePermission revocation serialization verified with monotonic timing;
+- forced success-audit failure rollback verified;
+- post-fault retry verified;
+- PostgreSQL deadlock delta verified as zero;
+- transactional cleanup verified;
+- exact ordinary academic baseline restoration verified;
+- dedicated authorization fixture cleanup verified;
+- final health and loopback-only exposure verified.
+
+Therefore:
+
+`COORDINATOR_REVIEW → APPROVED`
+
+is **technically complete and runtime verified**.
+
+This statement closes only the technical approval transition.
+
+It does not mean the complete Course Outline lifecycle is complete.
+
+### Institutional approval authority remains pending
+
+The permanent institutional actor responsible for Course Outline final approval remains unresolved in the currently reviewed authoritative/source-derived material.
+
+Therefore this checkpoint does not permanently provision:
+
+`course-management.course-outline.approve`
+
+to any role.
+
+Do not infer permanent approval authority from:
+
+- Department Admin;
+- Batch Coordinator;
+- Programme Coordinator;
+- Department Chairman / POE;
+- Academic Committee;
+- broad `course-management.*` wildcard authority.
+
+A separate source-backed governance decision and reviewed authorization-provisioning checkpoint is required before Course Outline approval becomes operational for ordinary canonical users.
+
+### Course Outline work still pending
+
+Still pending unless separately implemented and runtime verified:
+
+- permanent institutional Course Outline approver ownership/provisioning;
+- `APPROVED → ACTIVE`;
+- `ACTIVE → ARCHIVED`;
+- exact active CourseOutlineVersion binding;
+- active/latest CourseOutlineVersion semantics;
+- amendment/new-version governance after approval/activation;
+- CourseOutlineVersion StudentBatch snapshot decision if still required by final design;
+- Programme Coordinator governance if independently required;
+- topic-to-CLO normalized mapping;
+- offering-specific supplemental resources;
+- weekly plan;
+- Lesson Plan;
+- assessment schedule;
+- Teacher Course Outline frontend;
+- Coordinator/Admin approval/review frontend;
+- complete Teacher Course Workspace integration.
+
+### Next logical checkpoint
+
+Before implementing Course Outline activation, perform a fresh source/current-code audit for:
+
+`APPROVED → ACTIVE`
+
+The audit must determine:
+
+- exact source-backed activation authority;
+- whether activation and exact active CourseOutlineVersion binding are one atomic operation or separate transitions;
+- whether CourseOffering requires an explicit exact active-outline pointer;
+- how multiple approved versions are prevented from becoming ambiguously active;
+- active/latest semantics;
+- post-activation immutability;
+- amendment/new-version behavior;
+- archival interaction;
+- department/object isolation;
+- transaction/locking order;
+- audit requirements.
+
+Do not infer activation authority from the temporary runtime approval role.
+
+Do not permanently provision Course Outline approval authority as part of activation work unless a separate source-backed governance decision explicitly establishes that authority.
+
+### Formal checkpoint status
+
+> **Course Outline Approval Transition = TECHNICALLY COMPLETE / RUNTIME VERIFIED**
+
+> **Permanent Institutional Approval Authority = PENDING / NOT PROVISIONED**
+
+> **Complete Course Outline Lifecycle = INCOMPLETE**
