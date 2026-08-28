@@ -133,7 +133,7 @@ test("migration replaces only the three superseded single-column parent foreign 
   assert.deepEqual(droppedConstraints, supersededConstraints);
 });
 
-test("existing CurriculumCourse uniqueness and indexes remain unchanged", () => {
+test("existing CurriculumCourse uniqueness and indexes remain with the examination candidate identity", () => {
   const declarations = curriculumCourse
     .split("\n")
     .map((line) => line.trim())
@@ -144,6 +144,7 @@ test("existing CurriculumCourse uniqueness and indexes remain unchanged", () => 
   assert.deepEqual(declarations, [
     '@@unique([id, departmentId], map: "curriculum_course_id_department_uq")',
     '@@unique([id, departmentId, curriculumVersionId], map: "curriculum_course_id_department_version_uq")',
+    '@@unique([id, departmentId, curriculumVersionId, assessmentTemplateId], map: "curriculum_course_exam_identity_uq")',
     '@@unique([curriculumVersionId, courseId], map: "curriculum_course_version_course_uq")',
     '@@unique([curriculumVersionId, academicYearNumber, semesterNumber, displayOrder], map: "curriculum_course_version_term_order_uq")',
     '@@index([departmentId, curriculumVersionId], map: "curriculum_course_dept_version_idx")',

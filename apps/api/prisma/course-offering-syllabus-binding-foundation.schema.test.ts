@@ -189,7 +189,7 @@ test("composite restrictive FK enforces department and CurriculumCourse identity
   );
 });
 
-test("department-scoped lookup is indexed without making syllabus use unique", () => {
+test("department-scoped lookup remains non-unique outside exact candidate identities", () => {
   const indexName = "course_offering_dept_syllabus_version_idx";
   assert.ok(indexName.length <= 63);
   assert.match(
@@ -211,6 +211,8 @@ test("department-scoped lookup is indexed without making syllabus use unique", (
   ].map((match) => match[1]);
   assert.deepEqual(syllabusCandidateKeys, [
     "id, departmentId, curriculumCourseId, syllabusVersionId",
+    "id, departmentId, academicTermId, curriculumCourseId, syllabusVersionId",
+    "id, departmentId, academicTermId, curriculumCourseId, syllabusVersionId, studentBatchId",
   ]);
   assert.doesNotMatch(
     migration,
