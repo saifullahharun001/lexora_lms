@@ -33469,3 +33469,949 @@ Before implementing it, perform a fresh source/current-code audit for:
 - exact read semantics for historical versus current active outline versions.
 
 Do not infer archival governance from activation governance.
+
+## Course Outline ACTIVE -> ARCHIVED Runtime Closure — 2026-08-28
+
+### 1. Scope and supersession
+
+This checkpoint closes the focused Course Outline lifecycle transition:
+
+`ACTIVE -> ARCHIVED`
+
+for the exact currently active `CourseOutlineVersion` bound to an authoritative
+department-scoped `CourseOffering`.
+
+Implementation commit:
+
+`f6b1f25ffa4a4d973f292d41fac74b182d9db63f`
+
+Implementation parent / previous documentation baseline:
+
+`79bbc6f7fd56d8fbd1d76f8612f06903b7774314`
+
+Implementation commit message:
+
+`feat: add course outline archival lifecycle`
+
+Earlier checklist sections that described Course Outline archival as pending remain
+valid historical evidence for the repository/runtime state that existed when those
+sections were written.
+
+They are intentionally preserved rather than rewritten or deleted.
+
+This newer checkpoint supersedes those earlier pending statements only when
+determining the current verified status of the technical:
+
+`ACTIVE -> ARCHIVED`
+
+transition and the exact active-binding clearing behavior verified here.
+
+This checkpoint does **not** establish permanent institutional ownership of Course
+Outline archival.
+
+The source/current-code audit did not identify a sufficiently explicit authoritative
+rule assigning permanent Course Outline archival authority to Department Admin,
+Teacher, Batch Coordinator, Programme Coordinator, Department Chairman / POE,
+Academic Committee, or another institutional actor.
+
+The temporary exact Department Admin authority used during runtime verification was
+test-only and was completely removed afterward.
+
+### 2. Source/current-code archival design decision
+
+The approved Course Outline lifecycle includes:
+
+`DRAFT`
+`-> SUBMITTED_BY_TEACHER`
+`-> COORDINATOR_REVIEW`
+`-> RETURNED_FOR_CORRECTION`
+`-> APPROVED`
+`-> ACTIVE`
+`-> ARCHIVED`
+
+Before implementation, a fresh source/current-code audit confirmed that archival
+implementation did not yet exist.
+
+The audit also identified an important active-binding ambiguity:
+
+the source material requires the previous Course Outline version to remain archived,
+while the already verified activation architecture treats:
+
+`CourseOffering.activeCourseOutlineVersionId`
+
+as the exact **currently active** Course Outline binding and blocks another activation
+while an active pointer / ACTIVE version exists.
+
+For this focused checkpoint the minimum architecture-compatible rule is therefore:
+
+- only the exact currently bound ACTIVE CourseOutlineVersion may be archived;
+- successful archival changes that exact version to ARCHIVED;
+- server-controlled `archivedAt` is written;
+- prior `submittedAt`, `approvedAt`, and `activatedAt` are preserved;
+- the exact `CourseOffering.activeCourseOutlineVersionId` is atomically cleared to
+  `NULL`;
+- no replacement Course Outline is automatically activated;
+- no latest-version inference is performed;
+- malformed ACTIVE/pointer disagreement fails closed rather than being repaired.
+
+Pointer clearing is an architecture-derived decision from the verified current-active
+binding model. It is not represented here as an independently explicit institutional
+source rule.
+
+Broader amendment/replacement governance remains a separate checkpoint.
+
+### 3. Implementation surface
+
+The implementation changes exactly 13 files:
+
+- `apps/api/src/modules/academic/application/ports/academic.repository.port.ts`
+- `apps/api/src/modules/academic/application/services/academic.service.ts`
+- `apps/api/src/modules/academic/application/services/course-outline-version.service.test.ts`
+- `apps/api/src/modules/academic/domain/academic.audit-events.ts`
+- `apps/api/src/modules/academic/domain/academic.policy-names.ts`
+- `apps/api/src/modules/academic/infrastructure/repositories/prisma-academic.repository.ts`
+- `apps/api/src/modules/academic/infrastructure/repositories/course-outline-archival.repository.test.ts`
+- `apps/api/src/modules/academic/presentation/http/course-offerings.controller.ts`
+- `apps/api/src/modules/academic/presentation/http/course-offerings.controller.test.ts`
+- `apps/api/src/modules/authorization/services/authorization.service.ts`
+- `apps/api/src/modules/authorization/services/authorization.service.test.ts`
+- `apps/api/src/modules/course-management/domain/course-management.policy-names.ts`
+- `apps/api/src/modules/identity-access/authorization/permissions.constants.ts`
+
+No Prisma schema change was required.
+
+No migration was introduced.
+
+No permanent authorization-provisioning definition was changed.
+
+No frontend implementation was included.
+
+### 4. Dedicated archival permission and route
+
+The technical permission is:
+
+`course-management.course-outline.archive`
+
+with:
+
+- resource: `course-management.course-outline`
+- action: `archive`
+- scope: `DEPARTMENT`
+
+It is an exact-permission policy.
+
+Broad role/wildcard authority is insufficient.
+
+The guarded HTTP transition is:
+
+`POST /api/v1/course-offerings/:id/course-outline-versions/:courseOutlineVersionId/archive`
+
+The route remains protected by the existing authentication/policy guard boundary and
+the dedicated Course Outline archival policy.
+
+The controller forwards only the nested CourseOffering and CourseOutlineVersion
+identities.
+
+Client-controlled department, actor, lifecycle status, timestamps, active pointer,
+StudentBatch, AcademicTerm, CurriculumCourse, or SyllabusVersion identities are not
+accepted as archival transition authority.
+
+### 5. Server-authoritative authorization model
+
+The application service derives archival scope from the authenticated request
+principal.
+
+It requires:
+
+- authenticated user principal;
+- authenticated principal department;
+- exact loaded archival permission;
+- DEPARTMENT scope;
+- valid loaded-role provenance.
+
+The repository then revalidates that exact authority against live database state
+inside the transaction through:
+
+- User;
+- Department;
+- UserRole;
+- Role;
+- RolePermission;
+- Permission.
+
+Revoked/expired role assignment, archived role, inactive/archived/deleted user,
+inactive/archived/deleted department, or missing exact permission fails closed.
+
+The authenticated principal's real department remains authoritative.
+
+`x-department-id` does not override it.
+
+### 6. Transaction and locking model
+
+Archival uses:
+
+`Prisma.TransactionIsolationLevel.Serializable`
+
+and preserves CourseOffering-first lock ordering consistent with activation.
+
+The transaction sequence is:
+
+1. lock the exact authenticated-department CourseOffering;
+2. reject hidden/archived/unbound offering state;
+3. revalidate exact live archival authority;
+4. revalidate the complete academic identity chain;
+5. lock the exact nested CourseOutlineVersion;
+6. require a well-formed ACTIVE lifecycle;
+7. require the CourseOffering active pointer to equal that exact target;
+8. CAS-transition the exact CourseOutlineVersion to ARCHIVED;
+9. CAS-clear the exact CourseOffering active pointer to NULL;
+10. reload the exact archived row;
+11. persist one structural archival success audit;
+12. commit atomically.
+
+The academic chain includes the existing verified relationships among:
+
+- Department;
+- CourseOffering;
+- Course;
+- Course AcademicProgram;
+- AcademicTerm;
+- AcademicYear;
+- StudentBatch;
+- StudentBatch AcademicProgram;
+- AcademicSession;
+- CurriculumCourse;
+- CurriculumVersion;
+- CurriculumVersion AcademicProgram;
+- SyllabusVersion.
+
+Programme equality remains fail-closed:
+
+`Course.academicProgramId`
+`= CurriculumVersion.academicProgramId`
+`= StudentBatch.academicProgramId`
+
+### 7. Exact lifecycle precondition
+
+The target is archivable only when it is the exact nested CourseOutlineVersion and:
+
+- `status = ACTIVE`;
+- `submittedAt != null`;
+- `approvedAt != null`;
+- `activatedAt != null`;
+- `archivedAt == null`;
+- department identity matches;
+- CourseOffering identity matches;
+- CurriculumCourse identity matches;
+- SyllabusVersion identity matches;
+- `CourseOffering.activeCourseOutlineVersionId` equals the target ID.
+
+Every non-ACTIVE state is non-archivable.
+
+An ACTIVE target with:
+
+- null active pointer; or
+- a pointer to another CourseOutlineVersion
+
+fails closed with a controlled binding conflict.
+
+The implementation does not silently repair split-brain state.
+
+### 8. Atomic archival mutation
+
+A successful archival uses one server-controlled transition timestamp.
+
+The exact CourseOutlineVersion CAS mutation changes:
+
+- `status: ACTIVE -> ARCHIVED`;
+- `archivedAt: null -> transition timestamp`.
+
+It preserves:
+
+- `submittedAt`;
+- `approvedAt`;
+- `activatedAt`;
+- department identity;
+- CourseOffering identity;
+- CurriculumCourse identity;
+- SyllabusVersion identity;
+- version number.
+
+The exact CourseOffering CAS mutation changes:
+
+`activeCourseOutlineVersionId: exact target ID -> NULL`
+
+and requires the offering to remain in the same exact department/academic binding and
+not be archived.
+
+Either CAS failure prevents successful completion.
+
+### 9. Archival audit
+
+The success audit action is:
+
+`course-management.course-outline.archived`
+
+Target type:
+
+`course_outline_version`
+
+The audit is written inside the same Serializable transaction.
+
+Its structural context records identifiers and transition metadata including:
+
+- CourseOutlineVersion ID;
+- CourseOffering ID;
+- StudentBatch ID;
+- AcademicTerm ID;
+- CurriculumCourse ID;
+- SyllabusVersion ID;
+- version number;
+- previous status ACTIVE;
+- new status ARCHIVED;
+- previous active CourseOutlineVersion ID;
+- cleared active pointer;
+- transition timestamp.
+
+Teacher-authored Course Outline narrative content is not copied into archival audit
+context.
+
+The audit `occurredAt` uses the same transition timestamp as `archivedAt`.
+
+### 10. Serializable retry behavior
+
+Archival preserves the already reviewed bounded serialization retry classifier.
+
+Retryable:
+
+- Prisma `P2034`;
+- Prisma `P2010` only when `meta.code` is the exact string `"40001"`.
+
+Not retryable:
+
+- generic/unrelated P2010;
+- PostgreSQL deadlock code `40P01`;
+- numeric `40001`;
+- unrelated Prisma errors;
+- non-Prisma/application errors.
+
+Maximum attempts remain exactly three:
+
+`attempt 0`
+`attempt 1`
+`attempt 2`
+
+Exhaustion returns a controlled concurrency conflict.
+
+### 11. Independent implementation review
+
+The implementation was independently reviewed before commit.
+
+Independent severity result:
+
+- Critical: 0
+- High: 0
+- Medium: 0
+- Low: 0
+
+No product-code correction was required after independent review.
+
+A review-artifact generation helper had a PowerShell scalar-indexing defect while
+attempting to embed the new test file (`$ExpectedNew[0]` selected the first character
+of a scalar string).
+
+That was a review-harness defect only.
+
+It did not modify repository state and was not a Lexora product defect.
+
+The new test evidence was recovered independently and the product implementation
+review completed successfully.
+
+### 12. Independent local static verification
+
+At baseline:
+
+`79bbc6f7fd56d8fbd1d76f8612f06903b7774314`
+
+with the uncommitted archival implementation present:
+
+- API typecheck: PASS;
+- API build: PASS;
+- six exact compiled critical suites located;
+- 122 tests executed;
+- 122 passed;
+- 0 failed;
+- `git diff --check`: PASS;
+- HEAD unchanged;
+- staged changes: none.
+
+The critical verification included:
+
+- archival repository;
+- activation regression;
+- approval regression;
+- Course Outline service;
+- CourseOffering controller;
+- AuthorizationService.
+
+### 13. Commit and push verification
+
+The implementation was committed as:
+
+`f6b1f25ffa4a4d973f292d41fac74b182d9db63f`
+
+Commit message:
+
+`feat: add course outline archival lifecycle`
+
+Commit scope:
+
+- exactly 13 files;
+- 1593 insertions;
+- one new archival repository test file.
+
+Pre-commit safeguards confirmed:
+
+- exact reviewed 13-file set;
+- no unexpected staged changes;
+- staged diff check PASS;
+- Prisma schema unchanged;
+- migrations unchanged;
+- authorization provisioning unchanged;
+- documentation unchanged;
+- no detected bearer/JWT material;
+- no credentialed database URL;
+- no private-key material.
+
+After push:
+
+- local HEAD = implementation commit;
+- `origin/main` = implementation commit;
+- repository CLEAN / ALIGNED.
+
+### 14. Server pre-promotion verification
+
+Before promotion the server was at:
+
+`79bbc6f7fd56d8fbd1d76f8612f06903b7774314`
+
+with:
+
+- repository CLEAN;
+- PM2 PID `1388`;
+- direct API HTTP 200;
+- Nginx API HTTP 200.
+
+Fetched target:
+
+`f6b1f25ffa4a4d973f292d41fac74b182d9db63f`
+
+was verified as an exact one-commit fast-forward whose parent was the current server
+HEAD.
+
+The server independently confirmed the delta contained exactly the reviewed 13 files.
+
+There was:
+
+- no Prisma schema change;
+- no migration;
+- no authorization-provisioning change;
+- no documentation change.
+
+Ordinary database pre-promotion baseline for Law was:
+
+`academic_sessions | student_batches | syllabus_versions | course_offerings | course_outline_versions | active_outlines | archived_outlines | active_bindings`
+
+`0 | 0 | 0 | 13 | 0 | 0 | 0 | 0`
+
+Archival Permission / RolePermission rows:
+
+`0`
+
+Archival success audits:
+
+`0`
+
+Prisma migration status reported:
+
+`Database schema is up to date!`
+
+The pre-promotion inspection performed zero database writes and zero PM2 restarts.
+
+### 15. Server promotion and Linux verification
+
+The server fast-forwarded exactly to:
+
+`f6b1f25ffa4a4d973f292d41fac74b182d9db63f`
+
+After pull:
+
+- repository CLEAN / origin-aligned;
+- no migration required;
+- no provisioning required.
+
+Linux verification:
+
+- API typecheck: PASS;
+- API build: PASS;
+- six exact critical compiled suites found;
+- 122 tests executed;
+- 122 passed;
+- 0 failed.
+
+The server then performed a controlled PM2 restart.
+
+PM2 PID changed:
+
+`1388 -> 29389`
+
+Post-activation:
+
+- PM2 status ONLINE;
+- direct API HTTP 200;
+- Nginx API HTTP 200;
+- API listener `127.0.0.1:4000` only;
+- no wildcard/public NestJS listener detected.
+
+The newly deployed archival endpoint rejected an unauthenticated request with:
+
+`HTTP 401`
+
+Final promotion state:
+
+- HEAD = implementation commit;
+- `origin/main` = implementation commit;
+- repository CLEAN / ALIGNED.
+
+### 16. Authenticated-runtime preflight
+
+Before creating runtime authority or fixture state, the live server preflight verified:
+
+- implementation commit live;
+- repository CLEAN / ALIGNED;
+- direct API HTTP 200;
+- Nginx API HTTP 200;
+- canonical active Law Admin present;
+- canonical active Law Teacher present;
+- canonical active Law Student present;
+- archival Permission absent;
+- archival RolePermission absent;
+- reusable academic foundation present;
+- failure-injection trigger absent;
+- failure-injection function absent.
+
+Exact ordinary feature baseline was:
+
+`0|0|0|13|0|0|0|0|0`
+
+for:
+
+`academic_sessions`
+`| student_batches`
+`| syllabus_versions`
+`| course_offerings`
+`| course_outline_versions`
+`| ACTIVE outlines`
+`| ARCHIVED outlines`
+`| active bindings`
+`| archival success audits`
+
+The extended authenticated-matrix baseline, additionally including archival Permission
+and RolePermission counts, was:
+
+`0|0|0|13|0|0|0|0|0|0|0`
+
+The preflight was read-only and left that baseline unchanged.
+
+### 17. Reusable academic runtime foundation
+
+The authenticated archival verifier reused the already established Law foundation:
+
+- Department: `dept_law_test`
+- AcademicProgram: `program_law_sca_runtime`
+- Course: `course_law_enrollment_runtime_001`
+- CurriculumVersion: `cv_law_sca_runtime_active`
+- CurriculumCourse: `curriculum_course_law_enrollment_runtime_active`
+- AcademicTerm: `term_law_2025_2026_s1`
+
+All five reusable foundation components passed exact identity/scope checks.
+
+The verifier created only temporary archival-specific:
+
+- one AcademicSession;
+- one StudentBatch;
+- one ACTIVE SyllabusVersion;
+- six fully bound CourseOfferings;
+- seven CourseOutlineVersions;
+- one exact archival Permission;
+- one Department Admin RolePermission;
+- one structural temporary grant audit.
+
+### 18. Permanent-authority fail-closed runtime behavior
+
+Before the temporary exact grant:
+
+- fresh Law Department Admin login returned HTTP 201;
+- archival permission was absent from the principal;
+- Department Admin archival request returned HTTP 403;
+- the same pre-grant request with forged BUS department header also returned HTTP 403;
+- product/RBAC baseline remained unchanged.
+
+Therefore ordinary broad Department Admin authority does not implicitly grant Course
+Outline archival.
+
+### 19. Temporary exact archival authority
+
+For controlled runtime verification only, the verifier created:
+
+`course-management.course-outline.archive`
+
+with:
+
+- resource `course-management.course-outline`;
+- action `archive`;
+- scope `DEPARTMENT`.
+
+It was linked only to the canonical Law Department Admin role.
+
+No Teacher role or Student role received the permission.
+
+Fresh authenticated principals after the temporary grant showed:
+
+- Law Admin: archival permission PRESENT;
+- Law Teacher: archival permission ABSENT;
+- Law Student: archival permission ABSENT.
+
+This temporary grant does not establish permanent institutional archival ownership.
+
+### 20. Authenticated authorization/object/lifecycle negative matrix
+
+Runtime HTTP behavior verified:
+
+- unauthenticated archival: HTTP 401;
+- pre-grant Department Admin: HTTP 403;
+- pre-grant forged-department request: HTTP 403;
+- Teacher archival: HTTP 403;
+- Student archival: HTTP 403;
+- authorised nonexistent nested target: HTTP 404;
+- wrong nested CourseOutlineVersion: HTTP 404;
+- DRAFT / non-ACTIVE archival attempt: HTTP 409;
+- ACTIVE target with null active pointer: HTTP 409;
+- ACTIVE target with a different active pointer: HTTP 409.
+
+The entire negative matrix generated:
+
+`0`
+
+archival success audits.
+
+### 21. Forged-header positive archival
+
+A fresh Law Department Admin principal holding the temporary exact permission invoked
+archival while sending a forged BUS:
+
+`x-department-id`
+
+header.
+
+The request succeeded:
+
+`HTTP 201`
+
+against the authenticated Law scope.
+
+This proves that the forged header did not replace the authenticated principal's
+department authority.
+
+The exact target transitioned:
+
+`ACTIVE -> ARCHIVED`
+
+with:
+
+- server-controlled `archivedAt` set;
+- original `submittedAt` preserved;
+- original `approvedAt` preserved;
+- original `activatedAt` preserved;
+- exact CourseOffering active pointer cleared to `NULL`.
+
+The final target remained in:
+
+`dept_law_test`
+
+### 22. Positive archival audit verification
+
+The successful archival produced exactly one structural audit:
+
+action:
+
+`course-management.course-outline.archived`
+
+target type:
+
+`course_outline_version`
+
+outcome:
+
+`SUCCESS`
+
+The verified audit contained the expected structural:
+
+- CourseOutlineVersion identity;
+- CourseOffering identity;
+- StudentBatch identity;
+- AcademicTerm identity;
+- CurriculumCourse identity;
+- SyllabusVersion identity;
+- ACTIVE previous status;
+- ARCHIVED new status;
+- previous active pointer;
+- cleared active pointer.
+
+Audit `occurredAt` equaled the archived CourseOutlineVersion's `archivedAt`.
+
+Runtime-authored narrative content was absent from audit context.
+
+### 23. Repeat archival behavior
+
+Repeating archival against the already ARCHIVED target returned:
+
+`HTTP 409`
+
+The original success-audit cardinality remained:
+
+`1`
+
+No second success audit or timestamp rewrite was created.
+
+### 24. Real same-target concurrency
+
+Two actual authenticated HTTP archival requests were issued concurrently against the
+same ACTIVE CourseOutlineVersion.
+
+Observed HTTP results:
+
+`409 / 201`
+
+Therefore:
+
+- successes: exactly 1;
+- conflicts: exactly 1.
+
+Final state:
+
+- target status: ARCHIVED;
+- `archivedAt`: set;
+- CourseOffering active pointer: NULL;
+- archival success audit count: exactly 1;
+- authored narrative leakage: zero.
+
+This verifies real ordinary-runtime same-target concurrency behavior rather than only a
+mocked repository race.
+
+### 25. Forced audit-write failure rollback
+
+A temporary PostgreSQL trigger/function was installed only for the exact runtime
+audit-failure target.
+
+The trigger forced insertion of:
+
+`course-management.course-outline.archived`
+
+audit data for that target to fail.
+
+The authenticated archival request returned:
+
+`HTTP 500`
+
+Post-failure state verified:
+
+- CourseOutlineVersion remained ACTIVE;
+- `archivedAt` remained NULL;
+- CourseOffering active pointer remained bound to the target;
+- archival success audit count remained zero.
+
+Therefore the lifecycle mutation, pointer clearing, and success audit are atomic.
+
+Audit persistence failure rolls back both business mutations.
+
+The temporary failure-injection trigger and function were removed immediately
+afterward.
+
+### 26. Pre-cleanup runtime evidence
+
+Before cleanup, the verifier confirmed exactly:
+
+- two successful archival transitions;
+- two ARCHIVED runtime CourseOutlineVersions;
+- two archival success audits;
+- three intentionally remaining ACTIVE negative/rollback fixtures;
+- zero narrative leakage in archival audit context;
+- zero success-audit residue for the forced-failure transaction.
+
+The two successful archival audit records were actor-scoped to the canonical Law Admin
+and department-scoped to:
+
+`dept_law_test`
+
+Runtime run identifier:
+
+`20260828021804`
+
+Temporary successful target identifiers included:
+
+- `coarch_outline_a1_20260828021804`
+- `coarch_outline_c1_20260828021804`
+
+The private runtime evidence log was:
+
+`/tmp/lexora-course-outline-archival-authenticated-20260828021804.log`
+
+No raw password or bearer token is recorded in this checklist.
+
+### 27. Exact runtime cleanup and baseline restoration
+
+The verifier removed:
+
+- temporary failure-injection DDL;
+- temporary archival success audits;
+- temporary CourseOutlineVersions;
+- temporary CourseOfferings;
+- temporary SyllabusVersion;
+- temporary StudentBatch;
+- temporary AcademicSession;
+- temporary RolePermission;
+- temporary Permission;
+- temporary grant audit.
+
+Dedicated archival runtime residue after cleanup:
+
+`0`
+
+Extended baseline before:
+
+`0|0|0|13|0|0|0|0|0|0|0`
+
+Extended baseline after:
+
+`0|0|0|13|0|0|0|0|0|0|0`
+
+Therefore feature/RBAC baseline restoration was exact.
+
+Permanent archival authority remained absent after cleanup.
+
+### 28. Runtime non-disruption and secret safety
+
+After the complete authenticated matrix:
+
+- HEAD remained `f6b1f25ffa4a4d973f292d41fac74b182d9db63f`;
+- `origin/main` remained the same commit;
+- repository remained CLEAN / ALIGNED;
+- PM2 PID remained `29389`;
+- direct API remained HTTP 200;
+- Nginx API remained HTTP 200;
+- API remained bound only to `127.0.0.1:4000`.
+
+No PM2 restart occurred during the authenticated matrix.
+
+Runtime credential handling used interactive password input.
+
+Passwords were not printed.
+
+Raw bearer tokens were not printed and were not written to auth/token files.
+
+The evidence log secret scan found:
+
+- raw bearer/JWT pattern: ABSENT;
+- credentialed PostgreSQL URL: ABSENT;
+- private-key material: ABSENT.
+
+Password/token variables were unset at the end.
+
+### 29. Current verified Course Outline archival status
+
+The focused:
+
+`ACTIVE -> ARCHIVED`
+
+transition is now:
+
+**IMPLEMENTED / INDEPENDENTLY REVIEWED / INDEPENDENTLY STATICALLY VERIFIED / COMMITTED / PUSHED / DEPLOYED / LINUX TYPECHECK VERIFIED / LINUX BUILD VERIFIED / LINUX REGRESSION VERIFIED / ORDINARY-POSTGRESQL VERIFIED / AUTHENTICATED-HTTP VERIFIED / EXACT-PERMISSION VERIFIED / WILDCARD-EXCLUSION VERIFIED / AUTHORIZATION-NEGATIVE VERIFIED / OBJECT-SCOPE VERIFIED / DEPARTMENT-ISOLATION VERIFIED / FORGED-HEADER RESISTANT / EXACT ACTIVE-BINDING VERIFIED / ACTIVE-POINTER CLEARING VERIFIED / LIFECYCLE-METADATA PRESERVATION VERIFIED / REAL-CONCURRENCY VERIFIED / TRANSACTIONAL-AUDIT VERIFIED / AUDIT-FAILURE ROLLBACK VERIFIED / CLEANUP VERIFIED / BASELINE-RESTORATION VERIFIED / SECRET-SAFE EVIDENCE VERIFIED / NON-DISRUPTION VERIFIED.**
+
+Permanent institutional archival authority remains:
+
+**PENDING / NOT PROVISIONED**
+
+No permanent archival authority may be inferred from the temporary runtime Department
+Admin grant.
+
+### 30. Course Outline lifecycle interpretation after this checkpoint
+
+With this checkpoint, the core technical Course Outline state-transition chain has
+runtime-verified implementation evidence through:
+
+`DRAFT`
+`-> SUBMITTED_BY_TEACHER`
+`-> COORDINATOR_REVIEW`
+`-> RETURNED_FOR_CORRECTION`
+`-> SUBMITTED_BY_TEACHER`
+`-> COORDINATOR_REVIEW`
+`-> APPROVED`
+`-> ACTIVE`
+`-> ARCHIVED`
+
+This does **not** mean the complete Course Outline product/workflow is finished.
+
+Still pending or requiring separate source-backed governance/implementation includes:
+
+- permanent institutional Course Outline approval authority/provisioning;
+- permanent institutional Course Outline activation authority/provisioning;
+- permanent institutional Course Outline archival authority/provisioning;
+- broader post-approval amendment/replacement/new-version governance;
+- active/latest/historical CourseOutlineVersion read-selection semantics;
+- CourseOutlineVersion StudentBatch snapshot policy if still required by final design;
+- Programme Coordinator governance wherever independently required;
+- topic-to-CLO normalized mapping;
+- offering-specific supplemental resources;
+- weekly plan;
+- Lesson Plan;
+- assessment schedule;
+- Teacher Course Outline frontend;
+- Coordinator/Admin review/approval/activation/archival frontend;
+- complete Teacher Course Workspace integration;
+- other separately pending Course Outline academic-content and UX work.
+
+Earlier historical sections that list approval, activation, active binding, or archival as
+pending must be interpreted according to their original point in time.
+
+Later verified checkpoints supersede them for current-status interpretation without
+deleting that historical evidence.
+
+### 31. Next safe checkpoint
+
+Do not add permanent archival authority merely because Department Admin was used for
+controlled runtime verification.
+
+Before the next post-approval Course Outline change, perform a fresh source/current-code
+audit for the smallest unresolved governance/domain question.
+
+The most immediate unresolved areas are:
+
+- permanent institutional approval/activation/archival ownership;
+- amendment/replacement/new-version workflow after an ACTIVE/ARCHIVED version;
+- active/latest/historical read-selection semantics.
+
+Any next implementation must remain source-backed, department-scoped, object-scoped,
+audit-ready, and runtime verified before being described as complete.
+
+### Formal checkpoint status
+
+> **Course Outline ACTIVE -> ARCHIVED Transition = TECHNICALLY COMPLETE / RUNTIME VERIFIED**
+
+> **Core Course Outline State-Transition Chain = TECHNICALLY IMPLEMENTED / RUNTIME VERIFIED**
+
+> **Permanent Institutional Archival Authority = PENDING / NOT PROVISIONED**
+
+> **Permanent Institutional Approval/Activation Authorities = STILL PENDING / NOT PROVISIONED**
+
+> **Complete Course Outline Product / Governance / UX = INCOMPLETE**
