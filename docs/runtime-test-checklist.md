@@ -32811,3 +32811,661 @@ Do not permanently provision Course Outline approval authority as part of activa
 > **Permanent Institutional Approval Authority = PENDING / NOT PROVISIONED**
 
 > **Complete Course Outline Lifecycle = INCOMPLETE**
+
+## Course Outline APPROVED -> ACTIVE Activation and Exact Active Binding Runtime Closure — 2026-08-28
+
+### 1. Scope and supersession
+
+This checkpoint closes the focused Course Outline transition:
+
+`APPROVED -> ACTIVE`
+
+together with the exact active `CourseOutlineVersion` binding on the authoritative `CourseOffering`.
+
+Implementation commit:
+
+`afc0c0cdc9a03a7798136dbf6215ff8c12818225`
+
+Implementation subject:
+
+`feat: add course outline activation and active binding`
+
+Target migration:
+
+`202608270001_add_course_outline_active_version_binding`
+
+This later checkpoint supersedes earlier pending wording only for:
+
+- Course Outline `APPROVED -> ACTIVE`;
+- exact active `CourseOutlineVersion` persistence on `CourseOffering`;
+- exactly-one-ACTIVE enforcement for one department-scoped CourseOffering;
+- activation concurrency behavior verified here;
+- activation audit atomicity verified here.
+
+Earlier pending wording remains valid historical evidence for the runtime state that existed when it was written and must not be deleted.
+
+This checkpoint does **not** establish permanent institutional ownership of Course Outline activation.
+
+The source audit did not identify a source-backed permanent activation actor.
+
+The temporary exact Department Admin authority used below existed only for controlled runtime verification and was removed afterward.
+
+This checkpoint also does **not** close:
+
+- `ACTIVE -> ARCHIVED`;
+- permanent institutional activation authority/provisioning;
+- broader active/latest Course Outline read-selection semantics not exercised here;
+- amendment/new-version governance after approval/activation;
+- CourseOutlineVersion StudentBatch snapshot policy if still required;
+- Programme Coordinator governance if separately required;
+- Teacher Course Outline frontend;
+- Coordinator/Admin review frontend;
+- weekly plan;
+- Lesson Plan;
+- assessment schedule;
+- other separately pending Course Outline academic-content work.
+
+### 2. Implementation architecture verified
+
+The implementation introduces the dedicated exact permission:
+
+`course-management.course-outline.activate`
+
+with:
+
+- resource: `course-management.course-outline`;
+- action: `activate`;
+- scope: `DEPARTMENT`.
+
+The activation route is:
+
+`POST /api/v1/course-offerings/:id/course-outline-versions/:courseOutlineVersionId/activate`
+
+The route remains behind:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- `@RequirePolicy(...)`.
+
+The implementation does not permanently provision the new activation permission to any role.
+
+Activation and exact active-version binding are one transactional operation.
+
+A successful activation:
+
+1. validates exact authenticated authority;
+2. resolves the authenticated principal's real department;
+3. locks and validates the department-scoped CourseOffering;
+4. revalidates the complete academic chain;
+5. requires the exact nested CourseOutlineVersion to be `APPROVED`;
+6. transitions that exact row to `ACTIVE`;
+7. writes server-controlled `activatedAt`;
+8. binds `CourseOffering.activeCourseOutlineVersionId` to that exact version;
+9. records the activation success audit inside the same transaction.
+
+### 3. Database binding and invariant
+
+Migration:
+
+`202608270001_add_course_outline_active_version_binding`
+
+adds nullable:
+
+`course_offerings.active_course_outline_version_id`
+
+The active pointer is protected by the composite foreign key:
+
+`course_offering_active_outline_identity_fkey`
+
+Child identity:
+
+`active_course_outline_version_id + department_id + CourseOffering.id`
+
+Parent identity:
+
+`CourseOutlineVersion.id + department_id + course_offering_id`
+
+Delete/update behavior:
+
+`RESTRICT / RESTRICT`
+
+This structurally prevents:
+
+- cross-department active-outline binding;
+- binding a CourseOutlineVersion belonging to a different CourseOffering.
+
+A PostgreSQL partial unique index:
+
+`course_outline_version_one_active_per_offering_uq`
+
+enforces at most one `ACTIVE` CourseOutlineVersion for:
+
+`department_id + course_offering_id`
+
+The partial index is intentionally raw PostgreSQL migration SQL because the current Prisma 6.x schema cannot represent PostgreSQL partial unique indexes directly.
+
+### 4. Static and disposable PostgreSQL verification
+
+Before live deployment, the exact reviewed 18-file implementation was reconstructed from baseline commit:
+
+`3c0a73061c322e732ae525b1c7da434b03bbbdb9`
+
+and verified against PostgreSQL `18.4` in an isolated loopback-only disposable environment.
+
+Verified:
+
+- exact implementation bundle integrity;
+- migration contains no data backfill;
+- target migration applies successfully;
+- nullable active pointer exists;
+- exact composite active-outline foreign key exists;
+- `RESTRICT / RESTRICT` exists;
+- exact candidate relation exists;
+- lookup index exists;
+- one-ACTIVE partial unique index exists;
+- existing CourseOutlineVersion history is preserved;
+- no latest-version inference/backfill occurs;
+- valid same-offering binding succeeds;
+- cross-offering binding fails;
+- cross-department binding fails;
+- second ACTIVE row for the same offering fails;
+- referenced active parent delete fails;
+- referenced active parent identity update fails;
+- rejected writes leave zero residue;
+- Prisma validation passes;
+- Prisma database/datamodel diff reports none.
+
+The disposable database/container/worktree artifacts were removed.
+
+The ordinary Lexora database was not targeted by the disposable verification.
+
+### 5. Implementation commit and promotion
+
+The reviewed implementation was committed as:
+
+`afc0c0cdc9a03a7798136dbf6215ff8c12818225`
+
+Commit message:
+
+`feat: add course outline activation and active binding`
+
+The commit contained exactly:
+
+- 15 modified tracked files;
+- 3 new files;
+- 18 files total.
+
+Local `HEAD` and `origin/main` were aligned after push.
+
+The server was then fast-forwarded from:
+
+`3c0a73061c322e732ae525b1c7da434b03bbbdb9`
+
+to:
+
+`afc0c0cdc9a03a7798136dbf6215ff8c12818225`
+
+with a clean working tree.
+
+### 6. Server static verification
+
+On the live Ubuntu server after source promotion:
+
+- Prisma validate: PASS;
+- Prisma generate: PASS;
+- API typecheck: PASS;
+- API build: PASS;
+- repository remained clean.
+
+Required backend checks passed:
+
+`pnpm --filter @lexora/api typecheck`
+
+`pnpm --filter @lexora/api build`
+
+### 7. Ordinary PostgreSQL migration deployment
+
+Before ordinary migration:
+
+- database identity: `lexora_lms`;
+- target migration record: absent;
+- active pointer column: absent;
+- one-ACTIVE partial unique index: absent.
+
+Selected pre-migration counts were:
+
+`departments|syllabus_versions|course_offerings|teacher_course_assignments|batch_coordinator_assignments|course_outline_versions|active_course_outline_versions|audit_logs`
+
+`2|0|14|5|0|0|0|737`
+
+A validated retained private rollback backup was created before migration:
+
+`/home/sh002/lexora-private-backups/lexora_lms-before-202608270001_add_course_outline_active_version_binding-20260827T170116Z.dump`
+
+Backup properties:
+
+- mode: `0600`;
+- containing directory mode: `0700`;
+- size: `860119` bytes;
+- TOC lines: `799`;
+- SHA-256: `38f34a1ca6dc98058ae7952e1e9145c62639add10fa804acad4d900ad6cfaa33`.
+
+The ordinary migration applied successfully.
+
+Migration history became:
+
+`records|completed|incomplete|rolled_back`
+
+`1|1|0|0`
+
+Post-migration catalog verification passed for:
+
+- nullable exact active pointer;
+- composite tenant/offering identity FK;
+- `RESTRICT / RESTRICT`;
+- one-ACTIVE partial unique invariant.
+
+Automatic active binding/backfill count remained:
+
+`0`
+
+Selected business counts after migration remained exactly:
+
+`2|0|14|5|0|0|0|737`
+
+Therefore selected existing ordinary business data was preserved.
+
+Prisma database/datamodel diff reported:
+
+`NONE`
+
+A second migration deploy was a clean no-op.
+
+Migration status reported the ordinary database up to date.
+
+### 8. Running API activation
+
+A controlled PM2 restart activated the new server build.
+
+After restart:
+
+- PM2 status: online;
+- Direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- application listener: `127.0.0.1:4000` only;
+- unauthenticated activation route: HTTP `401`.
+
+The two immediate connection failures observed during the restart were transient startup-window probes; the verifier retry loop subsequently obtained HTTP `200` from both direct and Nginx health endpoints, and final health remained good.
+
+### 9. Ordinary authenticated runtime baseline
+
+Immediately before the final authenticated activation matrix:
+
+`academic_sessions|student_batches|syllabus_versions|law_course_offerings|course_outline_versions|active_outline_versions|active_offering_bindings|activation_permissions|activation_role_links|activation_success_audits`
+
+was:
+
+`0|0|0|13|0|0|0|0|0|0`
+
+The runtime contained no StudentBatch and no SyllabusVersion suitable for a fully bound activation target.
+
+Existing canonical CourseOfferings were not overwritten.
+
+A controlled temporary academic fixture therefore used the already verified compatible foundation:
+
+- department: `dept_law_test`;
+- programme: `program_law_sca_runtime`;
+- course: `course_law_enrollment_runtime_001`;
+- CurriculumVersion: `cv_law_sca_runtime_active`;
+- CurriculumCourse: `curriculum_course_law_enrollment_runtime_active`;
+- AcademicTerm: `term_law_2025_2026_s1`.
+
+Temporary fixture timestamp:
+
+`20260828010605`
+
+Temporary fixture identities included:
+
+- AcademicSession: `actrt_session_20260828010605`;
+- StudentBatch: `actrt_batch_20260828010605`;
+- SyllabusVersion: `actrt_syllabus_20260828010605`;
+- CourseOfferings:
+  - `actrt_offering_a_20260828010605`;
+  - `actrt_offering_b_20260828010605`;
+  - `actrt_offering_c_20260828010605`;
+  - `actrt_offering_d_20260828010605`;
+- CourseOutlineVersions:
+  - `actrt_outline_a1_20260828010605`;
+  - `actrt_outline_a2_20260828010605`;
+  - `actrt_outline_b1_20260828010605`;
+  - `actrt_outline_b2_20260828010605`;
+  - `actrt_outline_c1_20260828010605`;
+  - `actrt_outline_c2_20260828010605`;
+  - `actrt_outline_d1_20260828010605`.
+
+No raw password or access token is recorded here.
+
+### 10. Initial authenticated-verifier harness defect
+
+The first authenticated activation verifier stopped during pre-grant login-body preparation with:
+
+`Login input incomplete`
+
+The cause was a verifier stdin conflict:
+
+- credential data was piped toward Python;
+- the same Python process used stdin for its heredoc script;
+- therefore the credential payload was not available to the helper.
+
+This was a verifier/harness defect, not an application defect.
+
+The failed run occurred before the mutation phase.
+
+Immediately afterward the exact baseline was still:
+
+`0|0|0|13|0|0|0|0|0|0`
+
+and:
+
+- activation Permission residue: zero;
+- RolePermission residue: zero;
+- fixture residue: zero;
+- audit-failure trigger residue: zero;
+- audit-failure function residue: zero;
+- repository: clean/aligned.
+
+The corrected verifier also stopped persisting login request bodies and raw access-token authorization files.
+
+Passwords were entered interactively and were not printed.
+
+Access tokens were kept only transiently for authenticated requests and were removed from process-local state afterward.
+
+### 11. Pre-grant fail-closed authority evidence
+
+Before any temporary activation permission existed:
+
+- unauthenticated activation: HTTP `401`;
+- canonical Law Department Admin login: HTTP `201`;
+- fresh Department Admin principal did **not** contain the activation permission;
+- Department Admin activation attempt: HTTP `403`;
+- Department Admin activation with forged `x-department-id: dept_bus_test`: HTTP `403`;
+- product mutation from denied calls: zero;
+- activation success audit from denied calls: zero.
+
+This runtime verifies that the ordinary Department Admin wildcard/module authority does not silently satisfy the dedicated activation permission.
+
+### 12. Temporary exact activation authority
+
+For runtime verification only, one exact Permission was created with:
+
+- code: `course-management.course-outline.activate`;
+- resource: `course-management.course-outline`;
+- action: `activate`;
+- scope: `DEPARTMENT`.
+
+Exactly one temporary RolePermission linked it to:
+
+`role_law_department_admin`
+
+No Teacher or Student activation grant was created.
+
+A fresh Department Admin login then contained the exact activation permission.
+
+Fresh Teacher and Student principals did not contain it.
+
+The temporary grant was not treated as permanent institutional provisioning.
+
+### 13. Authorization, isolation and lifecycle negative matrix
+
+Runtime results:
+
+- authorised nonexistent activation target: HTTP `404`;
+- Teacher activation: HTTP `403`;
+- Student activation: HTTP `403`;
+- `DRAFT` activation attempt: HTTP `409`;
+- nested CourseOffering/CourseOutlineVersion mismatch: HTTP `404`;
+- negative-matrix activation success audits: zero.
+
+These results verify:
+
+- AuthGuard;
+- exact activation policy enforcement;
+- Teacher exclusion;
+- Student exclusion;
+- object-level nested identity;
+- safe not-found behavior for hidden/mismatched direct object access;
+- lifecycle fail-closed behavior.
+
+### 14. Forged department-header resistance and successful activation
+
+An authenticated Law Department Admin with the temporary exact activation permission sent a valid Law activation request while supplying a forged:
+
+`x-department-id: dept_bus_test`
+
+The request still operated only within the authenticated principal's actual Law department.
+
+Result:
+
+- HTTP `201`;
+- target `actrt_outline_a1_20260828010605` became `ACTIVE`;
+- `submittedAt` remained present;
+- `approvedAt` remained present;
+- server-controlled `activatedAt` became non-null;
+- `archivedAt` remained null;
+- exact CourseOffering active pointer became:
+  `actrt_outline_a1_20260828010605`;
+- exactly one ACTIVE outline existed for that offering;
+- exactly one success audit existed for that activation.
+
+The forged department header did not override authenticated principal scope.
+
+### 15. Activation audit evidence
+
+The successful activation audit recorded:
+
+- actor user:
+  `cmpmmnmk700072imth5f907a6`;
+- department:
+  `dept_law_test`;
+- action:
+  `course-management.course-outline.activated`;
+- target type:
+  `course_outline_version`;
+- outcome:
+  `SUCCESS`.
+
+The audit occurrence timestamp matched the authoritative activation timestamp for the verified success case.
+
+Narrative Course Outline content was deliberately populated with a runtime sentinel.
+
+The activation success audit contained zero occurrences of that narrative sentinel.
+
+Therefore the activation audit did not leak narrative Course Outline body content.
+
+### 16. Repeat and competing target behavior
+
+After `actrt_outline_a1_20260828010605` became ACTIVE:
+
+- repeat activation of the same target returned HTTP `409`;
+- activation of second APPROVED version
+  `actrt_outline_a2_20260828010605`
+  returned HTTP `409`;
+- the second version remained `APPROVED`;
+- the first version remained the exact active pointer;
+- activation success-audit cardinality for the offering remained exactly one.
+
+The implementation does not silently replace or auto-archive an already active version.
+
+### 17. Real PostgreSQL/API concurrency evidence
+
+Two real authenticated requests concurrently attempted to activate:
+
+`actrt_outline_c1_20260828010605`
+
+Observed HTTP results:
+
+`409 / 201`
+
+Exactly:
+
+- one request succeeded;
+- one request conflicted.
+
+Post-race verification:
+
+- exactly one ACTIVE CourseOutlineVersion existed for the offering;
+- the exact CourseOffering active pointer referenced
+  `actrt_outline_c1_20260828010605`;
+- exactly one activation success audit existed;
+- competing APPROVED target
+  `actrt_outline_c2_20260828010605`
+  remained `APPROVED`;
+- later activation of that competing target returned HTTP `409`.
+
+This is real runtime evidence for fail-closed same-target activation concurrency.
+
+### 18. Forced audit-write failure and transaction atomicity
+
+For runtime verification only, a temporary PostgreSQL trigger forced insertion of the activation success audit for:
+
+`actrt_outline_d1_20260828010605`
+
+to fail.
+
+The activation request returned:
+
+HTTP `500`
+
+After the forced audit failure:
+
+- target outline remained `APPROVED`;
+- `activatedAt` remained null;
+- CourseOffering active pointer remained null;
+- activation success audit count for the failed target remained zero.
+
+Therefore:
+
+- CourseOutlineVersion activation mutation rolled back;
+- exact CourseOffering pointer mutation rolled back;
+- failed transaction emitted no success audit.
+
+The temporary failure trigger and function were removed immediately afterward.
+
+This runtime verifies activation/business/audit atomicity.
+
+### 19. Final pre-cleanup runtime evidence
+
+Immediately before cleanup:
+
+- successful runtime activation audits: exactly `2`;
+- ACTIVE runtime outlines: exactly `2`;
+- exact non-null active CourseOffering pointers: exactly `2`.
+
+The two successful runtime targets were:
+
+- `actrt_outline_a1_20260828010605`;
+- `actrt_outline_c1_20260828010605`.
+
+Both success audits recorded:
+
+- canonical active Law Department Admin actor;
+- Law department;
+- correct CourseOutlineVersion target;
+- `SUCCESS`.
+
+### 20. Exact cleanup and restoration
+
+Cleanup removed only the dedicated temporary verification state:
+
+- activation success audits for the temporary targets;
+- runtime-only grant audit;
+- active CourseOffering pointers;
+- seven temporary CourseOutlineVersions;
+- four temporary CourseOfferings;
+- one temporary SyllabusVersion;
+- one temporary StudentBatch;
+- one temporary AcademicSession;
+- one temporary RolePermission;
+- one temporary Permission;
+- temporary audit-failure trigger/function.
+
+The exact measured baseline before the authenticated matrix was:
+
+`0|0|0|13|0|0|0|0|0|0`
+
+The exact measured baseline after cleanup was:
+
+`0|0|0|13|0|0|0|0|0|0`
+
+Dedicated fixture residue:
+
+`0`
+
+Therefore feature/RBAC baseline restoration passed exactly.
+
+Permanent activation authority remained unprovisioned.
+
+### 21. Final platform non-disruption
+
+After the complete authenticated runtime matrix and cleanup:
+
+- implementation commit remained:
+  `afc0c0cdc9a03a7798136dbf6215ff8c12818225`;
+- server `HEAD` and `origin/main` remained aligned;
+- repository remained clean;
+- PM2 PID remained unchanged throughout the authenticated matrix;
+- Direct API health remained HTTP `200`;
+- Nginx API health remained HTTP `200`;
+- application listener remained `127.0.0.1:4000` only.
+
+Authenticated verifier evidence log:
+
+`/tmp/lexora-course-outline-activation-authenticated-20260828010605.log`
+
+Corrected verifier SHA-256:
+
+`078f0c1f884ef2a8e0752828fb8454298a5f5e67d91ec99e4dfc0a342c1af92e`
+
+No raw access token, refresh token, password, database credential, or production secret is recorded in this checkpoint.
+
+### 22. Current verified status
+
+Course Outline:
+
+`APPROVED -> ACTIVE`
+
+and exact active CourseOutlineVersion binding are now:
+
+**IMPLEMENTED / INDEPENDENTLY REVIEWED / STATICALLY VERIFIED / DISPOSABLE-POSTGRESQL VERIFIED / COMMITTED / PUSHED / DEPLOYED / ORDINARY-POSTGRESQL VERIFIED / AUTHENTICATED-HTTP VERIFIED / AUTHORIZATION-NEGATIVE VERIFIED / DEPARTMENT-ISOLATION VERIFIED / REAL-CONCURRENCY VERIFIED / AUDIT-ATOMICITY VERIFIED / CLEANUP VERIFIED.**
+
+Permanent institutional activation authority remains:
+
+**PENDING / NOT PROVISIONED**
+
+Do not infer permanent activation authority from:
+
+- Department Admin wildcard authority;
+- temporary runtime verification grants;
+- Batch Coordinator role;
+- Teacher role;
+- prior approval authority;
+- Programme Coordinator or Chairman concepts unless later source-backed.
+
+### 23. Next focused Course Outline lifecycle checkpoint
+
+The next lifecycle transition is:
+
+`ACTIVE -> ARCHIVED`
+
+Before implementing it, perform a fresh source/current-code audit for:
+
+- exact source-backed archival authority;
+- whether archival clears or preserves the CourseOffering active pointer;
+- archived-version immutability;
+- interaction with a subsequent new-version/amendment workflow;
+- whether a new ACTIVE version may exist only after explicit archival;
+- concurrency and locking order;
+- audit requirements;
+- exact read semantics for historical versus current active outline versions.
+
+Do not infer archival governance from activation governance.
