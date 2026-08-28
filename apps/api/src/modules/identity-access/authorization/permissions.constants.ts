@@ -57,6 +57,7 @@ export const PERMISSIONS = {
       "course-management.batch-coordinator-assignment.manage",
     COURSE_OUTLINE_APPROVE: "course-management.course-outline.approve",
     COURSE_OUTLINE_ACTIVATE: "course-management.course-outline.activate",
+    COURSE_OUTLINE_ARCHIVE: "course-management.course-outline.archive",
     SYLLABUS_VERSION_MANAGE: "course-management.syllabus-version.manage",
     SYLLABUS_VERSION_LIFECYCLE_MANAGE:
       "course-management.syllabus-version.lifecycle.manage"

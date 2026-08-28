@@ -507,6 +507,12 @@ test("Course Outline endpoints are nested, guarded, and use dedicated read/write
       RequestMethod.POST,
       ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_ACTIVATE,
     ],
+    [
+      "archiveCourseOutlineVersion",
+      ":id/course-outline-versions/:courseOutlineVersionId/archive",
+      RequestMethod.POST,
+      ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_ARCHIVE,
+    ],
   ] as const;
 
   assert.deepEqual(
@@ -534,6 +540,7 @@ test("Course Outline routes forward only nested identities and whitelisted DTO d
       "returnCourseOutlineForCorrection",
       "approveCourseOutlineVersion",
       "activateCourseOutlineVersion",
+      "archiveCourseOutlineVersion",
     ].map((method) => [
       method,
       async (...args: unknown[]) => {
@@ -624,6 +631,25 @@ test("Course Outline routes forward only nested identities and whitelisted DTO d
     curriculumCourseId: "attacker-course",
     syllabusVersionId: "attacker-syllabus",
   } as never);
+  assert.equal(
+    CourseOfferingsController.prototype.archiveCourseOutlineVersion.length,
+    1,
+  );
+  await controller.archiveCourseOutlineVersion({
+    id: "offering-a",
+    courseOutlineVersionId: "outline-a",
+    departmentId: "attacker-department",
+    status: "APPROVED",
+    archivedAt: "attacker-controlled",
+    activatedAt: "attacker-controlled",
+    activeCourseOutlineVersionId: "attacker-outline",
+    actorUserId: "attacker-user",
+    studentBatchId: "attacker-batch",
+    academicTermId: "attacker-term",
+    curriculumCourseId: "attacker-course",
+    syllabusVersionId: "attacker-syllabus",
+    transitionAt: "attacker-controlled",
+  } as never);
 
   assert.deepEqual(calls, [
     {
@@ -659,7 +685,96 @@ test("Course Outline routes forward only nested identities and whitelisted DTO d
       method: "activateCourseOutlineVersion",
       args: ["offering-a", "outline-a"],
     },
+    {
+      method: "archiveCourseOutlineVersion",
+      args: ["offering-a", "outline-a"],
+    },
   ]);
+});
+
+test("Course Outline archival excludes role wildcards and requires exact loaded permission provenance", () => {
+  const authorization = new AuthorizationService();
+  const assignment = {
+    userRoleId: "archiver-assignment-a",
+    roleId: "archiver-role-a",
+    departmentId: "department-a",
+    role: "support" as const,
+  };
+  const principal = (
+    role: "department_admin" | "teacher" | "student" | "support",
+    permission?: Record<string, unknown>,
+  ) =>
+    ({
+      actorId: `${role}-a`,
+      actorType: "user",
+      isAuthenticated: true,
+      activeDepartmentId: "department-a",
+      roleAssignments: [{ ...assignment, role }],
+      permissions: permission
+        ? [
+            {
+              resource: "course-management.course-outline",
+              action: "archive",
+              scope: "department",
+              source: {
+                departmentId: "department-a",
+                userRoleId: assignment.userRoleId,
+                roleId: assignment.roleId,
+              },
+              ...permission,
+            },
+          ]
+        : [],
+    }) as never;
+
+  for (const role of [
+    "department_admin",
+    "teacher",
+    "student",
+    "support",
+  ] as const) {
+    assert.equal(
+      authorization.isAllowed(
+        principal(role),
+        ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_ARCHIVE,
+      ),
+      false,
+    );
+  }
+  assert.equal(
+    authorization.isAllowed(
+      principal("support", {}),
+      ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_ARCHIVE,
+    ),
+    true,
+  );
+  for (const invalid of [
+    { resource: "course-management", action: "*" },
+    { action: "manage" },
+    { scope: "self" },
+    {
+      source: {
+        departmentId: "department-b",
+        userRoleId: assignment.userRoleId,
+        roleId: assignment.roleId,
+      },
+    },
+    {
+      source: {
+        departmentId: "department-a",
+        userRoleId: "other-assignment",
+        roleId: assignment.roleId,
+      },
+    },
+  ]) {
+    assert.equal(
+      authorization.isAllowed(
+        principal("support", invalid),
+        ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_ARCHIVE,
+      ),
+      false,
+    );
+  }
 });
 
 test("Course Outline activation excludes wildcard authority and requires exact loaded permission provenance", () => {

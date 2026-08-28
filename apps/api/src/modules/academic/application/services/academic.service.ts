@@ -28,6 +28,7 @@ import { ACADEMIC_REPOSITORY } from "../../domain/academic.constants";
 import type {
   AcademicRepositoryPort,
   ActivateCourseOutlineVersionInput,
+  ArchiveCourseOutlineVersionInput,
   ApproveCourseOutlineVersionInput,
   AcademicSessionListFilters,
   AcademicTermListFilters,
@@ -122,6 +123,12 @@ const COURSE_OUTLINE_ACTIVATION_PERMISSION = {
   code: PERMISSIONS.COURSE_MANAGEMENT.COURSE_OUTLINE_ACTIVATE,
   resource: "course-management.course-outline",
   action: "activate",
+} as const;
+
+const COURSE_OUTLINE_ARCHIVAL_PERMISSION = {
+  code: PERMISSIONS.COURSE_MANAGEMENT.COURSE_OUTLINE_ARCHIVE,
+  resource: "course-management.course-outline",
+  action: "archive",
 } as const;
 
 @Injectable()
@@ -1174,6 +1181,68 @@ export class AcademicService {
         );
       case "CONCURRENT_CONFLICT":
         throw new ConflictException("Course Outline activation conflict");
+    }
+  }
+
+  async archiveCourseOutlineVersion(
+    courseOfferingId: string,
+    courseOutlineVersionId: string,
+  ) {
+    const requestContext = this.requestContextService.get();
+    const principal = requestContext?.principal;
+    if (
+      !principal ||
+      principal.isAuthenticated !== true ||
+      principal.actorType !== "user" ||
+      !principal.actorId ||
+      !principal.activeDepartmentId
+    ) {
+      throw new BadRequestException(
+        "Authenticated department user context is required",
+      );
+    }
+
+    const archivalGrant = principal.permissions.find(
+      (permission) =>
+        permission.resource === COURSE_OUTLINE_ARCHIVAL_PERMISSION.resource &&
+        permission.action === COURSE_OUTLINE_ARCHIVAL_PERMISSION.action &&
+        permission.scope === "department" &&
+        isPermissionGrantFromLoadedRole(principal, permission),
+    );
+    if (!archivalGrant) {
+      throw new ForbiddenException(
+        "Exact Course Outline archival permission is required",
+      );
+    }
+
+    const result = await this.repository.archiveCourseOutlineVersion({
+      departmentId: principal.activeDepartmentId,
+      courseOfferingId,
+      courseOutlineVersionId,
+      actorUserId: principal.actorId,
+      authorizationUserRoleId: archivalGrant.source.userRoleId,
+      authorizationRoleId: archivalGrant.source.roleId,
+      requestId: requestContext?.requestId,
+      ipAddress: requestContext?.audit.ipAddress,
+      userAgent: requestContext?.audit.userAgent,
+    } satisfies ArchiveCourseOutlineVersionInput);
+
+    switch (result.outcome) {
+      case "ARCHIVED":
+        return result.courseOutlineVersion;
+      case "OFFERING_OR_AUTHORITY_NOT_FOUND":
+      case "OUTLINE_NOT_FOUND":
+        throw new NotFoundException("Course Outline version not found");
+      case "OUTLINE_NOT_ARCHIVABLE":
+        throw new ConflictException(
+          "Course Outline version cannot be archived in its current status",
+        );
+      case "ACTIVE_BINDING_MISMATCH":
+        throw new ConflictException(
+          "Course Outline active binding does not match the version",
+        );
+      case "CONCURRENT_CONFLICT":
+        throw new ConflictException("Course Outline archival conflict");
     }
   }
 

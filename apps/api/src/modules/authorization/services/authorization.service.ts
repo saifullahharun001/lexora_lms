@@ -40,6 +40,11 @@ const EXACT_PERMISSION_POLICIES = {
     resource: "course-management.course-outline",
     action: "activate",
     scope: "department"
+  },
+  [PERMISSIONS.COURSE_MANAGEMENT.COURSE_OUTLINE_ARCHIVE]: {
+    resource: "course-management.course-outline",
+    action: "archive",
+    scope: "department"
   }
 } as const;
 

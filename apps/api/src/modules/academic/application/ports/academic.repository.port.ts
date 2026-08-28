@@ -294,6 +294,28 @@ export type ActivateCourseOutlineVersionResult =
         | "CONCURRENT_CONFLICT";
     };
 
+export interface ArchiveCourseOutlineVersionInput extends CourseOutlineWriteAuditInput {
+  departmentId: string;
+  courseOfferingId: string;
+  courseOutlineVersionId: string;
+  authorizationUserRoleId: string;
+  authorizationRoleId: string;
+}
+
+export type ArchiveCourseOutlineVersionResult =
+  | {
+      outcome: "ARCHIVED";
+      courseOutlineVersion: CourseOutlineVersionView;
+    }
+  | {
+      outcome:
+        | "OFFERING_OR_AUTHORITY_NOT_FOUND"
+        | "OUTLINE_NOT_FOUND"
+        | "OUTLINE_NOT_ARCHIVABLE"
+        | "ACTIVE_BINDING_MISMATCH"
+        | "CONCURRENT_CONFLICT";
+    };
+
 export interface ProgramLearningOutcomeReadView {
   id: string;
   code: string;
@@ -886,6 +908,9 @@ export interface AcademicRepositoryPort {
   activateCourseOutlineVersion(
     input: ActivateCourseOutlineVersionInput,
   ): Promise<ActivateCourseOutlineVersionResult>;
+  archiveCourseOutlineVersion(
+    input: ArchiveCourseOutlineVersionInput,
+  ): Promise<ArchiveCourseOutlineVersionResult>;
   createCourseOffering(input: CreateCourseOfferingInput): Promise<unknown>;
   updateCourseOffering(
     departmentId: string,

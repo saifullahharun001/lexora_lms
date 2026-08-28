@@ -27,6 +27,7 @@ export const ACADEMIC_AUDIT_EVENTS = {
     "course-management.course-outline.returned-for-correction",
   COURSE_OUTLINE_APPROVED: "course-management.course-outline.approved",
   COURSE_OUTLINE_ACTIVATED: "course-management.course-outline.activated",
+  COURSE_OUTLINE_ARCHIVED: "course-management.course-outline.archived",
   CURRICULUM_VERSION_APPROVED:
     "course-management.curriculum-version.approved",
   CURRICULUM_VERSION_ACTIVATED:

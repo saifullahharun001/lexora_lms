@@ -71,6 +71,20 @@ function activationGrant(role: Role, overrides: Record<string, unknown> = {}) {
   };
 }
 
+function archivalGrant(role: Role, overrides: Record<string, unknown> = {}) {
+  return {
+    resource: "course-management.course-outline",
+    action: "archive",
+    scope: "department",
+    source: {
+      departmentId: "department-a",
+      userRoleId: `${role}-assignment-0`,
+      roleId: `${role}-role-0`,
+    },
+    ...overrides,
+  };
+}
+
 function harness(
   role: Role,
   options: {
@@ -82,6 +96,7 @@ function harness(
     returnForCorrectionResult?: unknown;
     approvalResult?: unknown;
     activationResult?: unknown;
+    archivalResult?: unknown;
     permissions?: unknown[];
     listResult?: unknown;
     detailResult?: unknown;
@@ -194,6 +209,22 @@ function harness(
             submittedAt: new Date("2026-08-20T01:00:00.000Z"),
             approvedAt: new Date("2026-08-20T02:00:00.000Z"),
             activatedAt: new Date("2026-08-20T03:00:00.000Z"),
+          },
+        }
+      );
+    },
+    archiveCourseOutlineVersion: async (...args: unknown[]) => {
+      calls.push({ method: "archive", args });
+      return (
+        options.archivalResult ?? {
+          outcome: "ARCHIVED",
+          courseOutlineVersion: {
+            ...outline,
+            status: CourseOutlineStatus.ARCHIVED,
+            submittedAt: new Date("2026-08-20T01:00:00.000Z"),
+            approvedAt: new Date("2026-08-20T02:00:00.000Z"),
+            activatedAt: new Date("2026-08-20T03:00:00.000Z"),
+            archivedAt: new Date("2026-08-20T04:00:00.000Z"),
           },
         }
       );
@@ -1035,6 +1066,138 @@ test("activation maps hidden outcomes to 404 and lifecycle, existing-active, or 
     });
     await assert.rejects(
       h.service.activateCourseOutlineVersion("offering-a", "outline-a"),
+      ConflictException,
+    );
+  }
+});
+
+test("archival derives department, actor, audit context, and exact permission provenance only from the principal", async () => {
+  const h = harness("support", { permissions: [archivalGrant("support")] });
+  const result = await h.service.archiveCourseOutlineVersion(
+    "offering-a",
+    "outline-a",
+  );
+  assert.equal(result.status, CourseOutlineStatus.ARCHIVED);
+
+  const input = h.calls[0]!.args[0] as Record<string, unknown>;
+  assert.deepEqual(input, {
+    departmentId: "department-a",
+    courseOfferingId: "offering-a",
+    courseOutlineVersionId: "outline-a",
+    actorUserId: "support-user",
+    authorizationUserRoleId: "support-assignment-0",
+    authorizationRoleId: "support-role-0",
+    requestId: "request-a",
+    ipAddress: "127.0.0.1",
+    userAgent: "test-agent",
+  });
+  for (const clientControlledField of [
+    "status",
+    "archivedAt",
+    "activatedAt",
+    "activeCourseOutlineVersionId",
+    "departmentHeader",
+    "studentBatchId",
+    "academicTermId",
+    "curriculumCourseId",
+    "syllabusVersionId",
+    "transitionAt",
+  ]) {
+    assert.equal(clientControlledField in input, false);
+  }
+});
+
+test("ordinary roles, wildcard authority, and malformed provenance cannot authorize archival", async () => {
+  for (const role of [
+    "department_admin",
+    "teacher",
+    "student",
+    "auditor",
+    "support",
+  ] as const) {
+    const h = harness(role);
+    await assert.rejects(
+      h.service.archiveCourseOutlineVersion("offering-a", "outline-a"),
+      ForbiddenException,
+    );
+    assert.deepEqual(h.calls, []);
+  }
+
+  for (const permission of [
+    archivalGrant("support", {
+      resource: "course-management",
+      action: "*",
+    }),
+    archivalGrant("support", { action: "manage" }),
+    archivalGrant("support", { scope: "self" }),
+    archivalGrant("support", {
+      source: {
+        departmentId: "department-b",
+        userRoleId: "support-assignment-0",
+        roleId: "support-role-0",
+      },
+    }),
+    archivalGrant("support", {
+      source: {
+        departmentId: "department-a",
+        userRoleId: "other-assignment",
+        roleId: "support-role-0",
+      },
+    }),
+  ]) {
+    const h = harness("support", { permissions: [permission] });
+    await assert.rejects(
+      h.service.archiveCourseOutlineVersion("offering-a", "outline-a"),
+      ForbiddenException,
+    );
+    assert.deepEqual(h.calls, []);
+  }
+});
+
+test("archival rejects incomplete authenticated user context before repository mutation", async () => {
+  for (const principalOverride of [
+    { isAuthenticated: false },
+    { actorType: "service" },
+    { actorId: "" },
+    { activeDepartmentId: null },
+  ]) {
+    const h = harness("support", {
+      permissions: [archivalGrant("support")],
+    });
+    Object.assign(h.context.principal, principalOverride);
+    await assert.rejects(
+      h.service.archiveCourseOutlineVersion("offering-a", "outline-a"),
+      BadRequestException,
+    );
+    assert.deepEqual(h.calls, []);
+  }
+});
+
+test("archival maps hidden outcomes to 404 and lifecycle, binding, or concurrency outcomes to 409", async () => {
+  for (const outcome of [
+    "OFFERING_OR_AUTHORITY_NOT_FOUND",
+    "OUTLINE_NOT_FOUND",
+  ] as const) {
+    const h = harness("support", {
+      permissions: [archivalGrant("support")],
+      archivalResult: { outcome },
+    });
+    await assert.rejects(
+      h.service.archiveCourseOutlineVersion("offering-a", "outline-a"),
+      NotFoundException,
+    );
+  }
+  for (const outcome of [
+    "OUTLINE_NOT_ARCHIVABLE",
+    "ACTIVE_BINDING_MISMATCH",
+    "CONCURRENT_CONFLICT",
+  ] as const) {
+    const h = harness("support", {
+      permissions: [archivalGrant("support")],
+      archivalResult: { outcome },
+    });
+    await assert.rejects(
+      h.service.archiveCourseOutlineVersion("offering-a", "outline-a"),
       ConflictException,
     );
   }
