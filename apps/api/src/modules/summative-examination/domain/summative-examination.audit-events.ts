@@ -14,4 +14,16 @@ export const SUMMATIVE_EXAMINATION_AUDIT_EVENTS = {
   COMMITTEE_ASSIGNMENT_REACTIVATED:
     "summative-examination.committee-assignment.reactivated",
   COMMITTEE_ASSIGNMENT_ARCHIVED: "summative-examination.committee-assignment.archived",
+  EXAMINER_ASSIGNMENT_CREATED:
+    "summative-examination.examiner-assignment.created",
+  EXAMINER_ASSIGNMENT_EXPIRED_AUTO_RETIRED:
+    "summative-examination.examiner-assignment.expired-auto-retired",
+  EXAMINER_ASSIGNMENT_UNASSIGNED:
+    "summative-examination.examiner-assignment.unassigned",
+  EXAMINER_ASSIGNMENT_REACTIVATED:
+    "summative-examination.examiner-assignment.reactivated",
+  EXAMINER_ASSIGNMENT_EXPIRY_UPDATED:
+    "summative-examination.examiner-assignment.expiry-updated",
+  EXAMINER_ASSIGNMENT_ARCHIVED:
+    "summative-examination.examiner-assignment.archived",
 } as const;

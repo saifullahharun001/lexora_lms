@@ -13,7 +13,8 @@ import { PERMISSIONS } from "@/modules/identity-access/authorization/permissions
 
 export type SummativeManagementResource =
   | "summative-examination.setup"
-  | "summative-examination.committee";
+  | "summative-examination.committee"
+  | "summative-examination.examiner-assignment";
 
 export interface SummativeManagementAuthority {
   departmentId: string;
@@ -29,6 +30,11 @@ const MANAGEMENT_PERMISSIONS = {
   },
   "summative-examination.committee": {
     code: PERMISSIONS.SUMMATIVE_EXAMINATION.COMMITTEE_MANAGE_DEPARTMENT,
+    action: "manage",
+  },
+  "summative-examination.examiner-assignment": {
+    code:
+      PERMISSIONS.SUMMATIVE_EXAMINATION.EXAMINER_ASSIGNMENT_MANAGE_DEPARTMENT,
     action: "manage",
   },
 } as const;

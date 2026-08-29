@@ -188,6 +188,8 @@ export const PERMISSIONS = {
   SUMMATIVE_EXAMINATION: {
     SETUP_MANAGE_DEPARTMENT: "summative-examination.setup.manage_department",
     COMMITTEE_MANAGE_DEPARTMENT: "summative-examination.committee.manage_department",
+    EXAMINER_ASSIGNMENT_MANAGE_DEPARTMENT:
+      "summative-examination.examiner-assignment.manage_department",
   }
 } as const;
 

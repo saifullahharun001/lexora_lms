@@ -23,3 +23,15 @@ export class AssignmentIdParamDto {
   @MinLength(3)
   assignmentId!: string;
 }
+
+export class ExaminationCourseIdParamDto {
+  @IsString()
+  @MinLength(3)
+  examinationCourseId!: string;
+}
+
+export class ExaminerAssignmentIdParamDto {
+  @IsString()
+  @MinLength(3)
+  assignmentId!: string;
+}

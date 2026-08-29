@@ -80,6 +80,10 @@ for (const [resource, expectedCode] of [
     "summative-examination.committee",
     "summative-examination.committee.manage_department",
   ],
+  [
+    "summative-examination.examiner-assignment",
+    "summative-examination.examiner-assignment.manage_department",
+  ],
 ] as const) {
   test(`exact ${resource} grant succeeds and live query requires exact provenance`, async () => {
     const h = harness(principal(resource));
@@ -187,6 +191,9 @@ test("Teacher, wrong department, and fabricated role provenance fail before data
   const cases = [
     principal("summative-examination.setup", {
       roleAssignments: [{ ...roleAssignment, role: "teacher" }],
+    }),
+    principal("summative-examination.setup", {
+      roleAssignments: [{ ...roleAssignment, role: "student" }],
     }),
     principal("summative-examination.setup", {
       activeDepartmentId: "department-b",

@@ -38,6 +38,11 @@ const EXPLICIT_DEPARTMENT_ADMIN_PERMISSION_POLICIES = {
     resource: "summative-examination.committee",
     action: "manage",
     scope: "department"
+  },
+  [SUMMATIVE_EXAMINATION_POLICY_NAMES.EXAMINER_ASSIGNMENT_MANAGE]: {
+    resource: "summative-examination.examiner-assignment",
+    action: "manage",
+    scope: "department"
   }
 } as const;
 

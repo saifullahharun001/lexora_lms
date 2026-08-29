@@ -98,6 +98,21 @@ export const SUMMATIVE_EXAMINATION_COMMITTEE_MANAGE_PROVISIONING = {
   auditAction: "authorization.summative-examination-committee-manage.provisioned",
 } as const;
 
+export const SUMMATIVE_EXAMINATION_EXAMINER_ASSIGNMENT_MANAGE_PROVISIONING = {
+  permission: {
+    code:
+      PERMISSIONS.SUMMATIVE_EXAMINATION.EXAMINER_ASSIGNMENT_MANAGE_DEPARTMENT,
+    resource: "summative-examination.examiner-assignment",
+    action: "manage",
+    scope: PermissionScope.DEPARTMENT,
+    description:
+      "Manage First and Second Examiner assignments within the active department governance scope",
+  },
+  targetRoleCode: PLATFORM_ROLES.DEPARTMENT_ADMIN,
+  auditAction:
+    "authorization.summative-examination-examiner-assignment-manage.provisioned",
+} as const;
+
 export const AUTHORIZATION_PROVISIONING_DEFINITIONS = [
   SYLLABUS_VERSION_MANAGE_PROVISIONING,
   SYLLABUS_VERSION_LIFECYCLE_MANAGE_PROVISIONING,
@@ -106,6 +121,7 @@ export const AUTHORIZATION_PROVISIONING_DEFINITIONS = [
   BATCH_COORDINATOR_ASSIGNMENT_MANAGE_PROVISIONING,
   SUMMATIVE_EXAMINATION_SETUP_MANAGE_PROVISIONING,
   SUMMATIVE_EXAMINATION_COMMITTEE_MANAGE_PROVISIONING,
+  SUMMATIVE_EXAMINATION_EXAMINER_ASSIGNMENT_MANAGE_PROVISIONING,
 ] as const;
 
 export type AuthorizationProvisioningDefinition =

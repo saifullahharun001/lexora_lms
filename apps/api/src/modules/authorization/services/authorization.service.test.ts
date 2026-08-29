@@ -629,6 +629,10 @@ for (const [policy, resource] of [
     "summative-examination.committee.manage",
     "summative-examination.committee",
   ],
+  [
+    "summative-examination.examiner-assignment.manage",
+    "summative-examination.examiner-assignment",
+  ],
 ] as const) {
   test(`${policy} excludes wildcard authority and requires exact Department Admin provenance`, () => {
     const service = new AuthorizationService();
@@ -688,6 +692,16 @@ for (const [policy, resource] of [
       service.isAllowed(
         principal({
           roleAssignments: [{ ...assignment, role: "teacher" }],
+          permissions: [exactGrant],
+        }),
+        policy,
+      ),
+      false,
+    );
+    assert.equal(
+      service.isAllowed(
+        principal({
+          roleAssignments: [{ ...assignment, role: "student" }],
           permissions: [exactGrant],
         }),
         policy,

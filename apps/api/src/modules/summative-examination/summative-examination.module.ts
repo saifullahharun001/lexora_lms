@@ -5,10 +5,13 @@ import { RequestContextModule } from "@/common/request-context/request-context.m
 import { AuthorizationModule } from "@/modules/authorization/authorization.module";
 
 import { ExaminationCommitteeService } from "./application/services/examination-committee.service";
+import { ExaminationCourseExaminerAssignmentService } from "./application/services/examination-course-examiner-assignment.service";
 import { ExaminationSetupService } from "./application/services/examination-setup.service";
+import { ExaminerAuthorityService } from "./application/services/examiner-authority.service";
 import { SummativeManagementAuthorizerService } from "./application/services/summative-management-authorizer.service";
 import { ExaminationCoursesController } from "./presentation/http/examination-courses.controller";
 import { ExaminationCommitteesController } from "./presentation/http/examination-committees.controller";
+import { ExaminationCourseExaminerAssignmentsController } from "./presentation/http/examination-course-examiner-assignments.controller";
 import { ExaminationsController } from "./presentation/http/examinations.controller";
 
 @Module({
@@ -17,12 +20,20 @@ import { ExaminationsController } from "./presentation/http/examinations.control
     ExaminationsController,
     ExaminationCoursesController,
     ExaminationCommitteesController,
+    ExaminationCourseExaminerAssignmentsController,
   ],
   providers: [
     SummativeManagementAuthorizerService,
     ExaminationSetupService,
     ExaminationCommitteeService,
+    ExaminationCourseExaminerAssignmentService,
+    ExaminerAuthorityService,
   ],
-  exports: [ExaminationSetupService, ExaminationCommitteeService],
+  exports: [
+    ExaminationSetupService,
+    ExaminationCommitteeService,
+    ExaminationCourseExaminerAssignmentService,
+    ExaminerAuthorityService,
+  ],
 })
 export class SummativeExaminationModule {}

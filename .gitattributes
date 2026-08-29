@@ -10,3 +10,4 @@ apps/api/prisma/migrations/202608240002_add_batch_coordinator_assignment_foundat
 apps/api/prisma/migrations/202608260001_add_course_outline_correction_request_foundation/migration.sql -text
 apps/api/prisma/migrations/202608280001_add_summative_examination_committee_foundation/migration.sql -text
 apps/api/prisma/migrations/202608290001_add_external_examination_committee_member/migration.sql -text
+apps/api/prisma/migrations/202608290002_add_examination_course_examiner_assignment/migration.sql -text

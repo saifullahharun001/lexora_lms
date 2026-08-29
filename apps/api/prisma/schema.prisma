@@ -195,6 +195,17 @@ enum ExaminationCommitteeAssignmentStatus {
   ARCHIVED
 }
 
+enum ExaminationCourseExaminerSeat {
+  FIRST_EXAMINER
+  SECOND_EXAMINER
+}
+
+enum ExaminationCourseExaminerAssignmentStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
 enum EnrollmentStatus {
   PENDING
   APPROVED
@@ -463,6 +474,7 @@ model Department {
   examinationCourses              ExaminationCourse[]
   examinationCommittees           ExaminationCommittee[]
   examinationCommitteeAssignments ExaminationCommitteeAssignment[]
+  examinationCourseExaminerAssignments ExaminationCourseExaminerAssignment[]
   curriculumVersions              CurriculumVersion[]
   curriculumCourses               CurriculumCourse[]
   programLearningOutcomes         ProgramLearningOutcome[]
@@ -555,6 +567,8 @@ model User {
   batchCoordinatorAssignedBy         BatchCoordinatorAssignment[]     @relation("BatchCoordinatorAssignedBy")
   examinationCommitteeAssignments     ExaminationCommitteeAssignment[] @relation("ExaminationCommitteeAssignee")
   examinationCommitteeAssignmentsMade ExaminationCommitteeAssignment[] @relation("ExaminationCommitteeAssignedBy")
+  examinationCourseExaminerAssignments     ExaminationCourseExaminerAssignment[] @relation("ExaminationCourseExaminerAssignee")
+  examinationCourseExaminerAssignmentsMade ExaminationCourseExaminerAssignment[] @relation("ExaminationCourseExaminerAssignedBy")
   studentEnrollments                 Enrollment[]                     @relation("StudentEnrollments")
   enrollmentApprovals                Enrollment[]                     @relation("EnrollmentApprovedBy")
   studentCurriculumAssignments       StudentCurriculumAssignment[]    @relation("StudentCurriculumAssignments")
@@ -805,6 +819,7 @@ model Examination {
   examinationCourses   ExaminationCourse[]
   committees           ExaminationCommittee[]
   committeeAssignments ExaminationCommitteeAssignment[]
+  examinerAssignments  ExaminationCourseExaminerAssignment[]
 
   @@unique([id, departmentId], map: "examination_id_department_uq")
   @@unique([id, departmentId, academicProgramId, academicSessionId, academicTermId], map: "examination_scope_identity_uq")
@@ -846,6 +861,7 @@ model ExaminationCourse {
   syllabusVersion                 SyllabusVersion             @relation(fields: [syllabusVersionId, departmentId, curriculumCourseId], references: [id, departmentId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "examination_course_syllabus_identity_fkey")
   assessmentTemplate              CourseAssessmentTemplate    @relation(fields: [assessmentTemplateId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "examination_course_assessment_template_fkey")
   summativeAssessmentComponent    AssessmentTemplateComponent @relation(fields: [summativeAssessmentComponentId, departmentId, assessmentTemplateId, summativeComponentCode, summativeFullMark], references: [id, departmentId, assessmentTemplateId, code, maximumMarks], onDelete: Restrict, onUpdate: Restrict, map: "examination_course_summative_component_fkey")
+  examinerAssignments             ExaminationCourseExaminerAssignment[]
 
   @@unique([id, departmentId, examinationId], map: "examination_course_scope_identity_uq")
   @@unique([departmentId, examinationId, courseOfferingId], map: "examination_course_offering_uq")
@@ -904,6 +920,35 @@ model ExaminationCommitteeAssignment {
   @@index([departmentId, assignedUserId, status], map: "exam_committee_assignment_user_status_idx")
   @@index([departmentId, assignedByUserId], map: "exam_committee_assignment_assigner_idx")
   @@map("examination_committee_assignments")
+}
+
+model ExaminationCourseExaminerAssignment {
+  id                  String                                    @id @default(cuid())
+  departmentId        String                                    @map("department_id")
+  examinationId       String                                    @map("examination_id")
+  examinationCourseId String                                    @map("examination_course_id")
+  assignedUserId      String                                    @map("assigned_user_id")
+  assignedByUserId    String                                    @map("assigned_by_user_id")
+  seat                ExaminationCourseExaminerSeat
+  status              ExaminationCourseExaminerAssignmentStatus @default(ACTIVE)
+  assignedAt          DateTime                                  @default(now()) @map("assigned_at")
+  expiresAt           DateTime?                                 @map("expires_at")
+  unassignedAt        DateTime?                                 @map("unassigned_at")
+  archivedAt          DateTime?                                 @map("archived_at")
+  createdAt           DateTime                                  @default(now()) @map("created_at")
+  updatedAt           DateTime                                  @updatedAt @map("updated_at")
+  department          Department                                @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "exam_course_examiner_assignment_department_fkey")
+  examination         Examination                               @relation(fields: [examinationId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "exam_course_examiner_assignment_examination_fkey")
+  examinationCourse   ExaminationCourse                         @relation(fields: [examinationCourseId, departmentId, examinationId], references: [id, departmentId, examinationId], onDelete: Restrict, onUpdate: Restrict, map: "exam_course_examiner_assignment_course_fkey")
+  assignedUser        User                                      @relation("ExaminationCourseExaminerAssignee", fields: [assignedUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "exam_course_examiner_assignment_user_fkey")
+  assignedByUser      User                                      @relation("ExaminationCourseExaminerAssignedBy", fields: [assignedByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "exam_course_examiner_assignment_assigner_fkey")
+
+  /// Active-only seat and user uniqueness is enforced by PostgreSQL partial unique indexes. Wall-clock-expired assignments provide no authority and must be retired transactionally before replacement.
+  @@unique([id, departmentId, examinationId, examinationCourseId], map: "exam_course_examiner_assignment_scope_identity_uq")
+  @@index([departmentId, examinationCourseId, examinationId, status], map: "exam_course_examiner_assignment_scope_status_idx")
+  @@index([departmentId, assignedUserId, status], map: "exam_course_examiner_assignment_user_status_idx")
+  @@index([departmentId, assignedByUserId], map: "exam_course_examiner_assignment_assigner_idx")
+  @@map("examination_course_examiner_assignments")
 }
 
 model Course {
