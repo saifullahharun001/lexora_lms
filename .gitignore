@@ -58,6 +58,8 @@ apps/api/prisma/migrations/*
 !apps/api/prisma/migrations/202608270001_add_course_outline_active_version_binding/migration.sql
 !apps/api/prisma/migrations/202608280001_add_summative_examination_committee_foundation/
 !apps/api/prisma/migrations/202608280001_add_summative_examination_committee_foundation/migration.sql
+!apps/api/prisma/migrations/202608290001_add_external_examination_committee_member/
+!apps/api/prisma/migrations/202608290001_add_external_examination_committee_member/migration.sql
 *.log
 
 

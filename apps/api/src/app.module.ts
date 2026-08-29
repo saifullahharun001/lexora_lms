@@ -24,7 +24,8 @@ import {
   ResultProcessingModule,
   SystemConfigurationModule,
   TranscriptVerificationModule,
-  UserManagementModule
+  UserManagementModule,
+  SummativeExaminationModule
 } from "./modules";
 import { PlatformModule } from "./platform/platform.module";
 
@@ -54,7 +55,8 @@ import { PlatformModule } from "./platform/platform.module";
     AuditComplianceModule,
     ReportingDashboardModule,
     SystemConfigurationModule,
-    IntegrationLayerModule
+    IntegrationLayerModule,
+    SummativeExaminationModule
   ]
 })
 export class AppModule {}

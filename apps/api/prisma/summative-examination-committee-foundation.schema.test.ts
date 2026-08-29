@@ -57,6 +57,7 @@ test("dedicated committee enums are exact and do not encode examination category
     "CHAIRMAN",
     "MEMBER_1",
     "MEMBER_2",
+    "EXTERNAL_MEMBER",
   ]);
   assert.deepEqual(enumValues("ExaminationCommitteeAssignmentStatus"), [
     "ACTIVE",
@@ -291,7 +292,7 @@ test("committee and assignment identities cannot cross examination or department
   for (const relation of [
     /examination\s+Examination\s+@relation\(fields: \[examinationId, departmentId\], references: \[id, departmentId\], onDelete: Restrict, onUpdate: Restrict, map: "exam_committee_assignment_examination_fkey"\)/,
     /committee\s+ExaminationCommittee\s+@relation\(fields: \[committeeId, departmentId, examinationId\], references: \[id, departmentId, examinationId\], onDelete: Restrict, onUpdate: Restrict, map: "exam_committee_assignment_committee_fkey"\)/,
-    /assignedUser\s+User\s+@relation\("ExaminationCommitteeAssignee", fields: \[assignedUserId, departmentId\], references: \[id, departmentId\], onDelete: Restrict, onUpdate: Restrict, map: "exam_committee_assignment_user_fkey"\)/,
+    /assignedUser\s+User\?\s+@relation\("ExaminationCommitteeAssignee", fields: \[assignedUserId, departmentId\], references: \[id, departmentId\], onDelete: Restrict, onUpdate: Restrict, map: "exam_committee_assignment_user_fkey"\)/,
     /assignedByUser\s+User\s+@relation\("ExaminationCommitteeAssignedBy", fields: \[assignedByUserId, departmentId\], references: \[id, departmentId\], onDelete: Restrict, onUpdate: Restrict, map: "exam_committee_assignment_assigner_fkey"\)/,
   ]) {
     assert.match(committeeAssignment, relation);
@@ -430,7 +431,7 @@ test("the forward migration is additive, bounded, and uses valid PostgreSQL iden
 
   const identifiers = Array.from(
     migration.matchAll(/(?:INDEX|CONSTRAINT) "([^"]+)"/g),
-  ).map((match) => match[1]);
+  ).map((match) => match[1]!);
   for (const identifier of identifiers) {
     assert.ok(
       Buffer.byteLength(identifier, "utf8") <= 63,

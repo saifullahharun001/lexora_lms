@@ -114,6 +114,15 @@ function baseState() {
       sectionCode: string;
     }>,
     audits: [] as unknown[],
+    examCourses: [] as Array<{
+      id: string;
+      departmentId: string;
+      courseOfferingId: string;
+      academicProgramId: string;
+      academicSessionId: string;
+      studentBatchId: string | null;
+      archivedAt: Date | null;
+    }>,
   };
 }
 
@@ -182,6 +191,17 @@ function harness(initial = baseState()) {
               ? [{ id: offering.course.id }]
               : [];
           }
+          if (/FROM "examination_courses"/.test(sql)) {
+            operationOrder.push("examination-course-lock");
+            return working.examCourses
+              .filter(
+                (ec) =>
+                  ec.courseOfferingId === "offering-a" &&
+                  ec.departmentId === "department-a" &&
+                  !ec.archivedAt,
+              )
+              .map((ec) => ({ id: ec.id }));
+          }
           operationOrder.push("student-batch-lock");
           const requiresActiveBatch = /"archived_at" IS NULL/.test(sql);
           const target = working.batches.find(
@@ -241,8 +261,44 @@ function harness(initial = baseState()) {
             ) {
               return { count: 0 };
             }
-            working.offering.studentBatchId = "batch-a";
+            working.offering.studentBatchId = requestedBatchId;
             return { count: 1 };
+          },
+        },
+        examinationCourse: {
+          findMany: async (args: { where: Record<string, unknown> }) => {
+            return working.examCourses.filter(
+              (ec) =>
+                ec.departmentId === args.where.departmentId &&
+                ec.courseOfferingId === args.where.courseOfferingId &&
+                ec.archivedAt === args.where.archivedAt,
+            );
+          },
+          updateMany: async (args: {
+            where: {
+              id: { in: string[] };
+              departmentId: string;
+              courseOfferingId: string;
+              studentBatchId: null;
+              archivedAt: null;
+            };
+            data: { studentBatchId: string };
+          }) => {
+            let count = 0;
+            for (const examinationCourse of working.examCourses) {
+              if (
+                args.where.id.in.includes(examinationCourse.id) &&
+                examinationCourse.departmentId === args.where.departmentId &&
+                examinationCourse.courseOfferingId ===
+                  args.where.courseOfferingId &&
+                examinationCourse.studentBatchId === null &&
+                examinationCourse.archivedAt === null
+              ) {
+                examinationCourse.studentBatchId = args.data.studentBatchId;
+                count += 1;
+              }
+            }
+            return { count };
           },
         },
         studentBatch: {
@@ -312,14 +368,14 @@ function harness(initial = baseState()) {
 test("CourseOffering and Course locks precede authoritative programme validation and StudentBatch locking", async () => {
   const h = harness();
   assert.equal((await h.bind()).outcome, "BOUND");
-  assert.deepEqual(h.getOperationOrder().slice(0, 4), [
+  assert.deepEqual(h.getOperationOrder().slice(0, 6), [
     "course-offering-lock",
     "course-lock",
     "authoritative-offering-read",
     "student-batch-lock",
+    "authoritative-offering-read",
+    "examination-course-lock",
   ]);
-  assert.equal(h.getLockQueries().length, 3);
-  assert.match(h.getLockQueries()[0]!, /FROM "course_offerings"/);
   assert.match(h.getLockQueries()[0]!, /"department_id"/);
   assert.match(h.getLockQueries()[0]!, /FOR UPDATE/);
   assert.match(h.getLockQueries()[1]!, /FROM "courses"/);
@@ -485,6 +541,7 @@ test("first exact binding and success audit commit atomically with programme acc
     studentBatchAcademicProgramId: "program-a",
     previousBindingValue: null,
     newBindingValue: "batch-a",
+    examinationCoursePropagationCount: 0,
   });
 
   const rollback = harness();
@@ -640,4 +697,113 @@ test("known exact batched unique conflicts map deterministically and unrelated e
   const guardMiss = harness();
   guardMiss.setForceGuardMiss();
   await assert.rejects(guardMiss.bind(), /STUDENT_BATCH_BINDING_GUARD_MISSED/);
+});
+
+
+
+test("compatible ExaminationCourses are propagated atomically with CourseOffering binding", async () => {
+  const state = baseState();
+  state.examCourses = [
+    {
+      id: "ec-1",
+      departmentId: "department-a",
+      courseOfferingId: "offering-a",
+      academicProgramId: "program-a",
+      academicSessionId: "session-a",
+      studentBatchId: null,
+      archivedAt: null,
+    },
+    {
+      id: "ec-2",
+      departmentId: "department-a",
+      courseOfferingId: "offering-a",
+      academicProgramId: "program-a",
+      academicSessionId: "session-a",
+      studentBatchId: null,
+      archivedAt: null,
+    },
+  ];
+  const h = harness(state);
+  assert.equal((await h.bind()).outcome, "BOUND");
+  assert.equal(h.getState().offering!.studentBatchId, "batch-a");
+  assert.deepEqual(
+    h.getState().examCourses.map((course) => course.studentBatchId),
+    ["batch-a", "batch-a"],
+  );
+  assert.equal((await h.bind()).outcome, "ALREADY_BOUND");
+  assert.equal(h.getState().audits.length, 1);
+  const audit = h.getState().audits[0] as {
+    data: { contextJson: { examinationCoursePropagationCount: number } };
+  };
+  assert.equal(audit.data.contextJson.examinationCoursePropagationCount, 2);
+});
+
+test("incompatible ExaminationCourse programme or session blocks every mutation", async () => {
+  const incompatibleState = baseState();
+  incompatibleState.examCourses = [{
+    id: "ec-1",
+    departmentId: "department-a",
+    courseOfferingId: "offering-a",
+    academicProgramId: "program-b", // Mismatch program
+    academicSessionId: "session-a",
+    studentBatchId: null,
+    archivedAt: null,
+  }];
+  const incompatible = harness(incompatibleState);
+  assert.equal((await incompatible.bind()).outcome, "EXAMINATION_COURSE_SCOPE_MISMATCH");
+  assert.equal(incompatible.getState().offering!.studentBatchId, null);
+  assert.equal(incompatible.getState().examCourses[0]!.studentBatchId, null);
+  assert.equal(incompatible.getState().audits.length, 0);
+
+  const mismatchSessionState = baseState();
+  mismatchSessionState.examCourses = [{
+    id: "ec-1",
+    departmentId: "department-a",
+    courseOfferingId: "offering-a",
+    academicProgramId: "program-a",
+    academicSessionId: "session-b", // Mismatch session
+    studentBatchId: null,
+    archivedAt: null,
+  }];
+  const mismatchSession = harness(mismatchSessionState);
+  assert.equal((await mismatchSession.bind()).outcome, "EXAMINATION_COURSE_SCOPE_MISMATCH");
+  assert.equal(mismatchSession.getState().offering!.studentBatchId, null);
+  assert.equal(mismatchSession.getState().examCourses[0]!.studentBatchId, null);
+  assert.equal(mismatchSession.getState().audits.length, 0);
+});
+
+test("audit failure rolls back CourseOffering and all ExaminationCourse propagation", async () => {
+  const state = baseState();
+  state.examCourses = [{
+    id: "ec-1",
+    departmentId: "department-a",
+    courseOfferingId: "offering-a",
+    academicProgramId: "program-a",
+    academicSessionId: "session-a",
+    studentBatchId: null,
+    archivedAt: null,
+  }];
+  const h = harness(state);
+  h.setFailAudit();
+  await assert.rejects(h.bind(), /audit unavailable/);
+  assert.equal(h.getState().offering!.studentBatchId, null);
+  assert.equal(h.getState().examCourses[0]!.studentBatchId, null);
+  assert.equal(h.getState().audits.length, 0);
+});
+
+test("cross-department ExaminationCourse rows are never propagated", async () => {
+  const state = baseState();
+  state.examCourses = [{
+    id: "ec-other-department",
+    departmentId: "department-b",
+    courseOfferingId: "offering-a",
+    academicProgramId: "program-a",
+    academicSessionId: "session-a",
+    studentBatchId: null,
+    archivedAt: null,
+  }];
+  const h = harness(state);
+  assert.equal((await h.bind()).outcome, "BOUND");
+  assert.equal(h.getState().offering!.studentBatchId, "batch-a");
+  assert.equal(h.getState().examCourses[0]!.studentBatchId, null);
 });

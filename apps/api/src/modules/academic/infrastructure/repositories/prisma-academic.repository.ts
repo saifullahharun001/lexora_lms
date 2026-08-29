@@ -5708,6 +5708,46 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
           return { outcome: "BINDING_CONFLICT" } as const;
         }
 
+        const lockedExamCourses = await tx.$queryRaw<Array<{ id: string }>>(
+          Prisma.sql`
+            SELECT "id"
+            FROM "examination_courses"
+            WHERE "course_offering_id" = ${offering.id}
+              AND "department_id" = ${input.departmentId}
+              AND "archived_at" IS NULL
+            FOR UPDATE
+          `,
+        );
+
+        if (lockedExamCourses.length > 0) {
+          const linkedExamCourses = await tx.examinationCourse.findMany({
+            where: {
+              departmentId: input.departmentId,
+              courseOfferingId: offering.id,
+              archivedAt: null,
+            },
+            select: {
+              id: true,
+              academicProgramId: true,
+              academicSessionId: true,
+              studentBatchId: true,
+            },
+          });
+          if (linkedExamCourses.length !== lockedExamCourses.length) {
+            throw new Error("EXAMINATION_COURSE_LOCK_SET_MISMATCH");
+          }
+
+          for (const ec of linkedExamCourses) {
+            if (
+              ec.academicProgramId !== studentBatch.academicProgramId ||
+              ec.academicSessionId !== studentBatch.academicSessionId ||
+              ec.studentBatchId !== null
+            ) {
+              return { outcome: "EXAMINATION_COURSE_SCOPE_MISMATCH" } as const;
+            }
+          }
+        }
+
         const updated = await tx.courseOffering.updateMany({
           where: {
             id: offering.id,
@@ -5767,6 +5807,22 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
             : ({ outcome: "DEPENDENCY_SCOPE_MISMATCH" } as const);
         }
 
+        if (lockedExamCourses.length > 0) {
+          const propagated = await tx.examinationCourse.updateMany({
+            where: {
+              id: { in: lockedExamCourses.map((course) => course.id) },
+              departmentId: input.departmentId,
+              courseOfferingId: offering.id,
+              studentBatchId: null,
+              archivedAt: null,
+            },
+            data: { studentBatchId: studentBatch.id },
+          });
+          if (propagated.count !== lockedExamCourses.length) {
+            throw new Error("EXAMINATION_COURSE_PROPAGATION_GUARD_MISSED");
+          }
+        }
+
         await tx.auditLog.create({
           data: {
             requestId: input.requestId,
@@ -5792,6 +5848,7 @@ export class PrismaAcademicRepository implements AcademicRepositoryPort {
               studentBatchAcademicProgramId: studentBatch.academicProgramId,
               previousBindingValue: null,
               newBindingValue: studentBatch.id,
+              examinationCoursePropagationCount: lockedExamCourses.length,
             },
           },
         });

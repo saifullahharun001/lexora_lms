@@ -186,6 +186,7 @@ enum ExaminationCommitteeSeat {
   CHAIRMAN
   MEMBER_1
   MEMBER_2
+  EXTERNAL_MEMBER
 }
 
 enum ExaminationCommitteeAssignmentStatus {
@@ -879,7 +880,7 @@ model ExaminationCommitteeAssignment {
   departmentId     String                               @map("department_id")
   examinationId    String                               @map("examination_id")
   committeeId      String                               @map("committee_id")
-  assignedUserId   String                               @map("assigned_user_id")
+  assignedUserId   String?                              @map("assigned_user_id")
   assignedByUserId String                               @map("assigned_by_user_id")
   seat             ExaminationCommitteeSeat
   status           ExaminationCommitteeAssignmentStatus @default(ACTIVE)
@@ -892,7 +893,9 @@ model ExaminationCommitteeAssignment {
   department       Department                           @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "exam_committee_assignment_department_fkey")
   examination      Examination                          @relation(fields: [examinationId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "exam_committee_assignment_examination_fkey")
   committee        ExaminationCommittee                 @relation(fields: [committeeId, departmentId, examinationId], references: [id, departmentId, examinationId], onDelete: Restrict, onUpdate: Restrict, map: "exam_committee_assignment_committee_fkey")
-  assignedUser     User                                 @relation("ExaminationCommitteeAssignee", fields: [assignedUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "exam_committee_assignment_user_fkey")
+  externalMemberName        String?                     @map("external_member_name") @db.VarChar(128)
+  externalMemberAffiliation String?                     @map("external_member_affiliation") @db.VarChar(255)
+  assignedUser     User?                                @relation("ExaminationCommitteeAssignee", fields: [assignedUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "exam_committee_assignment_user_fkey")
   assignedByUser   User                                 @relation("ExaminationCommitteeAssignedBy", fields: [assignedByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "exam_committee_assignment_assigner_fkey")
 
   /// Active-only seat and user uniqueness is enforced by PostgreSQL partial unique indexes. Authority must reject wall-clock-expired rows; replacement must retire an expired ACTIVE row transactionally before inserting its successor.

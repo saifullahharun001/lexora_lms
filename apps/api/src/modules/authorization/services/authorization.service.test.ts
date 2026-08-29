@@ -623,6 +623,80 @@ test("Course Outline archival excludes every role wildcard and requires exact lo
   );
 });
 
+for (const [policy, resource] of [
+  ["summative-examination.setup.manage", "summative-examination.setup"],
+  [
+    "summative-examination.committee.manage",
+    "summative-examination.committee",
+  ],
+] as const) {
+  test(`${policy} excludes wildcard authority and requires exact Department Admin provenance`, () => {
+    const service = new AuthorizationService();
+    const assignment = {
+      userRoleId: "admin-assignment",
+      roleId: "admin-role",
+      departmentId: "department-a",
+      role: "department_admin" as const,
+    };
+    const exactGrant = grant(
+      { userRoleId: assignment.userRoleId, roleId: assignment.roleId },
+      { resource, action: "manage", scope: "department" },
+    );
+    assert.equal(
+      service.isAllowed(
+        principal({ roleAssignments: [assignment], permissions: [] }),
+        policy,
+      ),
+      false,
+    );
+    assert.equal(
+      service.isAllowed(
+        principal({
+          roleAssignments: [assignment],
+          permissions: [exactGrant],
+        }),
+        policy,
+      ),
+      true,
+    );
+    for (const invalid of [
+      { ...exactGrant, resource: "summative-examination.*" },
+      { ...exactGrant, action: "read" },
+      { ...exactGrant, scope: "self" as const },
+      {
+        ...exactGrant,
+        source: { ...exactGrant.source, userRoleId: "fabricated" },
+      },
+      { ...exactGrant, source: { ...exactGrant.source, roleId: "other-role" } },
+      {
+        ...exactGrant,
+        source: { ...exactGrant.source, departmentId: "department-b" },
+      },
+    ]) {
+      assert.equal(
+        service.isAllowed(
+          principal({
+            roleAssignments: [assignment],
+            permissions: [invalid],
+          }),
+          policy,
+        ),
+        false,
+      );
+    }
+    assert.equal(
+      service.isAllowed(
+        principal({
+          roleAssignments: [{ ...assignment, role: "teacher" }],
+          permissions: [exactGrant],
+        }),
+        policy,
+      ),
+      false,
+    );
+  });
+}
+
 test("Course Outline Coordinator review admits only active-department Teacher and Department Admin roles", () => {
   const service = new AuthorizationService();
   const policy = "course-management.course-outline.coordinator-review";

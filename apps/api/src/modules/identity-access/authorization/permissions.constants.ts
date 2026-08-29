@@ -184,6 +184,10 @@ export const PERMISSIONS = {
       "system-configuration.integration.read_department",
     INTEGRATION_UPDATE_DEPARTMENT:
       "system-configuration.integration.update_department"
+  },
+  SUMMATIVE_EXAMINATION: {
+    SETUP_MANAGE_DEPARTMENT: "summative-examination.setup.manage_department",
+    COMMITTEE_MANAGE_DEPARTMENT: "summative-examination.committee.manage_department",
   }
 } as const;
 

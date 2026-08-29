@@ -11,6 +11,7 @@ import {
 } from "@/common/authorization/principal-authority";
 import { COURSE_MANAGEMENT_POLICY_NAMES } from "@/modules/course-management/domain/course-management.policy-names";
 import { PERMISSIONS } from "@/modules/identity-access/authorization/permissions.constants";
+import { SUMMATIVE_EXAMINATION_POLICY_NAMES } from "@/modules/summative-examination/domain/summative-examination.policy-names";
 
 const EXPLICIT_DEPARTMENT_ADMIN_PERMISSION_POLICIES = {
   [PERMISSIONS.COURSE_MANAGEMENT.SYLLABUS_BINDING_MANAGE]: {
@@ -25,6 +26,16 @@ const EXPLICIT_DEPARTMENT_ADMIN_PERMISSION_POLICIES = {
   },
   [PERMISSIONS.COURSE_MANAGEMENT.BATCH_COORDINATOR_ASSIGNMENT_MANAGE]: {
     resource: "course-management.batch-coordinator-assignment",
+    action: "manage",
+    scope: "department"
+  },
+  [SUMMATIVE_EXAMINATION_POLICY_NAMES.SETUP_MANAGE]: {
+    resource: "summative-examination.setup",
+    action: "manage",
+    scope: "department"
+  },
+  [SUMMATIVE_EXAMINATION_POLICY_NAMES.COMMITTEE_MANAGE]: {
+    resource: "summative-examination.committee",
     action: "manage",
     scope: "department"
   }

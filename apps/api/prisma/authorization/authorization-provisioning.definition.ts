@@ -72,12 +72,40 @@ export const BATCH_COORDINATOR_ASSIGNMENT_MANAGE_PROVISIONING = {
   auditAction: "authorization.batch-coordinator-assignment-manage.provisioned",
 } as const;
 
+export const SUMMATIVE_EXAMINATION_SETUP_MANAGE_PROVISIONING = {
+  permission: {
+    code: PERMISSIONS.SUMMATIVE_EXAMINATION.SETUP_MANAGE_DEPARTMENT,
+    resource: "summative-examination.setup",
+    action: "manage",
+    scope: PermissionScope.DEPARTMENT,
+    description:
+      "Manage summative examination setup within the active department governance scope",
+  },
+  targetRoleCode: PLATFORM_ROLES.DEPARTMENT_ADMIN,
+  auditAction: "authorization.summative-examination-setup-manage.provisioned",
+} as const;
+
+export const SUMMATIVE_EXAMINATION_COMMITTEE_MANAGE_PROVISIONING = {
+  permission: {
+    code: PERMISSIONS.SUMMATIVE_EXAMINATION.COMMITTEE_MANAGE_DEPARTMENT,
+    resource: "summative-examination.committee",
+    action: "manage",
+    scope: PermissionScope.DEPARTMENT,
+    description:
+      "Manage summative examination committees within the active department governance scope",
+  },
+  targetRoleCode: PLATFORM_ROLES.DEPARTMENT_ADMIN,
+  auditAction: "authorization.summative-examination-committee-manage.provisioned",
+} as const;
+
 export const AUTHORIZATION_PROVISIONING_DEFINITIONS = [
   SYLLABUS_VERSION_MANAGE_PROVISIONING,
   SYLLABUS_VERSION_LIFECYCLE_MANAGE_PROVISIONING,
   SYLLABUS_BINDING_MANAGE_PROVISIONING,
   STUDENT_BATCH_BINDING_MANAGE_PROVISIONING,
   BATCH_COORDINATOR_ASSIGNMENT_MANAGE_PROVISIONING,
+  SUMMATIVE_EXAMINATION_SETUP_MANAGE_PROVISIONING,
+  SUMMATIVE_EXAMINATION_COMMITTEE_MANAGE_PROVISIONING,
 ] as const;
 
 export type AuthorizationProvisioningDefinition =

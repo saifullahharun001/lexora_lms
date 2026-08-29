@@ -21,3 +21,4 @@ export { AuditComplianceModule } from "./audit-compliance/audit-compliance.modul
 export { ReportingDashboardModule } from "./reporting-dashboard/reporting-dashboard.module";
 export { SystemConfigurationModule } from "./system-configuration/system-configuration.module";
 export { IntegrationLayerModule } from "./integration-layer/integration-layer.module";
+export { SummativeExaminationModule } from "./summative-examination/summative-examination.module";

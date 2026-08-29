@@ -9,3 +9,4 @@ apps/api/prisma/migrations/202608240001_harden_curriculum_course_department_iden
 apps/api/prisma/migrations/202608240002_add_batch_coordinator_assignment_foundation/migration.sql -text
 apps/api/prisma/migrations/202608260001_add_course_outline_correction_request_foundation/migration.sql -text
 apps/api/prisma/migrations/202608280001_add_summative_examination_committee_foundation/migration.sql -text
+apps/api/prisma/migrations/202608290001_add_external_examination_committee_member/migration.sql -text

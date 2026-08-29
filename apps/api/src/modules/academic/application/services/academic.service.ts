@@ -1433,6 +1433,10 @@ export class AcademicService {
         throw new BadRequestException(
           "Course offering curriculum and StudentBatch programmes must match",
         );
+      case "EXAMINATION_COURSE_SCOPE_MISMATCH":
+        throw new BadRequestException(
+          "Course offering is linked to an Examination in a different programme or session",
+        );
       case "BINDING_CONFLICT":
         throw new ConflictException(
           "Course offering StudentBatch binding conflicts with an existing binding",

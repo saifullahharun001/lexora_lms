@@ -617,6 +617,7 @@ export type BindCourseOfferingStudentBatchResult =
         | "STUDENT_BATCH_NOT_FOUND"
         | "DEPENDENCY_SCOPE_MISMATCH"
         | "PROGRAMME_MISMATCH"
+        | "EXAMINATION_COURSE_SCOPE_MISMATCH"
         | "BINDING_CONFLICT";
     };
 

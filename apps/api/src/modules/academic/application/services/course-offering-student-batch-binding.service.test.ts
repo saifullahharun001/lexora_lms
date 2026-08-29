@@ -200,6 +200,7 @@ test("repository outcomes map to deterministic safe HTTP errors", async () => {
     [{ outcome: "STUDENT_BATCH_NOT_FOUND" }, NotFoundException],
     [{ outcome: "DEPENDENCY_SCOPE_MISMATCH" }, NotFoundException],
     [{ outcome: "PROGRAMME_MISMATCH" }, BadRequestException],
+    [{ outcome: "EXAMINATION_COURSE_SCOPE_MISMATCH" }, BadRequestException],
     [{ outcome: "BINDING_CONFLICT" }, ConflictException],
   ];
 
