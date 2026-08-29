@@ -186,37 +186,61 @@ test("missing, wildcard-only, wrong semantics, and unauthenticated principals fa
   }
 });
 
-test("Teacher, wrong department, and fabricated role provenance fail before database access", async () => {
+test("Teacher/Course Teacher/Examiner/Student duties, wrong department, and fabricated provenance cannot replace exact setup authority", async () => {
   const exact = permission("summative-examination.setup");
-  const cases = [
-    principal("summative-examination.setup", {
-      roleAssignments: [{ ...roleAssignment, role: "teacher" }],
-    }),
-    principal("summative-examination.setup", {
-      roleAssignments: [{ ...roleAssignment, role: "student" }],
-    }),
-    principal("summative-examination.setup", {
-      activeDepartmentId: "department-b",
-    }),
-    principal("summative-examination.setup", {
-      permissions: [
-        {
-          ...exact,
-          source: { ...exact.source, userRoleId: "wrong-user-role" },
-        },
-      ],
-    }),
-    principal("summative-examination.setup", {
-      permissions: [
-        { ...exact, source: { ...exact.source, roleId: "wrong-role" } },
-      ],
-    }),
+  const cases: Array<[string, PrincipalContext]> = [
+    ...[
+      "Teacher",
+      "Course Teacher assignment",
+      "First Examiner assignment",
+      "Second Examiner assignment",
+    ].map(
+      (label) =>
+        [
+          label,
+          principal("summative-examination.setup", {
+            roleAssignments: [{ ...roleAssignment, role: "teacher" }],
+          }),
+        ] as [string, PrincipalContext],
+    ),
+    [
+      "Student",
+      principal("summative-examination.setup", {
+        roleAssignments: [{ ...roleAssignment, role: "student" }],
+      }),
+    ],
+    [
+      "wrong department",
+      principal("summative-examination.setup", {
+        activeDepartmentId: "department-b",
+      }),
+    ],
+    [
+      "fabricated user-role provenance",
+      principal("summative-examination.setup", {
+        permissions: [
+          {
+            ...exact,
+            source: { ...exact.source, userRoleId: "wrong-user-role" },
+          },
+        ],
+      }),
+    ],
+    [
+      "fabricated role provenance",
+      principal("summative-examination.setup", {
+        permissions: [
+          { ...exact, source: { ...exact.source, roleId: "wrong-role" } },
+        ],
+      }),
+    ],
   ];
-  for (const invalid of cases) {
+  for (const [label, invalid] of cases) {
     const h = harness(invalid);
     await assert.rejects(
       h.service.authorize("summative-examination.setup"),
       ForbiddenException,
+      label,
     );
     assert.equal(h.queries.length, 0);
   }

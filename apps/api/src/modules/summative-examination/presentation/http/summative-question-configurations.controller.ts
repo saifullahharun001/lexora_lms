@@ -5,14 +5,23 @@ import { AuthGuard } from "@/modules/authorization/guards/auth.guard";
 import { PolicyGuard } from "@/modules/authorization/guards/policy.guard";
 
 import { SummativeQuestionConfigurationService } from "../../application/services/summative-question-configuration.service";
+import { SUMMATIVE_EXAMINATION_POLICY_NAMES } from "../../domain/summative-examination.policy-names";
 import {
   AddQuestionConfigurationItemDto,
   UpdateQuestionConfigurationItemDto,
 } from "./dto/question-configuration.dto";
+import {
+  QuestionConfigurationCourseIdParamDto,
+  QuestionConfigurationIdParamDto,
+  QuestionConfigurationItemIdParamDto,
+} from "./dto/resource-id-param.dto";
 
-@Controller("summative/examination-courses/:examinationCourseId/question-configurations")
+@Controller({
+  path: "summative/examination-courses/:examinationCourseId/question-configurations",
+  version: "1",
+})
 @UseGuards(AuthGuard, PolicyGuard)
-@RequirePolicy("summative-examination.setup.manage")
+@RequirePolicy(SUMMATIVE_EXAMINATION_POLICY_NAMES.SETUP_MANAGE)
 export class SummativeQuestionConfigurationsController {
   constructor(
     private readonly service: SummativeQuestionConfigurationService,
@@ -20,58 +29,70 @@ export class SummativeQuestionConfigurationsController {
 
   @Post()
   async createDraftConfiguration(
-    @Param("examinationCourseId") examinationCourseId: string,
+    @Param() params: QuestionConfigurationCourseIdParamDto,
   ) {
-    return this.service.createDraftConfiguration(examinationCourseId);
+    return this.service.createDraftConfiguration(params.examinationCourseId);
   }
 
   @Get()
   async getConfigurations(
-    @Param("examinationCourseId") examinationCourseId: string,
+    @Param() params: QuestionConfigurationCourseIdParamDto,
   ) {
-    return this.service.getConfigurations(examinationCourseId);
+    return this.service.getConfigurations(params.examinationCourseId);
   }
 
   @Get(":configurationId")
   async getConfiguration(
-    @Param("examinationCourseId") examinationCourseId: string,
-    @Param("configurationId") configurationId: string,
+    @Param() params: QuestionConfigurationIdParamDto,
   ) {
-    return this.service.getConfiguration(examinationCourseId, configurationId);
+    return this.service.getConfiguration(
+      params.examinationCourseId,
+      params.configurationId,
+    );
   }
 
   @Post(":configurationId/items")
   async addItem(
-    @Param("examinationCourseId") examinationCourseId: string,
-    @Param("configurationId") configurationId: string,
+    @Param() params: QuestionConfigurationIdParamDto,
     @Body() itemData: AddQuestionConfigurationItemDto,
   ) {
-    return this.service.addItem(examinationCourseId, configurationId, itemData);
+    return this.service.addItem(
+      params.examinationCourseId,
+      params.configurationId,
+      itemData,
+    );
   }
 
   @Patch(":configurationId/items/:itemId")
   async updateItem(
-    @Param("examinationCourseId") examinationCourseId: string,
-    @Param("configurationId") configurationId: string,
-    @Param("itemId") itemId: string,
+    @Param() params: QuestionConfigurationItemIdParamDto,
     @Body() itemData: UpdateQuestionConfigurationItemDto,
   ) {
-    return this.service.updateItem(examinationCourseId, configurationId, itemId, itemData);
+    return this.service.updateItem(
+      params.examinationCourseId,
+      params.configurationId,
+      params.itemId,
+      itemData,
+    );
   }
 
   @Post(":configurationId/lock")
   async lockConfiguration(
-    @Param("examinationCourseId") examinationCourseId: string,
-    @Param("configurationId") configurationId: string,
+    @Param() params: QuestionConfigurationIdParamDto,
   ) {
-    return this.service.lockConfiguration(examinationCourseId, configurationId);
+    return this.service.lockConfiguration(
+      params.examinationCourseId,
+      params.configurationId,
+    );
   }
 
   @Post(":configurationId/archive")
   async archiveConfiguration(
-    @Param("examinationCourseId") examinationCourseId: string,
-    @Param("configurationId") configurationId: string,
+    @Param() params: QuestionConfigurationIdParamDto,
   ) {
-    return this.service.archiveConfiguration(examinationCourseId, configurationId);
+    return this.service.archiveConfiguration(
+      params.examinationCourseId,
+      params.configurationId,
+    );
   }
 }

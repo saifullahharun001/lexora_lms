@@ -105,3 +105,32 @@ test("all new Prisma-mapped identity names exist exactly in the migration", () =
     assert.match(migration, new RegExp(`"${name}"`), `${name} missing in migration`);
   }
 });
+
+test("Question Configuration remains dynamic metadata-only with no question or marks content", () => {
+  const configurationModel = schema.slice(
+    schema.indexOf("model SummativeQuestionConfiguration {"),
+    schema.indexOf("model SummativeQuestionConfigurationItem {"),
+  );
+  const itemModel = schema.slice(
+    schema.indexOf("model SummativeQuestionConfigurationItem {"),
+  );
+  assert.match(configurationModel, /items\s+SummativeQuestionConfigurationItem\[\]/);
+  assert.match(itemModel, /fullMark\s+Decimal[\s\S]*?@db\.Decimal\(6, 2\)/);
+  assert.match(itemModel, /displayOrder\s+Int[\s\S]*?@db\.SmallInt/);
+  for (const forbidden of [
+    "questionText",
+    "questionBody",
+    "prompt",
+    "questionPaper",
+    "paperFile",
+    "setterDraft",
+    "moderationContent",
+    "candidateMark",
+    "examinerMark",
+  ]) {
+    assert.doesNotMatch(
+      `${configurationModel}\n${itemModel}`,
+      new RegExp(`\\b${forbidden}\\b`, "i"),
+    );
+  }
+});

@@ -36,16 +36,10 @@ export class SummativeQuestionConfigurationService {
 
   async getConfigurations(examinationCourseId: string) {
     const authority = await this.authorizer.authorize(MANAGEMENT_RESOURCE);
-    // Prove the route ExaminationCourse belongs to the principal's department
-    const course = await this.prisma.examinationCourse.findFirst({
-      where: {
-        id: examinationCourseId,
-        departmentId: authority.departmentId,
-        archivedAt: null,
-      },
-      select: { id: true },
-    });
-    if (!course) throw new NotFoundException("Examination course not found");
+    await this.assertCurrentExaminationCourseReadScope(
+      authority.departmentId,
+      examinationCourseId,
+    );
 
     return this.prisma.summativeQuestionConfiguration.findMany({
       where: { examinationCourseId, departmentId: authority.departmentId },
@@ -56,6 +50,10 @@ export class SummativeQuestionConfigurationService {
 
   async getConfiguration(examinationCourseId: string, configurationId: string) {
     const authority = await this.authorizer.authorize(MANAGEMENT_RESOURCE);
+    await this.assertCurrentExaminationCourseReadScope(
+      authority.departmentId,
+      examinationCourseId,
+    );
     const config =
       await this.prisma.summativeQuestionConfiguration.findFirst({
         where: {
@@ -120,8 +118,10 @@ export class SummativeQuestionConfigurationService {
           "summative_question_configuration",
           config.id,
           {
+            examinationId: scope.examinationId,
             examinationCourseId: scope.examinationCourseId,
             versionNumber: config.versionNumber,
+            status: config.status,
           },
         );
 
@@ -218,12 +218,12 @@ export class SummativeQuestionConfigurationService {
             questionLabel: itemData.questionLabel.trim(),
             subQuestionLabel: itemData.subQuestionLabel?.trim() || null,
             displayOrder: itemData.displayOrder,
-            fullMark: new Prisma.Decimal(itemData.fullMark.toString()),
+            fullMark: new Prisma.Decimal(itemData.fullMark),
             isRequired: itemData.isRequired,
             cloId: cloIdentity?.cloId ?? null,
             curriculumVersionId: cloIdentity?.curriculumVersionId ?? null,
             curriculumCourseId: cloIdentity?.curriculumCourseId ?? null,
-            bloomLevel: itemData.bloomLevel,
+            bloomLevel: itemData.bloomLevel ?? null,
             isActive: itemData.isActive,
           },
         });
@@ -234,7 +234,7 @@ export class SummativeQuestionConfigurationService {
           SUMMATIVE_EXAMINATION_AUDIT_EVENTS.QUESTION_CONFIGURATION_ITEM_ADDED,
           "summative_question_configuration_item",
           item.id,
-          { configurationId, examinationCourseId },
+          this.itemAuditContext(item, config.id, scope.examinationCourseId),
         );
 
         return item;
@@ -297,8 +297,10 @@ export class SummativeQuestionConfigurationService {
         }
 
         // Lock and verify the specific item belongs to this configuration
-        const itemRows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-          SELECT "id"
+        const itemRows = await tx.$queryRaw<
+          Array<{ id: string; is_active: boolean }>
+        >(Prisma.sql`
+          SELECT "id", "is_active"
           FROM "summative_question_configuration_items"
           WHERE "id" = ${itemId}
             AND "department_id" = ${authority.departmentId}
@@ -319,8 +321,8 @@ export class SummativeQuestionConfigurationService {
             }
           | undefined;
 
-        if ("cloId" in itemData) {
-          if (itemData.cloId) {
+        if (itemData.cloId !== undefined) {
+          if (itemData.cloId !== null) {
             // Setting a CLO: validate composite identity
             const cloRows = await tx.$queryRaw<
               Array<{ id: string; curriculum_version_id: string; curriculum_course_id: string }>
@@ -367,7 +369,7 @@ export class SummativeQuestionConfigurationService {
             displayOrder: itemData.displayOrder,
             fullMark:
               itemData.fullMark !== undefined
-                ? new Prisma.Decimal(itemData.fullMark.toString())
+                ? new Prisma.Decimal(itemData.fullMark)
                 : undefined,
             isRequired: itemData.isRequired,
             ...(cloUpdate !== undefined
@@ -382,14 +384,40 @@ export class SummativeQuestionConfigurationService {
           },
         });
 
-        await this.writeAudit(
-          tx,
-          authority,
-          SUMMATIVE_EXAMINATION_AUDIT_EVENTS.QUESTION_CONFIGURATION_ITEM_UPDATED,
-          "summative_question_configuration_item",
-          item.id,
-          { configurationId, examinationCourseId },
+        const activeStateChanged =
+          itemData.isActive !== undefined &&
+          itemData.isActive !== itemRows[0]!.is_active;
+        const hasOrdinaryFieldUpdate = Object.entries(itemData).some(
+          ([field, value]) => field !== "isActive" && value !== undefined,
         );
+        const auditContext = this.itemAuditContext(
+          item,
+          config.id,
+          scope.examinationCourseId,
+        );
+
+        if (hasOrdinaryFieldUpdate || !activeStateChanged) {
+          await this.writeAudit(
+            tx,
+            authority,
+            SUMMATIVE_EXAMINATION_AUDIT_EVENTS.QUESTION_CONFIGURATION_ITEM_UPDATED,
+            "summative_question_configuration_item",
+            item.id,
+            auditContext,
+          );
+        }
+        if (activeStateChanged) {
+          await this.writeAudit(
+            tx,
+            authority,
+            item.isActive
+              ? SUMMATIVE_EXAMINATION_AUDIT_EVENTS.QUESTION_CONFIGURATION_ITEM_ACTIVATED
+              : SUMMATIVE_EXAMINATION_AUDIT_EVENTS.QUESTION_CONFIGURATION_ITEM_DEACTIVATED,
+            "summative_question_configuration_item",
+            item.id,
+            auditContext,
+          );
+        }
 
         return item;
       });
@@ -539,7 +567,15 @@ export class SummativeQuestionConfigurationService {
           SUMMATIVE_EXAMINATION_AUDIT_EVENTS.QUESTION_CONFIGURATION_LOCKED,
           "summative_question_configuration",
           lockedConfig.id,
-          { examinationCourseId: scope.examinationCourseId },
+          {
+            examinationCourseId: scope.examinationCourseId,
+            configurationId: lockedConfig.id,
+            versionNumber: lockedConfig.versionNumber,
+            summativeFullMark: examCourse.summativeFullMark.toString(),
+            configuredTotal: totalMarks.toString(),
+            activeItemCount: activeItems.length,
+            status: lockedConfig.status,
+          },
         );
 
         return lockedConfig;
@@ -622,7 +658,12 @@ export class SummativeQuestionConfigurationService {
         SUMMATIVE_EXAMINATION_AUDIT_EVENTS.QUESTION_CONFIGURATION_ARCHIVED,
         "summative_question_configuration",
         archivedConfig.id,
-        { examinationCourseId: scope.examinationCourseId },
+        {
+          examinationCourseId: scope.examinationCourseId,
+          configurationId: archivedConfig.id,
+          versionNumber: archivedConfig.versionNumber,
+          status: archivedConfig.status,
+        },
       );
 
       return archivedConfig;
@@ -632,6 +673,27 @@ export class SummativeQuestionConfigurationService {
   // ----------------------------------------------------------------
   // Private helpers
   // ----------------------------------------------------------------
+
+  private async assertCurrentExaminationCourseReadScope(
+    departmentId: string,
+    examinationCourseId: string,
+  ) {
+    const course = await this.prisma.examinationCourse.findFirst({
+      where: {
+        id: examinationCourseId,
+        departmentId,
+        archivedAt: null,
+        examination: {
+          is: {
+            departmentId,
+            archivedAt: null,
+          },
+        },
+      },
+      select: { id: true },
+    });
+    if (!course) throw new NotFoundException("Examination course not found");
+  }
 
   /**
    * Lock the governing Examination and ExaminationCourse in the established
@@ -752,6 +814,36 @@ export class SummativeQuestionConfigurationService {
         contextJson,
       },
     });
+  }
+
+  private itemAuditContext(
+    item: {
+      id: string;
+      questionLabel: string;
+      subQuestionLabel: string | null;
+      displayOrder: number;
+      fullMark: Prisma.Decimal;
+      isRequired: boolean;
+      cloId: string | null;
+      bloomLevel: string | null;
+      isActive: boolean;
+    },
+    configurationId: string,
+    examinationCourseId: string,
+  ): Prisma.InputJsonObject {
+    return {
+      configurationId,
+      examinationCourseId,
+      itemId: item.id,
+      questionLabel: item.questionLabel,
+      subQuestionLabel: item.subQuestionLabel,
+      displayOrder: item.displayOrder,
+      fullMark: item.fullMark.toString(),
+      isRequired: item.isRequired,
+      cloId: item.cloId,
+      bloomLevel: item.bloomLevel,
+      isActive: item.isActive,
+    };
   }
 
   private isUniqueConflict(error: unknown, constraint: string) {

@@ -29,6 +29,10 @@ export const SUMMATIVE_EXAMINATION_AUDIT_EVENTS = {
   QUESTION_CONFIGURATION_CREATED: "summative-examination.question-configuration.created",
   QUESTION_CONFIGURATION_ITEM_ADDED: "summative-examination.question-configuration.item-added",
   QUESTION_CONFIGURATION_ITEM_UPDATED: "summative-examination.question-configuration.item-updated",
+  QUESTION_CONFIGURATION_ITEM_ACTIVATED:
+    "summative-examination.question-configuration.item-activated",
+  QUESTION_CONFIGURATION_ITEM_DEACTIVATED:
+    "summative-examination.question-configuration.item-deactivated",
   QUESTION_CONFIGURATION_LOCKED: "summative-examination.question-configuration.locked",
   QUESTION_CONFIGURATION_ARCHIVED: "summative-examination.question-configuration.archived",
 } as const;
