@@ -445,6 +445,21 @@ enum NoticePriority {
   URGENT
 }
 
+enum BloomLevel {
+  REMEMBERING
+  UNDERSTANDING
+  APPLYING
+  ANALYZING
+  EVALUATING
+  CREATING
+}
+
+enum SummativeQuestionConfigurationStatus {
+  DRAFT
+  LOCKED
+  ARCHIVED
+}
+
 model Department {
   id                              String                            @id @default(cuid())
   code                            String                            @unique
@@ -536,6 +551,8 @@ model Department {
   fileObjects                     FileObject[]
   fileMalwareScanJobs             FileMalwareScanJob[]
   courseOutlineCorrectionRequests CourseOutlineCorrectionRequest[]
+  summativeQuestionConfigs        SummativeQuestionConfiguration[]
+  summativeQuestionConfigItems    SummativeQuestionConfigurationItem[]
 
   @@map("departments")
 }
@@ -619,6 +636,7 @@ model User {
   overrideApprovals                  OverrideAction[]                 @relation("OverrideApprover")
   fileObjects                        FileObject[]                     @relation("FileUploadedBy")
   correctionRequestsActed            CourseOutlineCorrectionRequest[] @relation("CourseOutlineCorrectionRequestActor")
+  summativeQuestionConfigsCreated      SummativeQuestionConfiguration[] @relation("SummativeQuestionConfigCreatedBy")
 
   @@unique([id, departmentId], map: "user_id_department_uq")
   @@index([departmentId])
@@ -861,8 +879,12 @@ model ExaminationCourse {
   syllabusVersion                 SyllabusVersion             @relation(fields: [syllabusVersionId, departmentId, curriculumCourseId], references: [id, departmentId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "examination_course_syllabus_identity_fkey")
   assessmentTemplate              CourseAssessmentTemplate    @relation(fields: [assessmentTemplateId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "examination_course_assessment_template_fkey")
   summativeAssessmentComponent    AssessmentTemplateComponent @relation(fields: [summativeAssessmentComponentId, departmentId, assessmentTemplateId, summativeComponentCode, summativeFullMark], references: [id, departmentId, assessmentTemplateId, code, maximumMarks], onDelete: Restrict, onUpdate: Restrict, map: "examination_course_summative_component_fkey")
+  lockedQuestionConfigurationId   String?                        @map("locked_question_configuration_id")
+  lockedQuestionConfiguration     SummativeQuestionConfiguration? @relation("ExaminationCourseActiveConfig", fields: [lockedQuestionConfigurationId, departmentId, id], references: [id, departmentId, examinationCourseId], onDelete: Restrict, onUpdate: Restrict, map: "examination_course_locked_config_fkey")
+  questionConfigurations          SummativeQuestionConfiguration[] @relation("ExaminationCourseAllConfigs")
   examinerAssignments             ExaminationCourseExaminerAssignment[]
 
+  @@unique([lockedQuestionConfigurationId, departmentId, id], map: "examination_course_locked_config_uq")
   @@unique([id, departmentId, examinationId], map: "examination_course_scope_identity_uq")
   @@unique([departmentId, examinationId, courseOfferingId], map: "examination_course_offering_uq")
   @@index([departmentId, examinationId], map: "examination_course_examination_idx")
@@ -1177,8 +1199,10 @@ model CourseLearningOutcome {
   curriculumVersion   CurriculumVersion                 @relation(fields: [curriculumVersionId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "course_learning_outcome_dept_version_fkey")
   curriculumCourse    CurriculumCourse                  @relation(fields: [curriculumCourseId, departmentId, curriculumVersionId], references: [id, departmentId, curriculumVersionId], onDelete: Restrict, onUpdate: Restrict, map: "course_learning_outcome_course_identity_fkey")
   ploMappings         CourseLearningOutcomePloMapping[]
+  summativeQuestionConfigurationItems SummativeQuestionConfigurationItem[]
 
   @@unique([id, departmentId, curriculumVersionId], map: "course_learning_outcome_id_dept_version_uq")
+  @@unique([id, departmentId, curriculumVersionId, curriculumCourseId], map: "course_learning_outcome_id_dept_version_course_uq")
   @@unique([departmentId, curriculumVersionId, curriculumCourseId, code], map: "course_learning_outcome_dept_version_course_code_uq")
   @@unique([departmentId, curriculumVersionId, curriculumCourseId, displayOrder], map: "course_learning_outcome_dept_version_course_order_uq")
   @@map("course_learning_outcomes")
@@ -2842,4 +2866,63 @@ model MalwareScanResult {
 
   @@index([fileObjectId, createdAt])
   @@map("malware_scan_results")
+}
+
+model SummativeQuestionConfiguration {
+  id                  String                               @id @default(cuid())
+  departmentId        String                               @map("department_id")
+  examinationId       String                               @map("examination_id")
+  examinationCourseId String                               @map("examination_course_id")
+  versionNumber       Int                                  @map("version_number") @db.SmallInt
+  status              SummativeQuestionConfigurationStatus @default(DRAFT)
+  createdByUserId     String                               @map("created_by_user_id")
+  lockedAt            DateTime?                            @map("locked_at")
+  archivedAt          DateTime?                            @map("archived_at")
+  createdAt           DateTime                             @default(now()) @map("created_at")
+  updatedAt           DateTime                             @updatedAt @map("updated_at")
+
+  department        Department        @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "summative_question_config_department_fkey")
+  examinationCourse ExaminationCourse @relation("ExaminationCourseAllConfigs", fields: [examinationCourseId, departmentId, examinationId], references: [id, departmentId, examinationId], onDelete: Restrict, onUpdate: Restrict, map: "summative_question_config_exam_course_fkey")
+  createdByUser     User              @relation("SummativeQuestionConfigCreatedBy", fields: [createdByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "summative_question_config_created_by_fkey")
+
+  items SummativeQuestionConfigurationItem[]
+
+  activeForExaminationCourse ExaminationCourse? @relation("ExaminationCourseActiveConfig")
+
+  @@unique([id, departmentId, examinationCourseId], map: "summative_question_config_scope_uq")
+  @@unique([departmentId, examinationCourseId, versionNumber], map: "summative_question_config_version_uq")
+  @@index([departmentId, examinationCourseId, status], map: "summative_question_config_status_idx")
+  @@map("summative_question_configurations")
+}
+
+model SummativeQuestionConfigurationItem {
+  id                  String @id @default(cuid())
+  departmentId        String @map("department_id")
+  configurationId     String @map("configuration_id")
+  examinationCourseId String @map("examination_course_id")
+
+  questionLabel    String  @map("question_label") @db.VarChar(16)
+  subQuestionLabel String? @map("sub_question_label") @db.VarChar(16)
+  displayOrder     Int     @map("display_order") @db.SmallInt
+  fullMark         Decimal @map("full_mark") @db.Decimal(6, 2)
+  isRequired       Boolean @default(true) @map("is_required")
+
+  cloId               String? @map("clo_id")
+  curriculumVersionId String? @map("curriculum_version_id")
+  curriculumCourseId  String? @map("curriculum_course_id")
+
+  bloomLevel BloomLevel? @map("bloom_level")
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  department    Department                     @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "summative_question_config_item_department_fkey")
+  configuration SummativeQuestionConfiguration @relation(fields: [configurationId, departmentId, examinationCourseId], references: [id, departmentId, examinationCourseId], onDelete: Restrict, onUpdate: Restrict, map: "summative_question_config_item_config_fkey")
+
+  clo CourseLearningOutcome? @relation(fields: [cloId, departmentId, curriculumVersionId, curriculumCourseId], references: [id, departmentId, curriculumVersionId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "summative_question_config_item_clo_fkey")
+
+  @@unique([id, departmentId, configurationId], map: "summative_question_config_item_scope_uq")
+  @@index([departmentId, configurationId, isActive, displayOrder], map: "summative_question_config_item_order_idx")
+  @@map("summative_question_configuration_items")
 }

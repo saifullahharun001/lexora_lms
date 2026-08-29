@@ -62,6 +62,8 @@ apps/api/prisma/migrations/*
 !apps/api/prisma/migrations/202608290001_add_external_examination_committee_member/migration.sql
 !apps/api/prisma/migrations/202608290002_add_examination_course_examiner_assignment/
 !apps/api/prisma/migrations/202608290002_add_examination_course_examiner_assignment/migration.sql
+!apps/api/prisma/migrations/202608290003_add_summative_question_configuration/
+!apps/api/prisma/migrations/202608290003_add_summative_question_configuration/migration.sql
 *.log
 
 
