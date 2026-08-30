@@ -1915,3 +1915,76 @@ runtime/integration testing, advanced academic workflow completion,
 frontend completion, PDF/QR transcript generation, background
 jobs/queues, and final production hardening before being considered a
 complete production LMS platform.
+
+## Summative Examination Current Status Supersession — 2026-08-30
+
+This section supersedes older roadmap statements that classify the entire Summative
+Examination backend as unimplemented.
+
+Current implementation HEAD:
+
+`89b4440dfbbf0b2cf4c3e675039c38c1e8417fff`
+
+### Current status
+
+**PARTIAL / ACTIVE DEVELOPMENT**
+
+Implemented and deployed backend scope:
+
+- Summative Examination setup;
+- Ordinance-aligned four-seat Examination Committee foundation;
+- external-member identity metadata;
+- independent First/Second Examiner assignment;
+- dynamic versioned question configuration;
+- Enrollment-derived candidate roster foundation;
+- blind First/Second question-wise marking;
+- draft/final lock behavior;
+- exact mixed-role authorization provisioning.
+
+Verified deployment evidence includes:
+
+- server Prisma generation;
+- API typecheck/build;
+- selected regression `199/199 PASS`;
+- disposable PostgreSQL 18.6 five-migration verification;
+- ordinary PostgreSQL deployment;
+- 10 tables / 7 enums / 55 indexes / 82 constraints / 4 triggers;
+- 49 restrictive Summative FKs;
+- zero Prisma drift;
+- idempotent repeated migration deployment;
+- permanent Admin/Teacher authorization separation;
+- idempotent repeated provisioning;
+- PM2 restart and healthy activation;
+- loopback-only API binding preserved;
+- unauthenticated Summative marking route returns HTTP 401.
+
+### Not yet closed
+
+The authenticated First/Second Examiner functional/security runtime matrix is still
+pending.
+
+Also not yet implemented:
+
+- First/Second variance/comparison;
+- 15% Third Examination trigger;
+- candidate/script-scoped Third Examiner;
+- nearest-pair/equal-distance calculation;
+- Committee Member review;
+- Chairman approval/final lock;
+- correction/reopen lifecycle;
+- approved Summative result;
+- idempotent result-engine handoff;
+- final result/amendment integration;
+- mandatory Summative 2FA enforcement;
+- frontend integration.
+
+Candidate/exam-roll/physical-script reference governance is also unresolved and must
+not be invented without formal institutional rules.
+
+Detailed current module status:
+
+`docs/summative-examination.md`
+
+Strongest runtime source of truth:
+
+`docs/runtime-test-checklist.md`

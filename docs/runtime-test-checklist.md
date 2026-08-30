@@ -34415,3 +34415,376 @@ audit-ready, and runtime verified before being described as complete.
 > **Permanent Institutional Approval/Activation Authorities = STILL PENDING / NOT PROVISIONED**
 
 > **Complete Course Outline Product / Governance / UX = INCOMPLETE**
+
+## Summative Examination Backend Deployment and Runtime Verification Checkpoint — 2026-08-30
+
+### Scope
+
+This checkpoint records the verified state of the Summative Examination backend at
+implementation HEAD:
+
+`89b4440dfbbf0b2cf4c3e675039c38c1e8417fff`
+
+It supersedes older broad statements that describe the entire Summative
+Examiner/Committee backend as unimplemented.
+
+It does not claim completion of the full Summative Examination workflow.
+
+### Academic-authority correction
+
+The current applicable LL.B. Academic Ordinance remains the highest academic source.
+
+Older teacher/consolidated specification text describing a three-member Examination
+Committee is not current authority where it conflicts with the current Ordinance.
+
+The implemented committee foundation is Ordinance-aligned:
+
+- Chairman;
+- Internal Member 1;
+- Internal Member 2;
+- External Member.
+
+The External Member is represented through formal external identity metadata and is
+not automatically an ordinary same-department Lexora User or digital marks authority.
+
+Historical specification text is preserved; this checkpoint records the current
+superseding implementation authority.
+
+### IMPLEMENTED
+
+Implemented through the current checkpoint:
+
+- Summative Examination setup;
+- ExaminationCourse authoritative snapshot foundation;
+- four-seat Examination Committee foundation;
+- external-member metadata path;
+- independent First/Second Examiner assignment;
+- exact Examiner authority service;
+- dynamic versioned question configuration;
+- exact question-configuration lock;
+- Enrollment-derived Summative candidate roster foundation;
+- blind First/Second Examiner question-wise marks;
+- draft mark save/update;
+- explicit draft clear using null;
+- Decimal mark validation;
+- server-calculated total;
+- required-item validation;
+- final submission lock;
+- ordinary post-lock immutability;
+- repeat-finalization idempotency;
+- transactional audit protections;
+- PostgreSQL candidate/submission/question-mark integrity protections;
+- mixed-role authorization provisioning.
+
+Third Examiner, comparison/variance, committee review, Chairman approval and result
+handoff are not part of this implemented checkpoint.
+
+### Authorization
+
+Permanent Summative management permissions provisioned to Department Admin:
+
+- `summative-examination.setup.manage_department`;
+- `summative-examination.committee.manage_department`;
+- `summative-examination.examiner-assignment.manage_department`.
+
+Permanent coarse marks permission provisioned to Teacher:
+
+- `summative-examination.examiner-marks.enter_department`.
+
+Teacher marks permission alone is insufficient.
+
+Live valid marks authority additionally requires the authenticated same-department
+principal, active Teacher role/UserRole, exact permission provenance and active
+unexpired exact Examiner assignment.
+
+Department Admin does not receive Examiner-marks authority.
+
+Teacher does not receive Summative management authority.
+
+### Migration identity
+
+Applied migration chain:
+
+- `202608280001_add_summative_examination_committee_foundation`;
+- `202608290001_add_external_examination_committee_member`;
+- `202608290002_add_examination_course_examiner_assignment`;
+- `202608290003_add_summative_question_configuration`;
+- `202608290004_add_summative_examiner_marks`.
+
+Reviewed final marks migration SHA-256:
+
+`e05ba687c76b0da283163bc446019a962feb61b3fe458d6785cd330f165db454`
+
+### STATICALLY VERIFIED
+
+At the promoted implementation HEAD:
+
+- Prisma Client generation: PASS;
+- API typecheck: PASS;
+- API build: PASS;
+- selected Summative + authorization regression: `199/199 PASS`.
+
+### SERVER VERIFIED
+
+Server `main` was fast-forwarded to the implementation HEAD.
+
+Verified:
+
+- server HEAD exact;
+- `origin/main` exact;
+- working tree clean;
+- five migration directories present;
+- final marks migration hash exact;
+- Prisma generate PASS;
+- API typecheck PASS;
+- API build PASS;
+- 199/199 selected regression PASS.
+
+The first server/static checkpoint intentionally performed no DB mutation, migration
+deploy, provisioning apply or PM2 restart.
+
+### DISPOSABLE POSTGRESQL VERIFIED
+
+An exact-current backup was restored into loopback-only disposable PostgreSQL 18.6.
+
+Verified:
+
+- restore PASS;
+- five migrations applied successfully;
+- target migration history 5/5 complete;
+- existing business data preserved;
+- automatic Summative backfill zero;
+- tables 10/10;
+- enum types 7/7;
+- indexes 55/55;
+- constraints 82/82;
+- triggers 4/4;
+- Summative foreign keys 49;
+- non-RESTRICT Summative FKs 0;
+- Prisma database/datamodel drift none;
+- second migrate deploy true no-op;
+- mixed-role provisioning dry-run zero write;
+- mixed-role provisioning apply PASS;
+- Admin/Teacher separation PASS;
+- second provisioning apply true no-op.
+
+The disposable container was removed and ordinary `lexora_lms` remained unchanged
+during this phase.
+
+### POSTGRESQL DEPLOYED / VERIFIED
+
+The five migrations were then deployed to the ordinary `lexora_lms` PostgreSQL 18.6
+database.
+
+Verified:
+
+- 5/5 target migrations complete;
+- incomplete/rolled-back target migration count 0;
+- existing business data preserved;
+- authorization counts preserved during schema migration;
+- automatic Summative rows zero;
+- 10/10 tables;
+- 7/7 enum types;
+- 55/55 named indexes;
+- 82/82 named constraints;
+- 4/4 triggers;
+- 49/49 Summative FKs restrictive;
+- Prisma database/datamodel drift none;
+- second ordinary migrate deploy true no-op;
+- final Prisma status up to date.
+
+A validated private pre-migration backup was retained.
+
+### PERMANENT AUTHORIZATION VERIFIED
+
+Before ordinary permanent provisioning:
+
+- four Summative permissions absent;
+- four target links absent;
+- four corresponding provisioning audits absent;
+- final dry-run wrote nothing.
+
+Permanent apply produced exactly the intended mixed-role state.
+
+Verified:
+
+- setup -> Department Admin;
+- committee -> Department Admin;
+- Examiner assignment -> Department Admin;
+- Examiner marks -> Teacher;
+- Admin Examiner-marks leakage 0;
+- Teacher Summative-management leakage 0;
+- Summative provisioning SERVICE audits exactly 4;
+- second apply true no-op.
+
+Provisioned-state fingerprint:
+
+`9|9|9 -> 9|9|9`
+
+### BOOT VERIFIED
+
+After migration and provisioning:
+
+- API typecheck PASS;
+- API build PASS;
+- schema up to date;
+- PM2 `lexora-api` restarted;
+- PID changed `1697 -> 35362`;
+- PM2 online;
+- direct API health HTTP 200;
+- Nginx API health HTTP 200;
+- API listener remains `127.0.0.1:4000` only;
+- Nginx active;
+- PostgreSQL active;
+- unauthenticated marking-workspace probe HTTP 401;
+- repository clean/origin-aligned.
+
+This verifies deployment, boot and AuthGuard route activation only.
+
+### Read-only runtime discovery
+
+Post-activation read-only discovery confirmed:
+
+- current Summative controllers are guarded by AuthGuard and PolicyGuard;
+- ordinary Summative business tables initially contained zero rows;
+- only one existing Law Teacher principal was currently usable for Examiner authority;
+- AcademicSession count was zero;
+- StudentBatch count was zero;
+- SyllabusVersion count was zero.
+
+Canonical theoretical assessment structure was confirmed:
+
+- Formative Activities 30;
+- Attendance 5;
+- Comprehensive Examination 5;
+- Summative Examination 60.
+
+A separate runtime-only academic/enrollment chain was identified as the safer basis
+for future isolated fixtures rather than mutating canonical LL.B. academic records.
+
+### Interrupted prerequisite fixture attempt
+
+A runtime-prerequisite fixture command stopped at its local temporary-password
+minimum-length guard.
+
+The guard failed before the fixture transaction began.
+
+Result:
+
+- temporary Teacher creation: NONE;
+- UserRole creation: NONE;
+- AcademicSession creation: NONE;
+- SyllabusVersion creation: NONE;
+- CourseOffering fixture creation: NONE;
+- Enrollment fixture creation: NONE;
+- Summative business-row creation: NONE;
+- rollback required: NO.
+
+No temporary password or derived value is recorded here.
+
+### FUNCTIONAL RUNTIME PENDING
+
+The deployed First/Second workflow still requires a fresh-principal real
+HTTP/PostgreSQL matrix covering:
+
+- isolated runtime prerequisite fixture;
+- fresh Department Admin authentication;
+- two distinct usable Teacher Examiner identities;
+- Examination creation;
+- ExaminationCourse creation;
+- four-seat Committee;
+- External Member metadata;
+- First/Second Examiner assignments;
+- dynamic question configuration and lock;
+- candidate registration;
+- First/Second draft/final marking;
+- reciprocal blindness in DRAFT and LOCKED states;
+- unauthenticated access;
+- wrong role;
+- wrong department;
+- forged `x-department-id`;
+- Course Teacher without Examiner assignment;
+- Teacher permission without Examiner assignment;
+- expired/revoked/inactive authority;
+- direct foreign object safe-not-found behavior;
+- mark validation boundaries;
+- zero versus missing-required behavior;
+- explicit null clear versus omission;
+- client-total injection resistance;
+- locked mutation rejection;
+- repeat-finalization idempotency;
+- concurrency races;
+- real PostgreSQL trigger enforcement;
+- audit-failure rollback;
+- audit-content review;
+- fixture cleanup;
+- measured baseline restoration.
+
+Until this matrix passes, First/Second marking is:
+
+**implemented + deployed + boot verified, but not fully functional-runtime verified.**
+
+### FUTURE IMPLEMENTATION PENDING
+
+Still pending:
+
+1. First/Second comparison evidence.
+2. 15% variance evaluation against authoritative Summative full mark.
+3. candidate/script-scoped Third Examination referral.
+4. blind Third Examiner question-wise marking.
+5. nearest-pair result calculation.
+6. equal-distance higher-pair rule.
+7. Committee Member review.
+8. Chairman approval/final lock.
+9. authorised reopen/correction/re-review/reapproval/relock.
+10. approved Summative result.
+11. transactional/idempotent result-engine handoff.
+12. final-result/amendment integration.
+13. Summative CLO analytical selected-pair evidence where formally required.
+14. reports/export confidentiality.
+15. frontend integration.
+
+Third Examiner must not be implemented as a permanent standing course-level third seat.
+
+### Candidate / script reference governance
+
+No authoritative operational contract has yet been established for:
+
+- exam/candidate number issuance;
+- Student ID/session binding;
+- physical answer-script allocation;
+- blind script reference;
+- masking/unmasking lifecycle.
+
+Do not invent new exam-roll/script-number schema from implementation convenience.
+
+Current `SummativeExaminationCandidate` remains an internal Enrollment-derived roster
+foundation.
+
+### 2FA
+
+Target specifications require mandatory 2FA for sensitive Admin, Teacher, Examiner and
+Committee access.
+
+Current Summative source/runtime evidence does not yet prove a reusable enforced 2FA
+gate for this workflow.
+
+Classification:
+
+**PENDING SECURITY HARDENING / RUNTIME VERIFICATION**
+
+### Resume point
+
+Next safe step:
+
+1. create isolated runtime-only prerequisites without modifying canonical LL.B.
+   records;
+2. use fresh authenticated principals;
+3. execute the First/Second functional/security runtime matrix;
+4. cleanup disposable fixtures and restore measured baseline;
+5. update this checklist with the result;
+6. only then begin the variance + Third Examiner implementation bundle.
+
+Detailed module handoff:
+
+`docs/summative-examination.md`
