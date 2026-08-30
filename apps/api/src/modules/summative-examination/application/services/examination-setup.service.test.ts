@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { BadRequestException, ForbiddenException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 
 import { ExaminationSetupService } from "./examination-setup.service";
@@ -44,7 +48,11 @@ function offering(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function courseHarness(offeringRecord = offering(), failAudit = false) {
+function courseHarness(
+  offeringRecord = offering(),
+  failAudit = false,
+  createError?: unknown,
+) {
   const createCalls: Array<{ data: Record<string, unknown> }> = [];
   const audits: unknown[] = [];
   const locks: string[] = [];
@@ -81,6 +89,7 @@ function courseHarness(offeringRecord = offering(), failAudit = false) {
     },
     examinationCourse: {
       create: async (args: { data: Record<string, unknown> }) => {
+        if (createError) throw createError;
         pendingCreates.push(args);
         return { id: "exam-course-a", ...args.data };
       },
@@ -122,6 +131,60 @@ function courseHarness(offeringRecord = offering(), failAudit = false) {
       } as never,
     ),
   };
+}
+
+function examinationHarness(createError?: unknown) {
+  const createCalls: Array<{ data: Record<string, unknown> }> = [];
+  const audits: unknown[] = [];
+  let pendingCreates: Array<{ data: Record<string, unknown> }> = [];
+  const tx = {
+    $queryRaw: async () => [{ id: "parent-a" }],
+    examination: {
+      create: async (args: { data: Record<string, unknown> }) => {
+        if (createError) throw createError;
+        pendingCreates.push(args);
+        return { id: "exam-a", ...args.data };
+      },
+    },
+    auditLog: {
+      create: async (entry: unknown) => {
+        audits.push(entry);
+        return entry;
+      },
+    },
+  };
+  const prisma = {
+    $transaction: async (
+      callback: (client: unknown) => Promise<unknown>,
+      _options: unknown,
+    ) => {
+      pendingCreates = [];
+      const result = await callback(tx);
+      createCalls.push(...pendingCreates);
+      return result;
+    },
+  };
+  return {
+    audits,
+    createCalls,
+    service: new ExaminationSetupService(
+      prisma as never,
+      {
+        get: () => ({
+          requestId: "request-a",
+          audit: { ipAddress: "127.0.0.1", userAgent: "test" },
+        }),
+      } as never,
+      {
+        authorize: async () => authority,
+        assertCurrentAuthority: async () => undefined,
+      } as never,
+    ),
+  };
+}
+
+function p2002(target: string | string[]) {
+  return { code: "P2002", meta: { target } };
 }
 
 test("setup management fails closed before reads when exact authority is absent", async () => {
@@ -211,3 +274,116 @@ test("ExaminationCourse audit failure aborts the protected transaction", async (
   assert.equal(h.createCalls.length, 0);
   assert.equal(h.audits.length, 0);
 });
+
+for (const target of [
+  ["departmentId", "examinationId", "courseOfferingId"],
+  ["department_id", "examination_id", "course_offering_id"],
+]) {
+  test(`ExaminationCourse maps its exact P2002 field target (${target.join(", ")}) to conflict`, async () => {
+    const h = courseHarness(offering(), false, p2002(target));
+
+    await assert.rejects(
+      h.service.createExaminationCourse({
+        examinationId: "exam-a",
+        courseOfferingId: "offering-a",
+        ruleVersionCode: "RULE-2026",
+      }),
+      (error: unknown) => {
+        assert.ok(error instanceof ConflictException);
+        assert.equal(error.message, "Examination course already exists");
+        return true;
+      },
+    );
+    assert.equal(h.createCalls.length, 0);
+    assert.equal(h.audits.length, 0);
+  });
+}
+
+test("ExaminationCourse preserves constraint-name P2002 conflict handling", async () => {
+  const h = courseHarness(
+    offering(),
+    false,
+    p2002("examination_course_offering_uq"),
+  );
+
+  await assert.rejects(
+    h.service.createExaminationCourse({
+      examinationId: "exam-a",
+      courseOfferingId: "offering-a",
+      ruleVersionCode: "RULE-2026",
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof ConflictException);
+      assert.equal(error.message, "Examination course already exists");
+      return true;
+    },
+  );
+  assert.equal(h.createCalls.length, 0);
+  assert.equal(h.audits.length, 0);
+});
+
+test("ExaminationCourse rethrows an unrelated P2002 unchanged", async () => {
+  const uniqueError = p2002(["id"]);
+  const h = courseHarness(offering(), false, uniqueError);
+
+  await assert.rejects(
+    h.service.createExaminationCourse({
+      examinationId: "exam-a",
+      courseOfferingId: "offering-a",
+      ruleVersionCode: "RULE-2026",
+    }),
+    (error: unknown) => error === uniqueError,
+  );
+  assert.equal(h.createCalls.length, 0);
+  assert.equal(h.audits.length, 0);
+});
+
+test("Examination creation still commits its create and success audit", async () => {
+  const h = examinationHarness();
+
+  const result = await h.service.createExamination({
+    academicProgramId: "program-a",
+    academicSessionId: "session-a",
+    academicTermId: "term-a",
+    code: " EXAM-2026 ",
+    name: " Final Examination ",
+    categoryCode: " SUMMATIVE ",
+    ruleVersionCode: " RULE-2026 ",
+  });
+
+  assert.equal(result.code, "EXAM-2026");
+  assert.equal(result.name, "Final Examination");
+  assert.equal(h.createCalls.length, 1);
+  assert.equal(h.audits.length, 1);
+});
+
+for (const target of [
+  ["departmentId", "code"],
+  ["department_id", "code"],
+]) {
+  test(`Examination maps its exact P2002 field target (${target.join(", ")}) to conflict`, async () => {
+    const h = examinationHarness(p2002(target));
+
+    await assert.rejects(
+      h.service.createExamination({
+        academicProgramId: "program-a",
+        academicSessionId: "session-a",
+        academicTermId: "term-a",
+        code: "EXAM-2026",
+        name: "Final Examination",
+        categoryCode: "SUMMATIVE",
+        ruleVersionCode: "RULE-2026",
+      }),
+      (error: unknown) => {
+        assert.ok(error instanceof ConflictException);
+        assert.equal(
+          error.message,
+          "Examination code already exists in this department",
+        );
+        return true;
+      },
+    );
+    assert.equal(h.createCalls.length, 0);
+    assert.equal(h.audits.length, 0);
+  });
+}

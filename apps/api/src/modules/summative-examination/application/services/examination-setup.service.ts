@@ -69,7 +69,12 @@ export class ExaminationSetupService {
         return examination;
       });
     } catch (error) {
-      if (this.isUniqueConflict(error, "examination_department_code_uq")) {
+      if (
+        this.isUniqueConflict(error, "examination_department_code_uq", [
+          ["departmentId", "code"],
+          ["department_id", "code"],
+        ])
+      ) {
         throw new ConflictException(
           "Examination code already exists in this department",
         );
@@ -281,7 +286,12 @@ export class ExaminationSetupService {
         return examinationCourse;
       });
     } catch (error) {
-      if (this.isUniqueConflict(error, "examination_course_offering_uq")) {
+      if (
+        this.isUniqueConflict(error, "examination_course_offering_uq", [
+          ["departmentId", "examinationId", "courseOfferingId"],
+          ["department_id", "examination_id", "course_offering_id"],
+        ])
+      ) {
         throw new ConflictException("Examination course already exists");
       }
       throw error;
@@ -407,14 +417,40 @@ export class ExaminationSetupService {
     });
   }
 
-  private isUniqueConflict(error: unknown, constraint: string) {
+  private isUniqueConflict(
+    error: unknown,
+    constraint: string,
+    allowedFieldSets: ReadonlyArray<ReadonlyArray<string>>,
+  ) {
+    if (typeof error !== "object" || error === null || !("code" in error)) {
+      return false;
+    }
+    if (error.code !== "P2002" || !("meta" in error)) return false;
+
+    const meta = error.meta;
+    if (typeof meta !== "object" || meta === null || !("target" in meta)) {
+      return false;
+    }
+
+    const target = meta.target;
+    if (target === constraint) return true;
     if (
-      !(error instanceof PrismaClientKnownRequestError) ||
-      error.code !== "P2002"
+      !Array.isArray(target) ||
+      !target.every((field) => typeof field === "string")
     ) {
       return false;
     }
-    return error.meta?.target === constraint;
+
+    const normalizedTarget = [...new Set(target)].sort();
+    return allowedFieldSets.some((allowedFields) => {
+      const normalizedAllowedFields = [...new Set(allowedFields)].sort();
+      return (
+        normalizedTarget.length === normalizedAllowedFields.length &&
+        normalizedTarget.every(
+          (field, index) => field === normalizedAllowedFields[index],
+        )
+      );
+    });
   }
 
   private isRetryableSerializableConflict(error: unknown) {
