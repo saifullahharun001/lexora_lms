@@ -130,9 +130,10 @@ test("committed Summative migrations remain byte-for-byte unchanged", () => {
   }
 });
 
-test("checkpoint introduces no marks, question, script, variance, or handoff model", () => {
+test("assignment foundation remains free of Third Examiner, question content, script storage, variance, or handoff scope", () => {
   assert.doesNotMatch(
     schema,
-    /model\s+(?:ExaminerMark|SummativeQuestion|QuestionPaper|AnswerScript|ThirdExaminerReferral|SummativeResultHandoff)\b/,
+    /model\s+(?:QuestionPaper|AnswerScript|ThirdExaminerReferral|SummativeResultHandoff)\b/,
   );
+  assert.doesNotMatch(assignment, /THIRD_EXAMINER|questionText|questionPaper|answerScript|variance/i);
 });

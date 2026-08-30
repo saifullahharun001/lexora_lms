@@ -113,6 +113,20 @@ export const SUMMATIVE_EXAMINATION_EXAMINER_ASSIGNMENT_MANAGE_PROVISIONING = {
     "authorization.summative-examination-examiner-assignment-manage.provisioned",
 } as const;
 
+export const SUMMATIVE_EXAMINATION_EXAMINER_MARKS_ENTER_PROVISIONING = {
+  permission: {
+    code: PERMISSIONS.SUMMATIVE_EXAMINATION.EXAMINER_MARKS_ENTER_DEPARTMENT,
+    resource: "summative-examination.examiner-marks",
+    action: "enter",
+    scope: PermissionScope.DEPARTMENT,
+    description:
+      "Enter only the authenticated First or Second Examiner's own blind marks within an explicit active assignment",
+  },
+  targetRoleCode: PLATFORM_ROLES.TEACHER,
+  auditAction:
+    "authorization.summative-examination-examiner-marks-enter.provisioned",
+} as const;
+
 export const AUTHORIZATION_PROVISIONING_DEFINITIONS = [
   SYLLABUS_VERSION_MANAGE_PROVISIONING,
   SYLLABUS_VERSION_LIFECYCLE_MANAGE_PROVISIONING,
@@ -122,6 +136,7 @@ export const AUTHORIZATION_PROVISIONING_DEFINITIONS = [
   SUMMATIVE_EXAMINATION_SETUP_MANAGE_PROVISIONING,
   SUMMATIVE_EXAMINATION_COMMITTEE_MANAGE_PROVISIONING,
   SUMMATIVE_EXAMINATION_EXAMINER_ASSIGNMENT_MANAGE_PROVISIONING,
+  SUMMATIVE_EXAMINATION_EXAMINER_MARKS_ENTER_PROVISIONING,
 ] as const;
 
 export type AuthorizationProvisioningDefinition =

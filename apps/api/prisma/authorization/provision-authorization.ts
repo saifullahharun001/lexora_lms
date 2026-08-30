@@ -43,6 +43,7 @@ interface ResolvedPermission {
 export type ExistingState = "ABSENT" | "EXACT";
 
 export interface AuthorizationProvisioningDefinitionPlan {
+  readonly targetRole: Pick<ResolvedRole, "id" | "code" | "name">;
   readonly permission: {
     readonly id: string | null;
     readonly code: string;
@@ -64,7 +65,6 @@ export interface AuthorizationProvisioningDefinitionPlan {
 
 export interface AuthorizationProvisioningPlan {
   readonly department: Pick<ResolvedDepartment, "id" | "code" | "name">;
-  readonly role: Pick<ResolvedRole, "id" | "code" | "name">;
   readonly definitions: readonly AuthorizationProvisioningDefinitionPlan[];
 }
 
@@ -168,19 +168,17 @@ async function resolveRole(
   if (roles.length !== 1) {
     fail(
       roles.length === 0
-        ? "Target department has no Department Admin role"
-        : "Target Department Admin role identity is ambiguous",
+        ? `Target department has no exact role for code ${targetRoleCode}`
+        : `Target role identity is ambiguous for code ${targetRoleCode}`,
     );
   }
 
   const role = roles[0]!;
   if (role.departmentId !== department.id || role.code !== targetRoleCode) {
-    fail(
-      "Resolved Department Admin role does not belong to the target department",
-    );
+    fail("Resolved target role does not match the exact department and code");
   }
   if (role.archivedAt !== null) {
-    fail("Target Department Admin role is archived");
+    fail(`Target role is archived for code ${targetRoleCode}`);
   }
 
   return role;
@@ -291,7 +289,6 @@ function validateProvisioningDefinitions() {
 
   const permissionCodes = new Set<string>();
   const permissionSemantics = new Set<string>();
-  const targetRoleCodes = new Set<string>();
 
   for (const definition of definitions) {
     if (permissionCodes.has(definition.permission.code)) {
@@ -310,31 +307,48 @@ function validateProvisioningDefinitions() {
       );
     }
     permissionSemantics.add(semantics);
-    targetRoleCodes.add(definition.targetRoleCode);
+    if (
+      definition.targetRoleCode.length === 0 ||
+      definition.targetRoleCode.trim() !== definition.targetRoleCode
+    ) {
+      fail(
+        "Authorization provisioning definition has an invalid target role code",
+      );
+    }
   }
 
-  if (targetRoleCodes.size !== 1) {
-    fail("Authorization provisioning definitions target incompatible roles");
-  }
-
-  return definitions[0]!.targetRoleCode;
+  return definitions;
 }
 
 async function loadPlan(
   client: ProvisioningReadClient,
   selector: DepartmentSelector,
 ): Promise<AuthorizationProvisioningPlan> {
-  const targetRoleCode = validateProvisioningDefinitions();
+  const provisioningDefinitions = validateProvisioningDefinitions();
   const department = await resolveDepartment(client, selector);
-  const role = await resolveRole(client, department, targetRoleCode);
+  const rolesByCode = new Map<string, ResolvedRole>();
+  for (const definition of provisioningDefinitions) {
+    if (!rolesByCode.has(definition.targetRoleCode)) {
+      rolesByCode.set(
+        definition.targetRoleCode,
+        await resolveRole(client, department, definition.targetRoleCode),
+      );
+    }
+  }
   const definitions: AuthorizationProvisioningDefinitionPlan[] = [];
 
-  for (const definition of AUTHORIZATION_PROVISIONING_DEFINITIONS) {
+  for (const definition of provisioningDefinitions) {
+    const targetRole = rolesByCode.get(definition.targetRoleCode)!;
     const permission = await resolvePermission(client, definition);
-    const roleLink = await resolveRoleLink(client, role, permission);
+    const roleLink = await resolveRoleLink(client, targetRole, permission);
     const hasChanges = permission === null || roleLink === null;
 
     definitions.push({
+      targetRole: {
+        id: targetRole.id,
+        code: targetRole.code,
+        name: targetRole.name,
+      },
       permission: {
         id: permission?.id ?? null,
         code: definition.permission.code,
@@ -361,7 +375,6 @@ async function loadPlan(
       code: department.code,
       name: department.name,
     },
-    role: { id: role.id, code: role.code, name: role.name },
     definitions,
   };
 }
@@ -460,7 +473,7 @@ export async function applyAuthorizationProvisioning(
         const rolePermission = rolePermissionCreated
           ? await tx.rolePermission.create({
               data: {
-                roleId: plan.role.id,
+                roleId: definitionPlan.targetRole.id,
                 permissionId: permission.id,
               },
               select: { id: true },
@@ -479,7 +492,7 @@ export async function applyAuthorizationProvisioning(
             contextJson: {
               mode: "APPLY",
               departmentCode: plan.department.code,
-              roleCode: plan.role.code,
+              roleCode: definitionPlan.targetRole.code,
               permissionCode: definition.permission.code,
               permissionCreated,
               rolePermissionCreated,
@@ -521,6 +534,7 @@ export function sanitizedProvisioningSummary(
   const definitions = result.plan.definitions.map((definition) => {
     const definitionResult = resultsByCode.get(definition.permission.code);
     return {
+      targetRole: definition.targetRole,
       permission: definition.permission,
       roleLink: definition.roleLink,
       changes: definition.changes,
@@ -536,7 +550,6 @@ export function sanitizedProvisioningSummary(
   return {
     mode: result.applied ? "APPLY" : "DRY_RUN",
     department: result.plan.department,
-    role: result.plan.role,
     definitions,
     applied: result.applied,
     noOp: definitions.every((definition) => definition.noOp),

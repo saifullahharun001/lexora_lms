@@ -460,6 +460,11 @@ enum SummativeQuestionConfigurationStatus {
   ARCHIVED
 }
 
+enum SummativeExaminerMarkSubmissionStatus {
+  DRAFT
+  LOCKED
+}
+
 model Department {
   id                              String                            @id @default(cuid())
   code                            String                            @unique
@@ -553,6 +558,9 @@ model Department {
   courseOutlineCorrectionRequests CourseOutlineCorrectionRequest[]
   summativeQuestionConfigs        SummativeQuestionConfiguration[]
   summativeQuestionConfigItems    SummativeQuestionConfigurationItem[]
+  summativeExaminationCandidates  SummativeExaminationCandidate[]
+  summativeExaminerMarkSubmissions SummativeExaminerMarkSubmission[]
+  summativeExaminerQuestionMarks  SummativeExaminerQuestionMark[]
 
   @@map("departments")
 }
@@ -637,6 +645,8 @@ model User {
   fileObjects                        FileObject[]                     @relation("FileUploadedBy")
   correctionRequestsActed            CourseOutlineCorrectionRequest[] @relation("CourseOutlineCorrectionRequestActor")
   summativeQuestionConfigsCreated      SummativeQuestionConfiguration[] @relation("SummativeQuestionConfigCreatedBy")
+  summativeCandidatesAsStudent         SummativeExaminationCandidate[]   @relation("SummativeCandidateStudent")
+  summativeCandidatesRegistered        SummativeExaminationCandidate[]   @relation("SummativeCandidateRegisteredBy")
 
   @@unique([id, departmentId], map: "user_id_department_uq")
   @@index([departmentId])
@@ -838,6 +848,8 @@ model Examination {
   committees           ExaminationCommittee[]
   committeeAssignments ExaminationCommitteeAssignment[]
   examinerAssignments  ExaminationCourseExaminerAssignment[]
+  summativeCandidates  SummativeExaminationCandidate[]
+  examinerMarkSubmissions SummativeExaminerMarkSubmission[]
 
   @@unique([id, departmentId], map: "examination_id_department_uq")
   @@unique([id, departmentId, academicProgramId, academicSessionId, academicTermId], map: "examination_scope_identity_uq")
@@ -883,9 +895,12 @@ model ExaminationCourse {
   lockedQuestionConfiguration     SummativeQuestionConfiguration? @relation("ExaminationCourseActiveConfig", fields: [lockedQuestionConfigurationId, departmentId, id], references: [id, departmentId, examinationCourseId], onDelete: Restrict, onUpdate: Restrict, map: "examination_course_locked_config_fkey")
   questionConfigurations          SummativeQuestionConfiguration[] @relation("ExaminationCourseAllConfigs")
   examinerAssignments             ExaminationCourseExaminerAssignment[]
+  summativeCandidates             SummativeExaminationCandidate[]
+  examinerMarkSubmissions         SummativeExaminerMarkSubmission[]
 
   @@unique([lockedQuestionConfigurationId, departmentId, id], map: "examination_course_locked_config_uq")
   @@unique([id, departmentId, examinationId], map: "examination_course_scope_identity_uq")
+  @@unique([id, departmentId, examinationId, courseOfferingId], map: "examination_course_candidate_scope_uq")
   @@unique([departmentId, examinationId, courseOfferingId], map: "examination_course_offering_uq")
   @@index([departmentId, examinationId], map: "examination_course_examination_idx")
   @@index([departmentId, courseOfferingId], map: "examination_course_offering_idx")
@@ -964,9 +979,11 @@ model ExaminationCourseExaminerAssignment {
   examinationCourse   ExaminationCourse                         @relation(fields: [examinationCourseId, departmentId, examinationId], references: [id, departmentId, examinationId], onDelete: Restrict, onUpdate: Restrict, map: "exam_course_examiner_assignment_course_fkey")
   assignedUser        User                                      @relation("ExaminationCourseExaminerAssignee", fields: [assignedUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "exam_course_examiner_assignment_user_fkey")
   assignedByUser      User                                      @relation("ExaminationCourseExaminerAssignedBy", fields: [assignedByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "exam_course_examiner_assignment_assigner_fkey")
+  markSubmissions     SummativeExaminerMarkSubmission[]
 
   /// Active-only seat and user uniqueness is enforced by PostgreSQL partial unique indexes. Wall-clock-expired assignments provide no authority and must be retired transactionally before replacement.
   @@unique([id, departmentId, examinationId, examinationCourseId], map: "exam_course_examiner_assignment_scope_identity_uq")
+  @@unique([id, departmentId, examinationId, examinationCourseId, seat], map: "exam_course_examiner_assignment_seat_scope_uq")
   @@index([departmentId, examinationCourseId, examinationId, status], map: "exam_course_examiner_assignment_scope_status_idx")
   @@index([departmentId, assignedUserId, status], map: "exam_course_examiner_assignment_user_status_idx")
   @@index([departmentId, assignedByUserId], map: "exam_course_examiner_assignment_assigner_idx")
@@ -1487,8 +1504,10 @@ model Enrollment {
   assignmentSubmissions         AssignmentSubmission[]
   quizAttempts                  QuizAttempt[]
   resultRecords                 ResultRecord[]
+  summativeExaminationCandidates SummativeExaminationCandidate[]
 
   @@unique([courseOfferingId, studentUserId])
+  @@unique([id, departmentId, courseOfferingId, studentUserId], map: "enrollment_exam_candidate_scope_uq")
   @@index([departmentId])
   @@index([academicTermId])
   @@index([studentUserId])
@@ -2886,10 +2905,13 @@ model SummativeQuestionConfiguration {
   createdByUser     User              @relation("SummativeQuestionConfigCreatedBy", fields: [createdByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "summative_question_config_created_by_fkey")
 
   items SummativeQuestionConfigurationItem[]
+  examinerMarkSubmissions SummativeExaminerMarkSubmission[]
+  examinerQuestionMarks   SummativeExaminerQuestionMark[]
 
   activeForExaminationCourse ExaminationCourse? @relation("ExaminationCourseActiveConfig")
 
   @@unique([id, departmentId, examinationCourseId], map: "summative_question_config_scope_uq")
+  @@unique([id, departmentId, examinationId, examinationCourseId], map: "summative_question_config_exam_scope_uq")
   @@unique([departmentId, examinationCourseId, versionNumber], map: "summative_question_config_version_uq")
   @@index([departmentId, examinationCourseId, status], map: "summative_question_config_status_idx")
   @@map("summative_question_configurations")
@@ -2921,8 +2943,90 @@ model SummativeQuestionConfigurationItem {
   configuration SummativeQuestionConfiguration @relation(fields: [configurationId, departmentId, examinationCourseId], references: [id, departmentId, examinationCourseId], onDelete: Restrict, onUpdate: Restrict, map: "summative_question_config_item_config_fkey")
 
   clo CourseLearningOutcome? @relation(fields: [cloId, departmentId, curriculumVersionId, curriculumCourseId], references: [id, departmentId, curriculumVersionId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "summative_question_config_item_clo_fkey")
+  examinerQuestionMarks SummativeExaminerQuestionMark[]
 
   @@unique([id, departmentId, configurationId], map: "summative_question_config_item_scope_uq")
+  @@unique([id, departmentId, configurationId, examinationCourseId], map: "summative_question_config_item_exam_scope_uq")
   @@index([departmentId, configurationId, isActive, displayOrder], map: "summative_question_config_item_order_idx")
   @@map("summative_question_configuration_items")
+}
+
+model SummativeExaminationCandidate {
+  id                  String   @id @default(cuid())
+  departmentId        String   @map("department_id")
+  examinationId       String   @map("examination_id")
+  examinationCourseId String   @map("examination_course_id")
+  courseOfferingId    String   @map("course_offering_id")
+  enrollmentId        String   @map("enrollment_id")
+  studentUserId       String   @map("student_user_id")
+  registeredByUserId  String   @map("registered_by_user_id")
+  registeredAt        DateTime @default(now()) @map("registered_at")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  department        Department        @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "summative_candidate_department_fkey")
+  examination       Examination       @relation(fields: [examinationId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "summative_candidate_examination_fkey")
+  examinationCourse ExaminationCourse @relation(fields: [examinationCourseId, departmentId, examinationId, courseOfferingId], references: [id, departmentId, examinationId, courseOfferingId], onDelete: Restrict, onUpdate: Restrict, map: "summative_candidate_exam_course_fkey")
+  enrollment        Enrollment        @relation(fields: [enrollmentId, departmentId, courseOfferingId, studentUserId], references: [id, departmentId, courseOfferingId, studentUserId], onDelete: Restrict, onUpdate: Restrict, map: "summative_candidate_enrollment_fkey")
+  studentUser       User              @relation("SummativeCandidateStudent", fields: [studentUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "summative_candidate_student_fkey")
+  registeredByUser  User              @relation("SummativeCandidateRegisteredBy", fields: [registeredByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "summative_candidate_registrar_fkey")
+  markSubmissions   SummativeExaminerMarkSubmission[]
+
+  @@unique([id, departmentId, examinationId, examinationCourseId], map: "summative_candidate_scope_uq")
+  @@unique([departmentId, examinationCourseId, enrollmentId], map: "summative_candidate_roster_uq")
+  @@index([departmentId, examinationCourseId, id], map: "summative_candidate_course_idx")
+  @@map("summative_examination_candidates")
+}
+
+model SummativeExaminerMarkSubmission {
+  id                         String                                 @id @default(cuid())
+  departmentId               String                                 @map("department_id")
+  examinationId              String                                 @map("examination_id")
+  examinationCourseId        String                                 @map("examination_course_id")
+  candidateId                String                                 @map("candidate_id")
+  examinerAssignmentId       String                                 @map("examiner_assignment_id")
+  examinerSeat               ExaminationCourseExaminerSeat          @map("examiner_seat")
+  questionConfigurationId    String                                 @map("question_configuration_id")
+  versionNumber              Int                                    @map("version_number") @db.SmallInt
+  status                     SummativeExaminerMarkSubmissionStatus  @default(DRAFT)
+  totalMark                  Decimal?                               @map("total_mark") @db.Decimal(6, 2)
+  submittedAt                DateTime?                              @map("submitted_at")
+  lockedAt                   DateTime?                              @map("locked_at")
+  createdAt                  DateTime                               @default(now()) @map("created_at")
+  updatedAt                  DateTime                               @updatedAt @map("updated_at")
+
+  department            Department                            @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "summative_mark_submission_department_fkey")
+  examination           Examination                           @relation(fields: [examinationId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "summative_mark_submission_examination_fkey")
+  examinationCourse     ExaminationCourse                     @relation(fields: [examinationCourseId, departmentId, examinationId], references: [id, departmentId, examinationId], onDelete: Restrict, onUpdate: Restrict, map: "summative_mark_submission_exam_course_fkey")
+  candidate             SummativeExaminationCandidate         @relation(fields: [candidateId, departmentId, examinationId, examinationCourseId], references: [id, departmentId, examinationId, examinationCourseId], onDelete: Restrict, onUpdate: Restrict, map: "summative_mark_submission_candidate_fkey")
+  examinerAssignment    ExaminationCourseExaminerAssignment   @relation(fields: [examinerAssignmentId, departmentId, examinationId, examinationCourseId, examinerSeat], references: [id, departmentId, examinationId, examinationCourseId, seat], onDelete: Restrict, onUpdate: Restrict, map: "summative_mark_submission_assignment_fkey")
+  questionConfiguration SummativeQuestionConfiguration        @relation(fields: [questionConfigurationId, departmentId, examinationId, examinationCourseId], references: [id, departmentId, examinationId, examinationCourseId], onDelete: Restrict, onUpdate: Restrict, map: "summative_mark_submission_config_fkey")
+  questionMarks         SummativeExaminerQuestionMark[]
+
+  @@unique([id, departmentId, examinationCourseId, questionConfigurationId], map: "summative_mark_submission_config_scope_uq")
+  @@unique([departmentId, examinerAssignmentId, candidateId, versionNumber], map: "summative_mark_submission_version_uq")
+  @@unique([departmentId, examinationCourseId, candidateId, examinerSeat, versionNumber], map: "summative_mark_submission_seat_version_uq")
+  @@index([departmentId, examinationCourseId, examinerAssignmentId, candidateId], map: "summative_mark_submission_lookup_idx")
+  @@map("summative_examiner_mark_submissions")
+}
+
+model SummativeExaminerQuestionMark {
+  id                      String   @id @default(cuid())
+  departmentId            String   @map("department_id")
+  examinationCourseId     String   @map("examination_course_id")
+  submissionId            String   @map("submission_id")
+  questionConfigurationId String   @map("question_configuration_id")
+  questionItemId          String   @map("question_item_id")
+  awardedMark             Decimal  @map("awarded_mark") @db.Decimal(6, 2)
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  department            Department                         @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "summative_question_mark_department_fkey")
+  submission            SummativeExaminerMarkSubmission    @relation(fields: [submissionId, departmentId, examinationCourseId, questionConfigurationId], references: [id, departmentId, examinationCourseId, questionConfigurationId], onDelete: Restrict, onUpdate: Restrict, map: "summative_question_mark_submission_fkey")
+  questionConfiguration SummativeQuestionConfiguration     @relation(fields: [questionConfigurationId, departmentId, examinationCourseId], references: [id, departmentId, examinationCourseId], onDelete: Restrict, onUpdate: Restrict, map: "summative_question_mark_config_fkey")
+  questionItem          SummativeQuestionConfigurationItem @relation(fields: [questionItemId, departmentId, questionConfigurationId, examinationCourseId], references: [id, departmentId, configurationId, examinationCourseId], onDelete: Restrict, onUpdate: Restrict, map: "summative_question_mark_item_fkey")
+
+  @@unique([submissionId, questionItemId], map: "summative_question_mark_submission_item_uq")
+  @@index([departmentId, submissionId, questionItemId], map: "summative_question_mark_lookup_idx")
+  @@map("summative_examiner_question_marks")
 }

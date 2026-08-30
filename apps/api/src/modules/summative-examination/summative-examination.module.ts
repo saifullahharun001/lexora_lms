@@ -1,5 +1,8 @@
 import { SummativeQuestionConfigurationService } from "./application/services/summative-question-configuration.service";
 import { SummativeQuestionConfigurationsController } from "./presentation/http/summative-question-configurations.controller";
+import { SummativeCandidateRosterService } from "./application/services/summative-candidate-roster.service";
+import { SummativeExaminerMarksService } from "./application/services/summative-examiner-marks.service";
+import { SummativeExaminerMarksController } from "./presentation/http/summative-examiner-marks.controller";
 import { Module } from "@nestjs/common";
 
 import { PrismaModule } from "@/common/prisma/prisma.module";
@@ -24,6 +27,7 @@ import { ExaminationsController } from "./presentation/http/examinations.control
     ExaminationCommitteesController,
     ExaminationCourseExaminerAssignmentsController,
     SummativeQuestionConfigurationsController,
+    SummativeExaminerMarksController,
   ],
   providers: [
     SummativeManagementAuthorizerService,
@@ -32,6 +36,8 @@ import { ExaminationsController } from "./presentation/http/examinations.control
     ExaminationCourseExaminerAssignmentService,
     ExaminerAuthorityService,
     SummativeQuestionConfigurationService,
+    SummativeCandidateRosterService,
+    SummativeExaminerMarksService,
   ],
   exports: [
     ExaminationSetupService,
@@ -39,6 +45,8 @@ import { ExaminationsController } from "./presentation/http/examinations.control
     ExaminationCourseExaminerAssignmentService,
     ExaminerAuthorityService,
     SummativeQuestionConfigurationService,
+    SummativeCandidateRosterService,
+    SummativeExaminerMarksService,
   ],
 })
 export class SummativeExaminationModule {}

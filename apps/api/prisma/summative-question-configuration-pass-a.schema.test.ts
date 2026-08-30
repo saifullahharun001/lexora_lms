@@ -113,6 +113,7 @@ test("Question Configuration remains dynamic metadata-only with no question or m
   );
   const itemModel = schema.slice(
     schema.indexOf("model SummativeQuestionConfigurationItem {"),
+    schema.indexOf("model SummativeExaminationCandidate {"),
   );
   assert.match(configurationModel, /items\s+SummativeQuestionConfigurationItem\[\]/);
   assert.match(itemModel, /fullMark\s+Decimal[\s\S]*?@db\.Decimal\(6, 2\)/);
@@ -125,8 +126,6 @@ test("Question Configuration remains dynamic metadata-only with no question or m
     "paperFile",
     "setterDraft",
     "moderationContent",
-    "candidateMark",
-    "examinerMark",
   ]) {
     assert.doesNotMatch(
       `${configurationModel}\n${itemModel}`,

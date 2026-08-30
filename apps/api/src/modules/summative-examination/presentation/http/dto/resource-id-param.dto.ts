@@ -60,3 +60,27 @@ export class QuestionConfigurationItemIdParamDto extends QuestionConfigurationId
   @Matches(/^[A-Za-z0-9][A-Za-z0-9_-]+$/)
   itemId!: string;
 }
+
+export class ExaminerMarkingCourseIdParamDto {
+  @IsString()
+  @MinLength(3)
+  @MaxLength(128)
+  @Matches(/^[A-Za-z0-9][A-Za-z0-9_-]+$/)
+  examinationCourseId!: string;
+}
+
+export class ExaminerMarkingCandidateIdParamDto extends ExaminerMarkingCourseIdParamDto {
+  @IsString()
+  @MinLength(3)
+  @MaxLength(128)
+  @Matches(/^[A-Za-z0-9][A-Za-z0-9_-]+$/)
+  candidateId!: string;
+}
+
+export class ExaminerQuestionMarkIdParamDto extends ExaminerMarkingCandidateIdParamDto {
+  @IsString()
+  @MinLength(3)
+  @MaxLength(128)
+  @Matches(/^[A-Za-z0-9][A-Za-z0-9_-]+$/)
+  questionItemId!: string;
+}

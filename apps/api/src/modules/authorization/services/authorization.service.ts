@@ -46,6 +46,14 @@ const EXPLICIT_DEPARTMENT_ADMIN_PERMISSION_POLICIES = {
   }
 } as const;
 
+const EXPLICIT_TEACHER_PERMISSION_POLICIES = {
+  [SUMMATIVE_EXAMINATION_POLICY_NAMES.EXAMINER_MARKS_ENTER]: {
+    resource: "summative-examination.examiner-marks",
+    action: "enter",
+    scope: "department",
+  },
+} as const;
+
 const EXACT_PERMISSION_POLICIES = {
   [PERMISSIONS.COURSE_MANAGEMENT.COURSE_OUTLINE_APPROVE]: {
     resource: "course-management.course-outline",
@@ -326,6 +334,31 @@ export class AuthorizationService {
               assignment.userRoleId === permission.source?.userRoleId &&
               assignment.roleId === permission.source?.roleId
           )
+      );
+    }
+
+    const explicitTeacherPermission =
+      EXPLICIT_TEACHER_PERMISSION_POLICIES[
+        requiredPolicy as keyof typeof EXPLICIT_TEACHER_PERMISSION_POLICIES
+      ];
+
+    if (explicitTeacherPermission) {
+      return principal.permissions.some(
+        (permission) =>
+          permission.resource === explicitTeacherPermission.resource &&
+          permission.action === explicitTeacherPermission.action &&
+          permission.scope === explicitTeacherPermission.scope &&
+          isPermissionGrantFromLoadedRole(principal, permission) &&
+          principal.roleAssignments.some(
+            (assignment) =>
+              assignment.role === "teacher" &&
+              isRoleAssignmentInActiveDepartment(
+                principal.activeDepartmentId,
+                assignment,
+              ) &&
+              assignment.userRoleId === permission.source?.userRoleId &&
+              assignment.roleId === permission.source?.roleId,
+          ),
       );
     }
 

@@ -711,6 +711,68 @@ for (const [policy, resource] of [
   });
 }
 
+test("Examiner marks coarse policy requires exact Teacher-linked permission and excludes Admin, Student and wildcard grants", () => {
+  const service = new AuthorizationService();
+  const teacher = {
+    userRoleId: "teacher-user-role-a",
+    roleId: "teacher-role-a",
+    departmentId: "department-a",
+    role: "teacher" as const,
+  };
+  const exactGrant = grant(
+    { userRoleId: teacher.userRoleId, roleId: teacher.roleId },
+    {
+      resource: "summative-examination.examiner-marks",
+      action: "enter",
+      scope: "department",
+    },
+  );
+  const policy = "summative-examination.examiner-marks.enter";
+  assert.equal(
+    service.isAllowed(
+      principal({ roleAssignments: [teacher], permissions: [exactGrant] }),
+      policy,
+    ),
+    true,
+  );
+  assert.equal(
+    service.isAllowed(
+      principal({ roleAssignments: [teacher], permissions: [] }),
+      policy,
+    ),
+    false,
+  );
+  for (const role of ["department_admin", "student"] as const) {
+    assert.equal(
+      service.isAllowed(
+        principal({
+          roleAssignments: [{ ...teacher, role }],
+          permissions: [exactGrant],
+        }),
+        policy,
+      ),
+      false,
+    );
+  }
+  for (const invalidGrant of [
+    { ...exactGrant, resource: "summative-examination.*" },
+    { ...exactGrant, action: "manage" },
+    { ...exactGrant, scope: "self" as const },
+    {
+      ...exactGrant,
+      source: { ...exactGrant.source, userRoleId: "fabricated" },
+    },
+  ]) {
+    assert.equal(
+      service.isAllowed(
+        principal({ roleAssignments: [teacher], permissions: [invalidGrant] }),
+        policy,
+      ),
+      false,
+    );
+  }
+});
+
 test("Course Outline Coordinator review admits only active-department Teacher and Department Admin roles", () => {
   const service = new AuthorizationService();
   const policy = "course-management.course-outline.coordinator-review";
