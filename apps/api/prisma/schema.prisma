@@ -492,6 +492,7 @@ model Department {
   twoFactorMethods                TwoFactorMethod[]
   academicConfig                  DepartmentAcademicConfig?
   academicPrograms                AcademicProgram[]
+  thirdExaminationReferrals SummativeThirdExaminationReferral[]
   academicSessions                AcademicSession[]
   studentBatches                  StudentBatch[]
   batchCoordinatorAssignments     BatchCoordinatorAssignment[]
@@ -642,6 +643,8 @@ model User {
   notificationPreferences            NotificationPreference[]
   noticesCreated                     Notice[]                         @relation("NoticeCreatedBy")
   noticesUpdated                     Notice[]                         @relation("NoticeUpdatedBy")
+  assignedThirdExaminerReferrals   SummativeThirdExaminationReferral[] @relation("AssignedThirdExaminer")
+  createdThirdExaminerReferrals    SummativeThirdExaminationReferral[] @relation("AssignedByThirdExaminer")
   noticesPublished                   Notice[]                         @relation("NoticePublishedBy")
   pushSubscriptions                  PushSubscription[]
   auditLogs                          AuditLog[]                       @relation("AuditActor")
@@ -863,6 +866,7 @@ model Examination {
   @@unique([departmentId, code], map: "examination_department_code_uq")
   @@index([departmentId, academicProgramId, academicSessionId, academicTermId], map: "examination_academic_scope_idx")
   @@map("examinations")
+  thirdExaminationReferrals SummativeThirdExaminationReferral[]
 }
 
 model ExaminationCourse {
@@ -905,6 +909,7 @@ model ExaminationCourse {
   summativeCandidates             SummativeExaminationCandidate[]
   examinerMarkSubmissions         SummativeExaminerMarkSubmission[]
   examinerComparisons             SummativeExaminerComparison[]
+  thirdExaminationReferrals SummativeThirdExaminationReferral[]
 
   @@unique([lockedQuestionConfigurationId, departmentId, id], map: "examination_course_locked_config_uq")
   @@unique([id, departmentId, examinationId], map: "examination_course_scope_identity_uq")
@@ -2923,6 +2928,7 @@ model SummativeQuestionConfiguration {
   @@unique([departmentId, examinationCourseId, versionNumber], map: "summative_question_config_version_uq")
   @@index([departmentId, examinationCourseId, status], map: "summative_question_config_status_idx")
   @@map("summative_question_configurations")
+  thirdExaminationReferrals SummativeThirdExaminationReferral[]
 }
 
 model SummativeQuestionConfigurationItem {
@@ -2985,6 +2991,7 @@ model SummativeExaminationCandidate {
   @@unique([departmentId, examinationCourseId, enrollmentId], map: "summative_candidate_roster_uq")
   @@index([departmentId, examinationCourseId, id], map: "summative_candidate_course_idx")
   @@map("summative_examination_candidates")
+  thirdExaminationReferrals SummativeThirdExaminationReferral[]
 }
 
 model SummativeExaminerMarkSubmission {
@@ -3079,4 +3086,48 @@ model SummativeExaminerComparison {
   @@index([departmentId, examinationCourseId, candidateId, calculatedAt], map: "summative_comparison_candidate_lookup_idx")
   @@index([secondSubmissionId], map: "summative_comparison_second_source_idx")
   @@map("summative_examiner_comparisons")
+  thirdExaminationReferrals SummativeThirdExaminationReferral[]
+}
+
+enum SummativeThirdExaminationReferralStatus {
+  ASSIGNED
+  EXPIRED
+  ARCHIVED
+}
+
+model SummativeThirdExaminationReferral {
+  id                        String                                  @id @default(cuid())
+  departmentId              String                                  @map("department_id")
+  examinationId             String                                  @map("examination_id")
+  examinationCourseId       String                                  @map("examination_course_id")
+  candidateId               String                                  @map("candidate_id")
+  comparisonId              String                                  @map("comparison_id")
+  thirdExaminerUserId       String                                  @map("third_examiner_user_id")
+  assignedByUserId          String                                  @map("assigned_by_user_id")
+  questionConfigurationId   String                                  @map("question_configuration_id")
+
+  comparisonVersionSnapshot Int                                     @map("comparison_version_snapshot")
+  ruleVersionCode           String                                  @map("rule_version_code")
+
+  assignmentVersion         Int                                     @map("assignment_version")
+  deadline                  DateTime
+  status                    SummativeThirdExaminationReferralStatus @default(ASSIGNED)
+
+  archivedAt                DateTime?                               @map("archived_at")
+  createdAt                 DateTime                                @default(now()) @map("created_at")
+  updatedAt                 DateTime                                @updatedAt @map("updated_at")
+
+  department                Department                              @relation(fields: [departmentId], references: [id])
+  examination               Examination                             @relation(fields: [examinationId], references: [id])
+  examinationCourse         ExaminationCourse                       @relation(fields: [examinationCourseId], references: [id])
+  candidate                 SummativeExaminationCandidate           @relation(fields: [candidateId], references: [id])
+  comparison                SummativeExaminerComparison             @relation(fields: [comparisonId], references: [id])
+  thirdExaminer             User                                    @relation("AssignedThirdExaminer", fields: [thirdExaminerUserId], references: [id])
+  assignedBy                User                                    @relation("AssignedByThirdExaminer", fields: [assignedByUserId], references: [id])
+  questionConfiguration     SummativeQuestionConfiguration          @relation(fields: [questionConfigurationId], references: [id])
+
+  @@unique([comparisonId, assignmentVersion])
+  @@index([departmentId, examinationCourseId])
+  @@index([thirdExaminerUserId])
+  @@map("summative_third_examination_referrals")
 }

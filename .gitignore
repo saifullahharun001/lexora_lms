@@ -73,3 +73,5 @@ apps/api/prisma/migrations/*
 
 # Local database backups
 backups/
+!apps/api/prisma/migrations/202609010002_add_summative_third_examination_referrals/
+!apps/api/prisma/migrations/202609010002_add_summative_third_examination_referrals/migration.sql

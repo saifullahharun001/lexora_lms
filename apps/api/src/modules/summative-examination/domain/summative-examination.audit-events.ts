@@ -46,4 +46,5 @@ export const SUMMATIVE_EXAMINATION_AUDIT_EVENTS = {
     "summative-examination.examiner-mark-submission.locked",
   EXAMINER_COMPARISON_CREATED:
     "summative-examination.examiner-comparison.created",
+  THIRD_REFERRAL_ASSIGNED: "summative-examination.third-referral.assigned",
 } as const;
