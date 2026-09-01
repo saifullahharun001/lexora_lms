@@ -15,6 +15,15 @@ const migration = readFileSync(
   ),
   "utf8",
 );
+const calculationMigration = readFileSync(
+  join(
+    prismaRoot,
+    "migrations",
+    "202609010004_add_summative_three_total_calculations",
+    "migration.sql",
+  ),
+  "utf8",
+);
 
 function model(name: string) {
   return schema.match(new RegExp(`model ${name} \\{[\\s\\S]*?\\n\\}`))?.[0] ?? "";
@@ -89,7 +98,7 @@ test("schema and migration mapped names agree and PostgreSQL identifiers are bou
   ).map((match) => match[1]!);
   for (const name of mappedNames) {
     assert.match(
-      migration,
+      `${migration}\n${calculationMigration}`,
       new RegExp(`"${name}"`),
       `${name} missing in owning migration`,
     );

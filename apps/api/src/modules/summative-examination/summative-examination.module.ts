@@ -4,6 +4,7 @@ import { SummativeCandidateRosterService } from "./application/services/summativ
 import { SummativeExaminerMarksService } from "./application/services/summative-examiner-marks.service";
 import { SummativeThirdExaminerMarksService } from "./application/services/summative-third-examiner-marks.service";
 import { SummativeExaminerComparisonService } from "./application/services/summative-examiner-comparison.service";
+import { SummativeThreeTotalCalculationService } from "./application/services/summative-three-total-calculation.service";
 import { SummativeExaminerMarksController } from "./presentation/http/summative-examiner-marks.controller";
 import { SummativeThirdExaminerMarksController } from "./presentation/http/summative-third-examiner-marks.controller";
 import { SummativeThirdExaminationReferralsService } from "./application/services/summative-third-examination-referrals.service";
@@ -45,6 +46,7 @@ import { ExaminationsController } from "./presentation/http/examinations.control
     SummativeQuestionConfigurationService,
     SummativeCandidateRosterService,
     SummativeExaminerComparisonService,
+    SummativeThreeTotalCalculationService,
     SummativeExaminerMarksService,
     SummativeThirdExaminerMarksService,
     SummativeThirdExaminationReferralsService,

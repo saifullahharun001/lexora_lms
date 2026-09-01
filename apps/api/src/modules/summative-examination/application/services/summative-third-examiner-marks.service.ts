@@ -10,7 +10,9 @@ import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { PrismaService } from "@/common/prisma/prisma.service";
 import { RequestContextService } from "@/common/request-context/request-context.service";
 
+import { SUMMATIVE_EXAMINATION_AUDIT_EVENTS } from "../../domain/summative-examination.audit-events";
 import type { SaveExaminerQuestionMarkDto } from "../../presentation/http/dto/examiner-marks.dto";
+import { SummativeThreeTotalCalculationService } from "./summative-three-total-calculation.service";
 
 const AWARDED_DECIMAL_6_2_PATTERN = /^\d{1,4}(?:\.\d{1,2})?$/;
 
@@ -64,6 +66,7 @@ export class SummativeThirdExaminerMarksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly requestContextService: RequestContextService,
+    private readonly threeTotalCalculation: SummativeThreeTotalCalculationService,
   ) {}
 
   private async getReferralAuthority(examinationCourseId: string, candidateId?: string): Promise<ThirdExaminerMarkingAuthority[]> {
@@ -330,11 +333,20 @@ export class SummativeThirdExaminerMarksService {
       if (!submission) {
         throw new ConflictException("Cannot finalize when no draft submission exists");
       }
+      this.assertSubmissionUsesScope(submission, scope);
       if (submission.status === "LOCKED") {
-        throw new ConflictException("Submission is already LOCKED");
+        await this.threeTotalCalculation.ensureForLockedThird(tx, {
+          departmentId: authority.departmentId,
+          actorUserId: authority.actorUserId,
+          examinationId: authority.examinationId,
+          examinationCourseId: authority.examinationCourseId,
+          candidateId,
+          referralId: authority.referralId,
+          thirdSubmissionId: submission.id,
+        });
+        return { candidateId, submission: this.serializeSubmission(submission) };
       }
 
-      this.assertSubmissionUsesScope(submission, scope);
       await this.lockQuestionMarks(tx, authority, submission.id);
 
       const persistedMarksMap = new Map(
@@ -373,12 +385,22 @@ export class SummativeThirdExaminerMarksService {
         tx,
         authority,
         finalized,
-        "summative-examination.third-examiner-mark-submission.locked",
+        SUMMATIVE_EXAMINATION_AUDIT_EVENTS.THIRD_EXAMINER_MARK_SUBMISSION_LOCKED,
         {
-          calculatedTotal: calculatedTotal.toString(),
-          marksCount: submission.questionMarks.length,
+          statusTransition: "DRAFT_TO_LOCKED",
+          persistedQuestionMarkCount: submission.questionMarks.length,
         },
       );
+
+      await this.threeTotalCalculation.ensureForLockedThird(tx, {
+        departmentId: authority.departmentId,
+        actorUserId: authority.actorUserId,
+        examinationId: authority.examinationId,
+        examinationCourseId: authority.examinationCourseId,
+        candidateId,
+        referralId: authority.referralId,
+        thirdSubmissionId: finalized.id,
+      });
 
       return { candidateId, submission: this.serializeSubmission(finalized) };
     });

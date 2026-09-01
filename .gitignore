@@ -77,3 +77,5 @@ backups/
 !apps/api/prisma/migrations/202609010002_add_summative_third_examination_referrals/migration.sql
 !apps/api/prisma/migrations/202609010003_add_summative_third_examiner_marks/
 !apps/api/prisma/migrations/202609010003_add_summative_third_examiner_marks/migration.sql
+!apps/api/prisma/migrations/202609010004_add_summative_three_total_calculations/
+!apps/api/prisma/migrations/202609010004_add_summative_three_total_calculations/migration.sql
