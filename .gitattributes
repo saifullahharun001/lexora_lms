@@ -14,3 +14,4 @@ apps/api/prisma/migrations/202608290002_add_examination_course_examiner_assignme
 apps/api/prisma/migrations/202608290003_add_summative_question_configuration/migration.sql -text
 apps/api/prisma/migrations/202609010001_add_summative_examiner_comparisons/migration.sql -text
 apps/api/prisma/migrations/202609010002_add_summative_third_examination_referrals/migration.sql -text
+apps/api/prisma/migrations/202609010003_add_summative_third_examiner_marks/migration.sql -text

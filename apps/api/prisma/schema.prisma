@@ -568,6 +568,8 @@ model Department {
   summativeExaminerMarkSubmissions SummativeExaminerMarkSubmission[]
   summativeExaminerQuestionMarks  SummativeExaminerQuestionMark[]
   summativeExaminerComparisons    SummativeExaminerComparison[]
+  summativeThirdExaminerMarkSubmissions SummativeThirdExaminerMarkSubmission[]
+  summativeThirdExaminerQuestionMarks   SummativeThirdExaminerQuestionMark[]
 
   @@map("departments")
 }
@@ -656,6 +658,7 @@ model User {
   summativeQuestionConfigsCreated      SummativeQuestionConfiguration[] @relation("SummativeQuestionConfigCreatedBy")
   summativeCandidatesAsStudent         SummativeExaminationCandidate[]   @relation("SummativeCandidateStudent")
   summativeCandidatesRegistered        SummativeExaminationCandidate[]   @relation("SummativeCandidateRegisteredBy")
+  summativeThirdExaminerMarkSubmissions    SummativeThirdExaminerMarkSubmission[]
 
   @@unique([id, departmentId], map: "user_id_department_uq")
   @@index([departmentId])
@@ -860,13 +863,14 @@ model Examination {
   summativeCandidates  SummativeExaminationCandidate[]
   examinerMarkSubmissions SummativeExaminerMarkSubmission[]
   examinerComparisons  SummativeExaminerComparison[]
+  thirdExaminationReferrals             SummativeThirdExaminationReferral[]
+  summativeThirdExaminerMarkSubmissions SummativeThirdExaminerMarkSubmission[]
 
   @@unique([id, departmentId], map: "examination_id_department_uq")
   @@unique([id, departmentId, academicProgramId, academicSessionId, academicTermId], map: "examination_scope_identity_uq")
   @@unique([departmentId, code], map: "examination_department_code_uq")
   @@index([departmentId, academicProgramId, academicSessionId, academicTermId], map: "examination_academic_scope_idx")
   @@map("examinations")
-  thirdExaminationReferrals SummativeThirdExaminationReferral[]
 }
 
 model ExaminationCourse {
@@ -910,6 +914,7 @@ model ExaminationCourse {
   examinerMarkSubmissions         SummativeExaminerMarkSubmission[]
   examinerComparisons             SummativeExaminerComparison[]
   thirdExaminationReferrals SummativeThirdExaminationReferral[]
+  summativeThirdExaminerMarkSubmissions SummativeThirdExaminerMarkSubmission[]
 
   @@unique([lockedQuestionConfigurationId, departmentId, id], map: "examination_course_locked_config_uq")
   @@unique([id, departmentId, examinationId], map: "examination_course_scope_identity_uq")
@@ -2922,13 +2927,15 @@ model SummativeQuestionConfiguration {
   examinerQuestionMarks   SummativeExaminerQuestionMark[]
 
   activeForExaminationCourse ExaminationCourse? @relation("ExaminationCourseActiveConfig")
+  thirdExaminationReferrals             SummativeThirdExaminationReferral[]
+  summativeThirdExaminerMarkSubmissions SummativeThirdExaminerMarkSubmission[]
+  summativeThirdExaminerQuestionMarks   SummativeThirdExaminerQuestionMark[]
 
   @@unique([id, departmentId, examinationCourseId], map: "summative_question_config_scope_uq")
   @@unique([id, departmentId, examinationId, examinationCourseId], map: "summative_question_config_exam_scope_uq")
   @@unique([departmentId, examinationCourseId, versionNumber], map: "summative_question_config_version_uq")
   @@index([departmentId, examinationCourseId, status], map: "summative_question_config_status_idx")
   @@map("summative_question_configurations")
-  thirdExaminationReferrals SummativeThirdExaminationReferral[]
 }
 
 model SummativeQuestionConfigurationItem {
@@ -2958,6 +2965,7 @@ model SummativeQuestionConfigurationItem {
 
   clo CourseLearningOutcome? @relation(fields: [cloId, departmentId, curriculumVersionId, curriculumCourseId], references: [id, departmentId, curriculumVersionId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "summative_question_config_item_clo_fkey")
   examinerQuestionMarks SummativeExaminerQuestionMark[]
+  summativeThirdExaminerQuestionMarks SummativeThirdExaminerQuestionMark[]
 
   @@unique([id, departmentId, configurationId], map: "summative_question_config_item_scope_uq")
   @@unique([id, departmentId, configurationId, examinationCourseId], map: "summative_question_config_item_exam_scope_uq")
@@ -2986,12 +2994,13 @@ model SummativeExaminationCandidate {
   registeredByUser  User              @relation("SummativeCandidateRegisteredBy", fields: [registeredByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "summative_candidate_registrar_fkey")
   markSubmissions   SummativeExaminerMarkSubmission[]
   examinerComparisons SummativeExaminerComparison[]
+  thirdExaminationReferrals             SummativeThirdExaminationReferral[]
+  summativeThirdExaminerMarkSubmissions SummativeThirdExaminerMarkSubmission[]
 
   @@unique([id, departmentId, examinationId, examinationCourseId], map: "summative_candidate_scope_uq")
   @@unique([departmentId, examinationCourseId, enrollmentId], map: "summative_candidate_roster_uq")
   @@index([departmentId, examinationCourseId, id], map: "summative_candidate_course_idx")
   @@map("summative_examination_candidates")
-  thirdExaminationReferrals SummativeThirdExaminationReferral[]
 }
 
 model SummativeExaminerMarkSubmission {
@@ -3080,13 +3089,13 @@ model SummativeExaminerComparison {
   candidate         SummativeExaminationCandidate @relation(fields: [candidateId, departmentId, examinationId, examinationCourseId], references: [id, departmentId, examinationId, examinationCourseId], onDelete: Restrict, onUpdate: Restrict, map: "summative_comparison_candidate_fkey")
   firstSubmission   SummativeExaminerMarkSubmission @relation("SummativeComparisonFirstSource", fields: [firstSubmissionId, departmentId, examinationId, examinationCourseId, candidateId], references: [id, departmentId, examinationId, examinationCourseId, candidateId], onDelete: Restrict, onUpdate: Restrict, map: "summative_comparison_first_source_fkey")
   secondSubmission  SummativeExaminerMarkSubmission @relation("SummativeComparisonSecondSource", fields: [secondSubmissionId, departmentId, examinationId, examinationCourseId, candidateId], references: [id, departmentId, examinationId, examinationCourseId, candidateId], onDelete: Restrict, onUpdate: Restrict, map: "summative_comparison_second_source_fkey")
+  thirdExaminationReferrals SummativeThirdExaminationReferral[]
 
   @@unique([firstSubmissionId, secondSubmissionId], map: "summative_comparison_source_pair_uq")
   @@unique([departmentId, examinationCourseId, candidateId, comparisonVersion], map: "summative_comparison_candidate_version_uq")
   @@index([departmentId, examinationCourseId, candidateId, calculatedAt], map: "summative_comparison_candidate_lookup_idx")
   @@index([secondSubmissionId], map: "summative_comparison_second_source_idx")
   @@map("summative_examiner_comparisons")
-  thirdExaminationReferrals SummativeThirdExaminationReferral[]
 }
 
 enum SummativeThirdExaminationReferralStatus {
@@ -3125,9 +3134,69 @@ model SummativeThirdExaminationReferral {
   thirdExaminer             User                                    @relation("AssignedThirdExaminer", fields: [thirdExaminerUserId], references: [id])
   assignedBy                User                                    @relation("AssignedByThirdExaminer", fields: [assignedByUserId], references: [id])
   questionConfiguration     SummativeQuestionConfiguration          @relation(fields: [questionConfigurationId], references: [id])
+  summativeThirdExaminerMarkSubmissions SummativeThirdExaminerMarkSubmission[]
 
   @@unique([comparisonId, assignmentVersion])
   @@index([departmentId, examinationCourseId])
   @@index([thirdExaminerUserId])
   @@map("summative_third_examination_referrals")
+}
+
+enum SummativeThirdExaminerMarkSubmissionStatus {
+  DRAFT
+  LOCKED
+}
+
+model SummativeThirdExaminerMarkSubmission {
+  id                      String                                     @id @default(cuid())
+  departmentId            String                                     @map("department_id")
+  examinationId           String                                     @map("examination_id")
+  examinationCourseId     String                                     @map("examination_course_id")
+  candidateId             String                                     @map("candidate_id")
+  referralId              String                                     @map("referral_id")
+  thirdExaminerUserId     String                                     @map("third_examiner_user_id")
+  questionConfigurationId String                                     @map("question_configuration_id")
+  versionNumber           Int                                        @map("version_number") @db.SmallInt
+  status                  SummativeThirdExaminerMarkSubmissionStatus @default(DRAFT)
+  totalMark               Decimal?                                   @map("total_mark") @db.Decimal(6, 2)
+  submittedAt             DateTime?                                  @map("submitted_at")
+  lockedAt                DateTime?                                  @map("locked_at")
+  createdAt               DateTime                                   @default(now()) @map("created_at")
+  updatedAt               DateTime                                   @updatedAt @map("updated_at")
+
+  department            Department                        @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "summative_third_mark_submission_department_fkey")
+  examination           Examination                       @relation(fields: [examinationId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "summative_third_mark_submission_examination_fkey")
+  examinationCourse     ExaminationCourse                 @relation(fields: [examinationCourseId, departmentId, examinationId], references: [id, departmentId, examinationId], onDelete: Restrict, onUpdate: Restrict, map: "summative_third_mark_submission_exam_course_fkey")
+  candidate             SummativeExaminationCandidate     @relation(fields: [candidateId, departmentId, examinationId, examinationCourseId], references: [id, departmentId, examinationId, examinationCourseId], onDelete: Restrict, onUpdate: Restrict, map: "summative_third_mark_submission_candidate_fkey")
+  referral              SummativeThirdExaminationReferral @relation(fields: [referralId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "summative_third_mark_submission_referral_fkey")
+  thirdExaminer         User                              @relation(fields: [thirdExaminerUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "summative_third_mark_submission_examiner_fkey")
+  questionConfiguration SummativeQuestionConfiguration    @relation(fields: [questionConfigurationId, departmentId, examinationId, examinationCourseId], references: [id, departmentId, examinationId, examinationCourseId], onDelete: Restrict, onUpdate: Restrict, map: "summative_third_mark_submission_config_fkey")
+
+  questionMarks SummativeThirdExaminerQuestionMark[]
+
+  @@unique([id, departmentId, examinationCourseId, questionConfigurationId], map: "summative_third_mark_submission_config_scope_uq")
+  @@unique([departmentId, referralId, versionNumber], map: "summative_third_mark_submission_referral_version_uq")
+  @@index([departmentId, examinationCourseId, thirdExaminerUserId, candidateId], map: "summative_third_mark_submission_lookup_idx")
+  @@map("summative_third_examiner_mark_submissions")
+}
+
+model SummativeThirdExaminerQuestionMark {
+  id                      String   @id @default(cuid())
+  departmentId            String   @map("department_id")
+  examinationCourseId     String   @map("examination_course_id")
+  submissionId            String   @map("submission_id")
+  questionConfigurationId String   @map("question_configuration_id")
+  questionItemId          String   @map("question_item_id")
+  awardedMark             Decimal  @map("awarded_mark") @db.Decimal(6, 2)
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  department            Department                           @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "summative_third_question_mark_department_fkey")
+  submission            SummativeThirdExaminerMarkSubmission @relation(fields: [submissionId, departmentId, examinationCourseId, questionConfigurationId], references: [id, departmentId, examinationCourseId, questionConfigurationId], onDelete: Restrict, onUpdate: Restrict, map: "summative_third_question_mark_submission_fkey")
+  questionConfiguration SummativeQuestionConfiguration       @relation(fields: [questionConfigurationId, departmentId, examinationCourseId], references: [id, departmentId, examinationCourseId], onDelete: Restrict, onUpdate: Restrict, map: "summative_third_question_mark_config_fkey")
+  questionItem          SummativeQuestionConfigurationItem   @relation(fields: [questionItemId, departmentId, questionConfigurationId, examinationCourseId], references: [id, departmentId, configurationId, examinationCourseId], onDelete: Restrict, onUpdate: Restrict, map: "summative_third_question_mark_item_fkey")
+
+  @@unique([submissionId, questionItemId], map: "summative_third_question_mark_submission_item_uq")
+  @@index([departmentId, submissionId, questionItemId], map: "summative_third_question_mark_lookup_idx")
+  @@map("summative_third_examiner_question_marks")
 }

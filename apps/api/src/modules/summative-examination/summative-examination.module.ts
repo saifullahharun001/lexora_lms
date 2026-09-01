@@ -2,8 +2,10 @@ import { SummativeQuestionConfigurationService } from "./application/services/su
 import { SummativeQuestionConfigurationsController } from "./presentation/http/summative-question-configurations.controller";
 import { SummativeCandidateRosterService } from "./application/services/summative-candidate-roster.service";
 import { SummativeExaminerMarksService } from "./application/services/summative-examiner-marks.service";
+import { SummativeThirdExaminerMarksService } from "./application/services/summative-third-examiner-marks.service";
 import { SummativeExaminerComparisonService } from "./application/services/summative-examiner-comparison.service";
 import { SummativeExaminerMarksController } from "./presentation/http/summative-examiner-marks.controller";
+import { SummativeThirdExaminerMarksController } from "./presentation/http/summative-third-examiner-marks.controller";
 import { SummativeThirdExaminationReferralsService } from "./application/services/summative-third-examination-referrals.service";
 import { SummativeThirdExaminationReferralsController } from "./presentation/http/summative-third-examination-referrals.controller";
 import { Module } from "@nestjs/common";
@@ -31,6 +33,7 @@ import { ExaminationsController } from "./presentation/http/examinations.control
     ExaminationCourseExaminerAssignmentsController,
     SummativeQuestionConfigurationsController,
     SummativeExaminerMarksController,
+    SummativeThirdExaminerMarksController,
     SummativeThirdExaminationReferralsController,
   ],
   providers: [
@@ -43,6 +46,7 @@ import { ExaminationsController } from "./presentation/http/examinations.control
     SummativeCandidateRosterService,
     SummativeExaminerComparisonService,
     SummativeExaminerMarksService,
+    SummativeThirdExaminerMarksService,
     SummativeThirdExaminationReferralsService,
     SummativeThirdExaminationReferralsService,
   ],
@@ -54,6 +58,7 @@ import { ExaminationsController } from "./presentation/http/examinations.control
     SummativeQuestionConfigurationService,
     SummativeCandidateRosterService,
     SummativeExaminerMarksService,
+    SummativeThirdExaminerMarksService,
     SummativeThirdExaminationReferralsService,
     SummativeThirdExaminationReferralsService,
   ],
