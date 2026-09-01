@@ -15,6 +15,15 @@ const migration = readFileSync(
   ),
   "utf8",
 );
+const comparisonMigration = readFileSync(
+  join(
+    prismaRoot,
+    "migrations",
+    "202609010001_add_summative_examiner_comparisons",
+    "migration.sql",
+  ),
+  "utf8",
+);
 
 function model(name: string) {
   return schema.match(new RegExp(`model ${name} \\{[\\s\\S]*?\\n\\}`))?.[0] ?? "";
@@ -113,11 +122,21 @@ test("schema and migration mapped names agree and PostgreSQL identifiers are bou
   const mappedNames = Array.from(
     `${candidate}\n${submission}\n${questionMark}`.matchAll(/map: "([^"]+)"/g),
   ).map((match) => match[1]!);
+  const comparisonMigrationMappedNames = new Set([
+    "summative_mark_submission_comparison_scope_uq",
+  ]);
   for (const name of mappedNames) {
-    assert.match(migration, new RegExp(`"${name}"`), `${name} missing in migration`);
+    const owningMigration = comparisonMigrationMappedNames.has(name)
+      ? comparisonMigration
+      : migration;
+    assert.match(
+      owningMigration,
+      new RegExp(`"${name}"`),
+      `${name} missing in owning migration`,
+    );
   }
   const identifiers = Array.from(
-    migration.matchAll(
+    `${migration}\n${comparisonMigration}`.matchAll(
       /(?:INDEX|CONSTRAINT|TRIGGER|FUNCTION) "([^"]+)"/g,
     ),
   ).map((match) => match[1]!);

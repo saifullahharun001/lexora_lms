@@ -162,6 +162,7 @@ function harness(options: {
     isRequired: boolean;
   }>;
   transactionErrors?: Error[];
+  comparisonFailure?: Error;
 } = {}) {
   const currentAuthority = authority(options.seat);
   const activeItems = (
@@ -189,6 +190,8 @@ function harness(options: {
     submissionQueries: [] as Array<Record<string, unknown>>,
     transactionOptions: [] as unknown[],
     transactionErrors: [...(options.transactionErrors ?? [])],
+    comparisonAttempts: 0,
+    comparisonScopes: [] as Array<Record<string, string>>,
   };
   const candidateIds = options.candidateIds ?? ["candidate-a", "candidate-b"];
 
@@ -467,6 +470,17 @@ function harness(options: {
       if (options.authorityFailure) throw options.authorityFailure;
     },
   };
+  const examinerComparison = {
+    createIfReady: async (
+      _tx: unknown,
+      comparisonScope: Record<string, string>,
+    ) => {
+      state.comparisonAttempts += 1;
+      state.comparisonScopes.push(comparisonScope);
+      if (options.comparisonFailure) throw options.comparisonFailure;
+      return null;
+    },
+  };
   const service = new SummativeExaminerMarksService(
     prisma as never,
     {
@@ -476,6 +490,7 @@ function harness(options: {
       }),
     } as never,
     examinerAuthority as never,
+    examinerComparison as never,
   );
   return { state, service, authority: currentAuthority };
 }
@@ -946,6 +961,62 @@ test("audit failure rolls final lock and calculated total back in the fake trans
   assert.equal(h.state.submissions[0]?.totalMark, null);
   assert.equal(h.state.submissions[0]?.submittedAt, null);
   assert.equal(h.state.submissions[0]?.lockedAt, null);
+});
+
+test("finalization invokes internal comparison creation without widening the blind response", async () => {
+  const own = submission(authority());
+  const h = harness({
+    submissions: [own],
+    marks: [mark(own, "question-a", "10"), mark(own, "question-b", "20")],
+  });
+  const result = await h.service.finalizeSubmission(
+    "exam-course-a",
+    "candidate-a",
+  );
+  assert.equal(h.state.comparisonAttempts, 1);
+  assert.deepEqual(h.state.comparisonScopes[0], {
+    departmentId: "department-a",
+    actorUserId: "examiner-first",
+    examinationId: "examination-a",
+    examinationCourseId: "exam-course-a",
+    candidateId: "candidate-a",
+  });
+  assert.doesNotMatch(
+    JSON.stringify(result),
+    /comparison|variance|absoluteDifference|threshold|third/i,
+  );
+});
+
+test("repeat finalization rechecks the exact source pair idempotently and emits no lock audit", async () => {
+  const own = submission(authority(), {
+    status: SummativeExaminerMarkSubmissionStatus.LOCKED,
+    totalMark: new Prisma.Decimal("20"),
+    submittedAt: fixedAt,
+    lockedAt: fixedAt,
+  });
+  const h = harness({
+    submissions: [own],
+    marks: [mark(own, "question-a", "0"), mark(own, "question-b", "20")],
+  });
+  await h.service.finalizeSubmission("exam-course-a", "candidate-a");
+  assert.equal(h.state.comparisonAttempts, 1);
+  assert.equal(h.state.audits.length, 0);
+});
+
+test("required comparison or comparison-audit failure rolls the later final lock back", async () => {
+  const own = submission(authority());
+  const h = harness({
+    submissions: [own],
+    marks: [mark(own, "question-a", "10"), mark(own, "question-b", "20")],
+    comparisonFailure: new Error("simulated comparison audit failure"),
+  });
+  await assert.rejects(
+    h.service.finalizeSubmission("exam-course-a", "candidate-a"),
+    /simulated comparison audit failure/,
+  );
+  assert.equal(h.state.submissions[0]?.status, "DRAFT");
+  assert.equal(h.state.submissions[0]?.totalMark, null);
+  assert.equal(h.state.audits.length, 0);
 });
 
 test("only recognized Serializable conflicts retry and attempts are bounded", async () => {

@@ -20,6 +20,7 @@ import {
   ExaminerAuthorityService,
   type ExaminerMarkingAuthority,
 } from "./examiner-authority.service";
+import { SummativeExaminerComparisonService } from "./summative-examiner-comparison.service";
 
 const AWARDED_DECIMAL_6_2_PATTERN = /^(?:0|[1-9]\d{0,3})(?:\.\d{1,2})?$/;
 
@@ -71,6 +72,7 @@ export class SummativeExaminerMarksService {
     private readonly prisma: PrismaService,
     private readonly requestContextService: RequestContextService,
     private readonly examinerAuthority: ExaminerAuthorityService,
+    private readonly examinerComparison: SummativeExaminerComparisonService,
   ) {}
 
   async getWorkspace(examinationCourseId: string) {
@@ -369,6 +371,13 @@ export class SummativeExaminerMarksService {
       }
       this.assertSubmissionUsesScope(submission, scope);
       if (submission.status === SummativeExaminerMarkSubmissionStatus.LOCKED) {
+        await this.examinerComparison.createIfReady(tx, {
+          departmentId: authority.departmentId,
+          actorUserId: authority.actorUserId,
+          examinationId: authority.examinationId,
+          examinationCourseId: authority.examinationCourseId,
+          candidateId,
+        });
         return {
           candidateId,
           submission: this.serializeSubmission(submission),
@@ -467,6 +476,13 @@ export class SummativeExaminerMarksService {
           persistedQuestionMarkCount: persistedMarks.length,
         },
       );
+      await this.examinerComparison.createIfReady(tx, {
+        departmentId: authority.departmentId,
+        actorUserId: authority.actorUserId,
+        examinationId: authority.examinationId,
+        examinationCourseId: authority.examinationCourseId,
+        candidateId,
+      });
       return { candidateId, submission: this.serializeSubmission(locked) };
     });
   }

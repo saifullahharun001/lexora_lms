@@ -66,6 +66,8 @@ apps/api/prisma/migrations/*
 !apps/api/prisma/migrations/202608290003_add_summative_question_configuration/migration.sql
 !apps/api/prisma/migrations/202608290004_add_summative_examiner_marks/
 !apps/api/prisma/migrations/202608290004_add_summative_examiner_marks/migration.sql
+!apps/api/prisma/migrations/202609010001_add_summative_examiner_comparisons/
+!apps/api/prisma/migrations/202609010001_add_summative_examiner_comparisons/migration.sql
 *.log
 
 

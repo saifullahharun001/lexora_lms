@@ -44,4 +44,6 @@ export const SUMMATIVE_EXAMINATION_AUDIT_EVENTS = {
     "summative-examination.examiner-question-mark.cleared",
   EXAMINER_MARK_SUBMISSION_LOCKED:
     "summative-examination.examiner-mark-submission.locked",
+  EXAMINER_COMPARISON_CREATED:
+    "summative-examination.examiner-comparison.created",
 } as const;

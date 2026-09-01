@@ -2,6 +2,7 @@ import { SummativeQuestionConfigurationService } from "./application/services/su
 import { SummativeQuestionConfigurationsController } from "./presentation/http/summative-question-configurations.controller";
 import { SummativeCandidateRosterService } from "./application/services/summative-candidate-roster.service";
 import { SummativeExaminerMarksService } from "./application/services/summative-examiner-marks.service";
+import { SummativeExaminerComparisonService } from "./application/services/summative-examiner-comparison.service";
 import { SummativeExaminerMarksController } from "./presentation/http/summative-examiner-marks.controller";
 import { Module } from "@nestjs/common";
 
@@ -37,6 +38,7 @@ import { ExaminationsController } from "./presentation/http/examinations.control
     ExaminerAuthorityService,
     SummativeQuestionConfigurationService,
     SummativeCandidateRosterService,
+    SummativeExaminerComparisonService,
     SummativeExaminerMarksService,
   ],
   exports: [
