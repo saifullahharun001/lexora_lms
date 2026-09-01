@@ -1988,3 +1988,92 @@ Detailed current module status:
 Strongest runtime source of truth:
 
 `docs/runtime-test-checklist.md`
+
+---
+
+## Summative First/Second Functional Runtime Closure — 2026-09-01
+
+This section supersedes the 2026-08-30 statement that the authenticated
+First/Second Examiner functional/security runtime matrix was still pending.
+
+Historical roadmap text remains preserved as point-in-time evidence.
+
+Implementation/runtime HEAD before this documentation update:
+
+`95022543bdca4f6e969eedc12bf5a8705f7681d5`
+
+### Updated current status
+
+**Summative Examination overall: PARTIAL / ACTIVE DEVELOPMENT**
+
+Within that broader partial module, the following narrow backend phase is now closed:
+
+> **Blind First/Second Examiner question-wise marking =
+> IMPLEMENTED + DEPLOYED + FUNCTIONAL/SECURITY RUNTIME VERIFIED**
+
+Verified scope includes:
+
+- exact First/Second Examiner authority;
+- reciprocal blindness;
+- DRAFT and LOCKED marking lifecycle;
+- server-calculated totals;
+- validation boundaries;
+- object/department isolation;
+- forged-department-header resistance;
+- live User/UserRole/Examiner-assignment revocation behavior;
+- replacement-Examiner version protection;
+- concurrency safety;
+- save/finalize race handling;
+- PostgreSQL integrity-trigger enforcement;
+- transactional audit-failure rollback;
+- audit-content review;
+- final disposable-fixture cleanup;
+- measured baseline restoration.
+
+Final cleanup result:
+
+`summative_final_cleanup_rc=0`
+
+After cleanup:
+
+- all ten Summative business tables returned to `0`;
+- Law runtime AcademicSession/SyllabusVersion fixture rows returned to `0`;
+- temporary assessment components returned to `0`;
+- runtime Offering/Enrollment fixture returned to `0`;
+- hardening Student/SCA fixture returned to `0`;
+- all four Summative protection triggers remained enabled;
+- permanent Summative authorization remained unchanged;
+- temporary Examiner authority was removed;
+- runtime test identities became archived/login-disabled audit anchors;
+- platform health and loopback-only API exposure remained intact.
+
+### Next Summative backend phase
+
+The next implementation target is:
+
+1. persistent First/Second comparison evidence;
+2. absolute First/Second difference;
+3. variance percentage against the authoritative Summative full mark;
+4. `>= 15%` Third Examination referral decision.
+
+Only after that should candidate/script-scoped Third Examiner marking be implemented.
+
+The complete Summative workflow is still **not complete**.
+
+Still pending after the comparison/variance layer:
+
+- Third Examiner blind marking;
+- nearest-pair calculation;
+- equal-distance higher-pair rule;
+- Committee Member review;
+- Chairman approval/final lock;
+- controlled correction/reopen lifecycle;
+- approved Summative result;
+- idempotent result-engine handoff;
+- final-result/amendment integration;
+- confidentiality-filtered reporting/export;
+- frontend;
+- mandatory Summative 2FA;
+- formal exam-roll/candidate-number/physical-script-reference governance.
+
+Third Examiner must not be modelled as a permanent standing ExaminationCourse seat.

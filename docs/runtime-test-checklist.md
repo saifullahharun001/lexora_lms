@@ -34788,3 +34788,461 @@ Next safe step:
 Detailed module handoff:
 
 `docs/summative-examination.md`
+
+---
+
+## Summative First/Second Functional Runtime Closure — 2026-09-01
+
+### Supersession
+
+This checkpoint supersedes the earlier Summative section that classified the
+authenticated First/Second Examiner functional/security runtime matrix as pending.
+
+Historical pending text remains preserved because it accurately records the state at
+that earlier point in time.
+
+Current implementation/runtime HEAD before this documentation update:
+
+`95022543bdca4f6e969eedc12bf5a8705f7681d5`
+
+This checkpoint does **not** claim completion of the full Summative Examination
+workflow.
+
+### Current narrow classification
+
+> **Blind First/Second Examiner question-wise marking backend =
+> IMPLEMENTED + DEPLOYED + FUNCTIONAL/SECURITY RUNTIME VERIFIED**
+
+> **Complete Summative Examination workflow =
+> PARTIAL / ACTIVE DEVELOPMENT**
+
+The First/Second workflow is now considered functionally runtime verified because the
+previously pending authenticated runtime matrix, concurrency/audit hardening,
+disposable-fixture cleanup and measured baseline restoration all completed
+successfully.
+
+### Runtime academic fixture
+
+The isolated runtime-only academic chain used for verification included:
+
+- AcademicSession `sumrt_session_20260830161836`;
+- SyllabusVersion `sumrt_syllabus_20260830161836`;
+- CourseOffering `sumrt_offering_20260830161836`;
+- approved Enrollment `sumrt_enrollment_20260830161836`;
+- runtime assessment template `assessment_template_law_enrollment_runtime_v1`;
+- temporary 30/5/5/60 assessment components;
+- authoritative Summative full mark: `60.00`.
+
+The isolated fixture avoided mutating canonical LL.B. academic records.
+
+### Runtime business chain verified
+
+The controlled real HTTP/PostgreSQL matrix successfully covered:
+
+- fresh Department Admin authentication;
+- two distinct usable Teacher Examiner identities;
+- Examination creation;
+- ExaminationCourse creation;
+- Ordinance-aligned four-seat Examination Committee;
+- Chairman;
+- Internal Member 1;
+- Internal Member 2;
+- External Member metadata path;
+- First Examiner assignment;
+- Second Examiner assignment;
+- dynamic/versioned question configuration;
+- exact configuration lock;
+- six required 10-mark question items;
+- Enrollment + StudentCurriculumAssignment-derived candidate registration;
+- First Examiner question-wise DRAFT marking;
+- Second Examiner question-wise DRAFT marking;
+- First Examiner final lock;
+- Second Examiner final lock.
+
+Canonical verified marking evidence before cleanup:
+
+- First Examiner submission:
+  - version `1`;
+  - `LOCKED`;
+  - six persisted marks;
+  - server-calculated total `51.00`.
+
+- Second Examiner submission:
+  - version `1`;
+  - `LOCKED`;
+  - six persisted marks;
+  - server-calculated total `49.00`.
+
+### Reciprocal blindness verified
+
+First/Second separation was verified in both DRAFT and LOCKED states.
+
+An Examiner did not receive the opposite Examiner's:
+
+- assignment identity;
+- Examiner seat;
+- DRAFT submission;
+- LOCKED submission;
+- question-wise marks;
+- calculated/final total.
+
+Replacement-Examiner testing also verified that a newly appointed First Examiner could
+not see the predecessor First Examiner submission.
+
+### Mark validation and lifecycle verified
+
+Real HTTP verification covered:
+
+- exact zero preservation;
+- zero versus missing-required distinction;
+- explicit `null` draft clear;
+- omitted mark field as no-op;
+- malformed Decimal rejection;
+- negative mark rejection;
+- excess precision rejection;
+- above-question-full-mark rejection;
+- client-controlled total rejection;
+- server-calculated total;
+- required-question finalization enforcement;
+- post-LOCKED mutation rejection;
+- repeated finalization idempotency.
+
+### Authorization and isolation verified
+
+Runtime verification covered:
+
+- unauthenticated request rejection;
+- wrong-role rejection;
+- authenticated wrong-department rejection;
+- forged `x-department-id` did not override the authenticated principal's real
+  department;
+- Teacher coarse Summative marks permission without exact Examiner assignment was
+  insufficient;
+- Course Teacher status/assignment without exact Examiner appointment was
+  insufficient;
+- expired Examiner assignment was rejected;
+- inactive/unassigned Examiner assignment was rejected;
+- revoked Teacher UserRole was rejected;
+- `SUSPENDED` Examiner User was rejected fail-closed at the authentication layer with
+  HTTP `401`;
+- after restoring the User to `ACTIVE`, the same previously issued token again passed
+  the relevant live-principal check;
+- foreign candidate/question/object access remained protected with safe scoped
+  behavior.
+
+The `401` result for a `SUSPENDED` User supersedes an earlier runtime harness
+expectation of `403`. This was a harness expectation mismatch, not a security defect:
+the inactive principal was rejected earlier by the authentication/principal layer.
+
+### Replacement Examiner / version protection verified
+
+A controlled replacement-Examiner lifecycle verified:
+
+- original First Examiner unassignment immediately removed authority;
+- a different same-department Teacher could be formally appointed as replacement
+  First Examiner;
+- predecessor First-Examiner submission data remained hidden;
+- the replacement could not silently create another
+  `(candidate, FIRST_EXAMINER, version 1)` submission;
+- attempted replacement mutation returned HTTP `409`;
+- no replacement submission was created;
+- no mark mutation occurred;
+- no mark-save business audit was produced by the blocked request;
+- replacement assignment was unassigned and archived;
+- original First Examiner assignment was reactivated;
+- original authority and predecessor DRAFT data were preserved.
+
+### Concurrency verified
+
+#### Concurrent first-DRAFT creation
+
+Two simultaneous First-Examiner requests against the same fresh candidate produced:
+
+- HTTP `200 / 200`;
+- exactly one First-Examiner version-1 submission;
+- exactly one persisted question-mark row for the target item;
+- exactly one submission `draft-created` audit;
+- no duplicate version-1 submission.
+
+#### Save-versus-finalize race
+
+A separate disposable candidate was prepared with five required marks and then tested
+with concurrent:
+
+- final required-question save; and
+- submission finalization.
+
+Observed race result:
+
+- Q6 save: HTTP `200`;
+- simultaneous finalization: HTTP `400`, safely indicating incomplete state at that
+  instant;
+- all six marks remained persisted;
+- a subsequent valid finalization completed;
+- final submission state: `LOCKED`;
+- authoritative server total: `29.00`;
+- exactly one lock audit.
+
+This verified that the race did not lose a required mark or create duplicate final
+state.
+
+### Real PostgreSQL trigger enforcement verified
+
+Direct PostgreSQL negative probes verified the marks-layer database protections,
+including:
+
+- locked submission total immutability;
+- locked submission lifecycle/identity immutability;
+- locked submission delete protection;
+- locked question-mark update protection;
+- locked question-mark delete protection;
+- locked question-mark insert protection;
+- lifecycle CHECK constraints;
+- question-mark validation trigger behavior;
+- submission-lock validation trigger behavior.
+
+The required Summative protection triggers remained enabled after testing.
+
+### Transactional audit-failure rollback verified
+
+A narrowly targeted temporary PostgreSQL failure trigger was installed against the
+required `draft-created` audit for a disposable candidate.
+
+The corresponding API mark-save request returned HTTP `500`.
+
+Verified rollback result:
+
+- no submission persisted;
+- no question mark persisted;
+- failed required audit did not persist;
+- business mutation and required audit behaved atomically.
+
+After removing the temporary failure trigger/function:
+
+- the same mark-save request succeeded;
+- a version-1 DRAFT submission was created;
+- Q1 `3.00` persisted;
+- required audits persisted normally.
+
+The temporary failure trigger/function was confirmed absent afterward.
+
+### Audit-content review verified
+
+Summative marking audit context was reviewed for structural-only content.
+
+Verified absent from marking audit context:
+
+- raw awarded marks;
+- raw calculated/final totals;
+- passwords;
+- password hashes;
+- access tokens;
+- refresh tokens.
+
+Audit context retained structural identifiers/state only.
+
+### Runtime-harness corrections
+
+Several failures during the verification campaign were classified as test-harness
+issues rather than product defects:
+
+- raw fixture SQL initially treated `EnrollmentSourceType` as text;
+- a later fixture attempt hit PostgreSQL `NULL`/timestamp type inference through
+  `UNION ALL`;
+- a diagnostic assignment query referenced a nonexistent `examiner_seat` column
+  before the actual correct `seat` check;
+- a cleanup-preflight query incorrectly assumed `AcademicSession.status`;
+- the inactive-User harness initially expected HTTP `403`, while the application
+  correctly rejected the `SUSPENDED` principal earlier with HTTP `401`.
+
+Each harness issue was corrected without weakening application security or database
+constraints.
+
+### Final disposable-fixture cleanup
+
+Final guarded cleanup completed successfully:
+
+`summative_final_cleanup_rc=0`
+
+A non-secret private pre-cleanup evidence snapshot was created before destructive
+fixture cleanup.
+
+Evidence SHA-256:
+
+`c863dfddff5cea344273f6fe8ee6fc63cd5923de86aafedb78a7596acb4ca6d6`
+
+The private evidence file itself is not part of Git.
+
+No password, raw access token, raw refresh token, password hash, DB credential or
+production secret was exported into documentation.
+
+### Pre-cleanup measured Summative state
+
+Immediately before final cleanup:
+
+- Examinations: `1`;
+- ExaminationCourses: `1`;
+- ExaminationCommittees: `1`;
+- ExaminationCommitteeAssignments: `5`;
+- ExaminationCourseExaminerAssignments: `3`;
+- SummativeQuestionConfigurations: `1`;
+- SummativeQuestionConfigurationItems: `6`;
+- SummativeExaminationCandidates: `3`;
+- SummativeExaminerMarkSubmissions: `4`;
+- SummativeExaminerQuestionMarks: `19`.
+
+Disposable hardening evidence included:
+
+- concurrency candidate:
+  - First-Examiner version `1`;
+  - `LOCKED`;
+  - six marks;
+  - total `29.00`;
+
+- audit-rollback candidate after successful retry:
+  - First-Examiner version `1`;
+  - `DRAFT`;
+  - Q1 `3.00`.
+
+### Measured ordinary baseline restoration
+
+After the guarded cleanup transaction:
+
+- Examinations: `0`;
+- ExaminationCourses: `0`;
+- ExaminationCommittees: `0`;
+- ExaminationCommitteeAssignments: `0`;
+- ExaminationCourseExaminerAssignments: `0`;
+- SummativeQuestionConfigurations: `0`;
+- SummativeQuestionConfigurationItems: `0`;
+- SummativeExaminationCandidates: `0`;
+- SummativeExaminerMarkSubmissions: `0`;
+- SummativeExaminerQuestionMarks: `0`;
+- Law AcademicSessions: `0`;
+- Law SyllabusVersions: `0`;
+- runtime assessment-template components: `0`;
+- runtime CourseOffering: `0`;
+- runtime target Enrollments: `0`;
+- hardening Student users: `0`;
+- hardening StudentCurriculumAssignments: `0`.
+
+This restores the measured ordinary pre-Summative fixture baseline.
+
+### Protection preservation after cleanup
+
+The cleanup was deliberately guarded.
+
+The following production protection triggers were verified enabled after cleanup:
+
+- `summative_candidate_identity_immutable_trg`;
+- `summative_locked_submission_immutable_trg`;
+- `summative_submission_lock_validate_trg`;
+- `summative_question_mark_validate_trg`.
+
+Result:
+
+**4 / 4 ENABLED PASS**
+
+The trigger protections remain part of the deployed production behavior.
+
+### Permanent authorization preservation
+
+Final cleanup verified:
+
+- four permanent Summative permissions preserved;
+- four intended permanent Law role-permission links preserved;
+- Department Admin Examiner-marks leakage remained zero;
+- Teacher Summative-management leakage remained zero;
+- canonical Law Teacher marks permission remained valid;
+- permanent Summative authorization fingerprint before/after cleanup was identical;
+- global SERVICE audit cardinality remained unchanged at `10`.
+
+Temporary runtime authority was not converted into permanent institutional authority.
+
+### Runtime-principal cleanup nuance
+
+Temporary Examiner and cross-department runtime identities were not blindly
+hard-deleted because authentication/login telemetry was intentionally retained.
+
+Final state:
+
+- temporary Examiner UserRoles removed;
+- temporary Examiner users `ARCHIVED`;
+- temporary Examiner password hashes cleared;
+- active Examiner sessions: `0`;
+- earlier Examiner sessions retained as `REVOKED` authentication telemetry;
+- login-attempt telemetry retained;
+- cross-department runtime identity `ARCHIVED`;
+- cross-department password hash cleared;
+- temporary BUS Teacher role/UserRole/session removed.
+
+These retained archived User identities are audit/authentication anchors only and are
+not usable runtime principals.
+
+### Runtime USER audit cleanup nuance
+
+The runtime matrix produced `65` USER-authored Summative feature audit rows.
+
+Before deleting the disposable business fixture, a non-secret pre-cleanup summary of
+the runtime state and grouped USER Summative audit cardinalities was preserved in the
+private evidence snapshot above.
+
+The disposable runtime USER Summative audit rows were then removed during final
+fixture cleanup.
+
+Permanent SERVICE audit cardinality was unchanged.
+
+### Final platform integrity
+
+After cleanup:
+
+- repository: CLEAN / origin-aligned;
+- implementation/runtime HEAD:
+  `95022543bdca4f6e969eedc12bf5a8705f7681d5`;
+- PM2 `lexora-api` PID remained `1533` across cleanup;
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- NestJS listener remained `127.0.0.1:4000` only;
+- public/direct NestJS exposure was not introduced.
+
+### Remaining Summative implementation
+
+The complete Summative workflow remains incomplete.
+
+Still pending:
+
+1. persistent First/Second comparison evidence;
+2. absolute First/Second difference calculation;
+3. percentage variance against the authoritative Summative full mark;
+4. Third Examination referral when the absolute difference is **15% or more** of the
+   authoritative Summative full mark;
+5. candidate/script-scoped Third Examination referral;
+6. blind Third Examiner question-wise marking;
+7. nearest-pair calculation across the three totals;
+8. equal-distance higher-pair rule;
+9. Committee Member review;
+10. Chairman approval/final lock;
+11. controlled reopen/correction/re-review/reapproval/relock;
+12. approved Summative result;
+13. transactional/idempotent result-engine handoff;
+14. final-result/amendment integration;
+15. Summative CLO selected-pair analytical evidence where formally required;
+16. confidentiality-filtered reports/export;
+17. frontend integration;
+18. mandatory Summative 2FA enforcement;
+19. formal candidate/exam-roll/physical-script reference governance.
+
+Third Examiner must **not** be implemented as a permanent standing
+`ExaminationCourse` Examiner seat.
+
+It must be candidate/script-referral scoped only after the applicable variance rule is
+satisfied.
+
+### Next safe implementation checkpoint
+
+The next implementation phase is:
+
+> **First/Second comparison + authoritative 15% variance evaluation**
+
+Do not begin permanent Third Examiner implementation until the comparison/referral
+boundary is designed and verified.
