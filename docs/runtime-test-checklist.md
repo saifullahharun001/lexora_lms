@@ -35246,3 +35246,286 @@ The next implementation phase is:
 
 Do not begin permanent Third Examiner implementation until the comparison/referral
 boundary is designed and verified.
+
+## Summative Examination Comparison / Third-Examiner Local Static Checkpoint — 2026-09-01
+
+### Scope and supersession
+
+This append-only checkpoint records later implementation and local automated-static
+evidence after the 2026-08-30 Summative deployment/runtime checkpoint.
+
+It supersedes only the older current-status statements that listed the following as
+future implementation:
+
+- First/Second comparison evidence;
+- 15% variance evaluation against the authoritative Summative full mark;
+- candidate-scoped Third Examination referral;
+- blind Third Examiner question-wise marking.
+
+It does not delete, rewrite or weaken the earlier deployment/runtime evidence.
+
+The earlier server/runtime checkpoint remains authoritative for what has actually been
+deployed and runtime verified on the Ubuntu server.
+
+Current promoted local/main implementation HEAD:
+
+`ff6325af66f9a2c4a95f98eeae8dfab902c2d708`
+
+### Later implementation commits
+
+First/Second comparison and variance:
+
+`02e79c5cdc529f4450198dc66bcd4c862606d3fd`
+
+`feat: add summative examiner comparison variance`
+
+Candidate-scoped Third Examination referral:
+
+`8dde2d148d6ed4bc30c1ff3d05b572c52f001729`
+
+`feat: add summative third examiner referrals`
+
+Blind Third Examiner question-wise marking:
+
+`ff6325af66f9a2c4a95f98eeae8dfab902c2d708`
+
+`feat: add blind third examiner marking`
+
+### IMPLEMENTED + COMMITTED + PUSHED
+
+#### First/Second comparison and 15% variance
+
+Implemented persistent `SummativeExaminerComparison` evidence bound to the exact
+LOCKED First and Second source submissions and their versions.
+
+Persisted evidence includes:
+
+- First total snapshot;
+- Second total snapshot;
+- authoritative Summative full-mark snapshot;
+- absolute difference;
+- six-decimal variance percentage;
+- threshold snapshot;
+- rule-version identity;
+- exact comparison version;
+- Third-Examination-required / not-required decision.
+
+Implemented rule identity:
+
+`SUMMATIVE_FS_VARIANCE_15_PERCENT_V1`
+
+Third Examination triggers at an inclusive 15% threshold against the authoritative
+Summative full mark.
+
+The decision uses exact arithmetic/cross multiplication rather than a rounded display
+variance.
+
+Comparison evidence is protected by restrictive scope relationships, database
+validation, immutable evidence protection, idempotent exact-source-pair creation,
+candidate-scoped serialization and transaction-coupled structural audit.
+
+#### Candidate-scoped Third Examination referral
+
+Implemented `SummativeThirdExaminationReferral`.
+
+A Third Examiner is not a permanent standing `ExaminationCourse` Examiner seat.
+
+Referral creation requires an exact qualifying comparison with
+`THIRD_EXAMINATION_REQUIRED`.
+
+The referral is bound to the exact:
+
+- department;
+- Examination;
+- ExaminationCourse;
+- candidate;
+- qualifying comparison;
+- Third Examiner;
+- question configuration;
+- rule/comparison evidence snapshot;
+- assignment version;
+- deadline/status context.
+
+The Third Examiner must be an eligible active same-department Teacher with live role
+authority and cannot be the First or Second Examiner.
+
+Database protection preserves candidate/version history and enforces at most one
+active assigned referral for the same department / Examination / ExaminationCourse /
+candidate scope.
+
+Sensitive assignment audit contains structural context only and protected audit
+failure rolls the transaction back.
+
+#### Blind Third Examiner question-wise marking
+
+Implemented separate Third Examiner marking evidence:
+
+- `SummativeThirdExaminerMarkSubmission`;
+- `SummativeThirdExaminerQuestionMark`;
+- DRAFT / LOCKED lifecycle;
+- exact referral authority;
+- exact candidate and question-configuration binding;
+- question-wise Decimal marks;
+- zero-versus-missing distinction;
+- required/optional question behavior;
+- server-calculated total;
+- authoritative Summative full-mark cap;
+- idempotent repeated finalization;
+- concurrency-safe first draft and save-versus-finalize behavior;
+- transaction-coupled structural audit;
+- audit-failure rollback.
+
+Third Examiner workspace blindness is explicitly preserved.
+
+Third-facing responses do not expose:
+
+- First Examiner identity;
+- Second Examiner identity;
+- First submission ID;
+- Second submission ID;
+- First total;
+- Second total;
+- First/Second question marks;
+- absolute difference;
+- variance;
+- comparison evidence.
+
+Teacher coarse marks permission alone is insufficient without the exact live Third
+referral.
+
+Database triggers protect LOCKED Third submissions and LOCKED Third question marks
+against ordinary UPDATE and DELETE.
+
+Academic evidence relationships use restrictive foreign keys and do not use
+`ON DELETE CASCADE`.
+
+### Migration identities
+
+First/Second comparison:
+
+`202609010001_add_summative_examiner_comparisons`
+
+SHA-256:
+
+`A77F1DDC64DDE4D689000CD0AD61CF8827BFD9C3B097CC620263A46408E38207`
+
+Third Examination referral:
+
+`202609010002_add_summative_third_examination_referrals`
+
+SHA-256:
+
+`C2C7E68F03F016926068EAA23C5E72CFF5CC5D675222691630D03FBA5770C601`
+
+Third Examiner marking:
+
+`202609010003_add_summative_third_examiner_marks`
+
+SHA-256:
+
+`A2B204C126FD836009609E96AF03CC48B41312E9BB3524D6CC4809C894DE20A0`
+
+### AUTOMATED STATIC VERIFICATION
+
+At final local acceptance for HEAD `ff6325af66f9a2c4a95f98eeae8dfab902c2d708`:
+
+- Prisma validate: PASS;
+- Prisma Client generation: PASS;
+- API typecheck: PASS;
+- API build: PASS;
+- Third Examiner marking suite: 57/57 PASS;
+- Third Examination Referral regression: 71/71 PASS;
+- First/Second marks + comparison regression: 63/63 PASS;
+- combined focused regression: 191/191 PASS;
+- migration byte/hygiene guards: PASS;
+- `git diff --check`: PASS;
+- repository after implementation commit/push: CLEAN / ORIGIN-ALIGNED.
+
+Focused static evidence covers, among other cases:
+
+- exact authority negatives;
+- wrong-role rejection;
+- foreign-department/object rejection;
+- forged `x-department-id` resistance in focused service/controller tests;
+- Examiner blindness;
+- mark validation;
+- zero-versus-missing behavior;
+- explicit null draft clear;
+- omitted-field no-op behavior;
+- client-total resistance;
+- required-question finalization;
+- post-lock immutability;
+- concurrency;
+- idempotency;
+- database trigger contracts;
+- structural audit confidentiality;
+- audit-failure rollback.
+
+### SERVER / POSTGRESQL RUNTIME BOUNDARY
+
+The three later bundles recorded in this checkpoint are:
+
+**IMPLEMENTED + COMMITTED + PUSHED / AUTOMATED STATICALLY VERIFIED**
+
+They are not recorded here as newly deployed or server-runtime verified.
+
+No evidence in this checkpoint claims that commits `02e79c5cdc529f4450198dc66bcd4c862606d3fd`,
+`8dde2d148d6ed4bc30c1ff3d05b572c52f001729` or `ff6325af66f9a2c4a95f98eeae8dfab902c2d708` were deployed to the Ubuntu runtime
+server or applied to its ordinary PostgreSQL database.
+
+No server PM2 restart, ordinary database migration, permanent provisioning apply or
+new HTTP/PostgreSQL functional-runtime campaign is claimed for these later bundles.
+
+The earlier 2026-08-30 First/Second deployment/boot evidence remains preserved.
+
+The authenticated First/Second real HTTP/PostgreSQL functional/security runtime matrix
+recorded as pending in the earlier checkpoint must not be silently reclassified as
+complete.
+
+Comparison, Third Referral and Third Marking also require future real server/runtime
+verification before being described as runtime complete.
+
+### Remaining Summative implementation work
+
+The previously pending comparison/variance, Third referral and blind Third marking
+items are superseded by this checkpoint as implemented/static-verified.
+
+Still pending:
+
+1. three-total nearest-pair calculation;
+2. equal-distance higher-pair selection;
+3. final derived Summative calculation evidence;
+4. Committee Member review;
+5. Chairman approval and final lock;
+6. authorised reopen / correction / re-review / re-approval / re-lock;
+7. approved Summative result record;
+8. transactional and idempotent result-engine handoff;
+9. final-result / amendment integration;
+10. Summative CLO selected-pair analytical evidence where formally required;
+11. reporting/export confidentiality filtering;
+12. frontend/UI integration.
+
+### Persistent governance and security gaps
+
+Candidate/exam-number/physical-script/masking governance remains unresolved.
+
+Do not invent an exam-roll or physical-script identifier merely for implementation
+convenience.
+
+Mandatory stronger/2FA security for sensitive Admin, Teacher, Examiner and
+Examination Committee access remains:
+
+**PENDING SECURITY HARDENING / RUNTIME VERIFICATION**
+
+This local static checkpoint does not change that classification.
+
+### Current safe continuation
+
+The next local implementation bundle is:
+
+**Three-total nearest-pair calculation + equal-distance higher-pair rule**
+
+A later controlled server campaign must separately deploy and runtime verify the
+comparison, Third Referral and Third Marking bundles together with all relevant
+authorization, department-isolation, object-scope, concurrency, database-trigger,
+audit and cleanup evidence.

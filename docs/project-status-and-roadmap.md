@@ -2077,3 +2077,84 @@ Still pending after the comparison/variance layer:
 - formal exam-roll/candidate-number/physical-script-reference governance.
 
 Third Examiner must not be modelled as a permanent standing ExaminationCourse seat.
+
+## Summative Examination Development Supersession — 2026-09-01
+
+This section supersedes only the older Summative current-status list that described
+comparison/variance and Third Examination marking as unimplemented.
+
+Current promoted local/main implementation HEAD:
+
+`ff6325af66f9a2c4a95f98eeae8dfab902c2d708`
+
+### Newly implemented since the 2026-08-30 documentation checkpoint
+
+Implemented, committed and pushed:
+
+- immutable exact-source First/Second Examiner comparison evidence;
+- absolute-difference calculation;
+- variance against the authoritative Summative full mark;
+- inclusive 15% Third Examination decision;
+- candidate-scoped Third Examination referral;
+- active eligible Third Examiner authority;
+- prevention of First/Second-as-Third;
+- blind Third Examiner question-wise marking;
+- Third DRAFT / LOCKED submission lifecycle;
+- server-calculated Third total;
+- locked Third academic-evidence immutability;
+- concurrency/idempotency protections;
+- structural audit and audit-failure rollback protections.
+
+Relevant commits:
+
+- `02e79c5cdc529f4450198dc66bcd4c862606d3fd` — `feat: add summative examiner comparison variance`
+- `8dde2d148d6ed4bc30c1ff3d05b572c52f001729` — `feat: add summative third examiner referrals`
+- `ff6325af66f9a2c4a95f98eeae8dfab902c2d708` — `feat: add blind third examiner marking`
+
+Final focused local acceptance at `ff6325af66f9a2c4a95f98eeae8dfab902c2d708`:
+
+- Third marking: 57/57 PASS;
+- Third Referral: 71/71 PASS;
+- First/Second marks + comparison: 63/63 PASS;
+- combined focused regression: 191/191 PASS;
+- API typecheck/build: PASS;
+- Prisma validate/generate: PASS.
+
+### Correct current classification
+
+The new comparison/Third bundles are:
+
+**IMPLEMENTED + COMMITTED + PUSHED / AUTOMATED STATICALLY VERIFIED**
+
+They are not yet server-deployed or server-runtime verified.
+
+The earlier deployed First/Second Summative backend and its 2026-08-30 runtime evidence
+remain separately preserved in `docs/runtime-test-checklist.md`.
+
+### Next Summative backend work
+
+Remaining sequence:
+
+1. three-total nearest-pair calculation;
+2. equal-distance higher-pair selection;
+3. final derived Summative calculation evidence;
+4. Committee Member review;
+5. Chairman approval/final lock;
+6. authorised reopen/correction/re-review/re-approval/re-lock;
+7. approved Summative result record;
+8. transactional/idempotent result-engine handoff;
+9. final-result/amendment integration;
+10. approved Summative CLO selected-pair analytical evidence where required;
+11. reports/export confidentiality filtering;
+12. frontend integration.
+
+Mandatory Summative 2FA remains pending.
+
+Formal candidate/exam-roll/physical-script/masking governance remains unresolved and
+must not be invented from implementation convenience.
+
+The full Summative Examination workflow therefore remains:
+
+**PARTIAL / ACTIVE BACKEND DEVELOPMENT**
+
+It must not yet be described as a complete or production-hardened Summative product.
