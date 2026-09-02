@@ -2158,3 +2158,90 @@ The full Summative Examination workflow therefore remains:
 **PARTIAL / ACTIVE BACKEND DEVELOPMENT**
 
 It must not yet be described as a complete or production-hardened Summative product.
+## Summative Nearest-Pair Development Supersession — 2026-09-02
+
+This append-only section supersedes only older roadmap statements that still list
+three-total nearest-pair calculation, equal-distance higher-pair selection and
+derived Summative calculation evidence as unimplemented.
+
+Promoted implementation commit:
+
+`ae2499303e7009d3ecbe256f5966c9ff445d6d72`
+
+Commit:
+
+`feat: add summative nearest-pair calculation`
+
+### Newly closed local/static backend scope
+
+The following are now implemented, committed and pushed:
+
+- immutable three-total calculation evidence;
+- exact First/Second/Third source binding;
+- exact pairwise distance calculation;
+- nearest-pair selection;
+- equal-distance higher-pair resolution;
+- deterministic all-equal canonical evidence;
+- exact derived Summative value;
+- versioned calculation evidence;
+- restrictive database relationships;
+- database-side evidence validation;
+- protected Third-finalisation integration;
+- structural audit integration;
+- referral/comparison rule-version binding;
+- exact Third Examiner audit-actor binding.
+
+Final local acceptance included:
+
+- Prisma validate: PASS;
+- Prisma generate: PASS;
+- API typecheck: PASS;
+- API build: PASS;
+- `git diff --check`: PASS.
+
+Post-normalisation focused evidence recorded `33/33 PASS` across the strongest
+runnable schema/migration and nearest-pair subset plus the production-source
+TypeScript harness.
+
+A broader earlier current-source focused campaign recorded `61/61 PASS`; this remains
+qualified local/static evidence rather than server-runtime evidence.
+
+### Correct current classification
+
+Three-total nearest-pair backend:
+
+**IMPLEMENTED + COMMITTED + PUSHED / AUTOMATED STATICALLY VERIFIED**
+
+It is not yet server-deployed or server-runtime verified.
+
+Comparison/variance, Third Referral, Third Marking and nearest-pair calculation should
+be covered by a controlled combined server-runtime campaign before the next authority
+layer is promoted.
+
+### Next Summative backend authority boundary
+
+Remaining sequence now begins with:
+
+1. Committee Member review;
+2. Chairman approval/final lock;
+3. authorised reopen/correction/re-review/reapproval/relock;
+4. approved Summative result record;
+5. transactional/idempotent result-engine handoff;
+6. final-result/amendment integration;
+7. approved Summative CLO selected-pair analytical evidence where required;
+8. reports/export confidentiality filtering;
+9. frontend integration.
+
+Mandatory Summative 2FA remains pending.
+
+Candidate/exam-roll/physical-script/masking governance remains unresolved.
+
+Committee composition must be source-reviewed against the current Academic Ordinance
+and any later formal institutional decision before Committee Member Review
+implementation. This checkpoint does not alter existing Committee implementation.
+
+The complete Summative Examination workflow remains:
+
+**PARTIAL / ACTIVE BACKEND DEVELOPMENT**
+
+It must not be described as a complete or production-hardened Summative product.

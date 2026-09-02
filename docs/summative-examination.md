@@ -1094,3 +1094,151 @@ Mandatory Summative 2FA remains pending security hardening and runtime verificat
 
 This document remains subordinate to later evidence in
 `docs/runtime-test-checklist.md`.
+## 25. Three-Total Nearest-Pair Local Static Supersession — 2026-09-02
+
+This section supersedes only the stale current-status statements in this document that
+still describe three-total nearest-pair selection, equal-distance higher-pair
+selection and derived Summative calculation evidence as unimplemented.
+
+Promoted implementation commit:
+
+`ae2499303e7009d3ecbe256f5966c9ff445d6d72`
+
+Current nearest-pair classification:
+
+**IMPLEMENTED + COMMITTED + PUSHED / AUTOMATED STATICALLY VERIFIED**
+
+It is not yet server-deployed or server-runtime verified.
+
+### 25.1 Implemented calculation rule
+
+For a candidate requiring Third Examination, the system now uses exact First,
+Second and Third locked totals.
+
+It calculates:
+
+- First/Second absolute distance;
+- First/Third absolute distance;
+- Second/Third absolute distance.
+
+The minimum-distance pair is selected.
+
+For equal-distance ambiguity, the two higher totals are selected.
+
+For all-equal totals, deterministic First/Second canonical evidence is selected and
+the explicit `ALL_EQUAL_CANONICAL` reason is preserved.
+
+Rule identity:
+
+`SUMMATIVE_THREE_TOTAL_NEAREST_PAIR_V1`
+
+The exact average of the selected pair is persisted as the:
+
+**derived Summative value**
+
+This is not yet a Committee-reviewed or Chairman-approved final Summative mark.
+
+### 25.2 Evidence and integrity
+
+The implementation preserves immutable evidence including:
+
+- exact F/S/Third source IDs;
+- source versions;
+- exact comparison identity/version;
+- exact Third Referral identity/assignment version;
+- question-configuration identity;
+- authoritative full-mark snapshot;
+- F/S/Third total snapshots;
+- three pairwise distances;
+- selected pair;
+- selection reason;
+- calculation version;
+- versioned rule identity;
+- derived Summative value.
+
+Academic relationships use restrictive foreign keys rather than unsafe academic
+cascade behavior.
+
+Database-side validation independently protects the source/evidence chain.
+
+### 25.3 Third-finalisation integration
+
+The calculation is coupled to protected Third finalisation.
+
+Repeated well-formed LOCKED finalisation is idempotent for the exact source evidence.
+
+Third Examiner blindness remains preserved.
+
+No new Examiner-facing calculation endpoint exists.
+
+### 25.4 Review hardening
+
+Before promotion, source review additionally closed:
+
+- referral/comparison rule-version evidence binding;
+- exact referred-Third-Examiner audit actor binding;
+- Third Referral Prisma/native-database type drift;
+- misleading simulated-concurrency terminology.
+
+Genuine PostgreSQL concurrency remains runtime-pending.
+
+### 25.5 Verification evidence
+
+Final local repository verification:
+
+- Prisma validate: PASS;
+- Prisma generate: PASS;
+- API typecheck: PASS;
+- API build: PASS;
+- `git diff --check`: PASS.
+
+Post-normalisation focused evidence includes:
+
+- schema/migration tests: `23/23 PASS`;
+- nearest-pair rule tests: `10/10 PASS`;
+- focused production-source TypeScript harness: PASS;
+- strongest post-normalisation focused subset: `33/33 PASS`.
+
+A broader current-source focused campaign before final schema normalisation recorded
+`61/61 PASS`; it remains local/static evidence only.
+
+### 25.6 Runtime boundary
+
+The following later layers still require controlled server/PostgreSQL runtime
+verification:
+
+- First/Second comparison/variance;
+- Third Examination Referral;
+- blind Third Examiner marking;
+- three-total nearest-pair calculation.
+
+A combined runtime campaign is preferred before introducing Committee Member Review.
+
+### 25.7 Current remaining roadmap
+
+Next implementation authority boundary:
+
+1. Committee Member review;
+2. Chairman approval/final lock;
+3. authorised correction/reopen/re-review/reapproval/relock;
+4. approved Summative result;
+5. transactional/idempotent result-engine handoff;
+6. final-result/amendment integration;
+7. Summative CLO selected-pair analytical evidence where formally approved;
+8. reports/exports/confidentiality filtering;
+9. frontend integration.
+
+Candidate/exam-roll/physical-script governance remains unresolved.
+
+Mandatory Summative 2FA remains pending.
+
+Committee composition is not redefined by this checkpoint. The current Academic
+Ordinance and any later formal institutional decision must be reviewed before the
+Committee Member Review authority layer is implemented.
+
+The overall Summative module remains:
+
+**PARTIAL / ACTIVE BACKEND DEVELOPMENT**
+
+This document remains subordinate to later evidence in
+`docs/runtime-test-checklist.md`.

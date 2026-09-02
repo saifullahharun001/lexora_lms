@@ -35529,3 +35529,293 @@ A later controlled server campaign must separately deploy and runtime verify the
 comparison, Third Referral and Third Marking bundles together with all relevant
 authorization, department-isolation, object-scope, concurrency, database-trigger,
 audit and cleanup evidence.
+## Summative Three-Total Nearest-Pair Local Static Checkpoint — 2026-09-02
+
+### Scope and supersession
+
+This append-only checkpoint records the promoted local/static implementation of the
+three-total nearest-pair calculation after the earlier comparison, Third Referral and
+blind Third Examiner marking checkpoints.
+
+It supersedes only stale current-status statements that still list the following as
+future implementation:
+
+- three-total nearest-pair calculation;
+- equal-distance higher-pair selection;
+- derived Summative calculation evidence.
+
+Historical deployment/runtime evidence remains preserved.
+
+In particular, this checkpoint does not retroactively extend earlier server-runtime
+evidence to the later comparison, Third Referral, Third Marking or nearest-pair
+commits.
+
+Promoted implementation commit:
+
+`ae2499303e7009d3ecbe256f5966c9ff445d6d72`
+
+Commit subject:
+
+`feat: add summative nearest-pair calculation`
+
+### Migration identity
+
+New additive migration:
+
+`202609010004_add_summative_three_total_calculations`
+
+SHA-256:
+
+`78E8571B35B946A9BF8A32A76B3E48DE83F6C5A07685826C5695940563335960`
+
+Historical Third Referral and Third Marking migrations were not rewritten.
+
+### Implemented academic calculation evidence
+
+The implementation now persists immutable `SummativeThreeTotalCalculation`
+evidence for a Third-examination candidate.
+
+The evidence is bound to:
+
+- department;
+- Examination;
+- ExaminationCourse;
+- candidate;
+- exact First/Second comparison;
+- exact Third Examination Referral;
+- exact locked First submission;
+- exact locked Second submission;
+- exact locked Third submission;
+- exact source submission versions;
+- comparison-version snapshot;
+- Third Referral assignment-version snapshot;
+- authoritative question-configuration identity;
+- authoritative Summative full-mark snapshot.
+
+The calculation persists:
+
+- First total snapshot;
+- Second total snapshot;
+- Third total snapshot;
+- First/Second distance;
+- First/Third distance;
+- Second/Third distance;
+- selected pair;
+- selection reason;
+- versioned calculation rule;
+- derived Summative value;
+- candidate-scoped calculation version.
+
+Academic calculation rule:
+
+`SUMMATIVE_THREE_TOTAL_NEAREST_PAIR_V1`
+
+Selected-pair evidence values:
+
+- `FIRST_SECOND`;
+- `FIRST_THIRD`;
+- `SECOND_THIRD`.
+
+Selection-reason evidence values:
+
+- `UNIQUE_NEAREST`;
+- `EQUAL_DISTANCE_HIGHER_PAIR`;
+- `ALL_EQUAL_CANONICAL`.
+
+The rule selects the pair with the minimum exact absolute distance.
+
+Where equal-distance ambiguity exists, it selects the two higher totals.
+
+Where all three totals are equal, the calculation uses deterministic
+First/Second canonical evidence and records `ALL_EQUAL_CANONICAL`.
+
+The derived Summative value is the exact average of the selected pair.
+
+No unapproved display-rounding rule is converted into academic evidence.
+
+The persisted derived value supports three decimal places.
+
+### Terminology boundary
+
+The persisted value is a:
+
+**derived Summative value**
+
+It is not yet:
+
+- Committee-reviewed;
+- Chairman-approved;
+- final approved Summative mark;
+- published result.
+
+Committee review and Chairman approval remain separate future authority boundaries.
+
+### Database and integrity protection
+
+The nearest-pair evidence uses:
+
+- restrictive composite foreign keys;
+- exact candidate/course/examination/configuration/source scope;
+- no academic `ON DELETE CASCADE`;
+- immutable calculation evidence;
+- candidate-scoped calculation versioning;
+- exact-source-triplet uniqueness;
+- database-side evidence validation;
+- structural transaction-coupled audit.
+
+The database validation independently checks the relevant source/evidence chain.
+
+### Review hardening completed before promotion
+
+Substantive review identified and corrected several integrity gaps before the final
+implementation commit.
+
+The final promoted source includes:
+
+- Third Referral rule-version snapshot validation against the exact comparison rule;
+- independent database validation of the same referral/comparison rule-version
+  relationship;
+- exact calculation audit actor binding to the referred Third Examiner;
+- Prisma Third Referral native-type alignment with the committed migration:
+  - comparison version snapshot as `SMALLINT`;
+  - rule version code as `VARCHAR(64)`;
+  - assignment version as `SMALLINT`;
+  - persisted `assignedAt` mapped to `assigned_at`;
+- preservation of historical migration bytes;
+- correction of a simulated duplicate test so that it no longer claims genuine
+  PostgreSQL concurrency.
+
+### Third-finalisation integration
+
+Nearest-pair evidence is created inside the protected Third-finalisation transaction.
+
+The current implementation supports:
+
+- exact-source calculation reuse;
+- immutable-evidence validation on reuse;
+- well-formed repeated LOCKED Third finalisation idempotency;
+- no duplicate calculation audit for an already-existing exact calculation;
+- transaction rollback if protected calculation/audit work fails.
+
+No new Examiner-facing nearest-pair route was introduced.
+
+Third Examiner blindness remains preserved.
+
+### Local/static verification evidence
+
+Broader focused current-source verification before the final schema-normalisation
+pass recorded:
+
+`61/61 PASS`
+
+This is local/static evidence only and is not PostgreSQL/server-runtime evidence.
+
+After removal of Prisma whole-file formatting churn, the strongest focused
+post-normalisation subset recorded:
+
+- schema/migration structural tests: `23/23 PASS`;
+- nearest-pair domain-rule tests: `10/10 PASS`;
+- focused production-source TypeScript harness: PASS;
+- strongest runnable focused subset: `33/33 PASS`.
+
+The final normalised source was then verified in the real local repository:
+
+- Prisma validate: PASS;
+- Prisma generate: PASS;
+- API typecheck: PASS;
+- API build: PASS;
+- `git diff --check`: PASS.
+
+The final implementation commit contained exactly the reviewed 17-file bundle and was
+pushed with a clean/origin-aligned repository.
+
+### Correct current classification
+
+Three-total nearest-pair calculation:
+
+**IMPLEMENTED + COMMITTED + PUSHED / AUTOMATED STATICALLY VERIFIED**
+
+The following are not claimed by this checkpoint:
+
+- deployment of migration `0004` to the ordinary server PostgreSQL database;
+- server Prisma generation for this later bundle;
+- server API boot verification for this later bundle;
+- authenticated functional/security runtime verification;
+- genuine PostgreSQL concurrency verification;
+- real server audit-failure rollback verification for this calculation layer.
+
+### Runtime boundary
+
+The earlier First/Second functional/security runtime closure remains authoritative for
+its tested scope.
+
+Comparison/variance, Third Examination Referral, blind Third Examiner marking and
+three-total nearest-pair calculation still require a controlled later server-runtime
+campaign before they may be described as runtime complete.
+
+### Recommended combined server-runtime campaign
+
+Before adding the Committee Member Review authority layer, the preferred controlled
+server campaign is to verify together:
+
+1. First/Second comparison and variance;
+2. Third Examination Referral;
+3. blind Third Examiner marking;
+4. three-total nearest-pair calculation.
+
+Where applicable, the campaign should verify:
+
+- exact migration deployment;
+- repeated migration deployment/no-op behavior;
+- database/schema drift;
+- API typecheck/build;
+- PM2 restart and healthy activation;
+- direct API and Nginx health;
+- loopback-only NestJS binding;
+- unauthenticated denial;
+- wrong-role denial;
+- wrong-department denial;
+- forged `x-department-id` resistance;
+- foreign candidate/referral/object ID denial;
+- Examiner blindness boundaries;
+- non-referred Teacher denial;
+- expired/revoked authority behavior;
+- locked-evidence mutation denial;
+- database-trigger enforcement;
+- unique-nearest calculation;
+- equal-distance higher-pair calculation;
+- all-equal canonical calculation;
+- non-default authoritative Summative full-mark behavior where practical;
+- genuine PostgreSQL concurrency;
+- repeated finalisation idempotency;
+- transactional audit-failure rollback;
+- disposable fixture cleanup;
+- measured baseline restoration.
+
+No runtime claim is made by documenting this recommended campaign.
+
+### Remaining Summative implementation
+
+The next authority boundary after runtime closure is:
+
+1. Committee Member review;
+2. Chairman approval/final lock;
+3. authorised correction/reopen/re-review/reapproval/relock;
+4. approved Summative result;
+5. transactional/idempotent result-engine handoff;
+6. final-result/amendment integration;
+7. approved selected-pair CLO analytical evidence where formally required;
+8. confidentiality-filtered reporting/export;
+9. frontend integration.
+
+Mandatory stronger authentication / Summative 2FA remains pending.
+
+Formal candidate/exam-roll/physical-script/masking governance remains unresolved.
+
+Committee-composition governance is not changed by this checkpoint. Before Committee
+Member Review implementation, the current Academic Ordinance and any later formal
+institutional decision must be reviewed rather than inferred from stale documentation.
+
+The full Summative Examination workflow therefore remains:
+
+**PARTIAL / ACTIVE BACKEND DEVELOPMENT**
