@@ -121,6 +121,20 @@ test("committed Third-referral migration remains byte-for-byte unchanged", () =>
 });
 
 test("corrective migration replaces only the Third-referral function with real assignment columns", () => {
+  const functionPattern =
+    /CREATE OR REPLACE FUNCTION "summative_third_referral_integrity_check"\(\)[\s\S]*?\$\$ LANGUAGE plpgsql;/;
+  const historicalFunction = migration.match(functionPattern)?.[0];
+  const correctiveFunction = correctiveMigration.match(functionPattern)?.[0];
+  assert.ok(historicalFunction);
+  assert.ok(correctiveFunction);
+  const expectedCorrectiveFunction = historicalFunction
+    .replace('a1."assignee_user_id"', 'a1."assigned_user_id"')
+    .replace('a2."assignee_user_id"', 'a2."assigned_user_id"');
+  const normalizeLineEndings = (sql: string) => sql.replace(/\r\n?/g, "\n");
+  assert.equal(
+    normalizeLineEndings(correctiveFunction),
+    normalizeLineEndings(expectedCorrectiveFunction),
+  );
   assert.match(
     correctiveMigration,
     /CREATE OR REPLACE FUNCTION "summative_third_referral_integrity_check"\(\)/,

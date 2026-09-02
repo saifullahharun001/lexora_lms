@@ -30,7 +30,7 @@ BEGIN
     RAISE EXCEPTION 'Invalid assignment_version';
   END IF;
 
-  SELEC
+  SELECT
     c."decision",
     a1."assigned_user_id",
     a2."assigned_user_id"
