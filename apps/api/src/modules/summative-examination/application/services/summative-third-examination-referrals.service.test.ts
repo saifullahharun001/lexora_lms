@@ -7,6 +7,9 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
+  type ExaminationCourseExaminerAssignment,
+  ExaminationCourseExaminerAssignmentStatus,
+  ExaminationCourseExaminerSeat,
   SummativeExaminerComparisonDecision,
   SummativeThirdExaminationReferralStatus,
 } from "@prisma/client";
@@ -29,17 +32,45 @@ function harness(options: {
   ineligibleTeacher?: boolean;
   failAudit?: boolean;
 } = {}) {
+  const assignment = (
+    id: string,
+    assignedUserId: string,
+    seat: ExaminationCourseExaminerSeat,
+  ): ExaminationCourseExaminerAssignment => ({
+    id,
+    departmentId: "department-a",
+    examinationId: "examination-a",
+    examinationCourseId: "course-a",
+    assignedUserId,
+    assignedByUserId: "manager-a",
+    seat,
+    status: ExaminationCourseExaminerAssignmentStatus.ACTIVE,
+    assignedAt: new Date("2098-01-01T00:00:00.000Z"),
+    expiresAt: null,
+    unassignedAt: null,
+    archivedAt: null,
+    createdAt: new Date("2098-01-01T00:00:00.000Z"),
+    updatedAt: new Date("2098-01-01T00:00:00.000Z"),
+  });
   const firstSubmission = {
     id: "first-a",
     questionConfigurationId: "config-a",
-    examinerAssignment: { assigneeUserId: "first-examiner-a" },
+    examinerAssignment: assignment(
+      "first-assignment-a",
+      "first-examiner-a",
+      ExaminationCourseExaminerSeat.FIRST_EXAMINER,
+    ),
   };
   const secondSubmission = {
     id: "second-a",
     questionConfigurationId: options.mismatchedConfiguration
       ? "config-b"
       : "config-a",
-    examinerAssignment: { assigneeUserId: "second-examiner-a" },
+    examinerAssignment: assignment(
+      "second-assignment-a",
+      "second-examiner-a",
+      ExaminationCourseExaminerSeat.SECOND_EXAMINER,
+    ),
   };
   const comparison = {
     id: "comparison-a",
@@ -136,7 +167,7 @@ function harness(options: {
   return { service, state, dto, comparison };
 }
 
-test("qualifying comparison creates exact candidate-scoped referral snapshots", async () => {
+test("distinct active eligible Teacher receives exact candidate-scoped referral snapshots", async () => {
   const h = harness();
   const result = await h.service.assignThirdExaminer(h.dto);
   assert.equal(result.id, "referral-1");
@@ -151,14 +182,26 @@ test("qualifying comparison creates exact candidate-scoped referral snapshots", 
   assert.equal(referral.comparisonVersionSnapshot, 1);
   assert.equal(referral.assignmentVersion, 1);
   assert.equal(referral.status, SummativeThirdExaminationReferralStatus.ASSIGNED);
+  assert.equal(referral.thirdExaminerUserId, "third-examiner-a");
+  assert.notEqual(
+    referral.thirdExaminerUserId,
+    h.comparison.firstSubmission.examinerAssignment.assignedUserId,
+  );
+  assert.notEqual(
+    referral.thirdExaminerUserId,
+    h.comparison.secondSubmission.examinerAssignment.assignedUserId,
+  );
 });
 
-test("missing or non-qualifying comparison is rejected", async () => {
+test("missing comparison is rejected", async () => {
   const missing = harness({ missingComparison: true });
   await assert.rejects(
     missing.service.assignThirdExaminer(missing.dto),
     NotFoundException,
   );
+});
+
+test("non-qualifying comparison is rejected", async () => {
   const h = harness({
     decision:
       SummativeExaminerComparisonDecision.THIRD_EXAMINATION_NOT_REQUIRED,
@@ -177,19 +220,40 @@ test("ambiguous First/Second question configuration is rejected", async () => {
   );
 });
 
-test("First, Second or ineligible Teacher cannot receive Third referral", async () => {
-  for (const thirdExaminerUserId of ["first-examiner-a", "second-examiner-a"]) {
-    const h = harness({ thirdExaminerUserId });
-    await assert.rejects(
-      h.service.assignThirdExaminer(h.dto),
-      BadRequestException,
-    );
-  }
+test("actual First Examiner assignedUserId cannot receive Third referral", async () => {
+  const h = harness({ thirdExaminerUserId: "first-examiner-a" });
+  await assert.rejects(
+    h.service.assignThirdExaminer(h.dto),
+    /Third Examiner cannot be the First or Second Examiner/,
+  );
+  assert.equal(h.state.referrals.length, 0);
+});
+
+test("actual Second Examiner assignedUserId cannot receive Third referral", async () => {
+  const h = harness({ thirdExaminerUserId: "second-examiner-a" });
+  await assert.rejects(
+    h.service.assignThirdExaminer(h.dto),
+    /Third Examiner cannot be the First or Second Examiner/,
+  );
+  assert.equal(h.state.referrals.length, 0);
+});
+
+test("ineligible Teacher cannot receive Third referral", async () => {
   const ineligible = harness({ ineligibleTeacher: true });
   await assert.rejects(
     ineligible.service.assignThirdExaminer(ineligible.dto),
     BadRequestException,
   );
+});
+
+test("past deadline is rejected before referral creation", async () => {
+  const h = harness();
+  h.dto.deadline = new Date("2000-01-01T00:00:00.000Z");
+  await assert.rejects(
+    h.service.assignThirdExaminer(h.dto),
+    /Deadline must be in the future/,
+  );
+  assert.equal(h.state.referrals.length, 0);
 });
 
 test("active overlapping candidate referral is rejected", async () => {

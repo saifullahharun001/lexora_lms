@@ -155,8 +155,8 @@ export class SummativeThirdExaminationReferralsService {
     evaluatedAt: Date,
     comparison: any,
   ) {
-    const firstExaminerUserId = comparison.firstSubmission.examinerAssignment.assigneeUserId;
-    const secondExaminerUserId = comparison.secondSubmission.examinerAssignment.assigneeUserId;
+    const firstExaminerUserId = comparison.firstSubmission.examinerAssignment.assignedUserId;
+    const secondExaminerUserId = comparison.secondSubmission.examinerAssignment.assignedUserId;
 
     if (userId === firstExaminerUserId || userId === secondExaminerUserId) {
       throw new BadRequestException("Third Examiner cannot be the First or Second Examiner");

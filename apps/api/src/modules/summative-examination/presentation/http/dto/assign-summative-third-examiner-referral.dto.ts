@@ -1,9 +1,19 @@
 import { Type } from "class-transformer";
-import { IsDate, IsNotEmpty, IsString, IsUUID } from "class-validator";
+import {
+  IsDate,
+  IsNotEmpty,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from "class-validator";
 
 export class AssignSummativeThirdExaminerReferralDto {
   @IsNotEmpty()
-  @IsUUID()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(128)
+  @Matches(/^[A-Za-z0-9][A-Za-z0-9_-]+$/)
   comparisonId!: string;
 
   @IsNotEmpty()

@@ -6,6 +6,7 @@ import { REQUIRE_POLICY_KEY } from "@/modules/authorization/domain/authorization
 import { AuthGuard } from "@/modules/authorization/guards/auth.guard";
 import { PolicyGuard } from "@/modules/authorization/guards/policy.guard";
 import { SUMMATIVE_EXAMINATION_POLICY_NAMES } from "../../domain/summative-examination.policy-names";
+import { AssignSummativeThirdExaminerReferralDto } from "./dto/assign-summative-third-examiner-referral.dto";
 import { SummativeThirdExaminationReferralsController } from "./summative-third-examination-referrals.controller";
 
 test("SummativeThirdExaminationReferralsController", async (t) => {
@@ -37,6 +38,15 @@ test("SummativeThirdExaminationReferralsController", async (t) => {
         Reflect.getMetadata(REQUIRE_POLICY_KEY, SummativeThirdExaminationReferralsController.prototype.assignThirdExaminer),
         SUMMATIVE_EXAMINATION_POLICY_NAMES.EXAMINER_ASSIGNMENT_MANAGE,
       );
+    });
+
+    await t.test("binds request body to the Third referral DTO", () => {
+      const parameterTypes = Reflect.getMetadata(
+        "design:paramtypes",
+        SummativeThirdExaminationReferralsController.prototype,
+        "assignThirdExaminer",
+      );
+      assert.equal(parameterTypes[0], AssignSummativeThirdExaminerReferralDto);
     });
   });
 });
