@@ -15,6 +15,15 @@ const migrationBytes = readFileSync(
   ),
 );
 const migration = migrationBytes.toString("utf8");
+const correctiveMigration = readFileSync(
+  join(
+    prismaRoot,
+    "migrations",
+    "202609020001_fix_summative_third_referral_integrity_trigger",
+    "migration.sql",
+  ),
+  "utf8",
+);
 const calculationMigration = readFileSync(
   join(
     prismaRoot,
@@ -108,6 +117,25 @@ test("committed Third-referral migration remains byte-for-byte unchanged", () =>
   assert.equal(
     createHash("sha256").update(migrationBytes).digest("hex"),
     "c2c7e68f03f016926068eaa23c5e72cff5cc5d675222691630d03fba5770c601",
+  );
+});
+
+test("corrective migration replaces only the Third-referral function with real assignment columns", () => {
+  assert.match(
+    correctiveMigration,
+    /CREATE OR REPLACE FUNCTION "summative_third_referral_integrity_check"\(\)/,
+  );
+  assert.match(correctiveMigration, /a1\."assigned_user_id"/);
+  assert.match(correctiveMigration, /a2\."assigned_user_id"/);
+  assert.doesNotMatch(correctiveMigration, /assignee_user_id/);
+  assert.match(
+    migration,
+    /CREATE TRIGGER "trg_summative_third_referral_integrity"[\s\S]*?EXECUTE FUNCTION "summative_third_referral_integrity_check"\(\)/,
+  );
+  assert.doesNotMatch(correctiveMigration, /(?:DROP|CREATE)\s+TRIGGER/i);
+  assert.doesNotMatch(
+    correctiveMigration,
+    /DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?"?summative_third_examination_referrals"?/i,
   );
 });
 
