@@ -12,6 +12,8 @@ function harness(options: {
   malformedLocked?: boolean;
   failAudit?: boolean;
   failCalculation?: boolean;
+  referralDeadline?: Date;
+  expireOnTransactionStart?: boolean;
 } = {}) {
   const state = {
     submission: {
@@ -48,6 +50,9 @@ function harness(options: {
     calculationCalls: [] as any[],
     calculations: [] as any[],
     transactionOptions: [] as any[],
+    referralAuthorityWheres: [] as any[],
+    draftCreates: 0,
+    markWrites: 0,
   };
   const referral = {
     id: "referral-a",
@@ -57,7 +62,8 @@ function harness(options: {
     candidateId: "candidate-a",
     thirdExaminerUserId: "third-a",
     questionConfigurationId: "config-a",
-    deadline: new Date("2099-01-01T00:00:00.000Z"),
+    deadline:
+      options.referralDeadline ?? new Date("2099-01-01T00:00:00.000Z"),
     status: "ASSIGNED",
     archivedAt: null,
   };
@@ -95,6 +101,11 @@ function harness(options: {
     },
     summativeThirdExaminationReferral: { findFirst: async () => referral },
     summativeQuestionConfigurationItem: {
+      findFirst: async () => ({
+        id: "question-a",
+        fullMark: new Prisma.Decimal("10"),
+        isRequired: true,
+      }),
       findMany: async () => [
         { id: "question-a", fullMark: new Prisma.Decimal("10"), isRequired: true },
         { id: "question-b", fullMark: new Prisma.Decimal("20"), isRequired: true },
@@ -102,9 +113,25 @@ function harness(options: {
     },
     summativeThirdExaminerMarkSubmission: {
       findFirst: async () => copySubmission(),
+      findUniqueOrThrow: async () => copySubmission(),
+      create: async () => {
+        state.draftCreates += 1;
+        return copySubmission();
+      },
       update: async ({ data }: any) => {
         Object.assign(state.submission, data, { updatedAt: fixedAt });
         return copySubmission();
+      },
+    },
+    summativeThirdExaminerQuestionMark: {
+      create: async () => {
+        state.markWrites += 1;
+      },
+      update: async () => {
+        state.markWrites += 1;
+      },
+      delete: async () => {
+        state.markWrites += 1;
       },
     },
     auditLog: {
@@ -116,9 +143,49 @@ function harness(options: {
     },
   };
   const prisma = {
-    summativeThirdExaminationReferral: { findMany: async () => [referral] },
+    summativeThirdExaminationReferral: {
+      findMany: async ({ where }: any) => {
+        state.referralAuthorityWheres.push(where);
+        return referral.departmentId === where.departmentId &&
+          referral.examinationCourseId === where.examinationCourseId &&
+          referral.thirdExaminerUserId === where.thirdExaminerUserId &&
+          referral.status === where.status &&
+          referral.archivedAt === where.archivedAt &&
+          (!where.candidateId || referral.candidateId === where.candidateId) &&
+          referral.deadline > where.deadline.gt
+          ? [referral]
+          : [];
+      },
+    },
+    examinationCourse: {
+      findFirst: async () => ({
+        id: "course-a",
+        examinationId: "examination-a",
+        summativeFullMark: new Prisma.Decimal("100"),
+        lockedQuestionConfigurationId: "config-a",
+      }),
+    },
+    summativeExaminationCandidate: {
+      findFirst: async () => ({ id: "candidate-a" }),
+      findMany: async () => [{ id: "candidate-a", registeredAt: fixedAt }],
+    },
+    summativeThirdExaminerMarkSubmission: {
+      findFirst: async () => copySubmission(),
+      findMany: async () => [
+        {
+          candidateId: "candidate-a",
+          versionNumber: state.submission.versionNumber,
+          status: state.submission.status,
+          submittedAt: state.submission.submittedAt,
+          lockedAt: state.submission.lockedAt,
+        },
+      ],
+    },
     $transaction: async (operation: (transaction: any) => Promise<any>, txOptions: any) => {
       state.transactionOptions.push(txOptions);
+      if (options.expireOnTransactionStart) {
+        referral.deadline = new Date("2000-01-01T00:00:00.000Z");
+      }
       const beforeSubmission = copySubmission();
       const beforeAudits = [...state.audits];
       const beforeCalculations = [...state.calculations];
@@ -163,6 +230,84 @@ function harness(options: {
   );
   return { service, state, options };
 }
+
+test("unexpired ASSIGNED referral remains available to Third workspace and direct read", async () => {
+  const h = harness();
+  const workspace = await h.service.getWorkspace("course-a");
+  const direct = await h.service.getOwnSubmission("course-a", "candidate-a");
+
+  assert.equal(workspace.candidates.length, 1);
+  assert.equal(workspace.candidates[0]?.id, "candidate-a");
+  assert.equal(direct.candidateId, "candidate-a");
+  assert.equal(direct.submission?.referralId, "referral-a");
+  assert.ok(h.state.referralAuthorityWheres.every((where) => where.deadline.gt instanceof Date));
+});
+
+test("expired ASSIGNED referral disappears from the Third workspace", async () => {
+  const h = harness({
+    referralDeadline: new Date("2000-01-01T00:00:00.000Z"),
+  });
+
+  const workspace = await h.service.getWorkspace("course-a");
+
+  assert.deepEqual(workspace, { candidates: [] });
+});
+
+test("expired ASSIGNED referral direct candidate read safely denies", async () => {
+  const h = harness({
+    referralDeadline: new Date("2000-01-01T00:00:00.000Z"),
+  });
+
+  await assert.rejects(
+    h.service.getOwnSubmission("course-a", "candidate-a"),
+    /Third Examination Referral not found or inactive/,
+  );
+});
+
+test("expired ASSIGNED referral mark save denies before creating draft or mark evidence", async () => {
+  const h = harness({
+    referralDeadline: new Date("2000-01-01T00:00:00.000Z"),
+  });
+
+  await assert.rejects(
+    h.service.saveQuestionMark("course-a", "candidate-a", "question-a", {
+      awardedMark: "9",
+    }),
+    /Third Examination Referral not found or inactive/,
+  );
+  assert.equal(h.state.transactionOptions.length, 0);
+  assert.equal(h.state.draftCreates, 0);
+  assert.equal(h.state.markWrites, 0);
+});
+
+test("expired ASSIGNED referral finalisation safely denies", async () => {
+  const h = harness({
+    referralDeadline: new Date("2000-01-01T00:00:00.000Z"),
+  });
+
+  await assert.rejects(
+    h.service.finalizeSubmission("course-a", "candidate-a"),
+    /Third Examination Referral not found or inactive/,
+  );
+  assert.equal(h.state.transactionOptions.length, 0);
+  assert.equal(h.state.submission.status, "DRAFT");
+  assert.equal(h.state.audits.length, 0);
+  assert.equal(h.state.calculationCalls.length, 0);
+});
+
+test("transactional scope re-check blocks expiry after initial authority resolution", async () => {
+  const h = harness({ expireOnTransactionStart: true });
+
+  await assert.rejects(
+    h.service.saveQuestionMark("course-a", "candidate-a", "question-a", {
+      awardedMark: "9",
+    }),
+    /Marking deadline has passed/,
+  );
+  assert.equal(h.state.transactionOptions.length, 1);
+  assert.equal(h.state.draftCreates, 0);
+  assert.equal(h.state.markWrites, 0);
+});
 
 test("successful Third finalisation locks source, writes structural audit and ensures calculation", async () => {
   const h = harness();

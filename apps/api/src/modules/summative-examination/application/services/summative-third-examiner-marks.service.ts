@@ -77,6 +77,7 @@ export class SummativeThirdExaminerMarksService {
 
     const actorUserId = principal.actorId;
     const departmentId = principal.activeDepartmentId;
+    const evaluatedAt = new Date();
 
     const referrals = await this.prisma.summativeThirdExaminationReferral.findMany({
       where: {
@@ -85,6 +86,7 @@ export class SummativeThirdExaminerMarksService {
         thirdExaminerUserId: actorUserId,
         status: "ASSIGNED",
         archivedAt: null,
+        deadline: { gt: evaluatedAt },
         ...(candidateId ? { candidateId } : {})
       },
     });
@@ -428,18 +430,24 @@ export class SummativeThirdExaminerMarksService {
     }
 
     const referral = await tx.summativeThirdExaminationReferral.findFirst({
-        where: {
-            id: authority.referralId,
-            status: "ASSIGNED",
-            archivedAt: null,
-        }
-    })
+      where: {
+        id: authority.referralId,
+        departmentId: authority.departmentId,
+        examinationId: authority.examinationId,
+        examinationCourseId: authority.examinationCourseId,
+        candidateId: authority.candidateId,
+        thirdExaminerUserId: authority.actorUserId,
+        questionConfigurationId: authority.questionConfigurationId,
+        status: "ASSIGNED",
+        archivedAt: null,
+      },
+    });
 
     if (!referral) {
-        throw new NotFoundException("Third Examination Referral not found or inactive");
+      throw new NotFoundException("Third Examination Referral not found or inactive");
     }
 
-    if (referral.deadline < evaluatedAt) {
+    if (referral.deadline <= evaluatedAt) {
       throw new ConflictException("Marking deadline has passed");
     }
 

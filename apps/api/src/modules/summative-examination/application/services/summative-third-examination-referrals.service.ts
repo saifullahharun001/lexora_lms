@@ -11,6 +11,7 @@ import {
   AuditOutcome,
   Prisma,
   SummativeExaminerComparisonDecision,
+  type SummativeThirdExaminationReferral,
   SummativeThirdExaminationReferralStatus,
   UserStatus,
 } from "@prisma/client";
@@ -34,18 +35,19 @@ export class SummativeThirdExaminationReferralsService {
 
   async assignThirdExaminer(dto: AssignSummativeThirdExaminerReferralDto) {
     const authority = await this.authorizer.authorize("summative-examination.examiner-assignment");
+    const transitionAt = new Date();
 
-    if (dto.deadline <= new Date()) {
+    if (dto.deadline <= transitionAt) {
       throw new BadRequestException("Deadline must be in the future");
     }
 
     return this.withRetry(async (tx) => {
       const comparison = await this.lockAndValidateComparison(tx, authority, dto.comparisonId);
 
-      const evaluatedAt = new Date();
-      await this.validateThirdExaminerEligibility(tx, authority, dto.thirdExaminerUserId, evaluatedAt, comparison);
+      await this.validateThirdExaminerEligibility(tx, authority, dto.thirdExaminerUserId, transitionAt, comparison);
 
-      const assignmentVersion = await this.getNextAssignmentVersion(tx, comparison);
+      const { assignmentVersion, expiredReferral } =
+        await this.prepareSuccessorAssignment(tx, comparison, transitionAt);
 
       const referral = await tx.summativeThirdExaminationReferral.create({
         data: {
@@ -65,6 +67,14 @@ export class SummativeThirdExaminationReferralsService {
         },
       });
 
+      if (expiredReferral) {
+        await this.auditExpiredAutoRetirement(
+          tx,
+          authority,
+          expiredReferral,
+          referral,
+        );
+      }
       await this.auditAssignment(tx, authority, referral);
 
       return { id: referral.id };
@@ -108,7 +118,10 @@ export class SummativeThirdExaminationReferralsService {
     await tx.$queryRaw(Prisma.sql`
       SELECT "id" FROM "summative_examination_candidates"
       WHERE "id" = ${comparisonHeader.candidateId}
-      FOR SHARE
+        AND "department_id" = ${authority.departmentId}
+        AND "examination_id" = ${comparisonHeader.examinationId}
+        AND "examination_course_id" = ${comparisonHeader.examinationCourseId}
+      FOR UPDATE
     `);
 
     const comparisons = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
@@ -187,24 +200,109 @@ export class SummativeThirdExaminationReferralsService {
     }
   }
 
-  private async getNextAssignmentVersion(
+  private async prepareSuccessorAssignment(
     tx: Prisma.TransactionClient,
     comparison: any,
-  ): Promise<number> {
-    const existing = await tx.summativeThirdExaminationReferral.findFirst({
+    transitionAt: Date,
+  ): Promise<{
+    assignmentVersion: number;
+    expiredReferral: SummativeThirdExaminationReferral | null;
+  }> {
+    const locked = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "summative_third_examination_referrals"
+      WHERE "department_id" = ${comparison.departmentId}
+        AND "examination_id" = ${comparison.examinationId}
+        AND "examination_course_id" = ${comparison.examinationCourseId}
+        AND "candidate_id" = ${comparison.candidateId}
+      ORDER BY "assignment_version", "id"
+      FOR UPDATE
+    `);
+    const referrals = await tx.summativeThirdExaminationReferral.findMany({
       where: {
         departmentId: comparison.departmentId,
+        examinationId: comparison.examinationId,
         examinationCourseId: comparison.examinationCourseId,
         candidateId: comparison.candidateId,
       },
-      orderBy: { assignmentVersion: "desc" },
+      orderBy: [{ assignmentVersion: "asc" }, { id: "asc" }],
     });
 
-    if (existing && existing.status === SummativeThirdExaminationReferralStatus.ASSIGNED) {
+    if (
+      referrals.length !== locked.length ||
+      referrals.some((referral, index) => referral.id !== locked[index]?.id)
+    ) {
+      throw new ConflictException("Concurrent Third Examiner referral scope changed");
+    }
+
+    const currentAssigned = referrals.find(
+      (referral) =>
+        referral.status === SummativeThirdExaminationReferralStatus.ASSIGNED,
+    );
+    if (currentAssigned && currentAssigned.deadline > transitionAt) {
       throw new ConflictException("Candidate already has an active Third Examiner assignment");
     }
 
-    return existing ? existing.assignmentVersion + 1 : 1;
+    let expiredReferral: SummativeThirdExaminationReferral | null = null;
+    if (currentAssigned) {
+      expiredReferral = await tx.summativeThirdExaminationReferral.update({
+        where: {
+          id: currentAssigned.id,
+          departmentId: comparison.departmentId,
+          examinationId: comparison.examinationId,
+          examinationCourseId: comparison.examinationCourseId,
+          candidateId: comparison.candidateId,
+          status: SummativeThirdExaminationReferralStatus.ASSIGNED,
+        },
+        data: {
+          status: SummativeThirdExaminationReferralStatus.EXPIRED,
+        },
+      });
+    }
+
+    const latest = referrals.at(-1);
+    return {
+      assignmentVersion: latest ? latest.assignmentVersion + 1 : 1,
+      expiredReferral,
+    };
+  }
+
+  private async auditExpiredAutoRetirement(
+    tx: Prisma.TransactionClient,
+    authority: SummativeManagementAuthority,
+    expiredReferral: SummativeThirdExaminationReferral,
+    replacementReferral: SummativeThirdExaminationReferral,
+  ) {
+    const requestContext = this.requestContextService.get();
+
+    await tx.auditLog.create({
+      data: {
+        departmentId: authority.departmentId,
+        actorType: AuditActorType.USER,
+        actorUserId: authority.actorUserId,
+        action:
+          SUMMATIVE_EXAMINATION_AUDIT_EVENTS.THIRD_REFERRAL_EXPIRED_AUTO_RETIRED,
+        outcome: AuditOutcome.SUCCESS,
+        targetType: "SummativeThirdExaminationReferral",
+        targetId: expiredReferral.id,
+        contextJson: {
+          referralId: expiredReferral.id,
+          comparisonId: expiredReferral.comparisonId,
+          candidateId: expiredReferral.candidateId,
+          examinationCourseId: expiredReferral.examinationCourseId,
+          thirdExaminerUserId: expiredReferral.thirdExaminerUserId,
+          assignmentVersion: expiredReferral.assignmentVersion,
+          status: expiredReferral.status,
+          deadline: expiredReferral.deadline.toISOString(),
+          replacementReferralId: replacementReferral.id,
+          replacementThirdExaminerUserId:
+            replacementReferral.thirdExaminerUserId,
+          replacementAssignmentVersion: replacementReferral.assignmentVersion,
+        } as unknown as Prisma.InputJsonObject,
+        ipAddress: requestContext?.audit?.ipAddress || "0.0.0.0",
+        userAgent: requestContext?.audit?.userAgent || "Unknown",
+      },
+    });
   }
 
   private async auditAssignment(
