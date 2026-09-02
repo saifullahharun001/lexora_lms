@@ -1242,3 +1242,244 @@ The overall Summative module remains:
 
 This document remains subordinate to later evidence in
 `docs/runtime-test-checklist.md`.
+
+---
+
+## 25. Comparison / Third / Nearest-Pair Runtime Closure — 2026-09-02
+
+### 25.1 Supersession
+
+This section supersedes the earlier current module classification that described the
+comparison, Third Examination and nearest-pair bundles as only automated/static
+verified or runtime-pending.
+
+Historical sections remain preserved as point-in-time evidence.
+
+Current implementation/runtime HEAD for this closure:
+
+`9560ee8e78ea022f2a39196b7ad1f4adaa7d13e7`
+
+Current narrow backend classification:
+
+**IMPLEMENTED + DEPLOYED + FUNCTIONAL/SECURITY RUNTIME VERIFIED FOR THE TESTED MATRIX**
+
+Complete Summative Examination workflow classification:
+
+**PARTIAL / ACTIVE BACKEND DEVELOPMENT**
+
+### 25.2 Comparison and Third-trigger rule
+
+Persistent First/Second comparison evidence is now runtime verified.
+
+The decision uses the absolute First/Second total difference against the authoritative
+Summative full mark.
+
+Third Examination is required at the inclusive threshold:
+
+`>= 15%`
+
+Verified runtime examples include:
+
+- `50` vs `42` -> `13.333333%` -> no Third;
+- `50` vs `41` -> `15%` -> Third required;
+- `52` vs `40` -> `20%` -> Third required.
+
+The rule is not based on an assumed course total of `100`.
+
+### 25.3 Third Examination authority model
+
+Third Examiner remains a candidate/referral-scoped authority.
+
+Third Examiner is not a permanent standing `ExaminationCourse` Examiner seat.
+
+Verified runtime authority includes:
+
+- exact qualifying comparison required;
+- First Examiner cannot become Third for the same governed candidate context;
+- Second Examiner cannot become Third for the same governed candidate context;
+- duplicate active referral blocked;
+- unrelated Teacher receives no referred-candidate authority;
+- direct foreign candidate/referral access fails safely;
+- authenticated department scope cannot be overridden by forged
+  `x-department-id`;
+- Third Examiner remains blind to First/Second marks and totals.
+
+### 25.4 Third referral expiry
+
+The active referral deadline is now part of the live authorization boundary.
+
+Verified behavior:
+
+- unexpired `ASSIGNED` referral grants exact Third workspace/read authority;
+- expired referral no longer appears in the Third workspace;
+- expired direct read returns safe not-found;
+- expired mark save is denied;
+- expired finalisation is denied;
+- expired authority creates no Third academic evidence;
+- controlled replacement transitions the predecessor from `ASSIGNED` to `EXPIRED`;
+- successor uses the next assignment version;
+- predecessor history/evidence remains preserved;
+- structural expiry and successor audits are required.
+
+### 25.5 Third marking
+
+Runtime verified:
+
+- question-wise Third marks;
+- DRAFT creation;
+- required-question enforcement;
+- exact referral/question-configuration binding;
+- final LOCKED state;
+- server-calculated Third total;
+- ordinary post-lock mutation rejection;
+- repeated-finalisation idempotency.
+
+PostgreSQL protections additionally enforce LOCKED Third submission/question-mark
+immutability.
+
+### 25.6 Nearest-pair calculation
+
+The three-total calculation is implemented and runtime verified.
+
+For three totals:
+
+- `F` = First total;
+- `S` = Second total;
+- `T` = Third total;
+
+the calculation evaluates:
+
+- `|F-S|`;
+- `|F-T|`;
+- `|S-T|`.
+
+The nearest pair is selected.
+
+Verified unique-nearest example:
+
+- First `50`;
+- Second `41`;
+- Third `48`;
+- selected pair `FIRST_THIRD`;
+- reason `UNIQUE_NEAREST`;
+- derived value `49`.
+
+Verified equal-distance example:
+
+- First `52`;
+- Second `40`;
+- Third `46`;
+- selected pair `FIRST_THIRD`;
+- reason `EQUAL_DISTANCE_HIGHER_PAIR`;
+- derived value `49`.
+
+Where equal-distance ambiguity exists, the two higher totals are selected.
+
+The deterministic all-equal rule remains:
+
+`FIRST_SECOND / ALL_EQUAL_CANONICAL`
+
+The derived nearest-pair value is immutable calculation evidence.
+
+It is **not** yet the approved final Summative result.
+
+### 25.7 Runtime hardening
+
+Real runtime verification also covered:
+
+- concurrency/idempotency for repeated Third finalisation;
+- PostgreSQL UPDATE/DELETE blocking for LOCKED Third submissions;
+- PostgreSQL UPDATE/DELETE blocking for LOCKED Third question marks;
+- PostgreSQL UPDATE/DELETE blocking for three-total calculation evidence;
+- real required-audit failure causing complete business-transaction rollback;
+- zero temporary PostgreSQL failure-injector residue;
+- structural audit confidentiality.
+
+Final focused expiry/Third compiled regression:
+
+`53/53 PASS`
+
+Final server posture remained:
+
+- API typecheck: PASS;
+- API build: PASS;
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- NestJS listener: `127.0.0.1:4000` only.
+
+### 25.8 Cleanup closure
+
+Final runtime campaign cleanup returned the tracked Summative business tables to the
+measured baseline of `0`.
+
+Runtime academic prerequisites were also restored:
+
+- runtime AcademicSession: `0`;
+- runtime StudentBatch: `0`;
+- runtime SyllabusVersion: `0`;
+- runtime CourseOffering: `0`;
+- runtime Enrollments: `0`;
+- runtime assessment components: `0`.
+
+USER Summative feature audits returned from `96` to `0`.
+
+SERVICE Summative audits remained `0`.
+
+Permanent authorization remained `4/4`.
+
+All ten current Summative production protection triggers remained enabled.
+
+Temporary runtime/test DDL residue remained `0`.
+
+Nine run-scoped identities were retained as archived/login-disabled
+authentication/audit anchors with:
+
+- cleared password hash;
+- zero roles;
+- zero active sessions.
+
+Private recovered cleanup evidence SHA-256:
+
+`D5D72C9DDA60BE9829B2B3EA30039F78421EF987B822A8188CDAAAC42030EC94`
+
+### 25.9 Academic-authority continuity
+
+The current Ordinance-aligned Examination Committee foundation remains:
+
+- Chairman;
+- Internal Member 1;
+- Internal Member 2;
+- External Member.
+
+The External Member is not automatically an ordinary same-department Lexora User or
+digital marks authority.
+
+Historical lower-authority three-member specification wording remains historical and
+does not supersede the current Ordinance-backed implementation.
+
+### 25.10 What remains unimplemented
+
+The comparison / Third / nearest-pair phase is no longer the next implementation
+target.
+
+Next backend work:
+
+1. Committee Member review;
+2. Chairman approval / final lock;
+3. authorised reopen / correction / re-review / re-approval / re-lock;
+4. approved Summative result record;
+5. transactional/idempotent result-engine handoff;
+6. final-result/amendment integration;
+7. approved Summative CLO selected-pair analytical evidence where formally required;
+8. confidentiality-filtered reports/export;
+9. frontend integration.
+
+Still pending security/governance work:
+
+- mandatory Summative 2FA;
+- formal candidate/exam-roll/physical-script/masking governance.
+
+The Summative Examination remains offline/physical.
+
+Lexora does not become a question-paper or physical answer-script storage system as a
+result of this implementation.

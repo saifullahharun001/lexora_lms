@@ -35819,3 +35819,475 @@ institutional decision must be reviewed rather than inferred from stale document
 The full Summative Examination workflow therefore remains:
 
 **PARTIAL / ACTIVE BACKEND DEVELOPMENT**
+
+---
+
+## Summative Comparison / Third / Nearest-Pair Functional Runtime Closure — 2026-09-02
+
+### Supersession
+
+This append-only checkpoint supersedes the earlier current-status statements that
+classified the First/Second comparison, Third Examination referral, blind Third
+marking and nearest-pair calculation bundles as only local/static verified or as
+future implementation.
+
+Those older sections remain preserved as point-in-time evidence.
+
+This checkpoint records later implementation, deployment, authenticated
+HTTP/PostgreSQL runtime verification, hardening, cleanup and measured baseline
+restoration.
+
+It does **not** claim completion of the complete Summative Examination workflow.
+
+Implementation/runtime HEAD for this closure:
+
+`9560ee8e78ea022f2a39196b7ad1f4adaa7d13e7`
+
+Latest implementation commit in this closure:
+
+`9560ee8e78ea022f2a39196b7ad1f4adaa7d13e7`
+— `fix: enforce third referral expiry lifecycle`
+
+Runtime campaign tag:
+
+`20260902033523`
+
+### Current verified classification
+
+The following backend scope is now:
+
+**IMPLEMENTED + DEPLOYED + FUNCTIONAL/SECURITY RUNTIME VERIFIED FOR THE TESTED MATRIX**
+
+Verified scope:
+
+- blind First/Second Examiner question-wise marking;
+- immutable First/Second comparison evidence;
+- absolute First/Second difference;
+- variance against the authoritative Summative full mark;
+- inclusive `>= 15%` Third Examination decision;
+- candidate-scoped Third Examination referral;
+- Third Examiner referral-scoped authority and blindness;
+- Third referral deadline expiry;
+- controlled expired-referral replacement/history;
+- blind Third Examiner question-wise marking;
+- Third DRAFT / LOCKED lifecycle;
+- server-calculated Third total;
+- three-total nearest-pair calculation;
+- equal-distance higher-pair resolution;
+- deterministic all-equal handling;
+- concurrency/idempotency protections;
+- PostgreSQL LOCKED Third evidence immutability;
+- PostgreSQL three-total calculation immutability;
+- transaction-coupled required-audit rollback;
+- disposable fixture cleanup;
+- measured baseline restoration.
+
+The complete Summative Examination workflow remains:
+
+**PARTIAL / ACTIVE BACKEND DEVELOPMENT**
+
+### Relevant implementation chain
+
+Important promoted implementation checkpoints include:
+
+- `02e79c5cdc529f4450198dc66bcd4c862606d3fd`
+  — First/Second comparison and authoritative variance;
+- `8dde2d148d6ed4bc30c1ff3d05b572c52f001729`
+  — candidate-scoped Third Examination referral;
+- `ff6325af66f9a2c4a95f98eeae8dfab902c2d708`
+  — blind Third Examiner marking;
+- `ae2499303e7009d3ecbe256f5966c9ff445d6d72`
+  — three-total nearest-pair calculation;
+- `f1e8359e22ac7e9d66c16f44a2eae3f5a71a4bb2`
+  — corrective Third-referral database-integrity migration recovery;
+- `aefcee68c7211294b1eb8eb12fe9c6c1bb4f7768`
+  — Third-referral eligibility enum-cast correction;
+- `9560ee8e78ea022f2a39196b7ad1f4adaa7d13e7`
+  — Third-referral deadline-expiry lifecycle.
+
+Exact Git history remains authoritative if a descriptive label here differs from an
+exact commit subject.
+
+### First/Second comparison and authoritative variance
+
+Authenticated runtime evidence verified persistent comparison evidence derived from
+exact LOCKED First/Second sources.
+
+Observed controlled cases included:
+
+- First `50`, Second `42`
+  - absolute difference `8`;
+  - variance `13.333333%`;
+  - Third Examination not required;
+
+- First `50`, Second `41`
+  - absolute difference `9`;
+  - variance `15%`;
+  - Third Examination required;
+
+- First `52`, Second `40`
+  - absolute difference `12`;
+  - variance `20%`;
+  - Third Examination required.
+
+The Third Examination threshold is inclusive:
+
+`>= 15%`
+
+The decision is evaluated against the authoritative Summative full mark and uses exact
+arithmetic rather than trusting a rounded display value.
+
+Reciprocal First/Second blindness remained preserved.
+
+### Third Examination referral runtime verification
+
+Runtime verification covered:
+
+- unauthenticated denial;
+- wrong-role denial;
+- forged department-header resistance;
+- below-threshold referral rejection;
+- prevention of the First Examiner becoming the Third Examiner for the same governed
+  candidate context;
+- prevention of the Second Examiner becoming the Third Examiner for the same governed
+  candidate context;
+- exact-threshold referral creation;
+- above-threshold referral creation;
+- duplicate active-referral conflict;
+- candidate-scoped Third referral evidence;
+- structural referral audit;
+- audit confidentiality.
+
+Third Examiner remains candidate/referral scoped.
+
+Third Examiner is **not** a permanent standing `ExaminationCourse` Examiner seat.
+
+### Third Examiner workspace and blindness
+
+Runtime verification established that:
+
+- unrelated Teachers receive no referred candidate authority;
+- First Examiner receives no Third Examiner candidate evidence;
+- Second Examiner receives no Third Examiner candidate evidence;
+- the assigned Third Examiner receives only candidates covered by an exact live
+  referral;
+- forged `x-department-id` does not override authenticated department scope;
+- direct object access outside exact Third authority fails with safe not-found
+  behavior;
+- First/Second marks and totals are not disclosed to the Third Examiner.
+
+### Third marking runtime verification
+
+Verified:
+
+- question-wise Third marks;
+- exact referral binding;
+- required-question enforcement;
+- DRAFT creation;
+- final LOCKED submission;
+- server-calculated Third total;
+- post-lock application mutation rejection;
+- idempotent repeated finalisation;
+- no unauthorized Third academic evidence creation.
+
+### Three-total nearest-pair runtime verification
+
+For:
+
+- First `50`;
+- Second `41`;
+- Third `48`;
+
+the verified distances were:
+
+- `|F-S| = 9`;
+- `|F-T| = 2`;
+- `|S-T| = 7`.
+
+Selected pair:
+
+`FIRST_THIRD`
+
+Selection reason:
+
+`UNIQUE_NEAREST`
+
+Derived calculation value:
+
+`49`
+
+For:
+
+- First `52`;
+- Second `40`;
+- Third `46`;
+
+the verified distances were:
+
+- `|F-S| = 12`;
+- `|F-T| = 6`;
+- `|S-T| = 6`.
+
+The equal-distance ambiguity was resolved using the two higher totals.
+
+Selected pair:
+
+`FIRST_THIRD`
+
+Selection reason:
+
+`EQUAL_DISTANCE_HIGHER_PAIR`
+
+Derived calculation value:
+
+`49`
+
+The implemented deterministic all-equal rule remains:
+
+- selected pair: `FIRST_SECOND`;
+- reason: `ALL_EQUAL_CANONICAL`.
+
+The nearest-pair derived value is calculation evidence only.
+
+It is **not** a Committee-reviewed or Chairman-approved final Summative result.
+
+### Concurrency and database immutability hardening
+
+Real runtime hardening verified:
+
+- concurrent repeated Third finalisation converged idempotently;
+- duplicate Third submission was not created;
+- duplicate Third marks were not created;
+- duplicate three-total calculation was not created;
+- duplicate success audit was not created;
+- direct PostgreSQL UPDATE of LOCKED Third submission was blocked;
+- direct PostgreSQL DELETE of LOCKED Third submission was blocked;
+- direct PostgreSQL UPDATE of LOCKED Third question-mark evidence was blocked;
+- direct PostgreSQL DELETE of LOCKED Third question-mark evidence was blocked;
+- direct PostgreSQL UPDATE of three-total calculation evidence was blocked;
+- direct PostgreSQL DELETE of three-total calculation evidence was blocked;
+- hardening test residue returned to zero.
+
+### Third referral deadline-expiry lifecycle
+
+At implementation HEAD `9560ee8e78ea022f2a39196b7ad1f4adaa7d13e7`,
+real HTTP/PostgreSQL runtime verification established:
+
+Before expiry:
+
+- live `ASSIGNED` referral appeared in the Third workspace;
+- exact direct Third read was authorized.
+
+After the persisted deadline passed:
+
+- candidate disappeared from the Third workspace;
+- direct candidate read returned safe `404`;
+- Third mark save returned safe `404`;
+- Third finalisation returned safe `404`;
+- no Third submission, Third mark or three-total calculation was created.
+
+Controlled successor assignment then verified:
+
+- expired predecessor:
+  `ASSIGNED -> EXPIRED`;
+- predecessor assignment version:
+  `1`;
+- successor status:
+  `ASSIGNED`;
+- successor assignment version:
+  `2`;
+- predecessor identity/evidence remained preserved;
+- expiry audit was written exactly once;
+- successor assignment audit was written exactly once;
+- audit content remained structural;
+- successor restored the exact Third Examiner authority.
+
+### Required-audit transactional rollback
+
+A narrow temporary PostgreSQL fault injector targeted only the runtime rollback
+candidate's exact active referral and the required event:
+
+`summative-examination.third-examiner-mark-submission.draft-created`
+
+The real HTTP request returned the expected HTTP `500`.
+
+After the forced audit failure:
+
+- Third DRAFT submission count for the target remained `0`;
+- Third question-mark count for the target remained `0`;
+- false success-audit count remained `0`;
+- overall Summative audit cardinality remained unchanged.
+
+Therefore the business mutation and its required audit were proven to participate in
+the same effective transaction boundary.
+
+The temporary PostgreSQL trigger/function was then removed with zero residue.
+
+A clean retry succeeded and produced exactly:
+
+- one DRAFT Third submission;
+- one Third question mark;
+- one required structural draft-created audit.
+
+Audit confidentiality passed.
+
+Classification:
+
+**REAL REQUIRED-AUDIT FAILURE -> BUSINESS TRANSACTION ROLLBACK VERIFIED**
+
+### Final deployment/static verification
+
+At the expiry implementation promotion:
+
+- API typecheck: PASS;
+- API build: PASS;
+- focused compiled expiry/Third regression: `53/53 PASS`;
+- repository: CLEAN / origin-aligned;
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- NestJS listener: `127.0.0.1:4000` only;
+- reverse-proxy hardening: preserved.
+
+The `53/53` regression is the focused final expiry/Third regression set and must not be
+misrepresented as the complete test count for every Summative implementation phase.
+
+### Cleanup and measured baseline restoration
+
+Before final cleanup, private sanitized evidence was preserved at:
+
+`/home/sh002/.local/state/lexora/summative-runtime/20260902033523/evidence/pre-cleanup-2026-09-02T16-20-24-097Z.json`
+
+File mode:
+
+`0600`
+
+SHA-256:
+
+`C8AD54A645527633BDAA6ADB331E4335A079C58E3F4D4BA9C333BC7D2B1844F6`
+
+Measured pre-cleanup runtime business cardinality included:
+
+- Examination: `1`;
+- ExaminationCourse: `1`;
+- Examiner assignments: `2`;
+- question configuration: `1`;
+- question items: `6`;
+- candidates: `4`;
+- First/Second submissions: `8`;
+- First/Second question marks: `48`;
+- comparisons: `4`;
+- Third referrals: `4`;
+- Third submissions: `3`;
+- Third question marks: `13`;
+- three-total calculations: `2`;
+- USER Summative audits: `96`;
+- SERVICE Summative audits: `0`.
+
+The guarded cleanup transaction successfully committed.
+
+After that commit, the first post-cleanup evidence writer failed because of a local
+test-harness variable-name error:
+
+`preCleanupEvidenceSha256 is not defined`
+
+This failure occurred **after** the cleanup transaction had committed.
+
+It was not evidence of cleanup rollback and must not be documented as such.
+
+A separate read-only recovery inspection established:
+
+- every tracked Summative business table: `0`;
+- USER Summative audits: `0`;
+- SERVICE Summative audits: `0`;
+- runtime AcademicSession: `0`;
+- runtime StudentBatch: `0`;
+- runtime SyllabusVersion: `0`;
+- runtime CourseOffering: `0`;
+- runtime target Enrollments: `0`;
+- runtime assessment components: `0`;
+- permanent Summative role-permission links: `4/4` preserved;
+- production Summative protection triggers: `10/10` enabled;
+- temporary runtime/test PostgreSQL DDL: `0`.
+
+Nine run-scoped runtime identities were retained only as non-usable
+authentication/audit anchors:
+
+- status: `ARCHIVED`;
+- password hash cleared;
+- role count: `0`;
+- active session count: `0`.
+
+Recovered post-cleanup evidence:
+
+`/home/sh002/.local/state/lexora/summative-runtime/20260902033523/evidence/post-cleanup-recovered-2026-09-02T16-33-55-447Z.json`
+
+File mode:
+
+`0600`
+
+SHA-256:
+
+`D5D72C9DDA60BE9829B2B3EA30039F78421EF987B822A8188CDAAAC42030EC94`
+
+The persistent runtime manifest was updated with the recovered `finalCleanup`
+checkpoint.
+
+### Permanent authorization and protection preservation
+
+Final verification preserved the four intended permanent Summative authorization
+links:
+
+- Department Admin:
+  - `summative-examination.setup.manage_department`;
+  - `summative-examination.committee.manage_department`;
+  - `summative-examination.examiner-assignment.manage_department`;
+
+- Teacher:
+  - `summative-examination.examiner-marks.enter_department`.
+
+All ten current Summative PostgreSQL protection triggers remained enabled.
+
+Temporary runtime/test DDL residue was zero.
+
+### Final runtime campaign verdict
+
+For the tested matrix, the comparison / Third referral / Third marking / nearest-pair
+backend campaign is:
+
+**IMPLEMENTED + DEPLOYED + FUNCTIONAL/SECURITY RUNTIME VERIFIED**
+
+The runtime campaign itself is closed, including disposable-fixture cleanup and
+measured baseline restoration.
+
+### Remaining Summative implementation
+
+The complete Summative Examination workflow remains:
+
+**PARTIAL / ACTIVE BACKEND DEVELOPMENT**
+
+Next backend implementation sequence:
+
+1. Committee Member review;
+2. Chairman approval / final lock;
+3. authorised reopen / correction / re-review / re-approval / re-lock;
+4. approved Summative result record;
+5. transactional/idempotent result-engine handoff;
+6. final-result/amendment integration;
+7. approved Summative CLO selected-pair analytical evidence where formally required;
+8. confidentiality-filtered reports/export;
+9. frontend integration.
+
+Separately pending:
+
+- mandatory Summative 2FA enforcement and runtime verification;
+- formal candidate/exam-roll/physical-script/masking governance.
+
+The current Ordinance-aligned Examination Committee foundation remains:
+
+- Chairman;
+- Internal Member 1;
+- Internal Member 2;
+- External Member.
+
+Historical lower-authority three-member wording must not override the current
+Ordinance-aligned implementation.

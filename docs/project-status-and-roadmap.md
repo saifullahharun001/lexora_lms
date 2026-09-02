@@ -2245,3 +2245,125 @@ The complete Summative Examination workflow remains:
 **PARTIAL / ACTIVE BACKEND DEVELOPMENT**
 
 It must not be described as a complete or production-hardened Summative product.
+
+---
+
+## Summative Comparison / Third / Nearest-Pair Runtime Supersession — 2026-09-02
+
+This section supersedes the 2026-09-01 current-status statements that classified the
+comparison/variance, Third Examination and nearest-pair bundles as only automated
+static verification or as remaining implementation work.
+
+Historical roadmap sections remain preserved as point-in-time evidence.
+
+Implementation/runtime HEAD:
+
+`9560ee8e78ea022f2a39196b7ad1f4adaa7d13e7`
+
+### Current verified Summative backend scope
+
+The following phase is now:
+
+**IMPLEMENTED + DEPLOYED + FUNCTIONAL/SECURITY RUNTIME VERIFIED FOR THE TESTED MATRIX**
+
+Verified scope includes:
+
+- blind First/Second question-wise marking;
+- immutable First/Second comparison evidence;
+- authoritative Summative-full-mark variance;
+- inclusive `>= 15%` Third Examination trigger;
+- candidate-scoped Third referral;
+- Third authority/blindness;
+- Third referral expiry and controlled replacement;
+- blind Third question-wise marking;
+- Third DRAFT / LOCKED lifecycle;
+- nearest-pair calculation;
+- `EQUAL_DISTANCE_HIGHER_PAIR`;
+- deterministic all-equal handling;
+- concurrency/idempotency protection;
+- PostgreSQL immutable academic-evidence protection;
+- required-audit transactional rollback;
+- final disposable-fixture cleanup;
+- measured baseline restoration.
+
+The current Summative implementation still does **not** represent a complete
+Summative Examination product.
+
+Overall status remains:
+
+**PARTIAL / ACTIVE BACKEND DEVELOPMENT**
+
+### Runtime closure highlights
+
+Runtime verification proved:
+
+- below-threshold, exact `15%` threshold and above-threshold comparison decisions;
+- Third referral eligibility and negative authority cases;
+- Third blindness from First/Second marks/totals;
+- Third question-wise marking and final lock;
+- nearest-pair unique and equal-distance cases;
+- expired Third referral loses read/write/finalise authority;
+- expired predecessor becomes `EXPIRED` during controlled replacement;
+- successor receives the next assignment version;
+- concurrent repeated finalisation remains idempotent;
+- direct PostgreSQL mutation of protected LOCKED/calculation evidence is blocked;
+- forced required-audit failure rolls back the associated business mutation;
+- temporary failure-injection DDL leaves zero residue.
+
+Final focused expiry/Third regression:
+
+`53/53 PASS`
+
+Final campaign cleanup restored:
+
+- tracked Summative business tables: `0`;
+- runtime AcademicSession: `0`;
+- runtime StudentBatch: `0`;
+- runtime SyllabusVersion: `0`;
+- runtime CourseOffering: `0`;
+- runtime Enrollments: `0`;
+- runtime assessment components: `0`;
+- USER Summative audits: `0`;
+- SERVICE Summative audits: `0`.
+
+Permanent authorization:
+
+`4/4 PRESERVED`
+
+Production Summative protection triggers:
+
+`10/10 ENABLED`
+
+Recovered private post-cleanup evidence SHA-256:
+
+`D5D72C9DDA60BE9829B2B3EA30039F78421EF987B822A8188CDAAAC42030EC94`
+
+### Next Summative backend implementation point
+
+The next cohesive backend phase is now:
+
+**Committee Member Review + Chairman Approval / Final Lock**
+
+After that:
+
+1. authorised reopen/correction/re-review/re-approval/re-lock;
+2. approved Summative result record;
+3. transactional/idempotent result-engine handoff;
+4. final-result/amendment integration;
+5. approved Summative CLO selected-pair analytical evidence where formally required;
+6. confidentiality-filtered reporting/export;
+7. frontend integration.
+
+Separately pending:
+
+- mandatory Summative 2FA enforcement/runtime verification;
+- formal candidate/exam-roll/physical-script/masking governance.
+
+Third Examiner remains candidate/referral scoped and must not be converted into a
+permanent standing course-level Examiner seat.
+
+The current Ordinance-aligned Examination Committee composition remains:
+
+- Chairman;
+- two Internal Members;
+- one External Member.
