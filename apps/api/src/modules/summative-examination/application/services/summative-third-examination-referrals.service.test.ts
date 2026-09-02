@@ -191,6 +191,9 @@ test("distinct active eligible Teacher receives exact candidate-scoped referral 
     referral.thirdExaminerUserId,
     h.comparison.secondSubmission.examinerAssignment.assignedUserId,
   );
+  const eligibilitySql = h.state.rawSql.find((sql) => /FROM "users"/.test(sql));
+  assert.ok(eligibilitySql);
+  assert.match(eligibilitySql, /u\."status" = \?::"UserStatus"/);
 });
 
 test("missing comparison is rejected", async () => {

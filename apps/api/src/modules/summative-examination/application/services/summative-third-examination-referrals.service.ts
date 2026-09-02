@@ -169,7 +169,7 @@ export class SummativeThirdExaminationReferralsService {
       JOIN "roles" r ON ur."role_id" = r."id"
       WHERE u."id" = ${userId}
         AND u."department_id" = ${authority.departmentId}
-        AND u."status" = ${UserStatus.ACTIVE}
+        AND u."status" = ${UserStatus.ACTIVE}::"UserStatus"
         AND u."archived_at" IS NULL
         AND u."deleted_at" IS NULL
         AND ur."department_id" = ${authority.departmentId}
