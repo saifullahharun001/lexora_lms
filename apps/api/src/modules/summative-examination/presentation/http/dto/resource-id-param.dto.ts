@@ -84,3 +84,11 @@ export class ExaminerQuestionMarkIdParamDto extends ExaminerMarkingCandidateIdPa
   @Matches(/^[A-Za-z0-9][A-Za-z0-9_-]+$/)
   questionItemId!: string;
 }
+
+export class SummativeCalculatedMarkIdParamDto {
+  @IsString()
+  @MinLength(3)
+  @MaxLength(128)
+  @Matches(/^[A-Za-z0-9][A-Za-z0-9_-]+$/)
+  calculatedMarkId!: string;
+}

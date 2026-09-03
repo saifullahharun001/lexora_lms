@@ -16,3 +16,4 @@ apps/api/prisma/migrations/202609010001_add_summative_examiner_comparisons/migra
 apps/api/prisma/migrations/202609010002_add_summative_third_examination_referrals/migration.sql -text
 apps/api/prisma/migrations/202609010003_add_summative_third_examiner_marks/migration.sql -text
 apps/api/prisma/migrations/202609010004_add_summative_three_total_calculations/migration.sql -text
+apps/api/prisma/migrations/202609020002_add_summative_calculated_committee_approval/migration.sql -text

@@ -2367,3 +2367,63 @@ The current Ordinance-aligned Examination Committee composition remains:
 - Chairman;
 - two Internal Members;
 - one External Member.
+
+---
+
+## Summative Committee approval implementation checkpoint — 2026-09-03
+
+Current classification:
+
+**IMPLEMENTED / LOCAL STATICALLY VERIFIED**
+
+The calculated-mark convergence, two internal-Member reviews and Chairman
+approval/final-lock backend bundle is implemented locally. It supports both no-Third
+and Third candidates through one immutable calculated-evidence boundary and preserves
+the Ordinance-backed four-seat Committee while keeping the External Member
+metadata-only for this digital phase.
+
+Authorization now has two separate exact Teacher coarse-duty definitions:
+
+- `summative-examination.member-review.review_department`;
+- `summative-examination.chairman-approval.approve_department`.
+
+These definitions do not authorize by role alone. Every read/write additionally
+requires the exact live Committee assignment, required seat, principal department and
+calculated-mark/Examination/Committee scope. Department Admin management authority and
+Examiner assignment do not substitute for Committee duty. Runtime provisioning was
+not applied, so the prior `4/4` permanent Summative runtime links remain the latest
+runtime evidence.
+
+Local evidence:
+
+- Prisma schema validation with Prisma CLI `6.19.3`: PASS in the canonical
+  `D:\Lexora` workspace;
+- Prisma Client generation: PASS in the canonical `D:\Lexora` workspace;
+- API typecheck: PASS in the canonical `D:\Lexora` workspace;
+- API build: PASS in the canonical `D:\Lexora` workspace;
+- focused new bundle tests: `85/85 PASS`;
+- selected existing Summative regressions: `200/200 PASS`;
+- changed production-source isolated TypeScript analysis: no non-environment
+  diagnostics;
+- additive migration/history, evidence chronology, Committee workspace readiness and
+  confidentiality/security review: PASS.
+
+The later canonical `D:\Lexora` verification supersedes an earlier managed-runner
+`EPERM ... lstat 'D:\\'` tooling limitation. No ordinary database migration,
+provisioning, deployment, PM2 activation, authenticated HTTP verification,
+PostgreSQL trigger verification or real concurrency test was performed. The
+classification is local/static only.
+
+Remaining Summative sequence:
+
+1. authorised reopen/correction/re-review/re-approval/re-lock;
+2. approved Summative result-engine record;
+3. transactional/idempotent result-engine handoff;
+4. final-result/amendment integration;
+5. approved Summative CLO selected-pair analytical evidence where required;
+6. confidentiality-filtered reports/export;
+7. frontend integration.
+
+Mandatory Summative 2FA and candidate/exam-roll/physical-script/masking governance
+remain pending. Overall Summative status remains **PARTIAL / ACTIVE BACKEND
+DEVELOPMENT**.

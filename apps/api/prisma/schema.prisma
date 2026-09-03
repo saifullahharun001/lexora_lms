@@ -482,6 +482,16 @@ enum SummativeThreeTotalSelectionReason {
   ALL_EQUAL_CANONICAL
 }
 
+enum SummativeCalculatedMarkPath {
+  FIRST_SECOND_AVERAGE
+  THREE_TOTAL_NEAREST_PAIR
+}
+
+enum SummativeCommitteeMemberReviewOutcome {
+  VERIFIED
+  CORRECTION_REQUIRED
+}
+
 model Department {
   id                              String                            @id @default(cuid())
   code                            String                            @unique
@@ -583,6 +593,9 @@ model Department {
   summativeThirdExaminerMarkSubmissions SummativeThirdExaminerMarkSubmission[]
   summativeThirdExaminerQuestionMarks   SummativeThirdExaminerQuestionMark[]
   summativeThreeTotalCalculations       SummativeThreeTotalCalculation[]
+  summativeCalculatedMarks              SummativeCalculatedMark[]
+  summativeCommitteeMemberReviews       SummativeCommitteeMemberReview[]
+  summativeChairmanApprovals             SummativeChairmanApproval[]
 
   @@map("departments")
 }
@@ -672,6 +685,8 @@ model User {
   summativeCandidatesAsStudent         SummativeExaminationCandidate[]   @relation("SummativeCandidateStudent")
   summativeCandidatesRegistered        SummativeExaminationCandidate[]   @relation("SummativeCandidateRegisteredBy")
   summativeThirdExaminerMarkSubmissions    SummativeThirdExaminerMarkSubmission[]
+  summativeCommitteeMemberReviews          SummativeCommitteeMemberReview[] @relation("SummativeCommitteeReviewer")
+  summativeChairmanApprovals                SummativeChairmanApproval[]       @relation("SummativeChairmanApprover")
 
   @@unique([id, departmentId], map: "user_id_department_uq")
   @@index([departmentId])
@@ -879,6 +894,9 @@ model Examination {
   thirdExaminationReferrals             SummativeThirdExaminationReferral[]
   summativeThirdExaminerMarkSubmissions SummativeThirdExaminerMarkSubmission[]
   summativeThreeTotalCalculations       SummativeThreeTotalCalculation[]
+  summativeCalculatedMarks              SummativeCalculatedMark[]
+  summativeCommitteeMemberReviews       SummativeCommitteeMemberReview[]
+  summativeChairmanApprovals             SummativeChairmanApproval[]
 
   @@unique([id, departmentId], map: "examination_id_department_uq")
   @@unique([id, departmentId, academicProgramId, academicSessionId, academicTermId], map: "examination_scope_identity_uq")
@@ -930,6 +948,9 @@ model ExaminationCourse {
   thirdExaminationReferrals SummativeThirdExaminationReferral[]
   summativeThirdExaminerMarkSubmissions SummativeThirdExaminerMarkSubmission[]
   summativeThreeTotalCalculations SummativeThreeTotalCalculation[]
+  summativeCalculatedMarks        SummativeCalculatedMark[]
+  summativeCommitteeMemberReviews SummativeCommitteeMemberReview[]
+  summativeChairmanApprovals      SummativeChairmanApproval[]
 
   @@unique([lockedQuestionConfigurationId, departmentId, id], map: "examination_course_locked_config_uq")
   @@unique([id, departmentId, examinationId], map: "examination_course_scope_identity_uq")
@@ -955,6 +976,8 @@ model ExaminationCommittee {
   department    Department                       @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "examination_committee_department_fkey")
   examination   Examination                      @relation(fields: [examinationId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "examination_committee_examination_identity_fkey")
   assignments   ExaminationCommitteeAssignment[]
+  summativeCommitteeMemberReviews SummativeCommitteeMemberReview[]
+  summativeChairmanApprovals       SummativeChairmanApproval[]
 
   @@unique([id, departmentId, examinationId], map: "examination_committee_scope_identity_uq")
   @@unique([departmentId, examinationId], map: "examination_committee_examination_uq")
@@ -983,6 +1006,8 @@ model ExaminationCommitteeAssignment {
   externalMemberAffiliation String?                     @map("external_member_affiliation") @db.VarChar(255)
   assignedUser     User?                                @relation("ExaminationCommitteeAssignee", fields: [assignedUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "exam_committee_assignment_user_fkey")
   assignedByUser   User                                 @relation("ExaminationCommitteeAssignedBy", fields: [assignedByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "exam_committee_assignment_assigner_fkey")
+  summativeCommitteeMemberReviews SummativeCommitteeMemberReview[]
+  summativeChairmanApprovals       SummativeChairmanApproval[]
 
   /// Active-only seat and user uniqueness is enforced by PostgreSQL partial unique indexes. Authority must reject wall-clock-expired rows; replacement must retire an expired ACTIVE row transactionally before inserting its successor.
   @@unique([id, departmentId, committeeId], map: "exam_committee_assignment_scope_identity_uq")
@@ -2945,6 +2970,7 @@ model SummativeQuestionConfiguration {
   thirdExaminationReferrals             SummativeThirdExaminationReferral[]
   summativeThirdExaminerMarkSubmissions SummativeThirdExaminerMarkSubmission[]
   summativeThreeTotalCalculations       SummativeThreeTotalCalculation[]
+  summativeCalculatedMarks              SummativeCalculatedMark[]
   summativeThirdExaminerQuestionMarks   SummativeThirdExaminerQuestionMark[]
 
   @@unique([id, departmentId, examinationCourseId], map: "summative_question_config_scope_uq")
@@ -3013,6 +3039,9 @@ model SummativeExaminationCandidate {
   thirdExaminationReferrals             SummativeThirdExaminationReferral[]
   summativeThirdExaminerMarkSubmissions SummativeThirdExaminerMarkSubmission[]
   summativeThreeTotalCalculations       SummativeThreeTotalCalculation[]
+  summativeCalculatedMarks              SummativeCalculatedMark[]
+  summativeCommitteeMemberReviews       SummativeCommitteeMemberReview[]
+  summativeChairmanApprovals             SummativeChairmanApproval[]
 
   @@unique([id, departmentId, examinationId, examinationCourseId], map: "summative_candidate_scope_uq")
   @@unique([departmentId, examinationCourseId, enrollmentId], map: "summative_candidate_roster_uq")
@@ -3048,6 +3077,8 @@ model SummativeExaminerMarkSubmission {
   comparisonsAsSecondSource SummativeExaminerComparison[] @relation("SummativeComparisonSecondSource")
   threeTotalCalculationsAsFirstSource  SummativeThreeTotalCalculation[] @relation("SummativeThreeTotalFirstSource")
   threeTotalCalculationsAsSecondSource SummativeThreeTotalCalculation[] @relation("SummativeThreeTotalSecondSource")
+  calculatedMarksAsFirstSource         SummativeCalculatedMark[]        @relation("SummativeCalculatedFirstSource")
+  calculatedMarksAsSecondSource        SummativeCalculatedMark[]        @relation("SummativeCalculatedSecondSource")
 
   @@unique([id, departmentId, examinationCourseId, questionConfigurationId], map: "summative_mark_submission_config_scope_uq")
   @@unique([id, departmentId, examinationId, examinationCourseId, candidateId], map: "summative_mark_submission_comparison_scope_uq")
@@ -3110,6 +3141,7 @@ model SummativeExaminerComparison {
   secondSubmission  SummativeExaminerMarkSubmission @relation("SummativeComparisonSecondSource", fields: [secondSubmissionId, departmentId, examinationId, examinationCourseId, candidateId], references: [id, departmentId, examinationId, examinationCourseId, candidateId], onDelete: Restrict, onUpdate: Restrict, map: "summative_comparison_second_source_fkey")
   thirdExaminationReferrals SummativeThirdExaminationReferral[]
   threeTotalCalculations SummativeThreeTotalCalculation[]
+  calculatedMarks        SummativeCalculatedMark[]
 
   @@unique([id, departmentId, examinationId, examinationCourseId, candidateId], map: "summative_comparison_scope_uq")
   @@unique([firstSubmissionId, secondSubmissionId], map: "summative_comparison_source_pair_uq")
@@ -3198,6 +3230,7 @@ model SummativeThirdExaminerMarkSubmission {
 
   questionMarks SummativeThirdExaminerQuestionMark[]
   threeTotalCalculations SummativeThreeTotalCalculation[]
+  calculatedMarks        SummativeCalculatedMark[]
 
   @@unique([id, departmentId, examinationId, examinationCourseId, candidateId, referralId, questionConfigurationId], map: "summative_third_submission_calc_scope_uq")
   @@unique([id, departmentId, examinationCourseId, questionConfigurationId], map: "summative_third_mark_submission_config_scope_uq")
@@ -3271,6 +3304,7 @@ model SummativeThreeTotalCalculation {
   secondSubmission      SummativeExaminerMarkSubmission      @relation("SummativeThreeTotalSecondSource", fields: [secondSubmissionId, departmentId, examinationId, examinationCourseId, candidateId], references: [id, departmentId, examinationId, examinationCourseId, candidateId], onDelete: Restrict, onUpdate: Restrict, map: "sum_three_calc_second_source_fkey")
   thirdSubmission       SummativeThirdExaminerMarkSubmission @relation(fields: [thirdSubmissionId, departmentId, examinationId, examinationCourseId, candidateId, thirdReferralId, questionConfigurationId], references: [id, departmentId, examinationId, examinationCourseId, candidateId, referralId, questionConfigurationId], onDelete: Restrict, onUpdate: Restrict, map: "sum_three_calc_third_source_fkey")
   questionConfiguration SummativeQuestionConfiguration       @relation(fields: [questionConfigurationId, departmentId, examinationId, examinationCourseId], references: [id, departmentId, examinationId, examinationCourseId], onDelete: Restrict, onUpdate: Restrict, map: "sum_three_calc_config_fkey")
+  calculatedMark         SummativeCalculatedMark?
 
   @@unique([firstSubmissionId, secondSubmissionId, thirdSubmissionId], map: "sum_three_calc_source_triplet_uq")
   @@unique([departmentId, examinationCourseId, candidateId, calculationVersion], map: "sum_three_calc_candidate_version_uq")
@@ -3279,4 +3313,130 @@ model SummativeThreeTotalCalculation {
   @@index([thirdReferralId], map: "sum_three_calc_referral_idx")
   @@index([thirdSubmissionId], map: "sum_three_calc_third_source_idx")
   @@map("summative_three_total_calculations")
+}
+
+/// Immutable common calculated Summative evidence for both Ordinance calculation paths.
+/// This is not Committee approval, publication, or Result Engine evidence.
+model SummativeCalculatedMark {
+  id                                   String                       @id @default(cuid())
+  departmentId                         String                       @map("department_id")
+  examinationId                        String                       @map("examination_id")
+  examinationCourseId                  String                       @map("examination_course_id")
+  candidateId                          String                       @map("candidate_id")
+  comparisonId                         String                       @map("comparison_id")
+  comparisonVersionSnapshot            Int                          @map("comparison_version_snapshot") @db.SmallInt
+  threeTotalCalculationId              String?                      @unique(map: "sum_calc_mark_three_calc_uq") @map("three_total_calculation_id")
+  threeTotalCalculationVersionSnapshot Int?                         @map("three_total_calculation_version_snapshot") @db.SmallInt
+  questionConfigurationId              String                       @map("question_configuration_id")
+  firstSubmissionId                    String                       @map("first_submission_id")
+  secondSubmissionId                   String                       @map("second_submission_id")
+  thirdSubmissionId                    String?                      @map("third_submission_id")
+  firstSubmissionVersion               Int                          @map("first_submission_version") @db.SmallInt
+  secondSubmissionVersion              Int                          @map("second_submission_version") @db.SmallInt
+  thirdSubmissionVersion               Int?                         @map("third_submission_version") @db.SmallInt
+  summativeFullMarkSnapshot             Decimal                      @map("summative_full_mark_snapshot") @db.Decimal(6, 2)
+  calculationPath                      SummativeCalculatedMarkPath  @map("calculation_path")
+  calculatedMarkVersion                Int                          @map("calculated_mark_version") @db.SmallInt
+  ruleVersionCode                      String                       @map("rule_version_code") @db.VarChar(64)
+  derivedSummativeValue                Decimal                      @map("derived_summative_value") @db.Decimal(7, 3)
+  calculatedAt                         DateTime                     @default(dbgenerated("statement_timestamp()")) @map("calculated_at")
+  createdAt                            DateTime                     @default(dbgenerated("statement_timestamp()")) @map("created_at")
+
+  department            Department                           @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "sum_calc_mark_department_fkey")
+  examination           Examination                          @relation(fields: [examinationId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "sum_calc_mark_examination_fkey")
+  examinationCourse     ExaminationCourse                    @relation(fields: [examinationCourseId, departmentId, examinationId], references: [id, departmentId, examinationId], onDelete: Restrict, onUpdate: Restrict, map: "sum_calc_mark_exam_course_fkey")
+  candidate             SummativeExaminationCandidate        @relation(fields: [candidateId, departmentId, examinationId, examinationCourseId], references: [id, departmentId, examinationId, examinationCourseId], onDelete: Restrict, onUpdate: Restrict, map: "sum_calc_mark_candidate_fkey")
+  comparison            SummativeExaminerComparison          @relation(fields: [comparisonId, departmentId, examinationId, examinationCourseId, candidateId], references: [id, departmentId, examinationId, examinationCourseId, candidateId], onDelete: Restrict, onUpdate: Restrict, map: "sum_calc_mark_comparison_fkey")
+  threeTotalCalculation SummativeThreeTotalCalculation?      @relation(fields: [threeTotalCalculationId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "sum_calc_mark_three_calc_fkey")
+  questionConfiguration SummativeQuestionConfiguration       @relation(fields: [questionConfigurationId, departmentId, examinationId, examinationCourseId], references: [id, departmentId, examinationId, examinationCourseId], onDelete: Restrict, onUpdate: Restrict, map: "sum_calc_mark_config_fkey")
+  firstSubmission       SummativeExaminerMarkSubmission      @relation("SummativeCalculatedFirstSource", fields: [firstSubmissionId, departmentId, examinationId, examinationCourseId, candidateId], references: [id, departmentId, examinationId, examinationCourseId, candidateId], onDelete: Restrict, onUpdate: Restrict, map: "sum_calc_mark_first_source_fkey")
+  secondSubmission      SummativeExaminerMarkSubmission      @relation("SummativeCalculatedSecondSource", fields: [secondSubmissionId, departmentId, examinationId, examinationCourseId, candidateId], references: [id, departmentId, examinationId, examinationCourseId, candidateId], onDelete: Restrict, onUpdate: Restrict, map: "sum_calc_mark_second_source_fkey")
+  thirdSubmission       SummativeThirdExaminerMarkSubmission? @relation(fields: [thirdSubmissionId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "sum_calc_mark_third_source_fkey")
+  memberReviews         SummativeCommitteeMemberReview[]
+  chairmanApproval      SummativeChairmanApproval?
+
+  @@unique([comparisonId], map: "sum_calc_mark_comparison_uq")
+  @@unique([id, departmentId, examinationId, examinationCourseId, candidateId, calculatedMarkVersion], map: "sum_calc_mark_scope_version_uq")
+  @@unique([departmentId, examinationCourseId, candidateId, calculatedMarkVersion], map: "sum_calc_mark_candidate_version_uq")
+  @@index([departmentId, examinationCourseId, candidateId, calculatedAt], map: "sum_calc_mark_candidate_lookup_idx")
+  @@index([firstSubmissionId], map: "sum_calc_mark_first_source_idx")
+  @@index([secondSubmissionId], map: "sum_calc_mark_second_source_idx")
+  @@index([thirdSubmissionId], map: "sum_calc_mark_third_source_idx")
+  @@map("summative_calculated_marks")
+}
+
+/// Immutable review evidence from one exact current internal Member appointment instance.
+model SummativeCommitteeMemberReview {
+  id                            String                                  @id @default(cuid())
+  departmentId                  String                                  @map("department_id")
+  examinationId                 String                                  @map("examination_id")
+  examinationCourseId           String                                  @map("examination_course_id")
+  candidateId                   String                                  @map("candidate_id")
+  calculatedMarkId              String                                  @map("calculated_mark_id")
+  calculatedMarkVersionSnapshot Int                                     @map("calculated_mark_version_snapshot") @db.SmallInt
+  committeeId                   String                                  @map("committee_id")
+  committeeAssignmentId         String                                  @map("committee_assignment_id")
+  reviewerUserId                String                                  @map("reviewer_user_id")
+  reviewerSeat                  ExaminationCommitteeSeat                @map("reviewer_seat")
+  assignmentAssignedAtSnapshot  DateTime                                @map("assignment_assigned_at_snapshot")
+  reviewVersion                 Int                                     @map("review_version") @db.SmallInt
+  outcome                       SummativeCommitteeMemberReviewOutcome
+  reviewComment                 String?                                 @map("review_comment") @db.VarChar(1000)
+  reviewedAt                    DateTime                                @map("reviewed_at")
+  createdAt                     DateTime                                @default(dbgenerated("statement_timestamp()")) @map("created_at")
+
+  department          Department                     @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "sum_member_review_department_fkey")
+  examination         Examination                    @relation(fields: [examinationId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "sum_member_review_examination_fkey")
+  examinationCourse   ExaminationCourse              @relation(fields: [examinationCourseId, departmentId, examinationId], references: [id, departmentId, examinationId], onDelete: Restrict, onUpdate: Restrict, map: "sum_member_review_exam_course_fkey")
+  candidate           SummativeExaminationCandidate  @relation(fields: [candidateId, departmentId, examinationId, examinationCourseId], references: [id, departmentId, examinationId, examinationCourseId], onDelete: Restrict, onUpdate: Restrict, map: "sum_member_review_candidate_fkey")
+  calculatedMark      SummativeCalculatedMark        @relation(fields: [calculatedMarkId, departmentId, examinationId, examinationCourseId, candidateId, calculatedMarkVersionSnapshot], references: [id, departmentId, examinationId, examinationCourseId, candidateId, calculatedMarkVersion], onDelete: Restrict, onUpdate: Restrict, map: "sum_member_review_calc_mark_fkey")
+  committee           ExaminationCommittee           @relation(fields: [committeeId, departmentId, examinationId], references: [id, departmentId, examinationId], onDelete: Restrict, onUpdate: Restrict, map: "sum_member_review_committee_fkey")
+  committeeAssignment ExaminationCommitteeAssignment @relation(fields: [committeeAssignmentId, departmentId, committeeId], references: [id, departmentId, committeeId], onDelete: Restrict, onUpdate: Restrict, map: "sum_member_review_assignment_fkey")
+  reviewer             User                           @relation("SummativeCommitteeReviewer", fields: [reviewerUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "sum_member_review_reviewer_fkey")
+  chairmanApprovalAsMember1 SummativeChairmanApproval? @relation("SummativeApprovalMember1Review")
+  chairmanApprovalAsMember2 SummativeChairmanApproval? @relation("SummativeApprovalMember2Review")
+
+  @@unique([calculatedMarkId, committeeAssignmentId, assignmentAssignedAtSnapshot], map: "sum_member_review_appointment_uq")
+  @@unique([departmentId, calculatedMarkId, reviewerSeat, reviewVersion], map: "sum_member_review_seat_version_uq")
+  @@index([departmentId, calculatedMarkId, reviewerSeat, reviewedAt], map: "sum_member_review_lookup_idx")
+  @@map("summative_committee_member_reviews")
+}
+
+/// Immutable Chairman approval and final-lock evidence for one exact calculated mark.
+model SummativeChairmanApproval {
+  id                            String                         @id @default(cuid())
+  departmentId                  String                         @map("department_id")
+  examinationId                 String                         @map("examination_id")
+  examinationCourseId           String                         @map("examination_course_id")
+  candidateId                   String                         @map("candidate_id")
+  calculatedMarkId              String                         @unique(map: "sum_chair_approval_calc_mark_uq") @map("calculated_mark_id")
+  calculatedMarkVersionSnapshot Int                            @map("calculated_mark_version_snapshot") @db.SmallInt
+  committeeId                   String                         @map("committee_id")
+  chairmanAssignmentId          String                         @map("chairman_assignment_id")
+  chairmanUserId                String                         @map("chairman_user_id")
+  chairmanAssignedAtSnapshot    DateTime                       @map("chairman_assigned_at_snapshot")
+  member1ReviewId               String                         @unique(map: "sum_chair_approval_member1_review_uq") @map("member_1_review_id")
+  member2ReviewId               String                         @unique(map: "sum_chair_approval_member2_review_uq") @map("member_2_review_id")
+  approvedSummativeValueSnapshot Decimal                       @map("approved_summative_value_snapshot") @db.Decimal(7, 3)
+  summativeFullMarkSnapshot      Decimal                       @map("summative_full_mark_snapshot") @db.Decimal(6, 2)
+  approvalVersion               Int                            @map("approval_version") @db.SmallInt
+  approvedAt                    DateTime                       @map("approved_at")
+  lockedAt                      DateTime                       @map("locked_at")
+  createdAt                     DateTime                       @default(dbgenerated("statement_timestamp()")) @map("created_at")
+
+  department          Department                     @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "sum_chair_approval_department_fkey")
+  examination         Examination                    @relation(fields: [examinationId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "sum_chair_approval_examination_fkey")
+  examinationCourse   ExaminationCourse              @relation(fields: [examinationCourseId, departmentId, examinationId], references: [id, departmentId, examinationId], onDelete: Restrict, onUpdate: Restrict, map: "sum_chair_approval_exam_course_fkey")
+  candidate           SummativeExaminationCandidate  @relation(fields: [candidateId, departmentId, examinationId, examinationCourseId], references: [id, departmentId, examinationId, examinationCourseId], onDelete: Restrict, onUpdate: Restrict, map: "sum_chair_approval_candidate_fkey")
+  calculatedMark      SummativeCalculatedMark        @relation(fields: [calculatedMarkId, departmentId, examinationId, examinationCourseId, candidateId, calculatedMarkVersionSnapshot], references: [id, departmentId, examinationId, examinationCourseId, candidateId, calculatedMarkVersion], onDelete: Restrict, onUpdate: Restrict, map: "sum_chair_approval_calc_mark_fkey")
+  committee           ExaminationCommittee           @relation(fields: [committeeId, departmentId, examinationId], references: [id, departmentId, examinationId], onDelete: Restrict, onUpdate: Restrict, map: "sum_chair_approval_committee_fkey")
+  chairmanAssignment  ExaminationCommitteeAssignment @relation(fields: [chairmanAssignmentId, departmentId, committeeId], references: [id, departmentId, committeeId], onDelete: Restrict, onUpdate: Restrict, map: "sum_chair_approval_assignment_fkey")
+  chairman            User                           @relation("SummativeChairmanApprover", fields: [chairmanUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "sum_chair_approval_chairman_fkey")
+  member1Review       SummativeCommitteeMemberReview @relation("SummativeApprovalMember1Review", fields: [member1ReviewId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "sum_chair_approval_member1_review_fkey")
+  member2Review       SummativeCommitteeMemberReview @relation("SummativeApprovalMember2Review", fields: [member2ReviewId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "sum_chair_approval_member2_review_fkey")
+
+  @@unique([departmentId, examinationCourseId, candidateId, approvalVersion], map: "sum_chair_approval_candidate_version_uq")
+  @@unique([calculatedMarkId, departmentId, examinationId, examinationCourseId, candidateId, calculatedMarkVersionSnapshot], map: "sum_chair_approval_calc_scope_uq")
+  @@index([departmentId, examinationCourseId, candidateId, approvedAt], map: "sum_chair_approval_lookup_idx")
+  @@map("summative_chairman_approvals")
 }

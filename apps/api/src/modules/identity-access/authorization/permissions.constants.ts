@@ -192,6 +192,10 @@ export const PERMISSIONS = {
       "summative-examination.examiner-assignment.manage_department",
     EXAMINER_MARKS_ENTER_DEPARTMENT:
       "summative-examination.examiner-marks.enter_department",
+    MEMBER_REVIEW_DEPARTMENT:
+      "summative-examination.member-review.review_department",
+    CHAIRMAN_APPROVAL_DEPARTMENT:
+      "summative-examination.chairman-approval.approve_department",
   }
 } as const;
 

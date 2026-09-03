@@ -16,6 +16,7 @@ import {
   calculateSummativeThreeTotal,
   type SummativeThreeTotalCalculationResult,
 } from "../../domain/summative-three-total-calculation.rule";
+import { SummativeCalculatedMarkService } from "./summative-calculated-mark.service";
 
 export interface SummativeThreeTotalCreationScope {
   departmentId: string;
@@ -44,7 +45,10 @@ const comparisonSourceSelect = {
 
 @Injectable()
 export class SummativeThreeTotalCalculationService {
-  constructor(private readonly requestContextService: RequestContextService) {}
+  constructor(
+    private readonly requestContextService: RequestContextService,
+    private readonly calculatedMarkService: SummativeCalculatedMarkService,
+  ) {}
 
   /**
    * Internal-only operation. Its caller must already be in the protected
@@ -298,6 +302,11 @@ export class SummativeThreeTotalCalculationService {
         third.versionNumber,
         result,
       );
+      await this.calculatedMarkService.ensureForThreeTotal(
+        tx,
+        scope,
+        existing.id,
+      );
       return existing;
     }
 
@@ -344,6 +353,11 @@ export class SummativeThreeTotalCalculationService {
       },
     });
     await this.writeAudit(tx, scope, calculation);
+    await this.calculatedMarkService.ensureForThreeTotal(
+      tx,
+      scope,
+      calculation.id,
+    );
     return calculation;
   }
 

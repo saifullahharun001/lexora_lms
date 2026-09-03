@@ -53,4 +53,10 @@ export const SUMMATIVE_EXAMINATION_AUDIT_EVENTS = {
   THIRD_EXAMINER_MARK_SUBMISSION_LOCKED: "summative-examination.third-examiner-mark-submission.locked",
   THREE_TOTAL_CALCULATION_CREATED:
     "summative-examination.three-total-calculation.created",
+  CALCULATED_MARK_EVIDENCE_CREATED:
+    "summative-examination.calculated-mark-evidence.created",
+  MEMBER_REVIEW_COMPLETED:
+    "summative-examination.committee-member-review.completed",
+  CHAIRMAN_FINAL_LOCK_COMPLETED:
+    "summative-examination.chairman-approval.final-lock-completed",
 } as const;

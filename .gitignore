@@ -81,3 +81,5 @@ backups/
 !apps/api/prisma/migrations/202609010004_add_summative_three_total_calculations/migration.sql
 !apps/api/prisma/migrations/202609020001_fix_summative_third_referral_integrity_trigger/
 !apps/api/prisma/migrations/202609020001_fix_summative_third_referral_integrity_trigger/migration.sql
+!apps/api/prisma/migrations/202609020002_add_summative_calculated_committee_approval/
+!apps/api/prisma/migrations/202609020002_add_summative_calculated_committee_approval/migration.sql

@@ -36291,3 +36291,76 @@ The current Ordinance-aligned Examination Committee foundation remains:
 
 Historical lower-authority three-member wording must not override the current
 Ordinance-aligned implementation.
+
+---
+
+## Summative calculated-mark / Committee approval local checkpoint — 2026-09-03
+
+Classification:
+
+**IMPLEMENTED / LOCAL STATICALLY VERIFIED**
+
+This checkpoint adds, without deploying, the next backend evidence boundary:
+
+- common immutable calculated-mark evidence for both the First/Second-average and
+  existing three-total nearest-pair paths;
+- exact `MEMBER_1` and `MEMBER_2` immutable review evidence;
+- immutable Chairman-approved/final-locked approval evidence;
+- a dedicated Committee workflow authorizer requiring exact Teacher permission
+  provenance plus the current live Committee appointment, seat and object scope;
+- a four-seat formal-completeness gate that requires External Member metadata but
+  grants the External Member no digital authority;
+- confidentiality-filtered Member/Chairman workspaces;
+- same-transaction structural audits for calculated evidence, Member review and
+  Chairman final lock;
+- additive PostgreSQL validation and immutability DDL for all three new evidence
+  tables, including source-to-calculation-to-review-to-approval chronology;
+- Committee workspace readiness limited to approval-usable current internal Member
+  appointments whose assigned Users remain active and structurally valid.
+
+Local evidence obtained:
+
+- Prisma schema validation: PASS in the canonical `D:\Lexora` workspace with
+  Prisma CLI `6.19.3`;
+- Prisma Client generation: PASS in the canonical `D:\Lexora` workspace;
+- API typecheck: PASS in the canonical `D:\Lexora` workspace;
+- API build: PASS in the canonical `D:\Lexora` workspace;
+- focused new schema/authorization/workflow suite: `85/85 PASS`;
+- selected existing Summative regression suite: `200/200 PASS`;
+- changed production-source isolated TypeScript analysis: no non-environment
+  diagnostics;
+- migration history inspection: the new migration is additive and no historical
+  migration was modified;
+- `git diff --check`: PASS.
+
+An earlier managed Codex runner terminated repository-local pnpm commands with
+`EPERM ... lstat 'D:\\'`. That tooling limitation is superseded by the later successful
+canonical `D:\Lexora` Prisma validation/generation, API typecheck and API build. The
+focused source-driven tests remain local/static evidence only and are not PostgreSQL
+or authenticated HTTP runtime evidence.
+
+Not performed for this checkpoint:
+
+- ordinary runtime-database migration deployment;
+- permanent runtime authorization provisioning;
+- PM2 activation or server deployment;
+- authenticated HTTP verification;
+- real PostgreSQL trigger, transaction or concurrency verification;
+- production verification.
+
+The previously verified four permanent Summative permission links and ten production
+protection triggers remain historical runtime evidence; this local pass neither
+changed nor reprovisioned the ordinary runtime database. The provisioning definition
+now adds two Teacher coarse-duty permissions idempotently, while exact Committee
+appointment authority remains mandatory.
+
+Still pending:
+
+- authorised reopen/correction/re-review/re-approval/re-lock;
+- approved Summative result-engine evidence and handoff;
+- final-result/amendment integration;
+- frontend integration;
+- mandatory Summative 2FA;
+- candidate/exam-roll/physical-script/masking governance.
+
+The full Summative workflow remains **PARTIAL / ACTIVE BACKEND DEVELOPMENT**.

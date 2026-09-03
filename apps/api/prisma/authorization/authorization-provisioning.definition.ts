@@ -127,6 +127,34 @@ export const SUMMATIVE_EXAMINATION_EXAMINER_MARKS_ENTER_PROVISIONING = {
     "authorization.summative-examination-examiner-marks-enter.provisioned",
 } as const;
 
+export const SUMMATIVE_EXAMINATION_MEMBER_REVIEW_PROVISIONING = {
+  permission: {
+    code: PERMISSIONS.SUMMATIVE_EXAMINATION.MEMBER_REVIEW_DEPARTMENT,
+    resource: "summative-examination.member-review",
+    action: "review",
+    scope: PermissionScope.DEPARTMENT,
+    description:
+      "Review exact calculated Summative evidence only through an active MEMBER_1 or MEMBER_2 Committee appointment",
+  },
+  targetRoleCode: PLATFORM_ROLES.TEACHER,
+  auditAction:
+    "authorization.summative-examination-member-review.provisioned",
+} as const;
+
+export const SUMMATIVE_EXAMINATION_CHAIRMAN_APPROVAL_PROVISIONING = {
+  permission: {
+    code: PERMISSIONS.SUMMATIVE_EXAMINATION.CHAIRMAN_APPROVAL_DEPARTMENT,
+    resource: "summative-examination.chairman-approval",
+    action: "approve",
+    scope: PermissionScope.DEPARTMENT,
+    description:
+      "Approve and final-lock exact calculated Summative evidence only through the active Chairman Committee appointment",
+  },
+  targetRoleCode: PLATFORM_ROLES.TEACHER,
+  auditAction:
+    "authorization.summative-examination-chairman-approval.provisioned",
+} as const;
+
 export const AUTHORIZATION_PROVISIONING_DEFINITIONS = [
   SYLLABUS_VERSION_MANAGE_PROVISIONING,
   SYLLABUS_VERSION_LIFECYCLE_MANAGE_PROVISIONING,
@@ -137,6 +165,8 @@ export const AUTHORIZATION_PROVISIONING_DEFINITIONS = [
   SUMMATIVE_EXAMINATION_COMMITTEE_MANAGE_PROVISIONING,
   SUMMATIVE_EXAMINATION_EXAMINER_ASSIGNMENT_MANAGE_PROVISIONING,
   SUMMATIVE_EXAMINATION_EXAMINER_MARKS_ENTER_PROVISIONING,
+  SUMMATIVE_EXAMINATION_MEMBER_REVIEW_PROVISIONING,
+  SUMMATIVE_EXAMINATION_CHAIRMAN_APPROVAL_PROVISIONING,
 ] as const;
 
 export type AuthorizationProvisioningDefinition =

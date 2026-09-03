@@ -4,4 +4,6 @@ export const SUMMATIVE_EXAMINATION_POLICY_NAMES = {
   EXAMINER_ASSIGNMENT_MANAGE:
     "summative-examination.examiner-assignment.manage",
   EXAMINER_MARKS_ENTER: "summative-examination.examiner-marks.enter",
+  MEMBER_REVIEW: "summative-examination.member-review.review",
+  CHAIRMAN_APPROVAL: "summative-examination.chairman-approval.approve",
 } as const;

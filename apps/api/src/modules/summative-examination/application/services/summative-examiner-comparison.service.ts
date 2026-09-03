@@ -9,6 +9,7 @@ import { RequestContextService } from "@/common/request-context/request-context.
 
 import { SUMMATIVE_EXAMINATION_AUDIT_EVENTS } from "../../domain/summative-examination.audit-events";
 import { calculateSummativeExaminerComparison } from "../../domain/summative-examiner-comparison.rule";
+import { SummativeCalculatedMarkService } from "./summative-calculated-mark.service";
 
 export interface SummativeComparisonCreationScope {
   departmentId: string;
@@ -45,7 +46,10 @@ type ComparisonSource = Prisma.SummativeExaminerMarkSubmissionGetPayload<{
 
 @Injectable()
 export class SummativeExaminerComparisonService {
-  constructor(private readonly requestContextService: RequestContextService) {}
+  constructor(
+    private readonly requestContextService: RequestContextService,
+    private readonly calculatedMarkService: SummativeCalculatedMarkService,
+  ) {}
 
   /**
    * Call inside the existing marks Serializable transaction after the exact
@@ -156,7 +160,14 @@ export class SummativeExaminerComparisonService {
         secondSubmissionId: second.id,
       },
     });
-    if (existing) return existing;
+    if (existing) {
+      await this.calculatedMarkService.ensureForComparison(
+        tx,
+        scope,
+        existing.id,
+      );
+      return existing;
+    }
 
     const priorComparisons = await tx.summativeExaminerComparison.findMany({
       where: {
@@ -193,6 +204,11 @@ export class SummativeExaminerComparisonService {
       },
     });
     await this.writeAudit(tx, scope, comparison);
+    await this.calculatedMarkService.ensureForComparison(
+      tx,
+      scope,
+      comparison.id,
+    );
     return comparison;
   }
 

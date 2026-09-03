@@ -209,6 +209,8 @@ function harness(
       requestId: "request-a",
       audit: { ipAddress: "127.0.0.1", userAgent: "test" },
     }),
+  } as never, {
+    ensureForThreeTotal: async () => null,
   } as never);
   let tail = Promise.resolve();
   async function execute(overrides: Partial<typeof scope> = {}) {

@@ -5,10 +5,14 @@ import { SummativeExaminerMarksService } from "./application/services/summative-
 import { SummativeThirdExaminerMarksService } from "./application/services/summative-third-examiner-marks.service";
 import { SummativeExaminerComparisonService } from "./application/services/summative-examiner-comparison.service";
 import { SummativeThreeTotalCalculationService } from "./application/services/summative-three-total-calculation.service";
+import { SummativeCalculatedMarkService } from "./application/services/summative-calculated-mark.service";
+import { SummativeCommitteeWorkflowAuthorizerService } from "./application/services/summative-committee-workflow-authorizer.service";
+import { SummativeCommitteeWorkflowService } from "./application/services/summative-committee-workflow.service";
 import { SummativeExaminerMarksController } from "./presentation/http/summative-examiner-marks.controller";
 import { SummativeThirdExaminerMarksController } from "./presentation/http/summative-third-examiner-marks.controller";
 import { SummativeThirdExaminationReferralsService } from "./application/services/summative-third-examination-referrals.service";
 import { SummativeThirdExaminationReferralsController } from "./presentation/http/summative-third-examination-referrals.controller";
+import { SummativeCommitteeWorkflowController } from "./presentation/http/summative-committee-workflow.controller";
 import { Module } from "@nestjs/common";
 
 import { PrismaModule } from "@/common/prisma/prisma.module";
@@ -36,6 +40,7 @@ import { ExaminationsController } from "./presentation/http/examinations.control
     SummativeExaminerMarksController,
     SummativeThirdExaminerMarksController,
     SummativeThirdExaminationReferralsController,
+    SummativeCommitteeWorkflowController,
   ],
   providers: [
     SummativeManagementAuthorizerService,
@@ -46,7 +51,10 @@ import { ExaminationsController } from "./presentation/http/examinations.control
     SummativeQuestionConfigurationService,
     SummativeCandidateRosterService,
     SummativeExaminerComparisonService,
+    SummativeCalculatedMarkService,
     SummativeThreeTotalCalculationService,
+    SummativeCommitteeWorkflowAuthorizerService,
+    SummativeCommitteeWorkflowService,
     SummativeExaminerMarksService,
     SummativeThirdExaminerMarksService,
     SummativeThirdExaminationReferralsService,

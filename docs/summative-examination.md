@@ -1483,3 +1483,71 @@ The Summative Examination remains offline/physical.
 
 Lexora does not become a question-paper or physical answer-script storage system as a
 result of this implementation.
+
+---
+
+## 26. Calculated-mark convergence and Committee final lock — 2026-09-03
+
+Classification:
+
+**IMPLEMENTED / LOCAL STATICALLY VERIFIED**
+
+`SummativeCalculatedMark` is now the common immutable calculated-evidence boundary.
+For a no-Third comparison it records the server-derived First/Second average under
+`SUMMATIVE_FIRST_SECOND_AVERAGE_V1`. For a Third candidate it binds and copies the
+exact immutable `SummativeThreeTotalCalculation.derivedSummativeValue`; it does not
+implement a competing nearest-pair calculation. Both paths retain candidate scope,
+source/configuration identities and versions, full-mark snapshot, calculation path,
+rule identity and calculated-mark version.
+
+`SummativeCommitteeMemberReview` records one immutable review by the exact current
+`MEMBER_1` or `MEMBER_2` appointment instance. `VERIFIED` can satisfy that seat;
+`CORRECTION_REQUIRED` is durable, requires a bounded nonblank reason and blocks
+approval. Assignment ID, User, seat and `assignedAt` are snapshotted, so replacement
+or reactivation makes an older review historical and unusable while permitting the
+new appointment instance to create the next review version.
+
+`SummativeChairmanApproval` is the immutable approval/final-lock evidence for one
+exact calculated-mark version. The server copies the calculated value and full mark;
+the client cannot submit either. Approval requires the exact current Chairman, two
+current `VERIFIED` internal-Member reviews of the same calculated evidence and a
+complete four-seat Committee including valid External Member metadata. No External
+Member login or digital duty is introduced.
+
+The Committee HTTP surface is limited to:
+
+- `GET /v1/summative/calculated-marks/:calculatedMarkId/committee-workflow/member-workspace`;
+- `POST /v1/summative/calculated-marks/:calculatedMarkId/committee-workflow/member-reviews`;
+- `GET /v1/summative/calculated-marks/:calculatedMarkId/committee-workflow/chairman-workspace`;
+- `POST /v1/summative/calculated-marks/:calculatedMarkId/committee-workflow/chairman-approval`.
+
+Member projections omit question-wise marks, Examiner comments and Examiner
+identities. Each Member can see only its own full review comment; the Chairman can see
+both. Department Admin management authority, Examiner duty and Teacher role alone do
+not grant this workspace or its writes.
+
+The additive migration
+`202609020002_add_summative_calculated_committee_approval` defines restrictive foreign
+keys, candidate/source/version uniqueness, database-side source/arithmetic and
+Committee validation, and ordinary `UPDATE`/`DELETE` rejection for calculated marks,
+reviews and approvals. It also rejects future-dated or source-preceding calculation,
+review and approval evidence and keeps persistence timestamps chronologically
+coherent. It performs no academic backfill.
+
+Committee workspace readiness uses the same structurally valid current internal
+Member appointment boundary relevant to approval: the assigned User must exist in the
+same department, remain active, unarchived and undeleted, and the internal assignment
+must not carry External Member metadata. Historical reviews remain immutable but do
+not appear current when that appointment is no longer usable.
+
+Local verification recorded `85/85` focused new tests and `200/200` selected existing
+Summative regressions. Later canonical `D:\Lexora` verification passed Prisma schema
+validation with Prisma CLI `6.19.3`, Prisma Client generation, API typecheck, API build
+and `git diff --check`. This supersedes an earlier managed-runner
+`EPERM ... lstat 'D:\\'` tooling limitation. No PostgreSQL service was used; this is
+not deployment, authenticated runtime, real database-trigger or real concurrency
+evidence.
+
+No approved result-engine record, handoff, published result, correction/reopen flow,
+frontend, mandatory 2FA, or physical exam-roll/script governance is added. The full
+Summative workflow remains **PARTIAL / ACTIVE BACKEND DEVELOPMENT**.

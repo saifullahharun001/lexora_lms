@@ -131,6 +131,8 @@ function harness(options: {
       requestId: "request-a",
       audit: { ipAddress: "127.0.0.1", userAgent: "test-agent" },
     }),
+  } as never, {
+    ensureForComparison: async () => null,
   } as never);
   let transactionTail = Promise.resolve();
   async function execute() {

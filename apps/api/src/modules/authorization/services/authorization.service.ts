@@ -52,6 +52,16 @@ const EXPLICIT_TEACHER_PERMISSION_POLICIES = {
     action: "enter",
     scope: "department",
   },
+  [SUMMATIVE_EXAMINATION_POLICY_NAMES.MEMBER_REVIEW]: {
+    resource: "summative-examination.member-review",
+    action: "review",
+    scope: "department",
+  },
+  [SUMMATIVE_EXAMINATION_POLICY_NAMES.CHAIRMAN_APPROVAL]: {
+    resource: "summative-examination.chairman-approval",
+    action: "approve",
+    scope: "department",
+  },
 } as const;
 
 const EXACT_PERMISSION_POLICIES = {
