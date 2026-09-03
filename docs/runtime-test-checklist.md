@@ -36364,3 +36364,121 @@ Still pending:
 - candidate/exam-roll/physical-script/masking governance.
 
 The full Summative workflow remains **PARTIAL / ACTIVE BACKEND DEVELOPMENT**.
+
+## Result Processing / Publication Architecture Decision Checkpoint — 2026-09-03
+
+**Classification: CONFIRMED PROJECT DIRECTION / DOCUMENTATION ONLY — NOT RUNTIME EVIDENCE**
+
+Current implementation baseline entering this decision checkpoint:
+
+`9035a28cdbd9be8757e2aaf15e924d55cbc2ff60`
+
+That commit implements the Summative Committee Member Review + Chairman Approval /
+Final Lock bundle.
+
+Current evidence classification for that bundle remains:
+
+**IMPLEMENTED + COMMITTED + PUSHED + LOCALLY/STATICALLY VERIFIED — SERVER RUNTIME PENDING**
+
+This checkpoint does not claim:
+
+- server promotion;
+- migration deployment;
+- permission provisioning;
+- PM2 activation;
+- authenticated HTTP runtime verification;
+- PostgreSQL trigger runtime verification;
+- real PostgreSQL concurrency verification.
+
+### Confirmed result rules
+
+Final course result inputs:
+
+- authoritative locked Formative Assessment: `/40`;
+- Chairman-approved locked Summative Examination: `/60`.
+
+Confirmed separate pass marks:
+
+- Formative: `16/40`;
+- Summative: `24/60`.
+
+Both components must be passed separately.
+
+The final-result layer must consume the locked Final Formative total produced by the
+Formative workflow rather than independently reconstructing the component from raw
+activity rows.
+
+### Confirmed authority sequence
+
+Target authority sequence after Summative Chairman approval:
+
+1. combine authoritative Formative `/40` and approved Summative `/60`;
+2. server derives total `/100`, separate pass/fail, grade and grade point;
+3. Examination Committee Chairman finalises the complete result;
+4. required result documents become available;
+5. Controller of Examinations publishes the result;
+6. only the published authoritative result enters the core Lexora published-result
+   consumption layer;
+7. student profile, GPA/CGPA, transcript and permitted downstream features consume
+   the published result.
+
+The existing Summative Chairman approval and the future complete final-result
+Chairman finalisation are separate workflow boundaries.
+
+### Confirmed documents
+
+Required result/document direction:
+
+- Tabulation Sheet — institutional format to be supplied;
+- Student Marksheet — institutional format to be supplied;
+- Average Sheet — Lexora may design the initial format;
+- Examiner Final Mark Submission Sheet — institutional format to be supplied.
+
+An Examiner Final Mark Submission Sheet is generated from that Examiner's exact
+irreversibly locked mark-submission version and must not expose another Examiner's
+confidential marks.
+
+### Supersession of earlier direct-handoff wording
+
+Earlier target wording that could be read as:
+
+`Chairman-approved Summative mark -> main Result Engine`
+
+is superseded.
+
+The durable boundary is now:
+
+`authoritative Formative + Chairman-approved Summative`
+`-> Chairman-finalised complete result`
+`-> Controller publication`
+`-> published-result snapshot/registry`
+`-> core Lexora result consumers`.
+
+### Future University central result system
+
+Lexora must remain usable if the University of Chittagong later introduces a central
+authoritative result-processing system.
+
+Result consumption must therefore be provider-independent.
+
+Initial provider:
+
+`LEXORA_INTERNAL`
+
+Future authoritative provider:
+
+`CU_CENTRAL`
+
+When CU Central becomes authoritative, Lexora's own result-processing workflow may be
+disabled/retired while Lexora ingests published authoritative result data through a
+controlled API/import/integration boundary.
+
+Student profile, GPA/CGPA, transcript and other downstream result consumers must read
+from a canonical published-result boundary rather than directly from internal Examiner,
+Committee or calculation tables.
+
+Detailed architecture is recorded in:
+
+`docs/result-processing-publication-architecture.md`
+
+No implementation/runtime completion claim is made by this decision checkpoint.

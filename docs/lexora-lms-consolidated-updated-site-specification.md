@@ -2691,3 +2691,77 @@ The summative examination, question paper, physical answer scripts, and physical
 Lexora manages only the secure, independent, auditable marks workflow and controlled result integration.
 
 The platform must remain secure, department-isolated, Ordinance-compliant, auditable, maintainable, and future-expandable.
+
+## Confirmed Result Processing and Publication Supersession — 2026-09-03
+
+This section supersedes conflicting earlier result-handoff and still-configurable
+statements in this specification.
+
+Confirmed current project decisions:
+
+- authoritative Final Formative Assessment is `/40`;
+- Formative pass mark is `16/40`;
+- authoritative Summative Examination is `/60`;
+- Summative pass mark is `24/60`;
+- both components must be passed separately;
+- the final course total is `/100`;
+- the final-result workflow consumes the locked Formative total produced by the
+  Formative workflow;
+- the Summative contribution must be the exact Examination Committee
+  Chairman-approved/final-locked Summative value;
+- after Formative + Summative combination, the Examination Committee Chairman finalises
+  the complete result;
+- required result documents are generated after Chairman finalisation;
+- the Controller of Examinations is the publication authority;
+- only a published authoritative result is handed into the core Lexora published-result
+  consumption layer;
+- student profile, GPA/CGPA, transcript and permitted downstream services consume the
+  published result rather than unpublished Summative-processing evidence.
+
+Required document direction:
+
+- Average Sheet — Lexora may define the initial design;
+- Tabulation Sheet — institutional format to be supplied;
+- Student Marksheet — institutional format to be supplied;
+- Examiner Final Mark Submission Sheet — institutional format to be supplied.
+
+An Examiner's official submission sheet is generated from the exact immutable locked
+submission version after irreversible final submission.
+
+Earlier wording that may imply direct:
+
+`approved Summative /60 -> main Result Engine`
+
+must be interpreted as superseded by:
+
+`locked Formative + approved Summative`
+`-> Chairman-finalised complete result`
+`-> Controller publication`
+`-> published-result registry`
+`-> downstream Lexora consumption`.
+
+### Future University central result system
+
+The architecture must keep the result-processing provider replaceable.
+
+The initial provider may be:
+
+`LEXORA_INTERNAL`
+
+A future University of Chittagong Central Result Processing System may become:
+
+`CU_CENTRAL`
+
+When the University central system becomes authoritative, Lexora may retire/disable its
+internal result-processing workflow and ingest authoritative published result data from
+the central system through a controlled integration/import channel.
+
+Downstream Lexora result consumers must remain independent of which authorised result
+provider produced the published result.
+
+See:
+
+`docs/result-processing-publication-architecture.md`
+
+This supersession is a target/architecture decision and is not an implementation or
+runtime-completion claim.

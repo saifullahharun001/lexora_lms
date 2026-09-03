@@ -2427,3 +2427,66 @@ Remaining Summative sequence:
 Mandatory Summative 2FA and candidate/exam-roll/physical-script/masking governance
 remain pending. Overall Summative status remains **PARTIAL / ACTIVE BACKEND
 DEVELOPMENT**.
+
+## Result Finalisation / Publication Roadmap Supersession — 2026-09-03
+
+This roadmap checkpoint records confirmed project direction.
+
+The current Summative Committee Member Review + Chairman Approval / Final Lock
+implementation at commit:
+
+`9035a28cdbd9be8757e2aaf15e924d55cbc2ff60`
+
+is locally/static verified and pushed, but server runtime verification remains pending.
+
+### Revised normal result path
+
+The normal happy-path result workflow now takes priority before broad correction/reopen
+expansion.
+
+Planned sequence:
+
+1. runtime-verify the current Member Review + Summative Chairman Approval bundle;
+2. consume authoritative locked Final Formative `/40`;
+3. consume Chairman-approved locked Summative `/60`;
+4. derive final course total `/100`;
+5. enforce separate component pass marks:
+   - Formative `16/40`;
+   - Summative `24/60`;
+6. derive authoritative grade / grade point;
+7. Examination Committee Chairman finalises the complete result;
+8. generate result-document data;
+9. implement Average Sheet;
+10. implement Tabulation Sheet after institutional format is supplied;
+11. implement Student Marksheet after institutional format is supplied;
+12. implement Examiner Final Mark Submission Sheet after institutional format is supplied;
+13. introduce narrow Controller of Examinations publication authority;
+14. publish an immutable/versioned authoritative result snapshot;
+15. idempotently ingest the published result into the canonical Lexora published-result
+    layer;
+16. drive student profile, GPA/CGPA, transcript and permitted downstream features from
+    that published-result layer;
+17. implement controlled correction/amendment/republication hardening;
+18. retain a replaceable result-provider boundary for future `CU_CENTRAL` integration.
+
+### Durable provider boundary
+
+Current provider:
+
+`LEXORA_INTERNAL`
+
+Future provider:
+
+`CU_CENTRAL`
+
+Future University central result processing must be able to replace Lexora's internal
+processing without requiring student-profile/GPA/CGPA/transcript consumers to be
+redesigned.
+
+Detailed decision:
+
+`docs/result-processing-publication-architecture.md`
+
+The overall final-result workflow remains:
+
+**PARTIAL / ACTIVE BACKEND DEVELOPMENT**

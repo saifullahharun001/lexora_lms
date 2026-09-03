@@ -1551,3 +1551,80 @@ evidence.
 No approved result-engine record, handoff, published result, correction/reopen flow,
 frontend, mandatory 2FA, or physical exam-roll/script governance is added. The full
 Summative workflow remains **PARTIAL / ACTIVE BACKEND DEVELOPMENT**.
+
+## Confirmed Post-Summative Result Boundary — 2026-09-03
+
+This section records a confirmed project decision and supersedes conflicting earlier
+roadmap wording. It is not a runtime-completion claim.
+
+The Summative workflow produces an authoritative Chairman-approved and final-locked
+Summative contribution `/60`.
+
+That value is not, by itself, the complete course result and must not be handed directly
+to student-facing result consumption as the final published result.
+
+The next result layer must combine:
+
+- locked Final Formative Assessment `/40`;
+- Chairman-approved locked Summative Examination `/60`.
+
+Confirmed separate component pass thresholds are:
+
+- Formative: `16/40`;
+- Summative: `24/60`.
+
+Both must be passed separately.
+
+After server-side total/grade/pass derivation, the Examination Committee Chairman
+finalises the complete result.
+
+Required result documents are then produced for the publication workflow.
+
+The Controller of Examinations is the publication authority.
+
+Only after Controller publication does the authoritative published result enter the
+core Lexora published-result layer used by student profile, GPA/CGPA, transcript and
+other permitted downstream features.
+
+This establishes two distinct Chairman concepts:
+
+1. current implemented Summative `/60` approval/final lock;
+2. future complete course-result finalisation after Formative + Summative integration.
+
+The current Committee Member Review + Summative Chairman Approval implementation is
+committed at:
+
+`9035a28cdbd9be8757e2aaf15e924d55cbc2ff60`
+
+Its current status remains:
+
+**IMPLEMENTED + COMMITTED + PUSHED + LOCALLY/STATICALLY VERIFIED — SERVER RUNTIME PENDING**
+
+### Required document direction
+
+- Average Sheet: initial Lexora design is permitted.
+- Tabulation Sheet: institutional format will be supplied.
+- Student Marksheet: institutional format will be supplied.
+- Examiner Final Mark Submission Sheet: institutional format will be supplied.
+
+The Examiner Final Mark Submission Sheet must be generated from the exact immutable
+locked Examiner submission version after final submission, with Examiner confidentiality
+preserved.
+
+### Future CU Central Result Processing compatibility
+
+Summative/result processing must not be tightly coupled to downstream result display.
+
+The canonical published-result consumption layer must support replaceable result
+providers, including:
+
+- `LEXORA_INTERNAL`;
+- future `CU_CENTRAL`.
+
+When a University central result system becomes authoritative, Lexora may stop performing
+its own result processing and instead ingest authoritative published results while
+continuing student-profile, GPA/CGPA, transcript and other downstream LMS functions.
+
+See:
+
+`docs/result-processing-publication-architecture.md`
