@@ -18,6 +18,7 @@ import { ListMyCourseOfferingsQueryDto } from "../dto/list-my-course-offerings-q
 import { ResourceIdParamDto } from "../dto/resource-id-param.dto";
 import { ReturnCourseOutlineForCorrectionDto } from "../dto/return-course-outline-for-correction.dto";
 import { UpdateCourseOfferingDto } from "../dto/update-course-offering.dto";
+import { UpdateCourseOutlineStructuredContentDto } from "../dto/update-course-outline-structured-content.dto";
 import { UpdateCourseOutlineVersionDto } from "../dto/update-course-outline-version.dto";
 
 @Controller({
@@ -73,6 +74,12 @@ export class CourseOfferingsController {
     return this.academicService.createCourseOutlineVersion(params.id, body);
   }
 
+  @Get(":id/course-outline-state")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_READ)
+  getCourseOutlineState(@Param() params: ResourceIdParamDto) {
+    return this.academicService.getCourseOutlineState(params.id);
+  }
+
   @Get(":id/course-outline-versions")
   @RequirePolicy(ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_READ)
   listCourseOutlineVersions(@Param() params: ResourceIdParamDto) {
@@ -85,6 +92,19 @@ export class CourseOfferingsController {
     return this.academicService.getCourseOutlineVersion(
       params.id,
       params.courseOutlineVersionId,
+    );
+  }
+
+  @Patch(":id/course-outline-versions/:courseOutlineVersionId/structured-content")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_WRITE)
+  updateCourseOutlineStructuredContent(
+    @Param() params: CourseOutlineVersionParamDto,
+    @Body() body: UpdateCourseOutlineStructuredContentDto,
+  ) {
+    return this.academicService.updateCourseOutlineStructuredContent(
+      params.id,
+      params.courseOutlineVersionId,
+      body,
     );
   }
 
@@ -127,6 +147,17 @@ export class CourseOfferingsController {
   @RequirePolicy(ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_APPROVE)
   approveCourseOutlineVersion(@Param() params: CourseOutlineVersionParamDto) {
     return this.academicService.approveCourseOutlineVersion(
+      params.id,
+      params.courseOutlineVersionId,
+    );
+  }
+
+  @Post(":id/course-outline-versions/:courseOutlineVersionId/replace-active")
+  @RequirePolicy(ACADEMIC_POLICY_NAMES.COURSE_OUTLINE_ACTIVATE)
+  replaceActiveCourseOutlineVersion(
+    @Param() params: CourseOutlineVersionParamDto,
+  ) {
+    return this.academicService.replaceActiveCourseOutlineVersion(
       params.id,
       params.courseOutlineVersionId,
     );

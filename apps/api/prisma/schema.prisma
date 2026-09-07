@@ -1191,7 +1191,9 @@ model AssessmentTemplateComponent {
   department           Department               @relation(fields: [departmentId], references: [id], onDelete: Restrict)
   assessmentTemplate   CourseAssessmentTemplate @relation(fields: [assessmentTemplateId], references: [id], onDelete: Restrict)
   examinationCourses   ExaminationCourse[]
+  courseOutlineAssessmentScheduleItems CourseOutlineAssessmentScheduleItem[]
 
+  @@unique([id, departmentId, assessmentTemplateId], map: "assessment_component_id_dept_template_uq")
   @@unique([id, departmentId, assessmentTemplateId, code, maximumMarks], map: "assessment_component_summative_identity_uq")
   @@unique([assessmentTemplateId, code], map: "assessment_component_template_code_uq")
   @@unique([assessmentTemplateId, displayOrder], map: "assessment_component_template_order_uq")
@@ -1228,8 +1230,10 @@ model CurriculumCourse {
   prerequisites         CurriculumCoursePrerequisite[] @relation("CurriculumCoursePrerequisites")
   prerequisiteFor       CurriculumCoursePrerequisite[] @relation("PrerequisiteCurriculumCourses")
   examinationCourses    ExaminationCourse[]
+  courseOutlineAssessmentScheduleItems CourseOutlineAssessmentScheduleItem[]
 
   @@unique([id, departmentId], map: "curriculum_course_id_department_uq")
+  @@unique([id, departmentId, assessmentTemplateId], map: "curriculum_course_id_department_template_uq")
   @@unique([id, departmentId, curriculumVersionId], map: "curriculum_course_id_department_version_uq")
   @@unique([id, departmentId, curriculumVersionId, assessmentTemplateId], map: "curriculum_course_exam_identity_uq")
   @@unique([curriculumVersionId, courseId], map: "curriculum_course_version_course_uq")
@@ -1275,6 +1279,7 @@ model CourseLearningOutcome {
   curriculumCourse    CurriculumCourse                  @relation(fields: [curriculumCourseId, departmentId, curriculumVersionId], references: [id, departmentId, curriculumVersionId], onDelete: Restrict, onUpdate: Restrict, map: "course_learning_outcome_course_identity_fkey")
   ploMappings         CourseLearningOutcomePloMapping[]
   summativeQuestionConfigurationItems SummativeQuestionConfigurationItem[]
+  courseOutlineTopicCloMappings CourseOutlineTopicCloMapping[]
 
   @@unique([id, departmentId, curriculumVersionId], map: "course_learning_outcome_id_dept_version_uq")
   @@unique([id, departmentId, curriculumVersionId, curriculumCourseId], map: "course_learning_outcome_id_dept_version_course_uq")
@@ -1360,7 +1365,9 @@ model SyllabusContentTopic {
   updatedAt          DateTime        @updatedAt @map("updated_at")
   department         Department      @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "syllabus_content_topic_department_fkey")
   syllabusVersion    SyllabusVersion @relation(fields: [syllabusVersionId, departmentId, curriculumCourseId], references: [id, departmentId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "syllabus_content_topic_syllabus_identity_fkey")
+  courseOutlineTopicPlans CourseOutlineTopicPlan[]
 
+  @@unique([id, departmentId, syllabusVersionId, curriculumCourseId], map: "syllabus_content_topic_identity_uq")
   @@unique([departmentId, syllabusVersionId, displayOrder], map: "syllabus_content_topic_dept_syllabus_order_uq")
   @@map("syllabus_content_topics")
 }
@@ -1480,9 +1487,13 @@ model CourseOutlineVersion {
   curriculumCourse   CurriculumCourse                 @relation(fields: [curriculumCourseId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_curriculum_course_fkey")
   syllabusVersion    SyllabusVersion                  @relation(fields: [syllabusVersionId, departmentId, curriculumCourseId], references: [id, departmentId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_version_syllabus_identity_fkey")
   correctionRequests CourseOutlineCorrectionRequest[]
+  courseOutlineTopicPlans CourseOutlineTopicPlan[]
+  courseOutlineSupplementalResources CourseOutlineSupplementalResource[]
+  courseOutlineAssessmentScheduleItems CourseOutlineAssessmentScheduleItem[]
 
   @@unique([departmentId, courseOfferingId, versionNumber], map: "course_outline_version_dept_offering_number_uq")
   @@unique([id, departmentId, courseOfferingId], map: "course_outline_version_id_dept_offering_uq")
+  @@unique([id, departmentId, courseOfferingId, curriculumCourseId, syllabusVersionId], map: "course_outline_version_full_identity_uq")
   /// At most one ACTIVE row per department and CourseOffering is enforced by a PostgreSQL partial unique index because Prisma 6.x cannot represent partial indexes.
   @@index([departmentId, courseOfferingId, status], map: "course_outline_version_dept_offering_status_idx")
   @@index([departmentId, syllabusVersionId], map: "course_outline_version_dept_syllabus_idx")
@@ -3439,4 +3450,89 @@ model SummativeChairmanApproval {
   @@unique([calculatedMarkId, departmentId, examinationId, examinationCourseId, candidateId, calculatedMarkVersionSnapshot], map: "sum_chair_approval_calc_scope_uq")
   @@index([departmentId, examinationCourseId, candidateId, approvedAt], map: "sum_chair_approval_lookup_idx")
   @@map("summative_chairman_approvals")
+}
+
+model CourseOutlineTopicPlan {
+  id                     String   @id @default(cuid())
+  departmentId           String   @map("department_id")
+  courseOutlineVersionId String   @map("course_outline_version_id")
+  courseOfferingId       String   @map("course_offering_id")
+  curriculumCourseId     String   @map("curriculum_course_id")
+  syllabusVersionId      String   @map("syllabus_version_id")
+  syllabusContentTopicId String   @map("syllabus_content_topic_id")
+  assessmentTechnique    String?  @map("assessment_technique") @db.VarChar(255)
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  courseOutlineVersion CourseOutlineVersion @relation(fields: [courseOutlineVersionId, departmentId, courseOfferingId, curriculumCourseId, syllabusVersionId], references: [id, departmentId, courseOfferingId, curriculumCourseId, syllabusVersionId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_topic_plan_version_identity_fkey")
+  syllabusContentTopic SyllabusContentTopic @relation(fields: [syllabusContentTopicId, departmentId, syllabusVersionId, curriculumCourseId], references: [id, departmentId, syllabusVersionId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_topic_plan_topic_identity_fkey")
+  cloMappings CourseOutlineTopicCloMapping[]
+
+  @@unique([courseOutlineVersionId, departmentId, syllabusContentTopicId], map: "course_outline_topic_plan_version_topic_uq")
+  @@unique([id, departmentId, curriculumCourseId], map: "course_outline_topic_plan_id_dept_course_uq")
+  @@index([syllabusContentTopicId, departmentId, syllabusVersionId, curriculumCourseId], map: "course_outline_topic_plan_topic_identity_idx")
+  @@map("course_outline_topic_plans")
+}
+
+model CourseOutlineTopicCloMapping {
+  id                      String   @id @default(cuid())
+  departmentId            String   @map("department_id")
+  topicPlanId             String   @map("topic_plan_id")
+  courseLearningOutcomeId String   @map("course_learning_outcome_id")
+  curriculumCourseId      String   @map("curriculum_course_id")
+  curriculumVersionId     String   @map("curriculum_version_id")
+  createdAt               DateTime @default(now()) @map("created_at")
+
+  topicPlan CourseOutlineTopicPlan @relation(fields: [topicPlanId, departmentId, curriculumCourseId], references: [id, departmentId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_topic_clo_mapping_topic_plan_fkey")
+  courseLearningOutcome CourseLearningOutcome @relation(fields: [courseLearningOutcomeId, departmentId, curriculumVersionId, curriculumCourseId], references: [id, departmentId, curriculumVersionId, curriculumCourseId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_topic_clo_mapping_clo_fkey")
+
+  @@unique([topicPlanId, courseLearningOutcomeId], map: "course_outline_topic_clo_mapping_plan_clo_uq")
+  @@index([courseLearningOutcomeId, departmentId, curriculumVersionId, curriculumCourseId], map: "course_outline_topic_clo_mapping_clo_identity_idx")
+  @@map("course_outline_topic_clo_mappings")
+}
+
+model CourseOutlineSupplementalResource {
+  id                     String   @id @default(cuid())
+  departmentId           String   @map("department_id")
+  courseOutlineVersionId String   @map("course_outline_version_id")
+  courseOfferingId       String   @map("course_offering_id")
+  curriculumCourseId     String   @map("curriculum_course_id")
+  syllabusVersionId      String   @map("syllabus_version_id")
+  resourceTypeCode       String   @map("resource_type_code") @db.VarChar(64)
+  citationText           String   @map("citation_text")
+  displayOrder           Int      @map("display_order") @db.SmallInt
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  courseOutlineVersion CourseOutlineVersion @relation(fields: [courseOutlineVersionId, departmentId, courseOfferingId, curriculumCourseId, syllabusVersionId], references: [id, departmentId, courseOfferingId, curriculumCourseId, syllabusVersionId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_supplemental_resource_version_identity_fkey")
+
+  @@unique([courseOutlineVersionId, departmentId, displayOrder], map: "course_outline_supplemental_resource_version_order_uq")
+  @@map("course_outline_supplemental_resources")
+}
+
+model CourseOutlineAssessmentScheduleItem {
+  id                            String    @id @default(cuid())
+  departmentId                  String    @map("department_id")
+  courseOutlineVersionId        String    @map("course_outline_version_id")
+  courseOfferingId              String    @map("course_offering_id")
+  curriculumCourseId            String    @map("curriculum_course_id")
+  syllabusVersionId             String    @map("syllabus_version_id")
+  assessmentTemplateId          String    @map("assessment_template_id")
+  assessmentTemplateComponentId String    @map("assessment_template_component_id")
+  plannedWeekNumber             Int?      @map("planned_week_number") @db.SmallInt
+  scheduledAt                   DateTime? @map("scheduled_at")
+  notes                         String?   @map("notes")
+  displayOrder                  Int       @map("display_order") @db.SmallInt
+  createdAt                     DateTime  @default(now()) @map("created_at")
+  updatedAt                     DateTime  @updatedAt @map("updated_at")
+
+  courseOutlineVersion CourseOutlineVersion @relation(fields: [courseOutlineVersionId, departmentId, courseOfferingId, curriculumCourseId, syllabusVersionId], references: [id, departmentId, courseOfferingId, curriculumCourseId, syllabusVersionId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_assessment_schedule_version_identity_fkey")
+  curriculumCourse CurriculumCourse @relation(fields: [curriculumCourseId, departmentId, assessmentTemplateId], references: [id, departmentId, assessmentTemplateId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_assessment_schedule_course_template_fkey")
+  assessmentTemplateComponent AssessmentTemplateComponent @relation(fields: [assessmentTemplateComponentId, departmentId, assessmentTemplateId], references: [id, departmentId, assessmentTemplateId], onDelete: Restrict, onUpdate: Restrict, map: "course_outline_assessment_schedule_component_identity_fkey")
+
+  @@unique([courseOutlineVersionId, departmentId, assessmentTemplateComponentId], map: "course_outline_assessment_schedule_version_component_uq")
+  @@unique([courseOutlineVersionId, departmentId, displayOrder], map: "course_outline_assessment_schedule_version_order_uq")
+  @@index([curriculumCourseId, departmentId, assessmentTemplateId], map: "course_outline_assessment_schedule_course_template_idx")
+  @@index([assessmentTemplateComponentId, departmentId, assessmentTemplateId], map: "course_outline_assessment_schedule_component_identity_idx")
+  @@map("course_outline_assessment_schedule_items")
 }

@@ -134,6 +134,70 @@ export interface CourseOutlineVersionView {
   updatedAt: Date;
 }
 
+export interface CourseOutlineTopicPlanView {
+  id: string;
+  assessmentTechnique: string | null;
+  syllabusTopic: {
+    id: string;
+    title: string;
+    content: string | null;
+    displayOrder: number;
+  };
+  mappedCourseLearningOutcomes: Array<{
+    id: string;
+    code: string;
+    statement: string;
+    displayOrder: number;
+  }>;
+}
+
+export interface CourseOutlineSupplementalResourceView {
+  id: string;
+  resourceTypeCode: string;
+  citationText: string;
+  displayOrder: number;
+}
+
+export interface CourseOutlineAssessmentScheduleItemView {
+  id: string;
+  plannedWeekNumber: number | null;
+  scheduledAt: Date | null;
+  notes: string | null;
+  displayOrder: number;
+  assessmentComponent: {
+    id: string;
+    code: string;
+    displayName: string;
+    displayOrder: number;
+  };
+}
+
+export interface CourseOutlineVersionDetailView
+  extends CourseOutlineVersionView {
+  topicPlans: CourseOutlineTopicPlanView[];
+  supplementalResources: CourseOutlineSupplementalResourceView[];
+  assessmentSchedule: CourseOutlineAssessmentScheduleItemView[];
+}
+
+export interface CourseOutlineStateView {
+  activeVersion: CourseOutlineVersionView | null;
+  openVersion: CourseOutlineVersionView | null;
+  latestVersionNumber: number | null;
+  versions: CourseOutlineVersionView[];
+}
+
+export type GetCourseOutlineStateInput = {
+  departmentId: string;
+  courseOfferingId: string;
+  access:
+    | { kind: "DEPARTMENT_ADMIN" }
+    | { kind: "ASSIGNED_TEACHER"; actorUserId: string };
+};
+
+export type GetCourseOutlineStateResult =
+  | { outcome: "FOUND"; state: CourseOutlineStateView }
+  | { outcome: "NOT_FOUND" | "INTEGRITY_CONFLICT" };
+
 export interface CourseOutlineCorrectionRequestView {
   id: string;
   departmentId: string;
@@ -152,6 +216,76 @@ interface CourseOutlineWriteAuditInput {
   ipAddress?: string;
   userAgent?: string;
 }
+
+export interface ReplaceActiveCourseOutlineVersionInput
+  extends CourseOutlineWriteAuditInput {
+  departmentId: string;
+  courseOfferingId: string;
+  courseOutlineVersionId: string;
+  authorizationUserRoleId: string;
+  authorizationRoleId: string;
+}
+
+export type ReplaceActiveCourseOutlineVersionResult =
+  | {
+      outcome: "REPLACED";
+      courseOutlineVersion: CourseOutlineVersionView;
+    }
+  | {
+      outcome:
+        | "OFFERING_OR_AUTHORITY_NOT_FOUND"
+        | "OUTLINE_NOT_FOUND"
+        | "OUTLINE_NOT_REPLACEABLE"
+        | "ACTIVE_BINDING_MISMATCH"
+        | "SAME_VERSION"
+        | "CONCURRENT_CONFLICT";
+    };
+
+export interface CourseOutlineTopicPlanWriteInput {
+  syllabusContentTopicId: string;
+  courseLearningOutcomeIds: string[];
+  assessmentTechnique?: string;
+}
+
+export interface CourseOutlineSupplementalResourceWriteInput {
+  resourceTypeCode: string;
+  citationText: string;
+}
+
+export interface CourseOutlineAssessmentScheduleItemWriteInput {
+  assessmentTemplateComponentId: string;
+  plannedWeekNumber?: number;
+  scheduledAt?: Date;
+  notes?: string;
+}
+
+export interface UpdateCourseOutlineStructuredContentInput
+  extends CourseOutlineWriteAuditInput {
+  departmentId: string;
+  courseOfferingId: string;
+  courseOutlineVersionId: string;
+  topicPlans?: CourseOutlineTopicPlanWriteInput[];
+  supplementalResources?: CourseOutlineSupplementalResourceWriteInput[];
+  assessmentSchedule?: CourseOutlineAssessmentScheduleItemWriteInput[];
+}
+
+export type UpdateCourseOutlineStructuredContentResult =
+  | {
+      outcome: "UPDATED";
+      courseOutlineVersion: CourseOutlineVersionDetailView;
+    }
+  | {
+      outcome:
+        | "OFFERING_OR_ASSIGNMENT_NOT_FOUND"
+        | "OUTLINE_NOT_FOUND"
+        | "OUTLINE_NOT_EDITABLE"
+        | "INVALID_TOPIC"
+        | "INVALID_CLO"
+        | "INVALID_ASSESSMENT_COMPONENT"
+        | "DUPLICATE_REFERENCE"
+        | "NO_SECTIONS"
+        | "CONCURRENT_CONFLICT";
+    };
 
 export interface CreateCourseOutlineVersionInput
   extends CourseOutlineDraftFields,
@@ -881,16 +1015,28 @@ export interface AcademicRepositoryPort {
     departmentId: string,
     courseOfferingId: string,
     courseOutlineVersionId: string,
-  ): Promise<CourseOutlineVersionView | null>;
+  ): Promise<CourseOutlineVersionDetailView | null>;
   findCourseOutlineVersionByIdForTeacher(
     departmentId: string,
     courseOfferingId: string,
     courseOutlineVersionId: string,
     actorUserId: string,
-  ): Promise<CourseOutlineVersionView | null>;
+  ): Promise<CourseOutlineVersionDetailView | null>;
   createCourseOutlineVersion(
     input: CreateCourseOutlineVersionInput,
   ): Promise<CreateCourseOutlineVersionResult>;
+  getCourseOutlineState(
+    input: GetCourseOutlineStateInput,
+  ): Promise<GetCourseOutlineStateResult>;
+
+  replaceActiveCourseOutlineVersion(
+    input: ReplaceActiveCourseOutlineVersionInput,
+  ): Promise<ReplaceActiveCourseOutlineVersionResult>;
+
+  updateCourseOutlineStructuredContent(
+    input: UpdateCourseOutlineStructuredContentInput,
+  ): Promise<UpdateCourseOutlineStructuredContentResult>;
+
   updateCourseOutlineVersion(
     input: UpdateCourseOutlineVersionInput,
   ): Promise<UpdateCourseOutlineVersionResult>;

@@ -50,6 +50,7 @@ import type {
   CurriculumVersionLifecycleAction,
   EnrollmentListFilters,
   ProgramListFilters,
+  ReplaceActiveCourseOutlineVersionInput,
   ReturnCourseOutlineForCorrectionInput,
   StudentBatchListFilters,
   StudentCourseOfferingListFilters,
@@ -63,6 +64,7 @@ import type {
   UpdateCourseInput,
   UpdateCourseOfferingInput,
   UpdateCourseOutlineVersionInput,
+  UpdateCourseOutlineStructuredContentInput,
   UpdateEnrollmentInput,
   UpdateProgramInput,
   UpdateStudentBatchInput,
@@ -886,6 +888,170 @@ export class AcademicService {
 
     if (!version) throw new NotFoundException("Course Outline version not found");
     return version;
+  }
+
+  async getCourseOutlineState(courseOfferingId: string) {
+    const departmentId = this.getDepartmentId();
+    const result = await this.repository.getCourseOutlineState({
+      departmentId,
+      courseOfferingId,
+      access: this.hasRole("department_admin")
+        ? { kind: "DEPARTMENT_ADMIN" }
+        : this.hasRole("teacher")
+          ? { kind: "ASSIGNED_TEACHER", actorUserId: this.getActorId() }
+          : (() => {
+              throw new ForbiddenException("Course Outline access is forbidden");
+            })(),
+    });
+
+    switch (result.outcome) {
+      case "FOUND":
+        return result.state;
+      case "NOT_FOUND":
+        throw new NotFoundException("Course offering not found");
+      case "INTEGRITY_CONFLICT":
+        throw new ConflictException("Course Outline state integrity conflict");
+    }
+  }
+
+  async replaceActiveCourseOutlineVersion(
+    courseOfferingId: string,
+    courseOutlineVersionId: string,
+  ) {
+    const requestContext = this.requestContextService.get();
+    const principal = requestContext?.principal;
+    if (
+      !principal ||
+      principal.isAuthenticated !== true ||
+      principal.actorType !== "user" ||
+      !principal.actorId ||
+      !principal.activeDepartmentId
+    ) {
+      throw new BadRequestException(
+        "Authenticated department user context is required",
+      );
+    }
+
+    const activationGrant = principal.permissions.find(
+      (permission) =>
+        permission.resource === COURSE_OUTLINE_ACTIVATION_PERMISSION.resource &&
+        permission.action === COURSE_OUTLINE_ACTIVATION_PERMISSION.action &&
+        permission.scope === "department" &&
+        isPermissionGrantFromLoadedRole(principal, permission),
+    );
+    if (!activationGrant) {
+      throw new ForbiddenException(
+        "Exact Course Outline activation permission is required",
+      );
+    }
+
+    const result = await this.repository.replaceActiveCourseOutlineVersion({
+      departmentId: principal.activeDepartmentId,
+      courseOfferingId,
+      courseOutlineVersionId,
+      actorUserId: principal.actorId,
+      authorizationUserRoleId: activationGrant.source.userRoleId,
+      authorizationRoleId: activationGrant.source.roleId,
+      requestId: requestContext?.requestId,
+      ipAddress: requestContext?.audit.ipAddress,
+      userAgent: requestContext?.audit.userAgent,
+    } satisfies ReplaceActiveCourseOutlineVersionInput);
+    switch (result.outcome) {
+      case "REPLACED":
+        return result.courseOutlineVersion;
+      case "OFFERING_OR_AUTHORITY_NOT_FOUND":
+      case "OUTLINE_NOT_FOUND":
+        throw new NotFoundException("Course Outline version not found");
+      case "OUTLINE_NOT_REPLACEABLE":
+        throw new ConflictException(
+          "Course Outline version cannot replace the active version in its current status",
+        );
+      case "ACTIVE_BINDING_MISMATCH":
+        throw new ConflictException("Course Outline active binding mismatch");
+      case "SAME_VERSION":
+        throw new ConflictException(
+          "Replacement Course Outline version is already active",
+        );
+      case "CONCURRENT_CONFLICT":
+        throw new ConflictException("Course Outline replacement conflict");
+    }
+  }
+
+  async updateCourseOutlineStructuredContent(
+    courseOfferingId: string,
+    courseOutlineVersionId: string,
+    input: {
+      topicPlans?: Array<{
+        syllabusContentTopicId: string;
+        courseLearningOutcomeIds: string[];
+        assessmentTechnique?: string;
+      }>;
+      supplementalResources?: Array<{
+        resourceTypeCode: string;
+        citationText: string;
+      }>;
+      assessmentSchedule?: Array<{
+        assessmentTemplateComponentId: string;
+        plannedWeekNumber?: number;
+        scheduledAt?: string;
+        notes?: string;
+      }>;
+    },
+  ) {
+    if (
+      input.topicPlans === undefined &&
+      input.supplementalResources === undefined &&
+      input.assessmentSchedule === undefined
+    ) {
+      throw new BadRequestException("At least one section must be provided");
+    }
+    this.assertTeacherCourseOutlineAuthor();
+    const requestContext = this.requestContextService.get();
+    const result = await this.repository.updateCourseOutlineStructuredContent({
+      departmentId: this.getDepartmentId(),
+      courseOfferingId,
+      courseOutlineVersionId,
+      actorUserId: this.getActorId(),
+      topicPlans: input.topicPlans,
+      supplementalResources: input.supplementalResources,
+      assessmentSchedule: input.assessmentSchedule?.map((item) => ({
+        ...item,
+        scheduledAt:
+          item.scheduledAt === undefined
+            ? undefined
+            : new Date(item.scheduledAt),
+      })),
+      requestId: requestContext?.requestId,
+      ipAddress: requestContext?.audit.ipAddress,
+      userAgent: requestContext?.audit.userAgent,
+    } satisfies UpdateCourseOutlineStructuredContentInput);
+    switch (result.outcome) {
+      case "UPDATED":
+        return result.courseOutlineVersion;
+      case "OFFERING_OR_ASSIGNMENT_NOT_FOUND":
+      case "OUTLINE_NOT_FOUND":
+        throw new NotFoundException("Course Outline version not found");
+      case "OUTLINE_NOT_EDITABLE":
+        throw new ConflictException(
+          "Course Outline version must be in DRAFT or RETURNED_FOR_CORRECTION status",
+        );
+      case "INVALID_TOPIC":
+        throw new ConflictException("Invalid syllabus content topic referenced");
+      case "INVALID_CLO":
+        throw new ConflictException("Invalid course learning outcome referenced");
+      case "INVALID_ASSESSMENT_COMPONENT":
+        throw new ConflictException(
+          "Invalid assessment template component referenced",
+        );
+      case "DUPLICATE_REFERENCE":
+        throw new ConflictException("Duplicate structured-content reference");
+      case "NO_SECTIONS":
+        throw new BadRequestException("At least one section must be provided");
+      case "CONCURRENT_CONFLICT":
+        throw new ConflictException(
+          "Course Outline structured-content conflict",
+        );
+    }
   }
 
   async updateCourseOutlineVersion(

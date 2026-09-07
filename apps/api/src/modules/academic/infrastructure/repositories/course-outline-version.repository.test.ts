@@ -473,7 +473,12 @@ function readHarness(options: { offeringFound?: boolean } = {}) {
       },
       findFirst: async (args: unknown) => {
         calls.push({ kind: "detail", args });
-        return versions[0];
+        return {
+          ...versions[0],
+          courseOutlineTopicPlans: [],
+          courseOutlineSupplementalResources: [],
+          courseOutlineAssessmentScheduleItems: [],
+        };
       },
     },
   };
