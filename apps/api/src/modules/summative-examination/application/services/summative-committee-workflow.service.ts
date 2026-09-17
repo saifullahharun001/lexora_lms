@@ -135,6 +135,7 @@ export class SummativeCommitteeWorkflowService {
           outcome: input.outcome,
           reviewComment,
           reviewedAt: transitionAt,
+          createdAt: transitionAt,
         },
       });
       await this.writeReviewAudit(tx, authority, review);
@@ -258,6 +259,7 @@ export class SummativeCommitteeWorkflowService {
           approvalVersion: (latest?.approvalVersion ?? 0) + 1,
           approvedAt: transitionAt,
           lockedAt: transitionAt,
+          createdAt: transitionAt,
         },
       });
       await this.writeApprovalAudit(tx, authority, calculatedMark, approval);

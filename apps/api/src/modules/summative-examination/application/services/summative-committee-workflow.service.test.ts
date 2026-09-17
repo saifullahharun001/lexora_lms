@@ -174,7 +174,7 @@ function mutationHarness(options: {
       },
       findMany: async () => options.reviews ?? [],
       create: async ({ data }: { data: Record<string, unknown> }) => {
-        const row = { id: "review-created", ...data, createdAt: now };
+        const row = { id: "review-created", ...data };
         createdReviews.push(row);
         return row;
       },
@@ -189,7 +189,7 @@ function mutationHarness(options: {
       findUnique: async () => options.existingApproval ?? null,
       findFirst: async () => null,
       create: async ({ data }: { data: Record<string, unknown> }) => {
-        const row = { id: "approval-created", ...data, createdAt: now };
+        const row = { id: "approval-created", ...data };
         createdApprovals.push(row);
         return row;
       },
@@ -271,7 +271,9 @@ test("both internal Member seats can create immutable VERIFIED evidence", async 
     assert.equal(h.createdReviews.length, 1);
     assert.equal(h.audits.length, 1);
     assert.equal(result.reviewedAt, now);
+    assert.equal(result.createdAt, result.reviewedAt);
     assert.equal(h.createdReviews[0]!.reviewedAt, now);
+    assert.equal(h.createdReviews[0]!.createdAt, now);
     assert.equal(h.timestampQueries.length, 1);
     assert.deepEqual(h.timestampQueries[0]!.values, []);
     assert.equal(h.authorityQueries.length, 1);
@@ -331,7 +333,11 @@ test("an exact appointment retry is idempotent and an attempted change conflicts
 });
 
 test("a replacement appointment creates the next immutable review version", async () => {
-  const prior = review(ExaminationCommitteeSeat.MEMBER_1);
+  const prior = review(
+    ExaminationCommitteeSeat.MEMBER_1,
+    SummativeCommitteeMemberReviewOutcome.CORRECTION_REQUIRED,
+  );
+  const priorSnapshot = { ...prior };
   const replacementAssignedAt = new Date("2026-09-02T08:00:00.000Z");
   const h = mutationHarness({
     seat: ExaminationCommitteeSeat.MEMBER_1,
@@ -343,7 +349,11 @@ test("a replacement appointment creates the next immutable review version", asyn
     outcome: SummativeCommitteeMemberReviewOutcome.VERIFIED,
   });
   assert.equal(result.reviewVersion, 2);
+  assert.equal(result.reviewedAt, now);
+  assert.equal(result.createdAt, now);
+  assert.deepEqual(prior, priorSnapshot);
   assert.equal(h.createdReviews.length, 1);
+  assert.equal(h.createdReviews[0]!.createdAt, now);
   assert.equal(
     h.createdReviews[0]!.assignmentAssignedAtSnapshot,
     replacementAssignedAt,
@@ -362,6 +372,7 @@ test("Chairman approval requires two current VERIFIED reviews and derives the va
   assert.equal(result.approvedSummativeValue, "40.015");
   assert.equal(result.approvedAt, result.lockedAt);
   assert.equal(result.approvedAt, now);
+  assert.equal(result.createdAt, result.approvedAt);
   assert.equal(h.timestampQueries.length, 1);
   assert.equal(
     h.authorityQueries[0]!.values.filter((value) => value === now).length,
@@ -374,6 +385,9 @@ test("Chairman approval requires two current VERIFIED reviews and derives the va
   ]);
   assert.equal(result.summativeFullMark, "100");
   assert.equal(h.createdApprovals.length, 1);
+  assert.equal(h.createdApprovals[0]!.approvedAt, now);
+  assert.equal(h.createdApprovals[0]!.lockedAt, now);
+  assert.equal(h.createdApprovals[0]!.createdAt, now);
   assert.equal(
     h.createdApprovals[0]!.approvedSummativeValueSnapshot,
     calculated.derivedSummativeValue,
