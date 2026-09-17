@@ -36482,3 +36482,248 @@ Detailed architecture is recorded in:
 `docs/result-processing-publication-architecture.md`
 
 No implementation/runtime completion claim is made by this decision checkpoint.
+
+<!-- summative-committee-final-lock-runtime-20260918 -->
+
+## Summative Committee Member Review + Chairman Final-Lock Authenticated Server Runtime Verification — 2026-09-18
+
+### Classification
+
+**IMPLEMENTED + COMMITTED + PUSHED + DEPLOYED + TARGETED AUTHENTICATED SERVER-RUNTIME VERIFIED**
+
+This checkpoint supersedes only older statements that classified the current
+Summative Committee Member Review + Chairman Approval / Final Lock bundle as
+server-runtime pending.
+
+It does not delete or rewrite earlier local/static evidence, failed runtime
+attempts, chronology diagnostics, migration evidence, runtime IDs, or security
+findings.
+
+It does not claim completion of the full Summative Examination product.
+
+### Implementation identity
+
+Runtime-verified implementation/fix commit:
+
+`dc5cb5a7cd8307ca5f7aa66b958296cc1edd1bd3`
+
+Commit message:
+
+`fix(summative): align Committee evidence creation and transition timestamps`
+
+The fix changed exactly:
+
+- `apps/api/src/modules/summative-examination/application/services/summative-committee-workflow.service.ts`;
+- `apps/api/src/modules/summative-examination/application/services/summative-committee-workflow.service.test.ts`.
+
+No Prisma schema, migration, controller, policy, guard, authorizer, deployment
+configuration or TypeScript module-resolution change was introduced by this
+fix.
+
+### Local verification before promotion
+
+Canonical local verification passed:
+
+- API typecheck: PASS;
+- API build: PASS;
+- focused Summative Committee workflow tests: `14/14 PASS`;
+- full compiled Summative regression: `258/258 PASS`;
+- compiled Summative test-file inventory: `32`;
+- `git diff --check`: PASS apart from non-functional Windows LF/CRLF warnings.
+
+### Ubuntu server promotion and platform verification
+
+The exact commit was promoted to the ordinary Ubuntu runtime.
+
+Verified:
+
+- server `HEAD = origin/main = dc5cb5a7cd8307ca5f7aa66b958296cc1edd1bd3`;
+- repository clean/aligned;
+- API typecheck: PASS;
+- API build: PASS;
+- focused Committee regression: PASS;
+- full Summative regression: `258/258 PASS`;
+- PM2 process healthy;
+- final observed PM2 PID: `99914`;
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- NestJS remained bound to loopback-only port `127.0.0.1:4000`;
+- no migration deployment was required by this two-file fix.
+
+An immediate post-PM2-restart health probe briefly observed the application
+before NestJS had completed startup. Subsequent inspection confirmed the same
+PM2 process online, the loopback listener present and both direct and Nginx
+health endpoints returning HTTP `200`. This was startup timing, not a durable
+application crash.
+
+### Preserved runtime campaign
+
+Runtime campaign:
+
+`20260917142216_399f03`
+
+Authoritative calculated mark:
+
+- calculated-mark ID: `cmu5sis8a000d2ipbw13b7ia7`;
+- calculated-mark version: `1`;
+- authoritative calculated Summative value: `46/60`.
+
+### Historical MEMBER_1 correction and replacement review
+
+Historical immutable correction evidence remained preserved:
+
+- review ID: `cmu5subgn002j2ipbbeqan744`;
+- seat: `MEMBER_1`;
+- review version: `1`;
+- outcome: `CORRECTION_REQUIRED`.
+
+Current replacement MEMBER_1 assignment:
+
+`cmu5t67kj003b2ipboma5c7lf`
+
+Authenticated replacement review succeeded:
+
+- HTTP result: `201`;
+- review ID: `cmu5vce1d00072i3ew8rg109p`;
+- review version: `2`;
+- outcome: `VERIFIED`;
+- `reviewedAt`: `2026-09-17T18:34:17.208Z`;
+- `createdAt`: `2026-09-17T18:34:17.208Z`;
+- `reviewedAt = createdAt`: PASS;
+- required success audit cardinality: exactly `1`;
+- review-comment leakage into structural audit context: none;
+- Chairman approval count at this point: `0`.
+
+The historical `CORRECTION_REQUIRED` v1 evidence remained unchanged and the
+replacement appointment produced the next immutable seat review version.
+
+### MEMBER_2 review
+
+Current MEMBER_2 assignment:
+
+`cmu5neboz001q2i44gjxm761w`
+
+Authenticated review succeeded:
+
+- Member workspace: HTTP `200`;
+- review POST: HTTP `201`;
+- review ID: `cmu5vfjbn000h2i3eo6wyvgzi`;
+- review version: `1`;
+- outcome: `VERIFIED`;
+- `reviewedAt`: `2026-09-17T18:36:44.029Z`;
+- `createdAt`: `2026-09-17T18:36:44.029Z`;
+- `reviewedAt = createdAt`: PASS;
+- required success audit cardinality: exactly `1`;
+- review-comment leakage into structural audit context: none;
+- MEMBER_1 v2 VERIFIED evidence remained preserved;
+- Chairman approval count remained `0`.
+
+### Chairman read-only readiness verification
+
+Current Chairman assignment:
+
+`cmu5nebo1001i2i44t4ivorne`
+
+Before final lock, authenticated read-only readiness verification established:
+
+- Chairman authentication: PASS;
+- Chairman workspace: HTTP `200`;
+- exact current Chairman authority: PASS;
+- current MEMBER_1: `VERIFIED`;
+- current MEMBER_2: `VERIFIED`;
+- formal Examination Committee: complete `4/4`;
+- External Member metadata: valid;
+- Chairman approvals before final lock: `0`;
+- academic mutation during readiness check: none.
+
+### Chairman approval / Summative final lock
+
+Authenticated Chairman final-lock request succeeded:
+
+- POST Chairman approval: HTTP `201`;
+- approval ID: `cmu5vqugt000x2i3e22rvg4kp`;
+- approval version: `1`;
+- approved Summative value snapshot: `46/60`;
+- MEMBER_1 review binding: `cmu5vce1d00072i3ew8rg109p`;
+- MEMBER_2 review binding: `cmu5vfjbn000h2i3eo6wyvgzi`;
+- `approvedAt`: `2026-09-17T18:45:31.682Z`;
+- `lockedAt`: `2026-09-17T18:45:31.682Z`;
+- `createdAt`: `2026-09-17T18:45:31.682Z`;
+- `approvedAt = lockedAt = createdAt`: PASS;
+- required final-lock success audit cardinality: exactly `1`.
+
+An exact duplicate final-lock attempt returned HTTP `409`.
+
+After the duplicate attempt:
+
+- Chairman approval row cardinality remained exactly `1`;
+- final-lock success-audit cardinality remained exactly `1`;
+- no duplicate approval evidence was created.
+
+### Persistence timestamp-coherence fix — real PostgreSQL evidence
+
+The earlier replacement-MEMBER_1 runtime attempt had reached the real
+PostgreSQL member-review chronology trigger and failed because persistence
+timestamp coherence was not guaranteed when `createdAt` was left implicit.
+
+The promoted fix explicitly persists the database transition timestamp as the
+creation timestamp for both evidence paths:
+
+- Member Review:
+  `reviewedAt = createdAt = transitionAt`;
+- Chairman Approval:
+  `approvedAt = lockedAt = createdAt = transitionAt`.
+
+The authenticated ordinary-runtime campaign now verifies the corrected behavior
+against the real PostgreSQL runtime for both paths.
+
+This runtime evidence does not weaken or bypass chronology triggers,
+immutability triggers, Committee authority, policy checks, department scope or
+object-level authorization.
+
+### Authentication hygiene during runtime verification
+
+The runtime principal manifest remained mode `0600`.
+
+Where temporary runtime authentication continuity was required:
+
+- temporary passwords were generated only in process memory;
+- original password hashes were restored exactly after each verification;
+- only the exact login-created temporary session was removed;
+- no broad session deletion was used;
+- raw passwords were not printed;
+- password hashes were not printed;
+- access tokens were not printed;
+- refresh tokens were not printed;
+- database credentials were not documented;
+- no production secret was documented.
+
+### Current superseding evidence classification
+
+The exact Committee Member Review + Summative Chairman Approval / Final Lock
+bundle is now:
+
+**IMPLEMENTED + COMMITTED + PUSHED + DEPLOYED + TARGETED AUTHENTICATED SERVER-RUNTIME VERIFIED**
+
+This verification covers the current normal Committee review and Summative
+Chairman `/60` final-lock boundary.
+
+It does **not** upgrade the complete Summative Examination workflow to complete
+or production-ready status.
+
+Still pending / outside this verified boundary include:
+
+- authorised correction/reopen/re-review/re-approval/re-lock hardening;
+- approved Summative/result-engine handoff where not yet implemented;
+- final Formative `/40` + Summative `/60` result integration;
+- complete-result Chairman finalisation;
+- official result-document workflow;
+- Controller of Examinations publication;
+- published-result registry/ingestion;
+- mandatory Summative 2FA;
+- candidate/exam-roll/physical-script/masking governance;
+- frontend integration;
+- broader production hardening.
+
+The Chairman-approved `46/60` evidence is an authoritative locked Summative
+component. It is not by itself a complete course result or a published result.

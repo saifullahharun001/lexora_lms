@@ -2490,3 +2490,74 @@ Detailed decision:
 The overall final-result workflow remains:
 
 **PARTIAL / ACTIVE BACKEND DEVELOPMENT**
+
+<!-- roadmap-summative-committee-runtime-closed-20260918 -->
+
+## Summative Committee Runtime Verification Supersession — 2026-09-18
+
+The roadmap item to runtime-verify the current Committee Member Review +
+Summative Chairman Approval / Final Lock bundle is now **completed for the
+targeted normal workflow boundary**.
+
+Runtime-verified implementation/fix commit:
+
+`dc5cb5a7cd8307ca5f7aa66b958296cc1edd1bd3`
+
+Verified normal-path evidence includes:
+
+- replacement-aware MEMBER_1 immutable review versioning;
+- preserved historical correction evidence;
+- current MEMBER_1 v2 `VERIFIED`;
+- current MEMBER_2 v1 `VERIFIED`;
+- real-PostgreSQL Member timestamp coherence;
+- Chairman workspace and exact authority;
+- complete four-seat Committee readiness;
+- valid External Member metadata;
+- authenticated Chairman approval/final lock;
+- authoritative locked Summative snapshot `46/60`;
+- exact Member-review source binding;
+- real-PostgreSQL Chairman timestamp coherence;
+- required success audit;
+- duplicate final-lock conflict (`409`) with no duplicate durable evidence;
+- temporary-auth cleanup and no raw-secret documentation;
+- healthy server/runtime state after the verification.
+
+### Current normal-result priority
+
+Broad correction/reopen expansion remains intentionally later work.
+
+The next normal happy-path result boundary should consume:
+
+1. the authoritative locked Final Formative Assessment `/40`;
+2. the authoritative Chairman-approved and locked Summative Examination `/60`.
+
+The result layer must then derive server-side:
+
+- total `/100`;
+- separate Formative pass/fail using `16/40`;
+- separate Summative pass/fail using `24/60`;
+- authoritative grade and grade point.
+
+After that, the distinct complete-course-result Chairman finalisation,
+result-document generation and Controller of Examinations publication
+boundaries remain to be implemented and verified.
+
+### Still pending
+
+The following are not closed by this checkpoint:
+
+- authorised correction/reopen/re-review/re-approval/re-lock;
+- approved Summative/result-engine handoff where not yet implemented;
+- Final Formative + Summative result integration;
+- complete course-result finalisation;
+- result-document workflow;
+- Controller publication;
+- immutable/versioned published-result registry and ingestion;
+- mandatory Summative 2FA;
+- candidate/exam-roll/physical-script/masking governance;
+- confidentiality-filtered reporting/export hardening;
+- frontend integration;
+- production hardening.
+
+The complete Summative Examination and final-result workflows therefore remain
+**PARTIAL / ACTIVE BACKEND DEVELOPMENT**.

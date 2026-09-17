@@ -370,3 +370,54 @@ The overall Summative/final-result scope remains:
 **PARTIAL / ACTIVE BACKEND DEVELOPMENT**
 
 The latest `docs/runtime-test-checklist.md` remains the strongest source of truth for runtime status.
+
+<!-- result-architecture-runtime-evidence-supersession-20260918 -->
+
+## Runtime Evidence Supersession — Summative Committee Final Lock — 2026-09-18
+
+This note updates runtime evidence classification only. It does not change the
+confirmed result-processing/publication architecture.
+
+The current Committee Member Review + Summative Chairman Approval / Final Lock
+bundle, including the later persistence timestamp-coherence fix, is now
+targeted authenticated Ubuntu server-runtime verified at implementation HEAD:
+
+`dc5cb5a7cd8307ca5f7aa66b958296cc1edd1bd3`
+
+Verified runtime outcome:
+
+- authoritative calculated Summative evidence: `46/60`, calculated version `1`;
+- current MEMBER_1: `VERIFIED`;
+- current MEMBER_2: `VERIFIED`;
+- complete four-seat Committee readiness;
+- exact current Chairman authority;
+- Chairman approval/final lock: HTTP `201`;
+- approval ID: `cmu5vqugt000x2i3e22rvg4kp`;
+- approval version: `1`;
+- approved Summative snapshot: `46/60`;
+- exact M1/M2 review bindings preserved;
+- `approvedAt = lockedAt = createdAt`;
+- required success audit: exactly `1`;
+- duplicate final-lock attempt: HTTP `409`;
+- no duplicate approval or duplicate success audit.
+
+The architecture remains unchanged:
+
+1. **Summative Chairman approval/final lock**
+   produces the authoritative locked Summative contribution `/60`.
+
+2. **Complete course-result Chairman finalisation**
+   is a separate future boundary after authoritative locked Formative `/40` and
+   Chairman-approved locked Summative `/60` are combined and the server derives
+   total, separate component-pass state, grade and grade point.
+
+3. **Controller of Examinations publication**
+   remains a later and distinct official publication authority boundary.
+
+The runtime-verified `46/60` Summative final lock is therefore not a complete
+course result, not a published result and not yet student-facing published
+academic evidence.
+
+Published-result consumers must continue to depend only on the future
+authoritative published-result layer, preserving the replaceable provider
+boundary for `LEXORA_INTERNAL` and future `CU_CENTRAL` sources.

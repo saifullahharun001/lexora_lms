@@ -1628,3 +1628,70 @@ continuing student-profile, GPA/CGPA, transcript and other downstream LMS functi
 See:
 
 `docs/result-processing-publication-architecture.md`
+
+<!-- summative-committee-runtime-supersession-20260918 -->
+
+## Committee Member Review + Chairman Final-Lock Server Runtime Supersession — 2026-09-18
+
+Classification:
+
+**TARGETED AUTHENTICATED SERVER-RUNTIME VERIFIED**
+
+This append-only checkpoint supersedes older evidence classifications that
+described the current Committee Member Review + Chairman Approval / Final Lock
+bundle as local/static only or server-runtime pending.
+
+Verified implementation/fix commit:
+
+`dc5cb5a7cd8307ca5f7aa66b958296cc1edd1bd3`
+
+The promoted persistence-coherence fix explicitly binds the same database
+transition timestamp to evidence creation:
+
+- Member Review:
+  `reviewedAt = createdAt = transitionAt`;
+- Chairman Approval:
+  `approvedAt = lockedAt = createdAt = transitionAt`.
+
+The fix passed API typecheck/build, `14/14` focused Committee tests and
+`258/258` full Summative regression before/through promotion.
+
+The preserved authenticated Ubuntu runtime campaign then established:
+
+- historical MEMBER_1 `CORRECTION_REQUIRED` v1 remained immutable;
+- replacement MEMBER_1 created review v2 `VERIFIED`;
+- MEMBER_2 created review v1 `VERIFIED`;
+- both Member reviews persisted with exact `reviewedAt = createdAt`;
+- exact current Chairman workspace returned HTTP `200`;
+- Committee readiness was complete `4/4`;
+- External Member metadata was valid;
+- Chairman final-lock POST returned HTTP `201`;
+- approval ID: `cmu5vqugt000x2i3e22rvg4kp`;
+- approved value: `46/60`;
+- approval version: `1`;
+- exact M1/M2 review bindings were preserved;
+- `approvedAt = lockedAt = createdAt =
+  2026-09-17T18:45:31.682Z`;
+- final-lock success audit cardinality was exactly `1`;
+- duplicate final-lock returned HTTP `409`;
+- duplicate attempt created no duplicate approval row or success audit;
+- temporary authentication state was restored and cleaned without printing raw
+  secrets;
+- server repository remained clean/aligned and direct/Nginx health remained
+  HTTP `200`.
+
+This provides real PostgreSQL runtime evidence for the timestamp-coherence fix
+on both Member Review and Chairman Approval persistence paths.
+
+The broader Summative Examination workflow remains:
+
+**PARTIAL / ACTIVE BACKEND DEVELOPMENT**
+
+This checkpoint does not implement or verify broad correction/reopen,
+result-engine handoff, final-result integration, official publication,
+mandatory Summative 2FA, physical exam-roll/script governance, frontend work or
+production hardening.
+
+The current Chairman approval is the authoritative Summative `/60` final-lock
+boundary only. It must not be confused with future complete course-result
+Chairman finalisation or Controller publication.
