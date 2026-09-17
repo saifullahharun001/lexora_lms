@@ -10,7 +10,10 @@ import {
   UserStatus,
 } from "@prisma/client";
 
-import type { SummativeCommitteeWorkflowAuthority } from "./summative-committee-workflow-authorizer.service";
+import {
+  SummativeCommitteeWorkflowAuthorizerService,
+  type SummativeCommitteeWorkflowAuthority,
+} from "./summative-committee-workflow-authorizer.service";
 import { SummativeCommitteeWorkflowService } from "./summative-committee-workflow.service";
 
 const now = new Date("2026-09-02T10:00:00.000Z");
@@ -116,6 +119,9 @@ function mutationHarness(options: {
   appointments?: ReturnType<typeof formalAppointments>;
   auditFailure?: boolean;
   authorityAssignedAt?: Date;
+  timestampRows?: unknown[];
+  timestampFailure?: boolean;
+  authorityRevoked?: boolean;
 }) {
   const resolvedAuthority = authority(
     options.seat,
@@ -124,8 +130,28 @@ function mutationHarness(options: {
   const audits: Array<Record<string, unknown>> = [];
   const createdReviews: Array<Record<string, unknown>> = [];
   const createdApprovals: Array<Record<string, unknown>> = [];
+  const timestampQueries: Prisma.Sql[] = [];
+  const authorityQueries: Prisma.Sql[] = [];
+  const appointmentQueries: Array<{ where: Record<string, unknown> }> = [];
+  let inTransaction = false;
   const tx = {
-    $queryRaw: async () => [{ id: "locked" }],
+    $queryRaw: async (query: Prisma.Sql) => {
+      assert.equal(inTransaction, true);
+      if (query.sql.includes("statement_timestamp()")) {
+        timestampQueries.push(query);
+        if (options.timestampFailure) {
+          throw new Error("database clock unavailable");
+        }
+        return options.timestampRows ?? [{ transitionAt: now }];
+      }
+      if (query.sql.includes("FOR UPDATE OF ur, a FOR SHARE")) {
+        authorityQueries.push(query);
+        return options.authorityRevoked
+          ? []
+          : [{ id: resolvedAuthority.committeeAssignmentId }];
+      }
+      return [{ id: "locked" }];
+    },
     summativeCommitteeMemberReview: {
       findFirst: async (query: { where: Record<string, unknown> }) => {
         if ("assignmentAssignedAtSnapshot" in query.where) {
@@ -154,7 +180,10 @@ function mutationHarness(options: {
       },
     },
     examinationCommitteeAssignment: {
-      findMany: async () => options.appointments ?? formalAppointments(),
+      findMany: async (query: { where: Record<string, unknown> }) => {
+        appointmentQueries.push(query);
+        return options.appointments ?? formalAppointments();
+      },
     },
     summativeChairmanApproval: {
       findUnique: async () => options.existingApproval ?? null,
@@ -167,6 +196,7 @@ function mutationHarness(options: {
     },
     auditLog: {
       create: async ({ data }: { data: Record<string, unknown> }) => {
+        assert.equal(inTransaction, true);
         if (options.auditFailure) throw new Error("audit unavailable");
         audits.push(data);
         return data;
@@ -176,17 +206,48 @@ function mutationHarness(options: {
   const authorizer = {
     authorizeMemberReview: async () => resolvedAuthority,
     authorizeChairmanApproval: async () => resolvedAuthority,
-    assertCurrentAuthority: async () => undefined,
+    assertCurrentAuthority: (
+      client: Prisma.TransactionClient,
+      currentAuthority: SummativeCommitteeWorkflowAuthority,
+      evaluatedAt: Date,
+    ) => {
+      assert.equal(client, tx);
+      return new SummativeCommitteeWorkflowAuthorizerService(
+        {} as never,
+        {} as never,
+      ).assertCurrentAuthority(client, currentAuthority, evaluatedAt);
+    },
   };
   const prisma = {
-    ...tx,
-    $transaction: async (operation: (client: typeof tx) => unknown) =>
-      operation(tx),
+    $transaction: async (
+      operation: (client: typeof tx) => unknown,
+      transactionOptions: { isolationLevel: string },
+    ) => {
+      assert.equal(
+        transactionOptions.isolationLevel,
+        Prisma.TransactionIsolationLevel.Serializable,
+      );
+      const before = [createdReviews.length, createdApprovals.length, audits.length];
+      inTransaction = true;
+      try {
+        return await operation(tx);
+      } catch (error) {
+        createdReviews.length = before[0]!;
+        createdApprovals.length = before[1]!;
+        audits.length = before[2]!;
+        throw error;
+      } finally {
+        inTransaction = false;
+      }
+    },
   };
   return {
     audits,
     createdReviews,
     createdApprovals,
+    timestampQueries,
+    authorityQueries,
+    appointmentQueries,
     service: new SummativeCommitteeWorkflowService(
       prisma as never,
       { get: () => ({ requestId: "request-a", audit: {} }) } as never,
@@ -209,6 +270,15 @@ test("both internal Member seats can create immutable VERIFIED evidence", async 
     assert.equal(result.outcome, SummativeCommitteeMemberReviewOutcome.VERIFIED);
     assert.equal(h.createdReviews.length, 1);
     assert.equal(h.audits.length, 1);
+    assert.equal(result.reviewedAt, now);
+    assert.equal(h.createdReviews[0]!.reviewedAt, now);
+    assert.equal(h.timestampQueries.length, 1);
+    assert.deepEqual(h.timestampQueries[0]!.values, []);
+    assert.equal(h.authorityQueries.length, 1);
+    assert.equal(
+      h.authorityQueries[0]!.values.filter((value) => value === now).length,
+      3,
+    );
     assert.equal(
       JSON.stringify(h.audits[0]).includes("reviewComment"),
       false,
@@ -291,6 +361,18 @@ test("Chairman approval requires two current VERIFIED reviews and derives the va
   const result = await h.service.approveAndFinalLock("calculated-a");
   assert.equal(result.approvedSummativeValue, "40.015");
   assert.equal(result.approvedAt, result.lockedAt);
+  assert.equal(result.approvedAt, now);
+  assert.equal(h.timestampQueries.length, 1);
+  assert.equal(
+    h.authorityQueries[0]!.values.filter((value) => value === now).length,
+    3,
+  );
+  assert.deepEqual(h.appointmentQueries[0]!.where.assignedAt, { lte: now });
+  assert.deepEqual(h.appointmentQueries[0]!.where.OR, [
+    { expiresAt: null },
+    { expiresAt: { gt: now } },
+  ]);
+  assert.equal(result.summativeFullMark, "100");
   assert.equal(h.createdApprovals.length, 1);
   assert.equal(
     h.createdApprovals[0]!.approvedSummativeValueSnapshot,
@@ -391,6 +473,89 @@ test("duplicate Chairman approval conflicts and required audit failure aborts su
     auditFailure.service.approveAndFinalLock("calculated-a"),
     /audit unavailable/,
   );
+  assert.equal(auditFailure.createdApprovals.length, 0);
+  assert.equal(auditFailure.audits.length, 0);
+});
+
+test("Member audit failure rolls back the review in the Serializable transaction", async () => {
+  const h = mutationHarness({
+    seat: ExaminationCommitteeSeat.MEMBER_1,
+    auditFailure: true,
+  });
+  await assert.rejects(
+    h.service.submitMemberReview("calculated-a", {
+      outcome: SummativeCommitteeMemberReviewOutcome.VERIFIED,
+    }),
+    /audit unavailable/,
+  );
+  assert.equal(h.createdReviews.length, 0);
+  assert.equal(h.audits.length, 0);
+});
+
+test("review and approval fail closed when database time is missing, ambiguous, invalid or unavailable", async () => {
+  for (const seat of [
+    ExaminationCommitteeSeat.MEMBER_1,
+    ExaminationCommitteeSeat.CHAIRMAN,
+  ]) {
+    for (const timestampRows of [
+      [],
+      [{ transitionAt: now }, { transitionAt: now }],
+      [{}],
+      [{ transitionAt: null }],
+      [{ transitionAt: now.toISOString() }],
+      [{ transitionAt: new Date(NaN) }],
+    ]) {
+      const h = mutationHarness({ seat, timestampRows });
+      await assert.rejects(
+        seat === ExaminationCommitteeSeat.CHAIRMAN
+          ? h.service.approveAndFinalLock("calculated-a")
+          : h.service.submitMemberReview("calculated-a", {
+              outcome: SummativeCommitteeMemberReviewOutcome.VERIFIED,
+            }),
+        /database transition timestamp is invalid/,
+      );
+      assert.equal(h.createdReviews.length, 0);
+      assert.equal(h.createdApprovals.length, 0);
+      assert.equal(h.audits.length, 0);
+      assert.equal(h.authorityQueries.length, 0);
+    }
+    const h = mutationHarness({ seat, timestampFailure: true });
+    await assert.rejects(
+      seat === ExaminationCommitteeSeat.CHAIRMAN
+        ? h.service.approveAndFinalLock("calculated-a")
+        : h.service.submitMemberReview("calculated-a", {
+            outcome: SummativeCommitteeMemberReviewOutcome.VERIFIED,
+          }),
+      /database clock unavailable/,
+    );
+    assert.equal(h.createdReviews.length, 0);
+    assert.equal(h.createdApprovals.length, 0);
+    assert.equal(h.audits.length, 0);
+  }
+});
+
+test("transactional current-appointment rejection blocks both review and approval", async () => {
+  for (const seat of [
+    ExaminationCommitteeSeat.MEMBER_1,
+    ExaminationCommitteeSeat.CHAIRMAN,
+  ]) {
+    const h = mutationHarness({ seat, authorityRevoked: true });
+    await assert.rejects(
+      seat === ExaminationCommitteeSeat.CHAIRMAN
+        ? h.service.approveAndFinalLock("calculated-a")
+        : h.service.submitMemberReview("calculated-a", {
+            outcome: SummativeCommitteeMemberReviewOutcome.VERIFIED,
+          }),
+      /access denied/,
+    );
+    const query = h.authorityQueries[0]!;
+    assert.match(query.sql, /a\."assigned_at" <=/);
+    assert.match(query.sql, /a\."expires_at" IS NULL OR a\."expires_at" >/);
+    assert.equal(query.values.filter((value) => value === now).length, 3);
+    assert.equal(h.createdReviews.length, 0);
+    assert.equal(h.createdApprovals.length, 0);
+    assert.equal(h.audits.length, 0);
+  }
 });
 
 function workspaceCalculated() {

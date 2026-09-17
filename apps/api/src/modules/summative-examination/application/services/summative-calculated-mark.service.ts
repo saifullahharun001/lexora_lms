@@ -397,7 +397,6 @@ export class SummativeCalculatedMarkService {
         candidateId: scope.candidateId,
         ...evidence,
         calculatedMarkVersion,
-        calculatedAt: new Date(),
       },
       select: calculatedMarkSelect,
     });

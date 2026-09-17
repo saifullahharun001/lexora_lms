@@ -86,14 +86,18 @@ function harness(options: {
   calculation?: Record<string, unknown>;
   existing?: Record<string, unknown> | null;
   auditFailure?: boolean;
+  fullMark?: string;
 } = {}) {
   const created: Array<Record<string, unknown>> = [];
+  const createInputs: Array<Record<string, unknown>> = [];
   const audits: Array<Record<string, unknown>> = [];
   const comparisonRow = options.comparison ?? comparison();
   const tx = {
     $queryRaw: async () => [{ id: scope.candidateId }],
     examinationCourse: {
-      findFirst: async () => ({ summativeFullMark: new Prisma.Decimal("100.00") }),
+      findFirst: async () => ({
+        summativeFullMark: new Prisma.Decimal(options.fullMark ?? "100.00"),
+      }),
     },
     summativeQuestionConfiguration: {
       findFirst: async () => ({ id: "configuration-a" }),
@@ -108,8 +112,10 @@ function harness(options: {
       findUnique: async () => options.existing ?? null,
       findFirst: async () => null,
       create: async ({ data }: { data: Record<string, unknown> }) => {
+        createInputs.push(data);
         const row = {
           id: "calculated-a",
+          calculatedAt: now,
           ...data,
           createdAt: now,
         };
@@ -128,6 +134,7 @@ function harness(options: {
   return {
     tx,
     created,
+    createInputs,
     audits,
     service: new SummativeCalculatedMarkService({
       get: () => ({ requestId: "request-a", audit: {} }),
@@ -149,6 +156,28 @@ test("no-Third convergence derives the exact odd-decimal First/Second average", 
   assert.equal(result?.thirdSubmissionId, null);
   assert.equal(h.created.length, 1);
   assert.equal(h.audits.length, 1);
+  assert.equal(Object.hasOwn(h.createInputs[0]!, "calculatedAt"), false);
+  assert.equal(Object.hasOwn(h.createInputs[0]!, "createdAt"), false);
+  assert.equal(result?.calculatedAt, now);
+});
+
+test("preserved no-Third totals 50 and 42 derive 46/60 with database timestamp defaults", async () => {
+  const comparisonRow = comparison("50", "42");
+  comparisonRow.summativeFullMarkSnapshot = new Prisma.Decimal("60");
+  const h = harness({ comparison: comparisonRow, fullMark: "60" });
+  const result = await h.service.ensureForComparison(
+    h.tx as never,
+    scope,
+    "comparison-a",
+  );
+  assert.equal(result?.derivedSummativeValue.toString(), "46");
+  assert.equal(result?.summativeFullMarkSnapshot.toString(), "60");
+  assert.equal(
+    result?.calculationPath,
+    SummativeCalculatedMarkPath.FIRST_SECOND_AVERAGE,
+  );
+  assert.equal(Object.hasOwn(h.createInputs[0]!, "calculatedAt"), false);
+  assert.equal(result?.calculatedAt, now);
 });
 
 test("Third convergence copies the immutable nearest-pair result without competing recalculation", async () => {
@@ -204,6 +233,8 @@ test("Third convergence copies the immutable nearest-pair result without competi
   assert.equal(result.derivedSummativeValue.toString(), "36");
   assert.equal(result.threeTotalCalculationId, calculation.id);
   assert.equal(result.calculationPath, SummativeCalculatedMarkPath.THREE_TOTAL_NEAREST_PAIR);
+  assert.equal(Object.hasOwn(h.createInputs[0]!, "calculatedAt"), false);
+  assert.equal(result.calculatedAt, now);
 });
 
 test("wrong comparison decision and malformed exact source chain fail closed", async () => {

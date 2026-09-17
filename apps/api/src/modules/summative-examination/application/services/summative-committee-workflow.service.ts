@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from "@nestjs/common";
 import {
@@ -70,10 +71,10 @@ export class SummativeCommitteeWorkflowService {
       throw new ConflictException("A Member seat is required for review");
     }
     const reviewComment = this.normalizeReviewComment(input);
-    const transitionAt = new Date();
 
     return this.serializable(async (tx) => {
       await this.lockWorkflowParents(tx, authority);
+      const transitionAt = await this.databaseTransitionAt(tx);
       await this.authorizer.assertCurrentAuthority(
         tx,
         authority,
@@ -147,10 +148,10 @@ export class SummativeCommitteeWorkflowService {
     if (authority.seat !== ExaminationCommitteeSeat.CHAIRMAN) {
       throw new ConflictException("The exact Chairman seat is required");
     }
-    const transitionAt = new Date();
 
     return this.serializable(async (tx) => {
       await this.lockWorkflowParents(tx, authority);
+      const transitionAt = await this.databaseTransitionAt(tx);
       await this.authorizer.assertCurrentAuthority(
         tx,
         authority,
@@ -262,6 +263,23 @@ export class SummativeCommitteeWorkflowService {
       await this.writeApprovalAudit(tx, authority, calculatedMark, approval);
       return this.serializeApproval(approval);
     });
+  }
+
+  private async databaseTransitionAt(tx: Prisma.TransactionClient) {
+    const rows = await tx.$queryRaw<Array<{ transitionAt: Date }>>(Prisma.sql`
+      SELECT statement_timestamp() AS "transitionAt"
+    `);
+    const transitionAt = rows[0]?.transitionAt;
+    if (
+      rows.length !== 1 ||
+      !(transitionAt instanceof Date) ||
+      !Number.isFinite(transitionAt.getTime())
+    ) {
+      throw new InternalServerErrorException(
+        "Summative Committee database transition timestamp is invalid",
+      );
+    }
+    return transitionAt;
   }
 
   private async loadWorkspace(
