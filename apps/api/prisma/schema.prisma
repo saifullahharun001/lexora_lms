@@ -1407,6 +1407,8 @@ model CurriculumCoursePrerequisite {
 }
 
 model CourseOffering {
+  formativeActivities FormativeActivity[]
+  @@unique([id, departmentId], map: "formative_offering_scope_uq")
   id                           String                    @id @default(cuid())
   departmentId                 String                    @map("department_id")
   courseId                     String                    @map("course_id")
@@ -1522,6 +1524,9 @@ model CourseOutlineCorrectionRequest {
 }
 
 model TeacherCourseAssignment {
+  formativeMarks FormativeMarkEvidence[]
+  formativeSubmissions FormativeTeacherSubmission[]
+  @@unique([id, departmentId, courseOfferingId, teacherUserId], map: "formative_assignment_scope_uq")
   id               String                  @id @default(cuid())
   departmentId     String                  @map("department_id")
   courseOfferingId String                  @map("course_offering_id")
@@ -1545,6 +1550,9 @@ model TeacherCourseAssignment {
 }
 
 model Enrollment {
+  formativeMarks FormativeMarkEvidence[]
+  formativeSubmissions FormativeTeacherSubmission[]
+  @@unique([id, departmentId, courseOfferingId], map: "formative_enrollment_scope_uq")
   id                            String                       @id @default(cuid())
   departmentId                  String                       @map("department_id")
   academicTermId                String                       @map("academic_term_id")
@@ -3535,4 +3543,110 @@ model CourseOutlineAssessmentScheduleItem {
   @@index([curriculumCourseId, departmentId, assessmentTemplateId], map: "course_outline_assessment_schedule_course_template_idx")
   @@index([assessmentTemplateComponentId, departmentId, assessmentTemplateId], map: "course_outline_assessment_schedule_component_identity_idx")
   @@map("course_outline_assessment_schedule_items")
+}
+enum FormativeActivityState {
+  DRAFT
+  MARKING
+}
+
+enum FormativeIntegrityState {
+  CLEAR
+  PENDING_REVIEW
+  BLOCKED
+}
+
+enum FormativeTeacherSubmissionState {
+  MARKS_SUBMITTED
+}
+
+model FormativeActivity {
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  courseOfferingId String @map("course_offering_id")
+  title String @db.VarChar(255)
+  method String @db.VarChar(32)
+  rawMaximum Decimal @map("raw_maximum") @db.Decimal(6,2)
+  assignedWeight Decimal @map("assigned_weight") @db.Decimal(6,2)
+  status FormativeActivityState @default(DRAFT)
+  version Int @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  courseOffering CourseOffering @relation(fields: [courseOfferingId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict)
+  marks FormativeMarkEvidence[]
+  @@unique([id, departmentId, courseOfferingId], map: "formative_activity_scope_uq")
+  @@index([departmentId, courseOfferingId], map: "formative_activity_offering_idx")
+  @@map("formative_activities")
+}
+
+// Append-only revisions. A null raw/weighted mark explicitly represents missing evidence.
+model FormativeMarkEvidence {
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  courseOfferingId String @map("course_offering_id")
+  activityId String @map("activity_id")
+  enrollmentId String @map("enrollment_id")
+  revision Int
+  previousId String? @unique @map("previous_id")
+  rawMaximum Decimal @map("raw_maximum") @db.Decimal(6,2)
+  assignedWeight Decimal @map("assigned_weight") @db.Decimal(6,2)
+  rawMark Decimal? @map("raw_mark") @db.Decimal(6,2)
+  weightedMark Decimal? @map("weighted_mark") @db.Decimal(6,2)
+  feedback String? @db.Text
+  feedbackCompleted Boolean @default(false) @map("feedback_completed")
+  integrityStatus FormativeIntegrityState @default(PENDING_REVIEW) @map("integrity_status")
+  reason String? @db.VarChar(2000)
+  actorUserId String @map("actor_user_id")
+  teacherAssignmentId String @map("teacher_assignment_id")
+  assignmentAssignedAt DateTime @map("assignment_assigned_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  activity FormativeActivity @relation(fields: [activityId, departmentId, courseOfferingId], references: [id, departmentId, courseOfferingId], onDelete: Restrict, onUpdate: Restrict, map: "formative_mark_evidence_activity_scope_fkey")
+  enrollment Enrollment @relation(fields: [enrollmentId, departmentId, courseOfferingId], references: [id, departmentId, courseOfferingId], onDelete: Restrict, onUpdate: Restrict, map: "formative_mark_evidence_enrollment_scope_fkey")
+  teacherAssignment TeacherCourseAssignment @relation(fields: [teacherAssignmentId, departmentId, courseOfferingId, actorUserId], references: [id, departmentId, courseOfferingId, teacherUserId], onDelete: Restrict, onUpdate: Restrict, map: "formative_mark_evidence_assignment_scope_fkey")
+  previous FormativeMarkEvidence? @relation("FormativeMarkRevision", fields: [previousId, departmentId, courseOfferingId, enrollmentId, activityId], references: [id, departmentId, courseOfferingId, enrollmentId, activityId], onDelete: Restrict, onUpdate: Restrict, map: "formative_mark_previous_scope_fkey")
+  revisions FormativeMarkEvidence[] @relation("FormativeMarkRevision")
+  submissionItems FormativeSubmissionItem[]
+  @@unique([id, departmentId, courseOfferingId, enrollmentId, activityId], map: "formative_mark_scope_uq")
+  @@unique([departmentId, activityId, enrollmentId, revision], map: "formative_mark_revision_uq")
+  @@index([departmentId, courseOfferingId, enrollmentId], map: "formative_mark_enrollment_idx")
+  @@map("formative_mark_evidence")
+}
+
+// Teacher submission only. This is not verified, finalised, locked or Final Formative /40.
+model FormativeTeacherSubmission {
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  courseOfferingId String @map("course_offering_id")
+  enrollmentId String @map("enrollment_id")
+  version Int @default(1)
+  status FormativeTeacherSubmissionState @default(MARKS_SUBMITTED)
+  totalWeightedMark Decimal @map("total_weighted_mark") @db.Decimal(6,2)
+  totalWeight Decimal @map("total_weight") @db.Decimal(6,2)
+  ruleVersionCode String @map("rule_version_code") @db.VarChar(64)
+  sourceSnapshotJson Json @map("source_snapshot_json")
+  actorUserId String @map("actor_user_id")
+  teacherAssignmentId String @map("teacher_assignment_id")
+  assignmentAssignedAt DateTime @map("assignment_assigned_at")
+  submittedAt DateTime @default(now()) @map("submitted_at")
+  enrollment Enrollment @relation(fields: [enrollmentId, departmentId, courseOfferingId], references: [id, departmentId, courseOfferingId], onDelete: Restrict, onUpdate: Restrict, map: "formative_submission_enrollment_scope_fkey")
+  teacherAssignment TeacherCourseAssignment @relation(fields: [teacherAssignmentId, departmentId, courseOfferingId, actorUserId], references: [id, departmentId, courseOfferingId, teacherUserId], onDelete: Restrict, onUpdate: Restrict, map: "formative_submission_assignment_scope_fkey")
+  items FormativeSubmissionItem[]
+  @@unique([departmentId, enrollmentId], map: "formative_submission_enrollment_uq")
+  @@unique([id, departmentId, courseOfferingId, enrollmentId], map: "formative_submission_scope_uq")
+  @@index([departmentId, courseOfferingId], map: "formative_submission_offering_idx")
+  @@map("formative_teacher_submissions")
+}
+
+model FormativeSubmissionItem {
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  courseOfferingId String @map("course_offering_id")
+  enrollmentId String @map("enrollment_id")
+  activityId String @map("activity_id")
+  submissionId String @map("submission_id")
+  markEvidenceId String @map("mark_evidence_id")
+  submission FormativeTeacherSubmission @relation(fields: [submissionId, departmentId, courseOfferingId, enrollmentId], references: [id, departmentId, courseOfferingId, enrollmentId], onDelete: Restrict, onUpdate: Restrict, map: "formative_item_submission_scope_fkey")
+  mark FormativeMarkEvidence @relation(fields: [markEvidenceId, departmentId, courseOfferingId, enrollmentId, activityId], references: [id, departmentId, courseOfferingId, enrollmentId, activityId], onDelete: Restrict, onUpdate: Restrict, map: "formative_item_mark_scope_fkey")
+  @@unique([submissionId, activityId], map: "formative_submission_activity_uq")
+  @@index([markEvidenceId], map: "formative_submission_mark_idx")
+  @@map("formative_submission_items")
 }

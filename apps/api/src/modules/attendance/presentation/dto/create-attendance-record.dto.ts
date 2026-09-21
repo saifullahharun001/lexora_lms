@@ -14,7 +14,7 @@ export class CreateAttendanceRecordDto {
   @MinLength(3)
   studentUserId!: string;
 
-  @IsEnum(AttendanceRecordStatus)
+  @IsEnum({ PRESENT: AttendanceRecordStatus.PRESENT, ABSENT: AttendanceRecordStatus.ABSENT })
   status!: AttendanceRecordStatus;
 
   @IsEnum(AttendanceSourceType)

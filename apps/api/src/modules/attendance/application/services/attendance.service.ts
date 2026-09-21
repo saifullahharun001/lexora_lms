@@ -19,6 +19,7 @@ import { PrismaService } from "@/common/prisma/prisma.service";
 import { RequestContextService } from "@/common/request-context/request-context.service";
 import type { AttendanceImportBatchRecord, AttendanceRecordEntry } from "../../contracts/attendance.contracts";
 import { ATTENDANCE_AUDIT_EVENTS } from "../../domain/attendance.audit-events";
+import { assertCurrentAttendanceStatus } from "../../domain/attendance-mark.rule";
 import { ATTENDANCE_REPOSITORY } from "../../domain/attendance.constants";
 import type {
   AttendanceImportBatchListFilters,
@@ -142,6 +143,7 @@ export class AttendanceService {
   }
 
   async captureAttendance(input: Omit<SaveAttendanceRecordInput, "departmentId" | "markedByUserId">) {
+    this.assertCurrentStatus(input.status);
     this.assertTeacherCapturePrincipal();
     this.assertNotStudentSelfMarking(input.studentUserId);
     const session = await this.assertClassSessionInDepartment(input.classSessionId);
@@ -153,6 +155,13 @@ export class AttendanceService {
 
     if (session.status !== ClassSessionStatus.ACTIVE) {
       throw new BadRequestException("Attendance can only be captured for active class sessions");
+    }
+
+    const previous = await this.prisma.attendanceRecord.findFirst({ where: {
+      departmentId: this.getDepartmentId(), classSessionId: session.id, enrollmentId: enrollment.id,
+    }, select: { status: true } });
+    if (previous && [AttendanceRecordStatus.LATE, AttendanceRecordStatus.EXCUSED].some((status) => status === previous.status)) {
+      throw new ConflictException("Historical attendance evidence requires a future controlled correction workflow");
     }
 
     const record = await this.repository.saveAttendanceRecord({
@@ -204,6 +213,7 @@ export class AttendanceService {
   }
 
   async overrideAttendance(id: string, input: { status: AttendanceRecordStatus; overrideReason: string }) {
+    this.assertCurrentStatus(input.status);
     if (!input.overrideReason.trim()) {
       throw new BadRequestException("overrideReason is required");
     }
@@ -212,6 +222,10 @@ export class AttendanceService {
 
     if (!existing) {
       throw new NotFoundException("Attendance record not found");
+    }
+
+    if ([AttendanceRecordStatus.LATE, AttendanceRecordStatus.EXCUSED].some((status) => status === existing.status)) {
+      throw new ConflictException("Historical attendance evidence requires a future controlled correction workflow");
     }
 
     const record = await this.repository.overrideAttendanceRecord(this.getDepartmentId(), id, {
@@ -242,6 +256,14 @@ export class AttendanceService {
       id,
       this.shouldConstrainToTeacher() ? this.getActorId() : undefined
     );
+  }
+
+  private assertCurrentStatus(status: string) {
+    try {
+      assertCurrentAttendanceStatus(status);
+    } catch {
+      throw new BadRequestException("Current attendance evidence must be PRESENT or ABSENT");
+    }
   }
 
   private findVisibleAttendanceRecord(id: string) {

@@ -2,7 +2,7 @@ import { AttendanceRecordStatus } from "@prisma/client";
 import { IsEnum, IsString, MinLength } from "class-validator";
 
 export class OverrideAttendanceRecordDto {
-  @IsEnum(AttendanceRecordStatus)
+  @IsEnum({ PRESENT: AttendanceRecordStatus.PRESENT, ABSENT: AttendanceRecordStatus.ABSENT })
   status!: AttendanceRecordStatus;
 
   @IsString()

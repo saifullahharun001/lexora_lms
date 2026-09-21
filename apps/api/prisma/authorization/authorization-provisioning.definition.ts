@@ -155,6 +155,19 @@ export const SUMMATIVE_EXAMINATION_CHAIRMAN_APPROVAL_PROVISIONING = {
     "authorization.summative-examination-chairman-approval.provisioned",
 } as const;
 
+export const FORMATIVE_MARK_ADJUST_PROVISIONING = {
+  permission: {
+    code: PERMISSIONS.FORMATIVE.MARK_ADJUST,
+    resource: "formative.mark",
+    action: "adjust",
+    scope: PermissionScope.DEPARTMENT,
+    description:
+      "Adjust unsubmitted Formative marks with a reason only within an active Course Teacher assignment; excludes integrity resolution and academic finalisation",
+  },
+  targetRoleCode: PLATFORM_ROLES.TEACHER,
+  auditAction: "authorization.formative-mark-adjust.provisioned",
+} as const;
+
 export const AUTHORIZATION_PROVISIONING_DEFINITIONS = [
   SYLLABUS_VERSION_MANAGE_PROVISIONING,
   SYLLABUS_VERSION_LIFECYCLE_MANAGE_PROVISIONING,
@@ -167,6 +180,7 @@ export const AUTHORIZATION_PROVISIONING_DEFINITIONS = [
   SUMMATIVE_EXAMINATION_EXAMINER_MARKS_ENTER_PROVISIONING,
   SUMMATIVE_EXAMINATION_MEMBER_REVIEW_PROVISIONING,
   SUMMATIVE_EXAMINATION_CHAIRMAN_APPROVAL_PROVISIONING,
+  FORMATIVE_MARK_ADJUST_PROVISIONING,
 ] as const;
 
 export type AuthorizationProvisioningDefinition =

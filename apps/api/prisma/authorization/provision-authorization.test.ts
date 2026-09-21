@@ -11,6 +11,7 @@ import {
 import {
   AUTHORIZATION_PROVISIONING_DEFINITIONS,
   BATCH_COORDINATOR_ASSIGNMENT_MANAGE_PROVISIONING,
+  FORMATIVE_MARK_ADJUST_PROVISIONING,
   SUMMATIVE_EXAMINATION_CHAIRMAN_APPROVAL_PROVISIONING,
   SUMMATIVE_EXAMINATION_COMMITTEE_MANAGE_PROVISIONING,
   SUMMATIVE_EXAMINATION_EXAMINER_ASSIGNMENT_MANAGE_PROVISIONING,
@@ -50,11 +51,13 @@ const summativeMemberReviewDefinition =
   SUMMATIVE_EXAMINATION_MEMBER_REVIEW_PROVISIONING;
 const summativeChairmanApprovalDefinition =
   SUMMATIVE_EXAMINATION_CHAIRMAN_APPROVAL_PROVISIONING;
-const summativeTeacherAcademicDutyPermissionCodes: ReadonlySet<string> =
+const formativeMarkAdjustDefinition = FORMATIVE_MARK_ADJUST_PROVISIONING;
+const teacherAcademicDutyPermissionCodes: ReadonlySet<string> =
   new Set([
     summativeExaminerMarksDefinition.permission.code,
     summativeMemberReviewDefinition.permission.code,
     summativeChairmanApprovalDefinition.permission.code,
+    formativeMarkAdjustDefinition.permission.code,
   ]);
 
 interface TestDepartment {
@@ -201,6 +204,10 @@ const exactSummativeChairmanApprovalPermission = exactPermission(
   summativeChairmanApprovalDefinition,
   "permission-summative-chairman-approval",
 );
+const exactFormativeMarkAdjustPermission = exactPermission(
+  formativeMarkAdjustDefinition,
+  "permission-formative-mark-adjust",
+);
 const exactManageLink: TestRolePermission = {
   id: "role-permission-syllabus-manage",
   roleId: adminRoleA.id,
@@ -256,6 +263,11 @@ const exactSummativeChairmanApprovalLink: TestRolePermission = {
   roleId: teacherRoleA.id,
   permissionId: exactSummativeChairmanApprovalPermission.id,
 };
+const exactFormativeMarkAdjustLink: TestRolePermission = {
+  id: "role-permission-formative-mark-adjust",
+  roleId: teacherRoleA.id,
+  permissionId: exactFormativeMarkAdjustPermission.id,
+};
 
 function baseState(): TestState {
   return {
@@ -298,11 +310,13 @@ function completeState(): TestState {
     structuredClone(exactBatchCoordinatorAssignmentPermission),
     structuredClone(exactSummativeMemberReviewPermission),
     structuredClone(exactSummativeChairmanApprovalPermission),
+    structuredClone(exactFormativeMarkAdjustPermission),
   );
   state.rolePermissions.push(
     structuredClone(exactBatchCoordinatorAssignmentLink),
     structuredClone(exactSummativeMemberReviewLink),
     structuredClone(exactSummativeChairmanApprovalLink),
+    structuredClone(exactFormativeMarkAdjustLink),
   );
   return state;
 }
@@ -554,7 +568,7 @@ function resultFor(result: AuthorizationProvisioningResult, code: string) {
 
 const byCode = { departmentCode: departmentA.code } as const;
 
-test("definition set preserves existing authorities and adds exact Batch Coordinator assignment authority in order", () => {
+test("definition set preserves existing authorities and adds exact Formative Teacher adjustment authority in order", () => {
   assert.deepEqual(manageDefinition, {
     permission: {
       code: "course-management.syllabus-version.manage",
@@ -705,6 +719,7 @@ test("definition set preserves existing authorities and adds exact Batch Coordin
     summativeExaminerMarksDefinition,
     summativeMemberReviewDefinition,
     summativeChairmanApprovalDefinition,
+    formativeMarkAdjustDefinition,
   ]);
   assert.equal(
     new Set(
@@ -726,6 +741,53 @@ test("definition set preserves existing authorities and adds exact Batch Coordin
     ).size,
     AUTHORIZATION_PROVISIONING_DEFINITIONS.length,
   );
+});
+
+test("Formative adjustment definition has exact department scope and targets only Teacher", () => {
+  assert.deepEqual(formativeMarkAdjustDefinition, {
+    permission: {
+      code: "formative.mark.adjust",
+      resource: "formative.mark",
+      action: "adjust",
+      scope: PermissionScope.DEPARTMENT,
+      description:
+        "Adjust unsubmitted Formative marks with a reason only within an active Course Teacher assignment; excludes integrity resolution and academic finalisation",
+    },
+    targetRoleCode: "teacher",
+    auditAction: "authorization.formative-mark-adjust.provisioned",
+  });
+});
+
+test("Formative-only provisioning dry-run, audited apply and repeat preserve exact Teacher authority", async () => {
+  const initial = completeState();
+  initial.permissions = initial.permissions.filter((permission) => permission.id !== exactFormativeMarkAdjustPermission.id);
+  initial.rolePermissions = initial.rolePermissions.filter((link) => link.permissionId !== exactFormativeMarkAdjustPermission.id);
+  const h = makeHarness(initial);
+  const plan = await planAuthorizationProvisioning(h.client, byCode);
+  assert.equal(planFor(plan, formativeMarkAdjustDefinition.permission.code).targetRole.id, teacherRoleA.id);
+  assert.equal(h.counters.writes, 0);
+  const result = await applyAuthorizationProvisioning(h.client, byCode);
+  assert.deepEqual(resultFor(result, formativeMarkAdjustDefinition.permission.code), {
+    permissionCode: "formative.mark.adjust", permissionCreated: true, rolePermissionCreated: true, auditRecorded: true,
+  });
+  assert.deepEqual(h.counters.permissionCreateCodes, ["formative.mark.adjust"]);
+  const permission = h.state().permissions.find((candidate) => candidate.code === "formative.mark.adjust")!;
+  const links = h.state().rolePermissions.filter((link) => link.permissionId === permission.id);
+  assert.equal(links.length, 1);
+  assert.equal(links[0]!.roleId, teacherRoleA.id);
+  assert.notEqual(links[0]!.roleId, adminRoleA.id);
+  assert.deepEqual(h.counters.auditActions, [formativeMarkAdjustDefinition.auditAction]);
+  assert.equal(h.state().audits[0]!.departmentId, departmentA.id);
+  const writes = h.counters.writes;
+  await applyAuthorizationProvisioning(h.client, byCode);
+  assert.equal(h.counters.writes, writes);
+});
+
+test("Formative provisioning audit failure rolls back its permission/link and all earlier writes", async () => {
+  const initial = baseState();
+  const h = makeHarness(initial, { failAuditForCode: "formative.mark.adjust" });
+  await assert.rejects(applyAuthorizationProvisioning(h.client, byCode));
+  assert.deepEqual(h.state(), initial);
 });
 
 test("CLI remains dry-run by default and apply remains explicit", () => {
@@ -759,7 +821,7 @@ test("CLI rejects missing, duplicate, malformed, unsupported, and standalone sep
   }
 });
 
-test("ordinary-runtime-shaped dry run plans the three absent additive permissions", async () => {
+test("ordinary-runtime-shaped dry run plans the four absent additive permissions", async () => {
   const initial = ordinaryRuntimeState();
   const h = makeHarness(initial);
   const result = await planAuthorizationProvisioning(h.client, byCode);
@@ -798,9 +860,10 @@ test("ordinary-runtime-shaped dry run plans the three absent additive permission
     result,
     summativeChairmanApprovalDefinition.permission.code,
   );
+  const formativeMarkAdjustPlan = planFor(result, formativeMarkAdjustDefinition.permission.code);
 
   assert.equal(result.applied, false);
-  assert.equal(result.plan.definitions.length, 11);
+  assert.equal(result.plan.definitions.length, 12);
   assert.equal("role" in result.plan, false);
   for (const adminPlan of [
     managePlan,
@@ -822,6 +885,7 @@ test("ordinary-runtime-shaped dry run plans the three absent additive permission
     summativeExaminerMarksPlan,
     summativeMemberReviewPlan,
     summativeChairmanApprovalPlan,
+    formativeMarkAdjustPlan,
   ]) {
     assert.deepEqual(teacherPlan.targetRole, {
       id: teacherRoleA.id,
@@ -851,6 +915,7 @@ test("ordinary-runtime-shaped dry run plans the three absent additive permission
     batchCoordinatorAssignmentPlan,
     summativeMemberReviewPlan,
     summativeChairmanApprovalPlan,
+    formativeMarkAdjustPlan,
   ]) {
     assert.equal(absentPlan.permission.state, "ABSENT");
     assert.equal(absentPlan.roleLink.state, "ABSENT");
@@ -866,7 +931,7 @@ test("ordinary-runtime-shaped dry run plans the three absent additive permission
   assert.deepEqual(h.state(), initial);
 });
 
-test("ordinary-runtime-shaped apply creates only the three absent additive permissions", async () => {
+test("ordinary-runtime-shaped apply creates only the four absent additive permissions", async () => {
   const initial = ordinaryRuntimeState();
   const existingPermissions = structuredClone(initial.permissions);
   const existingRolePermissions = structuredClone(initial.rolePermissions);
@@ -906,6 +971,7 @@ test("ordinary-runtime-shaped apply creates only the three absent additive permi
     result,
     summativeChairmanApprovalDefinition.permission.code,
   );
+  const formativeMarkAdjustResult = resultFor(result, formativeMarkAdjustDefinition.permission.code);
 
   for (const [definition, definitionResult] of [
     [manageDefinition, manageResult],
@@ -935,6 +1001,7 @@ test("ordinary-runtime-shaped apply creates only the three absent additive permi
   for (const [definition, definitionResult] of [
     [summativeMemberReviewDefinition, summativeMemberReviewResult],
     [summativeChairmanApprovalDefinition, summativeChairmanApprovalResult],
+    [formativeMarkAdjustDefinition, formativeMarkAdjustResult],
   ] as const) {
     assert.deepEqual(definitionResult, {
       permissionCode: definition.permission.code,
@@ -947,16 +1014,19 @@ test("ordinary-runtime-shaped apply creates only the three absent additive permi
     batchCoordinatorAssignmentDefinition.permission.code,
     summativeMemberReviewDefinition.permission.code,
     summativeChairmanApprovalDefinition.permission.code,
+    formativeMarkAdjustDefinition.permission.code,
   ]);
   assert.deepEqual(h.counters.rolePermissionCreateCodes, [
     batchCoordinatorAssignmentDefinition.permission.code,
     summativeMemberReviewDefinition.permission.code,
     summativeChairmanApprovalDefinition.permission.code,
+    formativeMarkAdjustDefinition.permission.code,
   ]);
   assert.deepEqual(h.counters.auditActions, [
     batchCoordinatorAssignmentDefinition.auditAction,
     summativeMemberReviewDefinition.auditAction,
     summativeChairmanApprovalDefinition.auditAction,
+    formativeMarkAdjustDefinition.auditAction,
   ]);
   assert.equal(h.counters.transactions, 1);
   assert.deepEqual(h.counters.isolationLevels, [
@@ -970,9 +1040,9 @@ test("ordinary-runtime-shaped apply creates only the three absent additive permi
     h.state().rolePermissions.slice(0, existingRolePermissions.length),
     existingRolePermissions,
   );
-  assert.equal(h.state().permissions.length, 11);
-  assert.equal(h.state().rolePermissions.length, 11);
-  assert.equal(h.state().audits.length, 3);
+  assert.equal(h.state().permissions.length, 12);
+  assert.equal(h.state().rolePermissions.length, 12);
+  assert.equal(h.state().audits.length, 4);
 });
 
 test("pre-Summative state provisions management to Admin and academic duties only to Teacher", async () => {
@@ -985,6 +1055,7 @@ test("pre-Summative state provisions management to Admin and academic duties onl
     summativeExaminerMarksDefinition,
     summativeMemberReviewDefinition,
     summativeChairmanApprovalDefinition,
+    formativeMarkAdjustDefinition,
   ] as const) {
     assert.deepEqual(resultFor(result, definition.permission.code), {
       permissionCode: definition.permission.code,
@@ -1000,6 +1071,7 @@ test("pre-Summative state provisions management to Admin and academic duties onl
     summativeExaminerMarksDefinition.permission.code,
     summativeMemberReviewDefinition.permission.code,
     summativeChairmanApprovalDefinition.permission.code,
+    formativeMarkAdjustDefinition.permission.code,
   ]);
   assert.deepEqual(h.counters.rolePermissionCreateCodes, [
     summativeSetupDefinition.permission.code,
@@ -1008,6 +1080,7 @@ test("pre-Summative state provisions management to Admin and academic duties onl
     summativeExaminerMarksDefinition.permission.code,
     summativeMemberReviewDefinition.permission.code,
     summativeChairmanApprovalDefinition.permission.code,
+    formativeMarkAdjustDefinition.permission.code,
   ]);
   assert.deepEqual(h.counters.auditActions, [
     summativeSetupDefinition.auditAction,
@@ -1016,6 +1089,7 @@ test("pre-Summative state provisions management to Admin and academic duties onl
     summativeExaminerMarksDefinition.auditAction,
     summativeMemberReviewDefinition.auditAction,
     summativeChairmanApprovalDefinition.auditAction,
+    formativeMarkAdjustDefinition.auditAction,
   ]);
   const newPermissions = h
     .state()
@@ -1031,7 +1105,7 @@ test("pre-Summative state provisions management to Admin and academic duties onl
         .rolePermissions.some(
           (link) =>
             link.roleId ===
-              (summativeTeacherAcademicDutyPermissionCodes.has(
+              (teacherAcademicDutyPermissionCodes.has(
                 permission.code,
               )
                 ? teacherRoleA.id
@@ -1068,8 +1142,8 @@ test("current baseline provisions only exact Examiner assignment management auth
   assert.deepEqual(h.counters.auditActions, [
     summativeExaminerAssignmentDefinition.auditAction,
   ]);
-  assert.equal(h.state().permissions.length, 11);
-  assert.equal(h.state().rolePermissions.length, 11);
+  assert.equal(h.state().permissions.length, 12);
+  assert.equal(h.state().rolePermissions.length, 12);
   assert.equal(h.state().audits.length, 1);
 });
 
@@ -1105,8 +1179,8 @@ test("marks checkpoint provisions one exact coarse permission to Teacher, never 
     );
   assert.equal(link?.roleId, teacherRoleA.id);
   assert.notEqual(link?.roleId, adminRoleA.id);
-  assert.equal(h.state().permissions.length, 11);
-  assert.equal(h.state().rolePermissions.length, 11);
+  assert.equal(h.state().permissions.length, 12);
+  assert.equal(h.state().rolePermissions.length, 12);
   assert.equal(h.state().audits.length, 1);
 });
 
@@ -1133,7 +1207,7 @@ test("mixed-role apply gives Admin only management and Teacher only academic-dut
   }
 
   for (const permission of state.permissions.filter((candidate) =>
-    summativeTeacherAcademicDutyPermissionCodes.has(candidate.code),
+    teacherAcademicDutyPermissionCodes.has(candidate.code),
   )) {
     assert.equal(
       state.rolePermissions.some(
@@ -1148,7 +1222,7 @@ test("mixed-role apply gives Admin only management and Teacher only academic-dut
     state.permissions
       .filter(
         (permission) =>
-          !summativeTeacherAcademicDutyPermissionCodes.has(permission.code),
+          !teacherAcademicDutyPermissionCodes.has(permission.code),
       )
       .map((permission) => permission.id),
   );
@@ -1160,9 +1234,9 @@ test("mixed-role apply gives Admin only management and Teacher only academic-dut
     ),
     false,
   );
-  assert.equal(state.permissions.length, 11);
-  assert.equal(state.rolePermissions.length, 11);
-  assert.equal(state.audits.length, 11);
+  assert.equal(state.permissions.length, 12);
+  assert.equal(state.rolePermissions.length, 12);
+  assert.equal(state.audits.length, 12);
   for (const audit of state.audits) {
     const targetLink = state.rolePermissions.find(
       (link) => link.id === audit.targetId,
@@ -1174,13 +1248,13 @@ test("mixed-role apply gives Admin only management and Teacher only academic-dut
     assert.ok(targetPermission);
     assert.equal(
       targetLink.roleId,
-      summativeTeacherAcademicDutyPermissionCodes.has(targetPermission.code)
+      teacherAcademicDutyPermissionCodes.has(targetPermission.code)
         ? teacherRoleA.id
         : adminRoleA.id,
     );
     assert.equal(
       (audit.contextJson as Record<string, unknown>).roleCode,
-      summativeTeacherAcademicDutyPermissionCodes.has(targetPermission.code)
+      teacherAcademicDutyPermissionCodes.has(targetPermission.code)
         ? teacherRoleA.code
         : adminRoleA.code,
     );
@@ -1221,7 +1295,7 @@ test("Batch Coordinator assignment provisioning audit is exact and targets the s
   });
 });
 
-test("second mixed-role apply is a true no-op for all eleven definitions", async () => {
+test("second mixed-role apply is a true no-op for all twelve definitions", async () => {
   const h = makeHarness(ordinaryRuntimeState());
   await applyAuthorizationProvisioning(h.client, byCode);
   const writesAfterFirst = h.counters.writes;
@@ -1242,9 +1316,9 @@ test("second mixed-role apply is a true no-op for all eleven definitions", async
     assert.equal(result.auditRecorded, false);
   }
   assert.equal(h.counters.writes, writesAfterFirst);
-  assert.equal(h.state().permissions.length, 11);
-  assert.equal(h.state().rolePermissions.length, 11);
-  assert.equal(h.state().audits.length, 3);
+  assert.equal(h.state().permissions.length, 12);
+  assert.equal(h.state().rolePermissions.length, 12);
+  assert.equal(h.state().audits.length, 4);
 });
 
 test("exact Batch Coordinator assignment permission with absent link creates only the missing link and one audit", async () => {
@@ -1267,8 +1341,8 @@ test("exact Batch Coordinator assignment permission with absent link creates onl
   assert.deepEqual(h.counters.rolePermissionCreateCodes, [
     batchCoordinatorAssignmentDefinition.permission.code,
   ]);
-  assert.equal(h.state().permissions.length, 11);
-  assert.equal(h.state().rolePermissions.length, 11);
+  assert.equal(h.state().permissions.length, 12);
+  assert.equal(h.state().rolePermissions.length, 12);
   assert.equal(h.state().audits.length, 1);
   assert.deepEqual(h.state().audits[0]!.contextJson, {
     mode: "APPLY",
@@ -1296,6 +1370,7 @@ test("all absent definitions are provisioned and audited in one Serializable tra
     summativeExaminerMarksDefinition.permission.code,
     summativeMemberReviewDefinition.permission.code,
     summativeChairmanApprovalDefinition.permission.code,
+    formativeMarkAdjustDefinition.permission.code,
   ]);
   assert.deepEqual(h.counters.rolePermissionCreateCodes, [
     manageDefinition.permission.code,
@@ -1309,6 +1384,7 @@ test("all absent definitions are provisioned and audited in one Serializable tra
     summativeExaminerMarksDefinition.permission.code,
     summativeMemberReviewDefinition.permission.code,
     summativeChairmanApprovalDefinition.permission.code,
+    formativeMarkAdjustDefinition.permission.code,
   ]);
   assert.deepEqual(h.counters.auditActions, [
     manageDefinition.auditAction,
@@ -1322,6 +1398,7 @@ test("all absent definitions are provisioned and audited in one Serializable tra
     summativeExaminerMarksDefinition.auditAction,
     summativeMemberReviewDefinition.auditAction,
     summativeChairmanApprovalDefinition.auditAction,
+    formativeMarkAdjustDefinition.auditAction,
   ]);
   assert.equal(h.counters.transactions, 1);
   assert.deepEqual(h.counters.isolationLevels, [
@@ -1342,6 +1419,7 @@ test("permission code mismatches including binding fail closed without committed
     summativeExaminerMarksDefinition,
     summativeMemberReviewDefinition,
     summativeChairmanApprovalDefinition,
+    formativeMarkAdjustDefinition,
   ] as const) {
     const state = baseState();
     state.permissions.push({
@@ -1372,6 +1450,7 @@ test("equivalent semantics under incompatible codes including binding fail close
     summativeExaminerMarksDefinition,
     summativeMemberReviewDefinition,
     summativeChairmanApprovalDefinition,
+    formativeMarkAdjustDefinition,
   ] as const) {
     const state = baseState();
     state.permissions.push({
@@ -1847,9 +1926,9 @@ test("simultaneous and repeated mixed-role applies preserve exact cardinality", 
       1,
     );
   }
-  assert.equal(h.state().permissions.length, 11);
-  assert.equal(h.state().rolePermissions.length, 11);
-  assert.equal(h.state().audits.length, 11);
+  assert.equal(h.state().permissions.length, 12);
+  assert.equal(h.state().rolePermissions.length, 12);
+  assert.equal(h.state().audits.length, 12);
 });
 
 test("sanitized multi-definition summary is deterministic, compact, and secret-free", async () => {
@@ -1886,6 +1965,7 @@ test("sanitized multi-definition summary is deterministic, compact, and secret-f
         summativeExaminerMarksDefinition.permission.code,
         summativeMemberReviewDefinition.permission.code,
         summativeChairmanApprovalDefinition.permission.code,
+        formativeMarkAdjustDefinition.permission.code,
       ],
     );
     assert.deepEqual(
@@ -1902,6 +1982,7 @@ test("sanitized multi-definition summary is deterministic, compact, and secret-f
         teacherRoleA.code,
         teacherRoleA.code,
         teacherRoleA.code,
+        teacherRoleA.code,
       ],
     );
     assert.equal(summary.definitions[0]!.noOp, true);
@@ -1915,6 +1996,7 @@ test("sanitized multi-definition summary is deterministic, compact, and secret-f
     assert.equal(summary.definitions[8]!.noOp, true);
     assert.equal(summary.definitions[9]!.noOp, false);
     assert.equal(summary.definitions[10]!.noOp, false);
+    assert.equal(summary.definitions[11]!.noOp, false);
     assert.equal(summary.noOp, false);
     assert.equal(output.includes(secret), false);
     assert.equal(output.includes("secret-password"), false);

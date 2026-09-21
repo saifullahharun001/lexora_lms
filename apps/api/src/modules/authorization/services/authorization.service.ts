@@ -47,6 +47,11 @@ const EXPLICIT_DEPARTMENT_ADMIN_PERMISSION_POLICIES = {
 } as const;
 
 const EXPLICIT_TEACHER_PERMISSION_POLICIES = {
+  [PERMISSIONS.FORMATIVE.MARK_ADJUST]: {
+    resource: "formative.mark",
+    action: "adjust",
+    scope: "department",
+  },
   [SUMMATIVE_EXAMINATION_POLICY_NAMES.EXAMINER_MARKS_ENTER]: {
     resource: "summative-examination.examiner-marks",
     action: "enter",
@@ -116,6 +121,9 @@ const STATIC_ROLE_POLICIES: Record<PlatformRole, string[]> = {
     "system-configuration.*"
   ],
   teacher: [
+    "formative.activities.read",
+    "formative.activities.manage",
+    "formative.activities.submit",
     "course-management.course.read",
     "course-management.offering.read",
     "course-management.offering.manage",
