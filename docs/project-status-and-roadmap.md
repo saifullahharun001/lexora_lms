@@ -2561,3 +2561,102 @@ The following are not closed by this checkpoint:
 
 The complete Summative Examination and final-result workflows therefore remain
 **PARTIAL / ACTIVE BACKEND DEVELOPMENT**.
+
+<!-- roadmap-formative-activities-30-runtime-closed-20260921 -->
+
+## Formative Activities `/30` Runtime Verification Supersession — 2026-09-21
+
+The ordinary Course Teacher's Formative Activities `/30` management,
+marking, feedback, authorised-adjustment and immutable Teacher-submission
+slice is now:
+
+**IMPLEMENTED + COMMITTED + PUSHED + DEPLOYED + TARGETED AUTHENTICATED SERVER-RUNTIME VERIFIED**
+
+Runtime-verified implementation commit:
+
+`c61610171a7f2d2b56d906ce6ad5bf717efafae7`
+
+The verified boundary reaches an immutable Teacher:
+
+`MARKS_SUBMITTED`
+
+package for the Activities `/30` component.
+
+The targeted authenticated runtime campaign verified:
+
+- fresh Teacher authority;
+- assigned-course enforcement;
+- wrong-role denial;
+- safe cross-department direct-object denial;
+- forged-department-header resistance;
+- exact `formative.mark.adjust` permission;
+- mandatory adjustment reason;
+- append-only mark revision history;
+- mandatory written-feedback completion;
+- exact `/30` configured weight;
+- server-derived weighted marks;
+- incomplete-submission rejection;
+- real PostgreSQL deferred whole-package completeness rejection;
+- exact immutable submission-source binding;
+- Teacher-assignment provenance;
+- required success audits;
+- duplicate-submission conflict;
+- post-submission API freeze;
+- direct PostgreSQL append-only/freeze protection;
+- authenticated read-back;
+- live assignment-revocation enforcement.
+
+Verified Teacher submission:
+
+`cmuao7i83001h2iwk21yoxd1v`
+
+Runtime result:
+
+`24.00/30.00`
+
+Rule version:
+
+`FORMATIVE_ACTIVITIES_30_HALF_UP_2DP_V1`
+
+A first direct-database negative probe used a non-canonical test
+`rule_version_code` and was correctly rejected by the database rule-version
+check before the intended deferred completeness trigger. The campaign
+preserved the existing successful evidence, resumed with the canonical rule
+version and then verified the intended deferred trigger.
+
+That event is classified as:
+
+**verification-harness correction; no product defect**
+
+### Formative work still pending
+
+This `/30` runtime closure does not complete the Formative Assessment domain.
+
+Still pending:
+
+- authoritative Attendance `/5` calculation and immutable source evidence;
+- authoritative Comprehensive Examination `/5` workflow and source evidence;
+- source-backed authority for Formative `VERIFIED`;
+- source-backed authority for `APPROVED` / `FINALISED` / `LOCKED` as
+  applicable to the final academic workflow;
+- controlled post-submission correction/reopen handling;
+- authoritative immutable Final Formative `/40`;
+- Formative frontend integration.
+
+The Comprehensive Examination `/5` remains an Examination Committee/panel
+boundary and must not be assigned to the ordinary Course Teacher.
+
+The current final Formative dependency remains:
+
+`Activities /30 + Attendance /5 + Comprehensive Examination /5 = Final Formative /40`
+
+The final-result workflow must consume the future authoritative locked Final
+Formative `/40` together with the already Chairman-approved locked Summative
+`/60`.
+
+The overall Formative Assessment workflow therefore remains:
+
+**PARTIAL / ACTIVE BACKEND DEVELOPMENT**
+
+The Activities `/30` Teacher-submission slice is closed for the tested normal
+runtime boundary; the complete `/40` workflow is not.

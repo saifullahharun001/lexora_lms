@@ -36727,3 +36727,529 @@ Still pending / outside this verified boundary include:
 
 The Chairman-approved `46/60` evidence is an authoritative locked Summative
 component. It is not by itself a complete course result or a published result.
+
+<!-- formative-activities-30-runtime-closed-20260921 -->
+
+## Formative Activities `/30` Teacher Submission Authenticated Server Runtime Verification — 2026-09-21
+
+### Classification
+
+The Formative Activities `/30` Teacher-submission slice is now:
+
+**IMPLEMENTED + COMMITTED + PUSHED + DEPLOYED + TARGETED AUTHENTICATED SERVER-RUNTIME VERIFIED**
+
+This classification is deliberately limited to the ordinary Course Teacher's
+Formative Activities `/30` workflow through immutable `MARKS_SUBMITTED`
+evidence.
+
+It does not claim completion of the complete Formative Assessment `/40`
+workflow.
+
+### Implementation identity
+
+Runtime-verified implementation commit:
+
+`c61610171a7f2d2b56d906ce6ad5bf717efafae7`
+
+Implementation subject:
+
+`feat(formative): add teacher submission foundation`
+
+Migration:
+
+`202609210001_add_formative_teacher_submission`
+
+The implementation introduced the current:
+
+- Formative Activity configuration and marking foundation;
+- immutable Formative mark-evidence revision chain;
+- exact Teacher Activities `/30` submission package;
+- exact source-item binding;
+- Teacher-assignment provenance;
+- `formative.mark.adjust` exact permission;
+- PostgreSQL append-only/freeze protection;
+- deferred whole-package submission completeness protection.
+
+The Teacher submission model is intentionally limited to
+`MARKS_SUBMITTED`. It is not `VERIFIED`, `FINALISED`, `LOCKED`, or an
+authoritative Final Formative `/40`.
+
+### Deployment and migration verification
+
+The exact implementation commit was promoted to the ordinary Ubuntu runtime.
+
+Verified deployment state included:
+
+- server `HEAD = origin/main = c61610171a7f2d2b56d906ce6ad5bf717efafae7`;
+- repository clean/aligned;
+- Prisma validation: PASS;
+- Prisma Client generation: PASS;
+- API typecheck: PASS;
+- API build: PASS;
+- focused compiled Formative/regression tests: `58/58 PASS`;
+- target migration deployed successfully;
+- final Prisma migration status: up to date;
+- four Formative tables present;
+- three Formative enum types present;
+- migration target applied exactly once;
+- failed/rolled-back target migration rows: zero;
+- pre-existing business-data cardinality preserved during schema migration;
+- authorization cardinality preserved during schema migration;
+- no automatic Formative academic rows were created by migration.
+
+A private validated pre-migration PostgreSQL backup was retained before the
+ordinary database mutation.
+
+The migration's PostgreSQL integrity layer was present after deployment,
+including:
+
+- Formative mark-evidence immutability trigger;
+- Teacher-submission immutability trigger;
+- submission-item immutability trigger;
+- submitted activity/configuration freeze protection;
+- mark snapshot/revision/integrity guard;
+- deferred Teacher-submission completeness protection.
+
+### Permanent authorization provisioning
+
+Before provisioning:
+
+- `formative.mark.adjust` permission count: `0`;
+- Law Teacher role link count: `0`;
+- non-Teacher role link count: `0`;
+- Formative adjustment provisioning audit count: `0`.
+
+A canonical authorization dry-run was performed first.
+
+Dry-run result:
+
+- all existing authorization definitions remained exact/unchanged;
+- only `formative.mark.adjust` required creation;
+- dry-run database fingerprint remained `11|11|959`;
+- dry-run writes: zero.
+
+First permanent apply produced:
+
+`11|11|959 -> 12|12|960`
+
+Verified final authority:
+
+- exact `formative.mark.adjust` permission: `1`;
+- exact Law `teacher` RolePermission: `1`;
+- Law `department_admin` link: `0`;
+- other non-Teacher role leakage: `0`;
+- provisioning audit
+  `authorization.formative-mark-adjust.provisioned`: exactly `1`.
+
+A second permanent apply was a true no-op:
+
+- fingerprint remained `12|12|960`;
+- no duplicate permission;
+- no duplicate role link;
+- no duplicate provisioning audit.
+
+### API activation and platform health
+
+After activation:
+
+- PM2 `lexora-api`: online;
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- NestJS listener remained loopback-only at `127.0.0.1:4000`;
+- unauthenticated direct Formative route: HTTP `401`;
+- unauthenticated Nginx Formative route: HTTP `401`.
+
+No direct NestJS LAN/public exposure was introduced.
+
+### Authenticated authorization and department-isolation matrix
+
+Fresh canonical principals were used.
+
+Verified:
+
+- fresh Law Teacher login: HTTP `201`;
+- fresh Law Department Admin login: HTTP `201`;
+- fresh Law Student login: HTTP `201`;
+- unauthenticated Formative route: HTTP `401`;
+- Teacher accessing the target offering before assignment: HTTP `404`;
+- Department Admin on Teacher Formative surface: HTTP `403`;
+- Student on Teacher Formative surface: HTTP `403`;
+- forged `x-department-id` for the Business department did not override the
+  authenticated Law principal's department scope;
+- assigned Law offering remained accessible with the forged header: HTTP `200`;
+- Law Teacher direct Business-department CourseOffering access: HTTP `404`;
+- no Formative academic rows were written during the authorization-only
+  verification.
+
+This confirms the tested boundary preserved:
+
+- authenticated-principal department authority;
+- request-context isolation;
+- Teacher assigned-course checks;
+- wrong-role denial;
+- safe not-found behavior for inaccessible direct object IDs.
+
+### Runtime-only academic test surface
+
+The targeted runtime campaign used the existing isolated runtime-only offering:
+
+`offering_law_enrollment_runtime_positive`
+
+Department:
+
+`dept_law_test`
+
+Enrollment:
+
+`cmsnbenop000n2i9tjzk2cm0x`
+
+Assessment template:
+
+`assessment_template_law_enrollment_runtime_v1`
+
+Template version:
+
+`1`
+
+The bound standard theoretical assessment structure was:
+
+- Formative Activities: `/30`;
+- Attendance: `/5`;
+- Comprehensive Examination: `/5`;
+- Summative Examination: `/60`.
+
+Canonical Teacher principal:
+
+- user ID: `cmpmmnmqk000b2imteuqllujw`;
+- email: `teacher.law@cu.ac.bd`.
+
+A runtime-only Teacher assignment was created only for this verification:
+
+`rt_formative_assignment_20260921T030909Z_59819`
+
+It was returned to `INACTIVE` with `unassigned_at` populated after the
+runtime campaign.
+
+### Formative Activities `/30` runtime evidence
+
+Two activities were created and moved to `MARKING`:
+
+1. activity:
+   `cmuao22r9000n2iwkcklhw8tm`
+   - raw maximum: `20`;
+   - assigned weight: `15`.
+
+2. activity:
+   `cmuao22ru000r2iwkaug6579m`
+   - raw maximum: `10`;
+   - assigned weight: `15`.
+
+Combined configured weight:
+
+`30`
+
+Initial first-activity evidence:
+
+`cmuao22v1000z2iwkm2o6bdwt`
+
+Verified values:
+
+- revision: `1`;
+- raw mark: `12/20`;
+- weighted mark: `9/15`;
+- written feedback complete;
+- integrity state: `CLEAR`.
+
+An ordinary second mark write attempting to revise the existing academic mark
+was rejected:
+
+- HTTP `403`.
+
+An adjustment request without the required reason was rejected:
+
+- HTTP `400`.
+
+The exact provisioned `formative.mark.adjust` authority was then exercised.
+
+Authorised adjustment evidence:
+
+`cmuao22xd00132iwk4vde5678`
+
+Verified:
+
+- revision: `2`;
+- previous evidence:
+  `cmuao22v1000z2iwkm2o6bdwt`;
+- revised raw mark: `16/20`;
+- revised weighted mark: `12/15`;
+- adjustment reason present;
+- written feedback complete;
+- integrity state: `CLEAR`;
+- HTTP `201`.
+
+Second-activity evidence:
+
+`cmuao22z500172iwk3xe71naz`
+
+Verified:
+
+- revision: `1`;
+- raw mark: `8/10`;
+- weighted mark: `12/15`;
+- written feedback complete;
+- integrity state: `CLEAR`.
+
+### Incomplete submission protection
+
+Before the second activity mark existed, an authenticated Teacher submission
+attempt was rejected:
+
+- HTTP `400`.
+
+This verified the application-service completeness boundary.
+
+### Verification-harness correction; no product defect
+
+The first direct PostgreSQL negative probe attempted to create an intentionally
+incomplete Teacher submission using:
+
+`RT_INVALID_DB_TRIGGER_PROBE`
+
+as `rule_version_code`.
+
+The database correctly rejected that row first through the existing
+`formative_teacher_submissions_rule_version_code_check`.
+
+Because that check constraint runs before the deferred completeness trigger,
+the first probe did not reach the intended deferred-trigger boundary.
+
+This was a **verification-harness correction; no product defect**.
+
+The stopped campaign preserved the already successful evidence and was not
+recreated.
+
+Before resuming, durable state was explicitly verified as:
+
+- Formative activities: `2`;
+- Formative mark-evidence rows: `3`;
+- Teacher submissions: `0`;
+- submission items: `0`;
+- runtime-only Teacher assignment: `INACTIVE`;
+- old invalid probe durable rows: `0`;
+- expected success audits preserved.
+
+The same runtime-only Teacher assignment was then temporarily reactivated.
+
+The corrected direct PostgreSQL probe used the canonical rule version:
+
+`FORMATIVE_ACTIVITIES_30_HALF_UP_2DP_V1`
+
+The corrected incomplete package then reached the intended deferred
+completeness trigger and failed as expected.
+
+Verified:
+
+- direct incomplete-package PostgreSQL command: failed;
+- expected `Incomplete Teacher submission sources` protection observed;
+- failed package durable Teacher-submission rows: `0`.
+
+This confirms commit-time whole-package validation independently of the
+application-service check.
+
+### Valid Teacher `/30` submission
+
+After all required current evidence existed, the authenticated Teacher
+submission succeeded:
+
+- HTTP `201`;
+- submission ID:
+  `cmuao7i83001h2iwk21yoxd1v`;
+- status:
+  `MARKS_SUBMITTED`;
+- server-derived total:
+  `24.00/30.00`;
+- total configured weight:
+  `30.00`;
+- rule version:
+  `FORMATIVE_ACTIVITIES_30_HALF_UP_2DP_V1`;
+- actor:
+  `cmpmmnmqk000b2imteuqllujw`;
+- Teacher assignment:
+  `rt_formative_assignment_20260921T030909Z_59819`;
+- assessment template:
+  `assessment_template_law_enrollment_runtime_v1`;
+- template version:
+  `1`;
+- source activity count:
+  `2`.
+
+The verified Teacher submission total was derived server-side; no client-supplied aggregate `/30` was used in the verified submission path.
+
+### Exact immutable source binding
+
+The submission contained exactly two source items.
+
+Verified binding:
+
+- activity
+  `cmuao22r9000n2iwkcklhw8tm`
+  -> current revision-2 evidence
+  `cmuao22xd00132iwk4vde5678`
+  -> weighted mark `12`;
+
+- activity
+  `cmuao22ru000r2iwkaug6579m`
+  -> revision-1 evidence
+  `cmuao22z500172iwk3xe71naz`
+  -> weighted mark `12`.
+
+The older first-activity revision remained immutable historical evidence and
+was not selected as the submission source.
+
+Teacher-assignment provenance was present on all three mark-evidence rows.
+
+### Success audit evidence
+
+Exact targeted success-audit cardinality:
+
+- `formative.activity.created`: `2`;
+- `formative.activity.marking-started`: `2`;
+- `formative.mark.recorded`: `2`;
+- `formative.mark.adjusted`: `1`;
+- `formative.activities.teacher-submitted`: `1`.
+
+### Duplicate and post-submission protection
+
+Exact duplicate Teacher submission attempt:
+
+- HTTP `409`.
+
+After the duplicate request:
+
+- durable Teacher submission count remained exactly `1`.
+
+After successful `MARKS_SUBMITTED`:
+
+- create new activity: HTTP `409`;
+- update submitted activity configuration: HTTP `409`;
+- ordinary mark write: HTTP `409`;
+- authorised adjustment attempt: HTTP `409`.
+
+The current implementation therefore does not provide a hidden
+post-submission correction/reopen path.
+
+### Real PostgreSQL append-only and freeze verification
+
+Direct PostgreSQL mutation probes were executed against the ordinary runtime
+database.
+
+Verified blocked operations:
+
+- direct UPDATE of protected Formative mark evidence: blocked;
+- direct DELETE of Teacher submission: blocked;
+- direct UPDATE of submitted activity configuration: blocked.
+
+Each probe exited non-zero.
+
+After all probes:
+
+- Teacher submission remained present;
+- adjusted mark evidence remained unchanged;
+- submitted activity configuration remained unchanged.
+
+This confirms the tested persistence layer cannot be bypassed by direct
+ordinary UPDATE/DELETE operations for these protected records.
+
+### Authenticated read-back and live assignment revocation
+
+Authenticated Teacher read-back:
+
+- HTTP `200`;
+- activities: exactly `2`;
+- immutable mark history: exactly `3` revisions;
+- exact Teacher submission present;
+- exact submission items: `2`.
+
+The runtime-only Teacher assignment was then deactivated.
+
+Final assignment state:
+
+- status: `INACTIVE`;
+- `unassigned_at`: populated.
+
+Using the same still-valid Teacher access token after assignment deactivation:
+
+- target Formative offering access: HTTP `404`.
+
+This confirms the tested Formative service performs live assignment authority
+checks rather than relying only on token-time assignment state.
+
+### Final durable runtime state
+
+For the targeted runtime-only offering:
+
+- activities: `2`;
+- mark evidence: `3`;
+- Teacher submissions: `1`;
+- submission items: `2`.
+
+Permanent authorization state remained:
+
+- `formative.mark.adjust` permission: `1`;
+- Law Teacher role link: `1`.
+
+Final platform state:
+
+- repository: clean before documentation update;
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- runtime-only Teacher assignment: `INACTIVE`.
+
+Server evidence summary:
+
+`~/.local/state/lexora/formative-runtime/20260921T030908Z/summary.txt`
+
+No raw password, access token, refresh token, password hash, database
+credential or production secret is recorded in this documentation.
+
+### Current superseding Formative classification
+
+The current Formative Activities `/30` Course-Teacher submission boundary is:
+
+**IMPLEMENTED + COMMITTED + PUSHED + DEPLOYED + TARGETED AUTHENTICATED SERVER-RUNTIME VERIFIED**
+
+This checkpoint supersedes earlier statements that classified this exact
+Teacher Activities `/30` management/submission slice as only locally
+implemented, deployment-pending, or authenticated-runtime-pending.
+
+Historical evidence remains preserved as point-in-time evidence.
+
+This checkpoint does **not** claim completion of:
+
+- authoritative Attendance `/5` calculation/snapshot workflow;
+- authoritative Comprehensive Examination `/5` workflow;
+- `VERIFIED` Formative authority;
+- `APPROVED` Formative authority where required by the final workflow;
+- `FINALISED` Formative authority;
+- `LOCKED` Final Formative evidence;
+- post-submission correction/reopen workflow;
+- authoritative Final Formative `/40`;
+- Formative frontend integration.
+
+Current Attendance `/5` work remains a rule/foundation boundary only and must
+not be described as an authoritative locked `/5` source.
+
+The Comprehensive Examination `/5` remains controlled by the authorised
+Examination Committee/panel, not by the ordinary Course Teacher, and its
+authoritative workflow/source remains pending.
+
+The authoritative Final Formative component remains:
+
+`Activities /30 + Attendance /5 + Comprehensive Examination /5 = /40`
+
+The authority for the remaining Formative verification/finalisation/locking
+transitions must not be invented without source-backed academic approval.
+
+The final-result layer must continue to consume a future authoritative locked
+Final Formative `/40`, not reconstruct a final Formative result directly from
+this Teacher Activities `/30` submission.
