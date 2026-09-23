@@ -2660,3 +2660,65 @@ The overall Formative Assessment workflow therefore remains:
 
 The Activities `/30` Teacher-submission slice is closed for the tested normal
 runtime boundary; the complete `/40` workflow is not.
+
+<!-- roadmap-regular-comprehensive-local-verified-20260923 -->
+
+## Examination Candidate Registration + Regular Comprehensive /5 Status Supersession — 2026-09-23
+
+The current Regular Comprehensive `/5` status is:
+
+**BACKEND IMPLEMENTED + LOCAL / DISPOSABLE POSTGRESQL VERIFIED;
+DEPLOYMENT AND AUTHENTICATED RUNTIME VERIFICATION PENDING**
+
+This section supersedes older statements that the entire authoritative
+Comprehensive `/5` backend is still unimplemented, only for this Regular
+workflow. Historical evidence remains preserved. It does not place the
+workflow in production.
+
+Implemented scope includes explicit POE Chairman-certified candidate
+classification, separate from Enrollment, with `REGULAR`, `IRREGULAR` and
+`IMPROVEMENT` categories. Only certified REGULAR candidate/course sources
+feed this Comprehensive workflow. Classification support does not implement
+IRREGULAR or IMPROVEMENT Comprehensive workflows.
+
+Regular Comprehensive supports `ALL_MEMBERS_AVERAGE`, `COURSE_DISTRIBUTED`
+and `CHAIRMAN_ONLY` under the exact four-seat Examination Committee. Narrow
+appointment-bound External access remains separate from Teacher, Admin and
+Summative authority. Exact roster, configuration/allocation provenance,
+transaction-coupled first-mark/absence provenance, immutable revisions,
+Chairman returns, reason-idempotent absence evidence and immutable final
+result/source packages are implemented with exact permissions, department
+isolation and required transactional audits.
+
+Local/disposable regression verification passed **574/574**, with **0 failed
+and 0 skipped**. The focused Comprehensive service suite passed **78/78**.
+Prisma validate/generate and API typecheck/build passed; disposable PostgreSQL
+cleanup was confirmed. Reviewed High #1–#3, Medium #1–#3, Medium #4A/#4B and
+the Low absence-idempotency finding are closed for this bounded checkpoint.
+Detailed verification, negative cases, reconciliation and database actor
+assurance limits are recorded in the
+[2026-09-23 runtime checklist checkpoint](runtime-test-checklist.md#examination-candidate-registration--regular-comprehensive-examination-5--local--disposable-postgresql-verification-checkpoint--2026-09-23),
+which remains the authoritative evidence record.
+
+At the time the verification evidence was generated, the implementation
+remained uncommitted and undeployed. This documentation records that
+pre-commit verification boundary; it does not assert an implementation
+commit hash. The ordinary Lexora database was not accessed, the server
+repository was not modified, and deployment/authenticated deployed runtime
+verification remain pending.
+
+### Remaining roadmap and component separation
+
+Still pending are Special Comprehensive, IRREGULAR/IMPROVEMENT Comprehensive
+workflows, authoritative Attendance `/5`, authoritative Final Formative `/40`
+and its `VERIFIED` / `APPROVED` / `FINALISED` / `LOCKED` lifecycle, frontend,
+ordinary DB migration, deployment and authenticated deployed runtime
+verification. Further result integration/publication remains outside this
+checkpoint. DB-derived transition timestamp consistency and audit
+target-type/taxonomy polish remain future, non-blocking hardening items.
+
+The already verified Activities `/30` Course Teacher checkpoint is unchanged.
+Regular Comprehensive `/5` is a distinct Examination Committee-controlled
+component; Attendance `/5` remains pending. These components do not yet
+constitute authoritative locked Final Formative `/40`. The complete Formative
+and final-result workflows remain **PARTIAL / ACTIVE BACKEND DEVELOPMENT**.

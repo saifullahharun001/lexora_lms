@@ -37253,3 +37253,224 @@ transitions must not be invented without source-backed academic approval.
 The final-result layer must continue to consume a future authoritative locked
 Final Formative `/40`, not reconstruct a final Formative result directly from
 this Teacher Activities `/30` submission.
+
+<!-- candidate-registration-regular-comprehensive-local-verified-20260923 -->
+
+## Examination Candidate Registration + Regular Comprehensive Examination /5 — Local / Disposable PostgreSQL Verification Checkpoint — 2026-09-23
+
+### Evidence classification and supersession
+
+The Examination Candidate Registration foundation and Regular Comprehensive
+Examination `/5` backend checkpoint are:
+
+**IMPLEMENTED + LOCAL / DISPOSABLE POSTGRESQL VERIFIED**
+
+This additive checkpoint supersedes earlier statements that the entire
+Comprehensive `/5` backend remains unimplemented, only for the Regular
+Comprehensive scope described below. Earlier evidence remains preserved as
+point-in-time evidence. The verified Course Teacher Formative Activities `/30`
+checkpoint remains unchanged.
+
+At the time the verification evidence was generated, the implementation
+remained uncommitted and undeployed. This documentation records that
+pre-commit verification boundary. Deployment and authenticated application
+runtime remain pending. No implementation commit hash is asserted here.
+
+The committed baseline for this bundle was:
+
+`c9cf5da368e16f1fcbdcf5616df91ab9e45a6833`
+
+### Implemented candidate and authority boundary
+
+- Explicit Examination Candidate Classification / Registration is the
+  authoritative category source, separate from Enrollment. Enrollment and
+  curriculum bindings establish academic course sources; they do not imply
+  that a candidate is REGULAR.
+- The current POE Chairman records and certifies candidate lists using exact
+  classification permission and appointment provenance. The classification
+  foundation distinguishes `REGULAR`, `IRREGULAR` and `IMPROVEMENT`.
+- Only the exact certified `REGULAR` candidate/course sources feed this
+  Regular Comprehensive workflow. IRREGULAR and IMPROVEMENT Comprehensive
+  workflows are not implemented by this checkpoint.
+- The formal Examination Committee has four exact seats: `CHAIRMAN`,
+  `MEMBER_1`, `MEMBER_2` and `EXTERNAL_MEMBER`. Ordinary Course Teacher,
+  Administrator or Student status does not substitute for Committee or POE
+  appointment authority.
+- External Comprehensive access uses a dedicated narrow account and role,
+  bound to the exact current External Member appointment and its assignment
+  timestamp. Expiry and revocation are checked live. It grants Comprehensive
+  read/mark access, without Summative, ordinary Teacher or administrative
+  privilege. Dedicated POE/External UserRole lifecycle state is synchronized
+  with appointment/access provisioning and revocation.
+
+### Regular Comprehensive workflow and immutable evidence
+
+The three supported modes are:
+
+| Mode | Authoritative marking source |
+|---|---|
+| `ALL_MEMBERS_AVERAGE` | All four distinct current Committee seats, including External Member; exact server-derived arithmetic mean. |
+| `COURSE_DISTRIBUTED` | The exact current appointment allocated to the target course. |
+| `CHAIRMAN_ONLY` | The current Chairman's mark, without an invented Member-review requirement. |
+
+Configuration retains explicit previous/current audit snapshots and the
+configuring Chairman's exact appointment. Course allocation separately
+records the target appointment and the allocating Chairman's actor and
+appointment provenance; allocation clearing retains its own provenance.
+
+Roster locking records the acting Chairman and exact appointment on the
+parent Comprehensive. The locked roster must equal the complete certified
+REGULAR source multiset, including registration version and candidate-course
+identity. Omissions, extras, duplicates, wrong sources and non-REGULAR or
+uncertified sources are rejected. An applicable course with an empty expected
+REGULAR set does not require an invented candidate.
+
+First-marking provenance records the actor, exact assignment and assignment
+timestamp, plus the External binding when applicable, for the first mark or
+Chairman absence evidence. A deferred constraint validates the first-start
+transition against matching authoritative mark or absence evidence in the
+same transaction. An authorised standalone change to `MARKING` cannot commit
+without that evidence. Subsequent evidence cannot replace first-start
+provenance. Mode/course authority and exact mark-enter or Chairman-review
+permission remain independently enforced on the evidence itself.
+
+Submitted marks and their actor/source provenance are immutable. Chairman
+return-for-correction binds the exact submitted mark; a permitted correction
+creates a successor revision while retaining the predecessor and original
+current author binding. It does not rewrite submitted history or grant the
+Chairman authority to edit another member's mark.
+
+Absence is explicit immutable academic evidence, not an invented zero mark.
+It conflicts with existing marks for that candidate and blocks normal
+finalisation pending a separate resolution workflow. Retrying with the same
+normalized, bounded reason returns the existing absence. A different valid
+normalized reason raises `ConflictException` (`Absence evidence is immutable`).
+Neither retry path changes the original reason, creates another absence or
+success audit, restarts marking, or changes first-start provenance.
+
+Chairman finalisation derives the result from complete exact current
+submitted sources and creates an immutable finalisation/result/source
+package. Deferred validation rejects partial packages, stale or unresolved
+sources and inconsistent derived values. Final evidence cannot be updated
+or deleted through ordinary mutations.
+
+Required success audits commit in the same transaction as protected
+mutations. Audit contexts retain explicit structural provenance without
+entered marks, credentials, password hashes or raw tokens. Audit failure
+rolls back the protected evidence and related parent transition together.
+
+### Reviewed findings closed
+
+Independent review and the local/disposable PostgreSQL verification campaign
+closed the following findings; the final absence retry correction is covered
+at service level while existing database immutability remains intact:
+
+| Finding | Resulting guarantee |
+|---|---|
+| High #1 — candidate reverse completeness | Certification checks the complete current academic candidate-course source set. |
+| High #2 — Comprehensive DB permission provenance | Database guards require exact operation permission independently of Committee identity. |
+| High #3 — candidate classification DB permission provenance | Draft recording and certification require exact classification permission and POE authority. |
+| Medium #1 — dedicated POE/External UserRole lifecycle | Dedicated grants track appointment/access provisioning and revocation. |
+| Medium #2 — Candidate DRAFT history/audits | Explicit previous/current structural snapshots reconstruct draft creation, revision and removal. |
+| Medium #3 — candidate version transitions | Initial version is 1; meaningful revisions advance by exactly one; arbitrary version/identity changes fail. |
+| Medium #4A — POE DRAFT actor provenance | Draft recording binds the actual authorized actor and exact POE appointment. |
+| Medium #4B — Comprehensive control provenance | Configuration, allocation/clearing, roster lock and first marking retain exact independent provenance; first start is transaction-coupled to matching evidence. |
+| Low — absence idempotency | Same normalized reason is idempotent; conflicting immutable reason is rejected without new evidence or audit. |
+
+### Verification results and boundary
+
+Latest normal PowerShell verification:
+
+| Check | Result |
+|---|---|
+| Prisma validate | PASS |
+| Prisma generate | PASS |
+| API typecheck | PASS |
+| API build | PASS |
+| Focused Comprehensive service suite | 78/78 PASS |
+| Full Comprehensive campaign | 574/574 PASS |
+| Failed | 0 |
+| Skipped | 0 |
+| `git diff --check` | PASS; LF/CRLF informational warnings only |
+| Isolated disposable PostgreSQL cleanup | Confirmed |
+
+The 574-test campaign includes adjacent authorization, candidate-registration,
+Comprehensive, Formative, Summative-authority, DTO, controller, schema and
+PostgreSQL guard regression coverage. It does not claim that every Lexora
+subsystem was fully retested. The PostgreSQL campaign uses isolated
+disposable fixtures; it is not evidence of ordinary-database migration or
+authenticated deployed application behavior.
+
+Verified negative/security cases include arbitrary or wrong actors, wrong
+departments and foreign academic identities; forged department/header scope
+does not override the authenticated principal. Stale, revoked or expired
+appointments and bindings fail. Wildcard, equivalent-code, wrong-resource,
+wrong-action and wrong-scope grants cannot substitute where exact permission
+is required. Admin/Student/ordinary Teacher roles cannot replace Committee or
+POE authority, and External access remains narrow. Exact allocation, roster
+and marking-start provenance, rejection of standalone marking-start at the
+deferred boundary, required-audit rollback and final-evidence immutability
+were covered within this local/disposable boundary.
+
+Pre-commit reconciliation confirmed 36 intended implementation/test/support
+candidate files, no suspicious or unrelated candidate file, schema/migration
+alignment, one new migration
+(`202609210002_add_regular_comprehensive_workflow`), and no edits to committed
+historical migrations. Authorization and department isolation were preserved,
+with no Summative privilege leakage or real secret in the intended scope.
+`pnpm-lock.yaml` remained unchanged and the preserved Formative stash was
+untouched.
+
+Verification-environment boundary:
+
+| Boundary | Evidence at this checkpoint |
+|---|---|
+| Local application/static verification | YES |
+| Isolated disposable PostgreSQL verification | YES |
+| Ordinary Lexora PostgreSQL | NOT ACCESSED |
+| Implementation deployment | NOT PERFORMED |
+| Authenticated deployed application runtime | NOT PERFORMED |
+| Server repository | NOT MODIFIED |
+
+### Database actor assurance and future hardening
+
+The database validates that the declared academic actor and exact
+appointment/binding were valid and authorized at mutation time. Because
+Lexora uses a shared Prisma database identity, this does **not**
+cryptographically prove the physical human operating the SQL connection.
+This checkpoint introduces no custom PostgreSQL actor GUC/session-variable
+authority.
+
+Future, non-blocking hardening remains separate:
+
+- DB-derived transition timestamps for stronger chronology consistency,
+  instead of broad application `new Date()` sourcing;
+- audit target-type/taxonomy polish.
+
+Neither item is classified as a failed security finding or a current blocker
+for this verified backend checkpoint.
+
+### Explicitly pending scope
+
+This checkpoint does not complete or claim:
+
+- Special Comprehensive Examination;
+- IRREGULAR or IMPROVEMENT Comprehensive workflows;
+- authoritative Attendance `/5`;
+- authoritative Final Formative `/40`;
+- the Formative `VERIFIED` / `APPROVED` / `FINALISED` / `LOCKED` lifecycle;
+- frontend implementation/integration;
+- ordinary Lexora DB migration or implementation deployment;
+- authenticated deployed application runtime verification;
+- further result integration/publication beyond the existing bounded
+  implementation.
+
+Activities `/30` retains its separately verified Course Teacher scope.
+Regular Comprehensive `/5` is a separate Examination Committee-controlled
+component. Attendance `/5` and authoritative locked Final Formative `/40`
+remain pending:
+
+`Activities /30 + Attendance /5 + Comprehensive Examination /5 = Final Formative /40`
+
+This local/disposable checkpoint does not place Regular Comprehensive `/5`
+in production or close the complete Formative/final-result workflow.

@@ -1,3 +1,4 @@
+import { ExaminationContextService } from "./examination-context.service";
 import { SummativeQuestionConfigurationService } from "./application/services/summative-question-configuration.service";
 import { SummativeQuestionConfigurationsController } from "./presentation/http/summative-question-configurations.controller";
 import { SummativeCandidateRosterService } from "./application/services/summative-candidate-roster.service";
@@ -43,6 +44,7 @@ import { ExaminationsController } from "./presentation/http/examinations.control
     SummativeCommitteeWorkflowController,
   ],
   providers: [
+    ExaminationContextService,
     SummativeManagementAuthorizerService,
     ExaminationSetupService,
     ExaminationCommitteeService,
@@ -60,7 +62,7 @@ import { ExaminationsController } from "./presentation/http/examinations.control
     SummativeThirdExaminationReferralsService,
     SummativeThirdExaminationReferralsService,
   ],
-  exports: [
+  exports: [ExaminationContextService,
     ExaminationSetupService,
     ExaminationCommitteeService,
     ExaminationCourseExaminerAssignmentService,

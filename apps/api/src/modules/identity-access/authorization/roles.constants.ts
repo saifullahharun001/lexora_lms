@@ -1,4 +1,6 @@
 export const PLATFORM_ROLES = {
+  POE_CHAIRMAN: "poe_chairman",
+  COMPREHENSIVE_EXTERNAL: "comprehensive_external",
   DEPARTMENT_ADMIN: "department_admin",
   TEACHER: "teacher",
   STUDENT: "student",

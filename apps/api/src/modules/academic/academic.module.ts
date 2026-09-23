@@ -1,3 +1,4 @@
+import { ExaminationStudentContextService } from "./examination-student-context.service";
 import { Module } from "@nestjs/common";
 
 import { PrismaModule } from "@/common/prisma/prisma.module";
@@ -50,6 +51,7 @@ import { BatchCoordinatorAssignmentsController } from "./presentation/http/batch
     BatchCoordinatorAssignmentsController,
   ],
   providers: [
+    ExaminationStudentContextService,
     AcademicService,
     BatchCoordinatorAssignmentService,
     BatchCoordinatorAuthorityService,
@@ -63,6 +65,6 @@ import { BatchCoordinatorAssignmentsController } from "./presentation/http/batch
       useClass: PrismaBatchCoordinatorAssignmentRepository,
     },
   ],
-  exports: [BatchCoordinatorAuthorityService],
+  exports: [ExaminationStudentContextService, BatchCoordinatorAuthorityService],
 })
 export class AcademicModule {}

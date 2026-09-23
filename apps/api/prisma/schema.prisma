@@ -493,6 +493,20 @@ enum SummativeCommitteeMemberReviewOutcome {
 }
 
 model Department {
+  ComprehensiveFinalSource_department ComprehensiveFinalSource[] @relation("ComprehensiveFinalSource_department")
+  ComprehensiveFinalResult_department ComprehensiveFinalResult[] @relation("ComprehensiveFinalResult_department")
+  ComprehensiveFinalisation_department ComprehensiveFinalisation[] @relation("ComprehensiveFinalisation_department")
+  ComprehensiveMarkReturn_department ComprehensiveMarkReturn[] @relation("ComprehensiveMarkReturn_department")
+  ComprehensiveMark_department ComprehensiveMark[] @relation("ComprehensiveMark_department")
+  ComprehensiveAbsence_department ComprehensiveAbsence[] @relation("ComprehensiveAbsence_department")
+  ComprehensiveRosterEntry_department ComprehensiveRosterEntry[] @relation("ComprehensiveRosterEntry_department")
+  ComprehensiveCourse_department ComprehensiveCourse[] @relation("ComprehensiveCourse_department")
+  ComprehensiveExamination_department ComprehensiveExamination[] @relation("ComprehensiveExamination_department")
+  ExaminationCandidateCourse_department ExaminationCandidateCourse[] @relation("ExaminationCandidateCourse_department")
+  ExaminationCandidateRegistration_department ExaminationCandidateRegistration[] @relation("ExaminationCandidateRegistration_department")
+  ExaminationCandidateList_department ExaminationCandidateList[] @relation("ExaminationCandidateList_department")
+  ExternalComprehensiveAccess_department ExternalComprehensiveAccess[] @relation("ExternalComprehensiveAccess_department")
+  PoeChairmanAssignment_department PoeChairmanAssignment[] @relation("PoeChairmanAssignment_department")
   id                              String                            @id @default(cuid())
   code                            String                            @unique
   slug                            String                            @unique
@@ -601,6 +615,24 @@ model Department {
 }
 
 model User {
+  ComprehensiveExamination_rosterLockedByUser ComprehensiveExamination[] @relation("ComprehensiveExamination_rosterLockedByUser")
+  ComprehensiveExamination_markingStartedByUser ComprehensiveExamination[] @relation("ComprehensiveExamination_markingStartedByUser")
+  ComprehensiveCourse_allocationChangedByUser ComprehensiveCourse[] @relation("ComprehensiveCourse_allocationChangedByUser")
+  ComprehensiveFinalisation_actorUser ComprehensiveFinalisation[] @relation("ComprehensiveFinalisation_actorUser")
+  ComprehensiveMarkReturn_actorUser ComprehensiveMarkReturn[] @relation("ComprehensiveMarkReturn_actorUser")
+  ComprehensiveMark_actorUser ComprehensiveMark[] @relation("ComprehensiveMark_actorUser")
+  ComprehensiveAbsence_actorUser ComprehensiveAbsence[] @relation("ComprehensiveAbsence_actorUser")
+  ComprehensiveExamination_configuredByUser ComprehensiveExamination[] @relation("ComprehensiveExamination_configuredByUser")
+  ExaminationCandidateRegistration_recordedByUser ExaminationCandidateRegistration[] @relation("ExaminationCandidateRegistration_recordedByUser")
+  ExaminationCandidateRegistration_studentUser ExaminationCandidateRegistration[] @relation("ExaminationCandidateRegistration_studentUser")
+  ExaminationCandidateList_certifiedByUser ExaminationCandidateList[] @relation("ExaminationCandidateList_certifiedByUser")
+  ExaminationCandidateList_recordedByUser ExaminationCandidateList[] @relation("ExaminationCandidateList_recordedByUser")
+  ExternalComprehensiveAccess_revokedByUser ExternalComprehensiveAccess[] @relation("ExternalComprehensiveAccess_revokedByUser")
+  ExternalComprehensiveAccess_recordedByUser ExternalComprehensiveAccess[] @relation("ExternalComprehensiveAccess_recordedByUser")
+  ExternalComprehensiveAccess_user ExternalComprehensiveAccess[] @relation("ExternalComprehensiveAccess_user")
+  PoeChairmanAssignment_revokedByUser PoeChairmanAssignment[] @relation("PoeChairmanAssignment_revokedByUser")
+  PoeChairmanAssignment_recordedByUser PoeChairmanAssignment[] @relation("PoeChairmanAssignment_recordedByUser")
+  PoeChairmanAssignment_user PoeChairmanAssignment[] @relation("PoeChairmanAssignment_user")
   id                                 String                           @id @default(cuid())
   departmentId                       String                           @map("department_id")
   email                              String                           @unique
@@ -868,6 +900,9 @@ model BatchCoordinatorAssignment {
 }
 
 model Examination {
+  ComprehensiveExamination_examination ComprehensiveExamination[] @relation("ComprehensiveExamination_examination")
+  ExaminationCandidateRegistration_examination ExaminationCandidateRegistration[] @relation("ExaminationCandidateRegistration_examination")
+  ExaminationCandidateList_examination ExaminationCandidateList[] @relation("ExaminationCandidateList_examination")
   id                   String                 @id @default(cuid())
   departmentId         String                 @map("department_id")
   academicProgramId    String                 @map("academic_program_id")
@@ -906,6 +941,9 @@ model Examination {
 }
 
 model ExaminationCourse {
+  @@unique([id, departmentId], map: "examination_course_comprehensive_scope_uq")
+  ComprehensiveCourse_examinationCourse ComprehensiveCourse[] @relation("ComprehensiveCourse_examinationCourse")
+  ExaminationCandidateCourse_examinationCourse ExaminationCandidateCourse[] @relation("ExaminationCandidateCourse_examinationCourse")
   id                              String                      @id @default(cuid())
   departmentId                    String                      @map("department_id")
   examinationId                   String                      @map("examination_id")
@@ -966,6 +1004,8 @@ model ExaminationCourse {
 }
 
 model ExaminationCommittee {
+  @@unique([id, departmentId], map: "examination_committee_comprehensive_scope_uq")
+  ComprehensiveExamination_committee ComprehensiveExamination[] @relation("ComprehensiveExamination_committee")
   /// One stable committee container per Examination; appointment changes are preserved in ExaminationCommitteeAssignment history.
   id            String                           @id @default(cuid())
   departmentId  String                           @map("department_id")
@@ -985,6 +1025,17 @@ model ExaminationCommittee {
 }
 
 model ExaminationCommitteeAssignment {
+  ComprehensiveExamination_rosterLockedByAssignment ComprehensiveExamination[] @relation("ComprehensiveExamination_rosterLockedByAssignment")
+  ComprehensiveExamination_markingStartedByAssignment ComprehensiveExamination[] @relation("ComprehensiveExamination_markingStartedByAssignment")
+  ComprehensiveCourse_allocationChangedByAssignment ComprehensiveCourse[] @relation("ComprehensiveCourse_allocationChangedByAssignment")
+  @@unique([id, departmentId], map: "examination_committee_assignment_comprehensive_scope_uq")
+  ComprehensiveFinalisation_chairmanAssignment ComprehensiveFinalisation[] @relation("ComprehensiveFinalisation_chairmanAssignment")
+  ComprehensiveMarkReturn_chairmanAssignment ComprehensiveMarkReturn[] @relation("ComprehensiveMarkReturn_chairmanAssignment")
+  ComprehensiveMark_committeeAssignment ComprehensiveMark[] @relation("ComprehensiveMark_committeeAssignment")
+  ComprehensiveAbsence_chairmanAssignment ComprehensiveAbsence[] @relation("ComprehensiveAbsence_chairmanAssignment")
+  ComprehensiveCourse_assignedCommitteeAssignment ComprehensiveCourse[] @relation("ComprehensiveCourse_assignedCommitteeAssignment")
+  ComprehensiveExamination_configuredAssignment ComprehensiveExamination[] @relation("ComprehensiveExamination_configuredAssignment")
+  ExternalComprehensiveAccess_assignment ExternalComprehensiveAccess[] @relation("ExternalComprehensiveAccess_assignment")
   id               String                               @id @default(cuid())
   departmentId     String                               @map("department_id")
   examinationId    String                               @map("examination_id")
@@ -1126,6 +1177,7 @@ model CurriculumVersion {
 /// Assignment logic must verify department equality, an active department-scoped Student role,
 /// matching CurriculumVersion.academicProgramId, APPROVED/ACTIVE lifecycle, and actor authority.
 model StudentCurriculumAssignment {
+  ExaminationCandidateRegistration_curriculumAssignment ExaminationCandidateRegistration[] @relation("ExaminationCandidateRegistration_curriculumAssignment")
   id                  String            @id @default(cuid())
   departmentId        String            @map("department_id")
   studentUserId       String            @map("student_user_id")
@@ -1177,6 +1229,8 @@ model CourseAssessmentTemplate {
 }
 
 model AssessmentTemplateComponent {
+  @@unique([id, departmentId], map: "assessment_template_component_comprehensive_scope_uq")
+  ComprehensiveCourse_assessmentComponent ComprehensiveCourse[] @relation("ComprehensiveCourse_assessmentComponent")
   id                   String                   @id @default(cuid())
   departmentId         String                   @map("department_id")
   assessmentTemplateId String                   @map("assessment_template_id")
@@ -1550,6 +1604,8 @@ model TeacherCourseAssignment {
 }
 
 model Enrollment {
+  @@unique([id, departmentId], map: "enrollment_comprehensive_scope_uq")
+  ExaminationCandidateCourse_enrollment ExaminationCandidateCourse[] @relation("ExaminationCandidateCourse_enrollment")
   formativeMarks FormativeMarkEvidence[]
   formativeSubmissions FormativeTeacherSubmission[]
   @@unique([id, departmentId, courseOfferingId], map: "formative_enrollment_scope_uq")
@@ -3649,4 +3705,369 @@ model FormativeSubmissionItem {
   @@unique([submissionId, activityId], map: "formative_submission_activity_uq")
   @@index([markEvidenceId], map: "formative_submission_mark_idx")
   @@map("formative_submission_items")
+}
+
+enum ExaminationCandidateCategory {
+  REGULAR
+  IRREGULAR
+  IMPROVEMENT
+}
+enum CandidateListStatus {
+  DRAFT
+  CERTIFIED
+}
+enum ComprehensiveMarkingMode {
+  ALL_MEMBERS_AVERAGE
+  COURSE_DISTRIBUTED
+  CHAIRMAN_ONLY
+}
+enum ComprehensiveStatus {
+  CONFIGURED
+  MARKING
+  FINALISED
+}
+enum ComprehensiveMarkStatus {
+  DRAFT
+  SUBMITTED
+}
+
+model PoeChairmanAssignment {
+  ExaminationCandidateList_chairmanAssignment ExaminationCandidateList[] @relation("ExaminationCandidateList_chairmanAssignment")
+  ExaminationCandidateList_recordedPoeAssignment ExaminationCandidateList[] @relation("ExaminationCandidateList_recordedPoeAssignment")
+  ExaminationCandidateRegistration_recordedPoeAssignment ExaminationCandidateRegistration[] @relation("ExaminationCandidateRegistration_recordedPoeAssignment")
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  userId String @map("user_id")
+  sourceReference String @map("source_reference") @db.VarChar(500)
+  startsAt DateTime @map("starts_at")
+  expiresAt DateTime @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  revokedByUserId String? @map("revoked_by_user_id")
+  recordedByUserId String @map("recorded_by_user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@unique([id, departmentId], map: "ce_poechairmanassignment_0_uq")
+
+  department Department @relation("PoeChairmanAssignment_department", fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ce_poechairmanassignment_department_fk")
+  user User @relation("PoeChairmanAssignment_user", fields: [userId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_poechairmanassignment_user_fk")
+  recordedByUser User @relation("PoeChairmanAssignment_recordedByUser", fields: [recordedByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_poechairmanassignment_recordedbyuser_fk")
+  revokedByUser User? @relation("PoeChairmanAssignment_revokedByUser", fields: [revokedByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_poechairmanassignment_revokedbyuser_fk")
+  @@map("poe_chairman_assignments")
+}
+
+model ExternalComprehensiveAccess {
+  ComprehensiveExamination_markingStartedExternalAccess ComprehensiveExamination[] @relation("ComprehensiveExamination_markingStartedExternalAccess")
+  assignmentAssignedAt DateTime @map("assignment_assigned_at")
+  ComprehensiveMark_externalAccess ComprehensiveMark[] @relation("ComprehensiveMark_externalAccess")
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  assignmentId String @map("assignment_id")
+  userId String @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  revokedByUserId String? @map("revoked_by_user_id")
+  recordedByUserId String @map("recorded_by_user_id")
+  sourceReference String @map("source_reference") @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+  @@unique([id, departmentId], map: "ce_externalcomprehensiveaccess_0_uq")
+  @@unique([assignmentId], map: "ce_externalcomprehensiveaccess_1_uq")
+  department Department @relation("ExternalComprehensiveAccess_department", fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ce_externalcomprehensiveaccess_department_fk")
+  user User @relation("ExternalComprehensiveAccess_user", fields: [userId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_externalcomprehensiveaccess_user_fk")
+  recordedByUser User @relation("ExternalComprehensiveAccess_recordedByUser", fields: [recordedByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_externalcomprehensiveaccess_recordedbyuser_fk")
+  revokedByUser User? @relation("ExternalComprehensiveAccess_revokedByUser", fields: [revokedByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_externalcomprehensiveaccess_revokedbyuser_fk")
+  assignment ExaminationCommitteeAssignment @relation("ExternalComprehensiveAccess_assignment", fields: [assignmentId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_externalcomprehensiveaccess_assignment_fk")
+  @@map("external_comprehensive_access")
+}
+
+model ExaminationCandidateList {
+  ComprehensiveExamination_candidateList ComprehensiveExamination[] @relation("ComprehensiveExamination_candidateList")
+  ExaminationCandidateRegistration_list ExaminationCandidateRegistration[] @relation("ExaminationCandidateRegistration_list")
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  examinationId String @unique @map("examination_id")
+  academicProgramId String @map("academic_program_id")
+  academicSessionId String @map("academic_session_id")
+  academicTermId String @map("academic_term_id")
+  status CandidateListStatus @default(DRAFT)
+  version Int @default(1)
+  sourceReference String @map("source_reference") @db.VarChar(500)
+  ruleVersionCode String @map("rule_version_code") @db.VarChar(64)
+  recordedByUserId String @map("recorded_by_user_id")
+  recordedPoeAssignmentId String @map("recorded_poe_assignment_id")
+  certifiedByUserId String? @map("certified_by_user_id")
+  chairmanAssignmentId String? @map("chairman_assignment_id")
+  certifiedAt DateTime? @map("certified_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@unique([id, departmentId], map: "ce_examinationcandidatelist_0_uq")
+
+  department Department @relation("ExaminationCandidateList_department", fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ce_examinationcandidatelist_department_fk")
+  recordedByUser User @relation("ExaminationCandidateList_recordedByUser", fields: [recordedByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_examinationcandidatelist_recordedbyuser_fk")
+  certifiedByUser User? @relation("ExaminationCandidateList_certifiedByUser", fields: [certifiedByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_examinationcandidatelist_certifiedbyuser_fk")
+  chairmanAssignment PoeChairmanAssignment? @relation("ExaminationCandidateList_chairmanAssignment", fields: [chairmanAssignmentId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_examinationcandidatelist_chairmanassignment_fk")
+  recordedPoeAssignment PoeChairmanAssignment @relation("ExaminationCandidateList_recordedPoeAssignment", fields: [recordedPoeAssignmentId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_examinationcandidatelist_recordedpoeassignment_fk")
+  examination Examination @relation("ExaminationCandidateList_examination", fields: [examinationId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_examinationcandidatelist_examination_fk")
+  @@map("examination_candidate_lists")
+}
+
+model ExaminationCandidateRegistration {
+  ComprehensiveAbsence_registration ComprehensiveAbsence[] @relation("ComprehensiveAbsence_registration")
+  ComprehensiveRosterEntry_registration ComprehensiveRosterEntry[] @relation("ComprehensiveRosterEntry_registration")
+  ExaminationCandidateCourse_registration ExaminationCandidateCourse[] @relation("ExaminationCandidateCourse_registration")
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  listId String @map("list_id")
+  examinationId String @map("examination_id")
+  studentUserId String @map("student_user_id")
+  curriculumAssignmentId String @map("curriculum_assignment_id")
+  category ExaminationCandidateCategory
+  version Int @default(1)
+  recordedByUserId String @map("recorded_by_user_id")
+  recordedPoeAssignmentId String @map("recorded_poe_assignment_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@unique([id, departmentId], map: "ce_examinationcandidateregistration_0_uq")
+  @@unique([listId, studentUserId], map: "ce_examinationcandidateregistration_1_uq")
+  department Department @relation("ExaminationCandidateRegistration_department", fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ce_examinationcandidateregistration_department_fk")
+  studentUser User @relation("ExaminationCandidateRegistration_studentUser", fields: [studentUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_examinationcandidateregistration_studentuser_fk")
+  recordedByUser User @relation("ExaminationCandidateRegistration_recordedByUser", fields: [recordedByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_examinationcandidateregistration_recordedbyuser_fk")
+  recordedPoeAssignment PoeChairmanAssignment @relation("ExaminationCandidateRegistration_recordedPoeAssignment", fields: [recordedPoeAssignmentId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_examinationcandidateregistration_recordedpoeassignment_fk")
+  list ExaminationCandidateList @relation("ExaminationCandidateRegistration_list", fields: [listId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_examinationcandidateregistration_list_fk")
+  examination Examination @relation("ExaminationCandidateRegistration_examination", fields: [examinationId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_examinationcandidateregistration_examination_fk")
+  curriculumAssignment StudentCurriculumAssignment @relation("ExaminationCandidateRegistration_curriculumAssignment", fields: [curriculumAssignmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ce_examinationcandidateregistration_curriculumassignment_fk")
+  @@map("examination_candidate_registrations")
+}
+
+model ExaminationCandidateCourse {
+  ComprehensiveRosterEntry_candidateCourse ComprehensiveRosterEntry[] @relation("ComprehensiveRosterEntry_candidateCourse")
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  registrationId String @map("registration_id")
+  examinationCourseId String @map("examination_course_id")
+  enrollmentId String @map("enrollment_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@unique([id, departmentId], map: "ce_examinationcandidatecourse_0_uq")
+  @@unique([registrationId, examinationCourseId], map: "ce_examinationcandidatecourse_1_uq")
+  department Department @relation("ExaminationCandidateCourse_department", fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ce_examinationcandidatecourse_department_fk")
+  registration ExaminationCandidateRegistration @relation("ExaminationCandidateCourse_registration", fields: [registrationId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_examinationcandidatecourse_registration_fk")
+  examinationCourse ExaminationCourse @relation("ExaminationCandidateCourse_examinationCourse", fields: [examinationCourseId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_examinationcandidatecourse_examinationcourse_fk")
+  enrollment Enrollment @relation("ExaminationCandidateCourse_enrollment", fields: [enrollmentId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_examinationcandidatecourse_enrollment_fk")
+  @@map("examination_candidate_courses")
+}
+
+model ComprehensiveExamination {
+  rosterLockedByUserId String? @map("roster_locked_by_user_id")
+  rosterLockedByAssignmentId String? @map("roster_locked_by_assignment_id")
+  markingStartedByUserId String? @map("marking_started_by_user_id")
+  markingStartedByAssignmentId String? @map("marking_started_by_assignment_id")
+  markingStartedExternalAccessId String? @map("marking_started_external_access_id")
+  rosterLockedByAssignmentAssignedAt DateTime? @map("roster_locked_by_assignment_assigned_at")
+  markingStartedByAssignmentAssignedAt DateTime? @map("marking_started_by_assignment_assigned_at")
+  rosterLockedByUser User? @relation("ComprehensiveExamination_rosterLockedByUser", fields: [rosterLockedByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_roster_lock_actor_fk")
+  rosterLockedByAssignment ExaminationCommitteeAssignment? @relation("ComprehensiveExamination_rosterLockedByAssignment", fields: [rosterLockedByAssignmentId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_roster_lock_assignment_fk")
+  markingStartedByUser User? @relation("ComprehensiveExamination_markingStartedByUser", fields: [markingStartedByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_marking_start_actor_fk")
+  markingStartedByAssignment ExaminationCommitteeAssignment? @relation("ComprehensiveExamination_markingStartedByAssignment", fields: [markingStartedByAssignmentId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_marking_start_assignment_fk")
+  markingStartedExternalAccess ExternalComprehensiveAccess? @relation("ComprehensiveExamination_markingStartedExternalAccess", fields: [markingStartedExternalAccessId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_marking_start_external_fk")
+  configuredAssignmentAssignedAt DateTime @map("configured_assignment_assigned_at")
+  ComprehensiveFinalisation_comprehensive ComprehensiveFinalisation[] @relation("ComprehensiveFinalisation_comprehensive")
+  ComprehensiveMarkReturn_comprehensive ComprehensiveMarkReturn[] @relation("ComprehensiveMarkReturn_comprehensive")
+  ComprehensiveMark_comprehensive ComprehensiveMark[] @relation("ComprehensiveMark_comprehensive")
+  ComprehensiveAbsence_comprehensive ComprehensiveAbsence[] @relation("ComprehensiveAbsence_comprehensive")
+  ComprehensiveRosterEntry_comprehensive ComprehensiveRosterEntry[] @relation("ComprehensiveRosterEntry_comprehensive")
+  ComprehensiveCourse_comprehensive ComprehensiveCourse[] @relation("ComprehensiveCourse_comprehensive")
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  examinationId String @unique @map("examination_id")
+  committeeId String @map("committee_id")
+  candidateListId String @map("candidate_list_id")
+  examDate DateTime @map("exam_date")
+  mode ComprehensiveMarkingMode
+  status ComprehensiveStatus @default(CONFIGURED)
+  ruleVersionCode String @map("rule_version_code") @db.VarChar(64)
+  configuredByUserId String @map("configured_by_user_id")
+  configuredAssignmentId String @map("configured_assignment_id")
+  rosterLockedAt DateTime? @map("roster_locked_at")
+  markingStartedAt DateTime? @map("marking_started_at")
+  finalisedAt DateTime? @map("finalised_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@unique([id, departmentId], map: "ce_comprehensiveexamination_0_uq")
+
+  department Department @relation("ComprehensiveExamination_department", fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensiveexamination_department_fk")
+  configuredByUser User @relation("ComprehensiveExamination_configuredByUser", fields: [configuredByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensiveexamination_configuredbyuser_fk")
+  committee ExaminationCommittee @relation("ComprehensiveExamination_committee", fields: [committeeId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensiveexamination_committee_fk")
+  candidateList ExaminationCandidateList @relation("ComprehensiveExamination_candidateList", fields: [candidateListId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensiveexamination_candidatelist_fk")
+  configuredAssignment ExaminationCommitteeAssignment @relation("ComprehensiveExamination_configuredAssignment", fields: [configuredAssignmentId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensiveexamination_configuredassignment_fk")
+  examination Examination @relation("ComprehensiveExamination_examination", fields: [examinationId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensiveexamination_examination_fk")
+  @@map("comprehensive_examinations")
+}
+
+model ComprehensiveCourse {
+  allocationChangedByUserId String? @map("allocation_changed_by_user_id")
+  allocationChangedByAssignmentId String? @map("allocation_changed_by_assignment_id")
+  allocationChangedByAssignmentAssignedAt DateTime? @map("allocation_changed_by_assignment_assigned_at")
+  allocationChangedByUser User? @relation("ComprehensiveCourse_allocationChangedByUser", fields: [allocationChangedByUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_allocation_actor_fk")
+  allocationChangedByAssignment ExaminationCommitteeAssignment? @relation("ComprehensiveCourse_allocationChangedByAssignment", fields: [allocationChangedByAssignmentId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_allocation_actor_assignment_fk")
+  ComprehensiveRosterEntry_course ComprehensiveRosterEntry[] @relation("ComprehensiveRosterEntry_course")
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  comprehensiveId String @map("comprehensive_id")
+  examinationCourseId String @map("examination_course_id")
+  assessmentComponentId String @map("assessment_component_id")
+  fullMark Decimal @map("full_mark") @db.Decimal(6,2)
+  templateVersion Int @map("template_version")
+  academicSnapshot Json @map("academic_snapshot")
+  assignedCommitteeAssignmentId String? @map("assigned_committee_assignment_id")
+  allocatedAssignmentAssignedAt DateTime? @map("allocated_assignment_assigned_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@unique([id, departmentId], map: "ce_comprehensivecourse_0_uq")
+  @@unique([comprehensiveId, examinationCourseId], map: "ce_comprehensivecourse_1_uq")
+  department Department @relation("ComprehensiveCourse_department", fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivecourse_department_fk")
+  comprehensive ComprehensiveExamination @relation("ComprehensiveCourse_comprehensive", fields: [comprehensiveId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivecourse_comprehensive_fk")
+  examinationCourse ExaminationCourse @relation("ComprehensiveCourse_examinationCourse", fields: [examinationCourseId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivecourse_examinationcourse_fk")
+  assessmentComponent AssessmentTemplateComponent @relation("ComprehensiveCourse_assessmentComponent", fields: [assessmentComponentId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivecourse_assessmentcomponent_fk")
+  assignedCommitteeAssignment ExaminationCommitteeAssignment? @relation("ComprehensiveCourse_assignedCommitteeAssignment", fields: [assignedCommitteeAssignmentId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivecourse_assignedcommitteeassignment_fk")
+  @@map("comprehensive_courses")
+}
+
+model ComprehensiveRosterEntry {
+  ComprehensiveFinalResult_rosterEntry ComprehensiveFinalResult[] @relation("ComprehensiveFinalResult_rosterEntry")
+  ComprehensiveMark_rosterEntry ComprehensiveMark[] @relation("ComprehensiveMark_rosterEntry")
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  comprehensiveId String @map("comprehensive_id")
+  courseId String @map("course_id")
+  registrationId String @map("registration_id")
+  candidateCourseId String @map("candidate_course_id")
+  registrationVersion Int @map("registration_version")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@unique([id, departmentId], map: "ce_comprehensiverosterentry_0_uq")
+  @@unique([comprehensiveId, courseId, registrationId], map: "ce_comprehensiverosterentry_1_uq")
+  department Department @relation("ComprehensiveRosterEntry_department", fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensiverosterentry_department_fk")
+  comprehensive ComprehensiveExamination @relation("ComprehensiveRosterEntry_comprehensive", fields: [comprehensiveId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensiverosterentry_comprehensive_fk")
+  course ComprehensiveCourse @relation("ComprehensiveRosterEntry_course", fields: [courseId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensiverosterentry_course_fk")
+  registration ExaminationCandidateRegistration @relation("ComprehensiveRosterEntry_registration", fields: [registrationId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensiverosterentry_registration_fk")
+  candidateCourse ExaminationCandidateCourse @relation("ComprehensiveRosterEntry_candidateCourse", fields: [candidateCourseId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensiverosterentry_candidatecourse_fk")
+  @@map("comprehensive_roster_entries")
+}
+
+model ComprehensiveAbsence {
+  assignmentAssignedAt DateTime @map("assignment_assigned_at")
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  comprehensiveId String @map("comprehensive_id")
+  registrationId String @map("registration_id")
+  chairmanAssignmentId String @map("chairman_assignment_id")
+  actorUserId String @map("actor_user_id")
+  reason String @db.VarChar(2000)
+  resolutionStatus String @default("SPECIAL_OR_FAILURE_RESOLUTION_REQUIRED") @map("resolution_status")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@unique([id, departmentId], map: "ce_comprehensiveabsence_0_uq")
+  @@unique([comprehensiveId, registrationId], map: "ce_comprehensiveabsence_1_uq")
+  department Department @relation("ComprehensiveAbsence_department", fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensiveabsence_department_fk")
+  actorUser User @relation("ComprehensiveAbsence_actorUser", fields: [actorUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensiveabsence_actoruser_fk")
+  comprehensive ComprehensiveExamination @relation("ComprehensiveAbsence_comprehensive", fields: [comprehensiveId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensiveabsence_comprehensive_fk")
+  registration ExaminationCandidateRegistration @relation("ComprehensiveAbsence_registration", fields: [registrationId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensiveabsence_registration_fk")
+  chairmanAssignment ExaminationCommitteeAssignment @relation("ComprehensiveAbsence_chairmanAssignment", fields: [chairmanAssignmentId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensiveabsence_chairmanassignment_fk")
+  @@map("comprehensive_absences")
+}
+
+model ComprehensiveMark {
+  ComprehensiveFinalSource_mark ComprehensiveFinalSource[] @relation("ComprehensiveFinalSource_mark")
+  ComprehensiveMarkReturn_mark ComprehensiveMarkReturn[] @relation("ComprehensiveMarkReturn_mark")
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  comprehensiveId String @map("comprehensive_id")
+  rosterEntryId String @map("roster_entry_id")
+  committeeAssignmentId String @map("committee_assignment_id")
+  assignmentAssignedAt DateTime @map("assignment_assigned_at")
+  externalAccessId String? @map("external_access_id")
+  seat ExaminationCommitteeSeat
+  actorUserId String @map("actor_user_id")
+  revision Int
+  previousId String? @unique @map("previous_id")
+  returnId String? @unique @map("return_id")
+  mark Decimal @db.Decimal(8,4)
+  fullMark Decimal @map("full_mark") @db.Decimal(6,2)
+  status ComprehensiveMarkStatus @default(DRAFT)
+  submittedAt DateTime? @map("submitted_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@unique([id, departmentId], map: "ce_comprehensivemark_0_uq")
+  @@unique([rosterEntryId, seat, revision], map: "ce_comprehensivemark_1_uq")
+  department Department @relation("ComprehensiveMark_department", fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivemark_department_fk")
+  actorUser User @relation("ComprehensiveMark_actorUser", fields: [actorUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivemark_actoruser_fk")
+  comprehensive ComprehensiveExamination @relation("ComprehensiveMark_comprehensive", fields: [comprehensiveId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivemark_comprehensive_fk")
+  rosterEntry ComprehensiveRosterEntry @relation("ComprehensiveMark_rosterEntry", fields: [rosterEntryId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivemark_rosterentry_fk")
+  committeeAssignment ExaminationCommitteeAssignment @relation("ComprehensiveMark_committeeAssignment", fields: [committeeAssignmentId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivemark_committeeassignment_fk")
+  externalAccess ExternalComprehensiveAccess? @relation("ComprehensiveMark_externalAccess", fields: [externalAccessId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivemark_externalaccess_fk")
+  @@map("comprehensive_marks")
+}
+
+model ComprehensiveMarkReturn {
+  assignmentAssignedAt DateTime @map("assignment_assigned_at")
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  comprehensiveId String @map("comprehensive_id")
+  markId String @unique @map("mark_id")
+  chairmanAssignmentId String @map("chairman_assignment_id")
+  actorUserId String @map("actor_user_id")
+  reason String @db.VarChar(2000)
+  createdAt DateTime @default(now()) @map("created_at")
+  @@unique([id, departmentId], map: "ce_comprehensivemarkreturn_0_uq")
+
+  department Department @relation("ComprehensiveMarkReturn_department", fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivemarkreturn_department_fk")
+  actorUser User @relation("ComprehensiveMarkReturn_actorUser", fields: [actorUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivemarkreturn_actoruser_fk")
+  comprehensive ComprehensiveExamination @relation("ComprehensiveMarkReturn_comprehensive", fields: [comprehensiveId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivemarkreturn_comprehensive_fk")
+  mark ComprehensiveMark @relation("ComprehensiveMarkReturn_mark", fields: [markId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivemarkreturn_mark_fk")
+  chairmanAssignment ExaminationCommitteeAssignment @relation("ComprehensiveMarkReturn_chairmanAssignment", fields: [chairmanAssignmentId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivemarkreturn_chairmanassignment_fk")
+  @@map("comprehensive_mark_returns")
+}
+
+model ComprehensiveFinalisation {
+  ComprehensiveFinalResult_finalisation ComprehensiveFinalResult[] @relation("ComprehensiveFinalResult_finalisation")
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  comprehensiveId String @unique @map("comprehensive_id")
+  chairmanAssignmentId String @map("chairman_assignment_id")
+  assignmentAssignedAt DateTime @map("assignment_assigned_at")
+  actorUserId String @map("actor_user_id")
+  version Int @default(1)
+  ruleVersionCode String @map("rule_version_code") @db.VarChar(64)
+  mode ComprehensiveMarkingMode
+  createdAt DateTime @default(now()) @map("created_at")
+  @@unique([id, departmentId], map: "ce_comprehensivefinalisation_0_uq")
+
+  department Department @relation("ComprehensiveFinalisation_department", fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivefinalisation_department_fk")
+  actorUser User @relation("ComprehensiveFinalisation_actorUser", fields: [actorUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivefinalisation_actoruser_fk")
+  comprehensive ComprehensiveExamination @relation("ComprehensiveFinalisation_comprehensive", fields: [comprehensiveId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivefinalisation_comprehensive_fk")
+  chairmanAssignment ExaminationCommitteeAssignment @relation("ComprehensiveFinalisation_chairmanAssignment", fields: [chairmanAssignmentId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivefinalisation_chairmanassignment_fk")
+  @@map("comprehensive_finalisations")
+}
+
+model ComprehensiveFinalResult {
+  ComprehensiveFinalSource_result ComprehensiveFinalSource[] @relation("ComprehensiveFinalSource_result")
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  finalisationId String @map("finalisation_id")
+  rosterEntryId String @unique @map("roster_entry_id")
+  mark Decimal @db.Decimal(10,6)
+  fullMark Decimal @map("full_mark") @db.Decimal(6,2)
+  calculationRule String @map("calculation_rule") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at")
+  @@unique([id, departmentId], map: "ce_comprehensivefinalresult_0_uq")
+
+  department Department @relation("ComprehensiveFinalResult_department", fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivefinalresult_department_fk")
+  finalisation ComprehensiveFinalisation @relation("ComprehensiveFinalResult_finalisation", fields: [finalisationId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivefinalresult_finalisation_fk")
+  rosterEntry ComprehensiveRosterEntry @relation("ComprehensiveFinalResult_rosterEntry", fields: [rosterEntryId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivefinalresult_rosterentry_fk")
+  @@map("comprehensive_final_results")
+}
+
+model ComprehensiveFinalSource {
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  resultId String @map("result_id")
+  markId String @map("mark_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@unique([id, departmentId], map: "ce_comprehensivefinalsource_0_uq")
+  @@unique([resultId, markId], map: "ce_comprehensivefinalsource_1_uq")
+  department Department @relation("ComprehensiveFinalSource_department", fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivefinalsource_department_fk")
+  result ComprehensiveFinalResult @relation("ComprehensiveFinalSource_result", fields: [resultId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivefinalsource_result_fk")
+  mark ComprehensiveMark @relation("ComprehensiveFinalSource_mark", fields: [markId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivefinalsource_mark_fk")
+  @@map("comprehensive_final_sources")
 }

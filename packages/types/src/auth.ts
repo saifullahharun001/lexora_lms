@@ -5,7 +5,9 @@ export type PlatformRole =
   | "teacher"
   | "student"
   | "auditor"
-  | "support";
+  | "support"
+  | "poe_chairman"
+  | "comprehensive_external";
 
 export interface PermissionGrant {
   action: string;

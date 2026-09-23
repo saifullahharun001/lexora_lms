@@ -1,3 +1,4 @@
+import { EXAMINATION_PERMISSION_DEFINITIONS, EXAMINATION_POLICIES } from "../../src/common/authorization/examination-policies";
 import { PermissionScope } from "@prisma/client";
 
 import { PERMISSIONS } from "../../src/modules/identity-access/authorization/permissions.constants";
@@ -168,6 +169,12 @@ export const FORMATIVE_MARK_ADJUST_PROVISIONING = {
   auditAction: "authorization.formative-mark-adjust.provisioned",
 } as const;
 
+export const EXAMINATION_WORKFLOW_PROVISIONING = EXAMINATION_PERMISSION_DEFINITIONS
+  .filter((d) => `${d.resource}.${d.action}` !== EXAMINATION_POLICIES.CLASSIFY)
+  .map((d) => ({ permission: { ...d, scope: PermissionScope.DEPARTMENT, description: "Exact appointment-scoped examination workflow" },
+    targetRoleCode: `${d.resource}.${d.action}` === EXAMINATION_POLICIES.APPOINT ? PLATFORM_ROLES.DEPARTMENT_ADMIN : PLATFORM_ROLES.TEACHER,
+    auditAction: `authorization.${d.resource}.${d.action}.provisioned` }));
+
 export const AUTHORIZATION_PROVISIONING_DEFINITIONS = [
   SYLLABUS_VERSION_MANAGE_PROVISIONING,
   SYLLABUS_VERSION_LIFECYCLE_MANAGE_PROVISIONING,
@@ -181,6 +188,7 @@ export const AUTHORIZATION_PROVISIONING_DEFINITIONS = [
   SUMMATIVE_EXAMINATION_MEMBER_REVIEW_PROVISIONING,
   SUMMATIVE_EXAMINATION_CHAIRMAN_APPROVAL_PROVISIONING,
   FORMATIVE_MARK_ADJUST_PROVISIONING,
+  ...EXAMINATION_WORKFLOW_PROVISIONING,
 ] as const;
 
 export type AuthorizationProvisioningDefinition =

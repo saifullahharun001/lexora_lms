@@ -1,3 +1,4 @@
+import { EXAMINATION_PERMISSION_DEFINITIONS } from "@/common/authorization/examination-policies";
 import type {
   PermissionGrant,
   PlatformRole,
@@ -69,7 +70,8 @@ const EXPLICIT_TEACHER_PERMISSION_POLICIES = {
   },
 } as const;
 
-const EXACT_PERMISSION_POLICIES = {
+const EXACT_PERMISSION_POLICIES: Record<string, { resource: string; action: string; scope: string }> = {
+  ...Object.fromEntries(EXAMINATION_PERMISSION_DEFINITIONS.map((d) => [`${d.resource}.${d.action}`, d])),
   [PERMISSIONS.COURSE_MANAGEMENT.COURSE_OUTLINE_APPROVE]: {
     resource: "course-management.course-outline",
     action: "approve",
@@ -99,6 +101,8 @@ const SENSITIVE_ROLE_ADMISSION_POLICIES = {
 } as const satisfies Partial<Record<string, readonly PlatformRole[]>>;
 
 const STATIC_ROLE_POLICIES: Record<PlatformRole, string[]> = {
+  poe_chairman: [],
+  comprehensive_external: [],
   department_admin: [
     "identity-access.*",
     "department-config.*",

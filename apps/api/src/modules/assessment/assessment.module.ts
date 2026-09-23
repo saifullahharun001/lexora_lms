@@ -1,3 +1,8 @@
+import { EvidenceAccessService } from "@/common/academic-evidence/evidence-access.service";
+import { ExaminationRegistrationModule } from "../examination-registration/examination-registration.module";
+import { SummativeExaminationModule } from "../summative-examination/summative-examination.module";
+import { ComprehensiveExaminationService } from "./application/services/comprehensive-examination.service";
+import { ComprehensiveExaminationController } from "./presentation/http/comprehensive-examination.controller";
 import { Module } from "@nestjs/common";
 
 import { PrismaModule } from "@/common/prisma/prisma.module";
@@ -14,15 +19,15 @@ import { QuizAttemptsController } from "./presentation/http/quiz-attempts.contro
 import { QuizzesController } from "./presentation/http/quizzes.controller";
 
 @Module({
-  imports: [AuthorizationModule, PrismaModule, RequestContextModule],
-  controllers: [
+  imports: [ExaminationRegistrationModule, SummativeExaminationModule, AuthorizationModule, PrismaModule, RequestContextModule],
+  controllers: [ComprehensiveExaminationController,
     FormativeAssessmentController,
     AssignmentsController,
     AssignmentSubmissionsController,
     QuizzesController,
     QuizAttemptsController
   ],
-  providers: [
+  providers: [EvidenceAccessService, ComprehensiveExaminationService,
     FormativeAssessmentService,
     AssessmentService,
     {
