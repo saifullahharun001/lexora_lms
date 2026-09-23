@@ -2722,3 +2722,68 @@ Regular Comprehensive `/5` is a distinct Examination Committee-controlled
 component; Attendance `/5` remains pending. These components do not yet
 constitute authoritative locked Final Formative `/40`. The complete Formative
 and final-result workflows remain **PARTIAL / ACTIVE BACKEND DEVELOPMENT**.
+
+<!-- roadmap-regular-comprehensive-targeted-runtime-closure-20260923 -->
+
+## Regular Comprehensive `/5` Runtime Status Supersession — 2026-09-23
+
+Implementation/runtime baseline:
+
+`abd2505a49c18b7d663152b96d02670e949d6574`
+
+Current classification:
+
+> **Regular Comprehensive core backend is implemented and has strong targeted authenticated Ubuntu server-runtime evidence for Candidate Registration, `ALL_MEMBERS_AVERAGE`, `CHAIRMAN_ONLY`, `COURSE_DISTRIBUTED`, correction/revision, normal Regular absence blocking, Chairman finalisation, immutable evidence and scoped Committee authority.**
+
+This is targeted evidence, **not exhaustive runtime verification**.
+
+Verified core scope includes:
+
+- certified REGULAR candidate source;
+- all three configured marking modes;
+- mode-specific mark authority;
+- correction/revision provenance;
+- Chairman return where permitted;
+- mode/distribution freeze;
+- exact final sources and finalisation idempotency;
+- post-final lock;
+- Regular absence recording and immutability;
+- absence not converted to zero;
+- unresolved absence blocking normal marking/finalisation;
+- audit evidence;
+- temporary authority/credential/session cleanup.
+
+Evidence limitations remain:
+
+- one Regular student in alternate-mode fixtures;
+- one applicable course in target alternate modes;
+- successful distributed path used internal MEMBER_1;
+- successful External distributed marking not exercised;
+- multi-course/multi-member distribution not exercised;
+- exhaustive server concurrency/security matrix not rerun;
+- direct-DB Examination/Committee prerequisite creation was fixture setup only;
+- power-cut evidence is service persistence, not transaction crash-consistency testing.
+
+The complete Comprehensive feature therefore remains **PARTIAL**.
+
+Still pending:
+
+- Special Comprehensive lifecycle;
+- Special/failure resolution;
+- IRREGULAR Comprehensive workflow;
+- IMPROVEMENT Comprehensive workflow;
+- frontend integration;
+- any later exhaustive assurance matrix if required.
+
+A real power cut during the campaign provided additional reboot-persistence evidence: PostgreSQL, Nginx and PM2 returned active, `lexora-api` automatically returned online, direct/Nginx health returned HTTP `200`, and PostgreSQL was not in recovery mode. PM2 PID changed normally from `18530` to `1418`.
+
+### Next focused academic sequence
+
+1. commit this documentation reconciliation;
+2. implement authoritative Attendance `/5`;
+3. run typecheck/build and focused tests;
+4. run targeted authenticated Attendance `/5` runtime verification;
+5. implement and lock Final Formative `/40` from Activities `/30` + Attendance `/5` + Comprehensive `/5`;
+6. then continue to Final Formative `/40` + locked Summative `/60` result integration.
+
+The existing generic attendance infrastructure is not the authoritative Attendance `/5` calculation.

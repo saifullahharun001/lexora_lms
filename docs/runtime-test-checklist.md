@@ -37474,3 +37474,305 @@ remain pending:
 
 This local/disposable checkpoint does not place Regular Comprehensive `/5`
 in production or close the complete Formative/final-result workflow.
+
+<!-- regular-comprehensive-targeted-runtime-closure-20260923 -->
+
+## Regular Comprehensive `/5` Targeted Authenticated Server Runtime Closure — 2026-09-23
+
+### Supersession and classification
+
+This checkpoint supersedes older **current-status** wording that still classifies the implemented Candidate Registration + Regular Comprehensive `/5` runtime campaign as pending. Historical evidence remains preserved.
+
+Implementation/runtime baseline:
+
+- branch: `main`
+- commit: `abd2505a49c18b7d663152b96d02670e949d6574`
+- subject: `feat(api): add certified candidate registration and regular comprehensive /5`
+- deployed migration: `202609210002_add_regular_comprehensive_workflow`
+
+Current classification:
+
+> **Candidate Registration + Regular Comprehensive core backend = IMPLEMENTED + COMMITTED + PUSHED + DEPLOYED + STRONG TARGETED AUTHENTICATED UBUNTU SERVER-RUNTIME EVIDENCE**
+
+This is **not exhaustive runtime verification** and is not a claim that the complete Comprehensive Examination feature is finished.
+
+### Runtime fixture boundary
+
+The following isolated runtime prerequisites were created through controlled direct PostgreSQL fixture setup:
+
+- `rt_ce_chair_20260923`
+- `rt_ce_dist_20260923`
+- `rt_ce_absence_20260923`
+
+Each contained one Examination, one ExaminationCourse and a formal four-seat Committee:
+
+- `CHAIRMAN`
+- `MEMBER_1`
+- `MEMBER_2`
+- `EXTERNAL_MEMBER`
+
+Direct-DB creation of these isolated prerequisites was test-fixture setup only. It is **not Examination setup API runtime verification**.
+
+### Certified REGULAR Candidate Registration
+
+Authenticated Candidate Registration APIs established the exact certified REGULAR sources.
+
+Temporary POE Chairman appointment:
+
+- `cmue3w3b5007f2iaqidhyeg1d`
+
+Evidence:
+
+| Target | Candidate list | Registration |
+|---|---|---|
+| `CHAIRMAN_ONLY` | `cmue3w3m4007w2iaqo23z340y` | `cmue3w3nr00802iaqwebpas6i` |
+| `COURSE_DISTRIBUTED` | `cmue3w3ry00882iaqstzbdfxs` | `cmue3w3tf008c2iaqb9k7f914` |
+| Absence target | `cmue3w3ww008k2iaqxfvc3t6z` | `cmue3w3yb008o2iaqyvp1wfpj` |
+
+Verified:
+
+- exact student/SCA/enrollment source validation;
+- explicit `REGULAR` classification;
+- candidate-list certification;
+- classification/certification audit evidence;
+- temporary POE authority revocation;
+- revoked POE token rejected with HTTP `403`;
+- certified source remained durable after revocation;
+- original credential/session baseline restored.
+
+No raw password, token or password hash is documented.
+
+### `ALL_MEMBERS_AVERAGE`
+
+Preserved authenticated runtime package:
+
+- Examination: `cmu5nebkj00172i44vc2aftun`
+- ExaminationCourse: `cmu5nebmg001a2i44xo6lhc47`
+- Committee: `cmu5nebni001e2i44ycai8z04`
+- candidate list: `cmue15zmx00162iaq8pc27b3u`
+- registration: `cmue15zzf001a2iaqqssr0izl`
+- Comprehensive: `cmue1i81u001y2iaqazmf0laf`
+- finalisation: `cmue2blfe005z2iaqftu3m9bn`
+- final result: `cmue2blfm00612iaqu2mxvjc9`
+
+Verified:
+
+- all four required current Committee sources;
+- exact final mark `0.000025 / 5`;
+- final source count `4`;
+- calculation rule `COMPREHENSIVE_EXACT_DECIMAL_V1`;
+- immutable final evidence;
+- post-final mutation protection;
+- controlled External-access cleanup.
+
+The exact value `0.000025` is runtime evidence, not an invented rounding rule.
+
+### `CHAIRMAN_ONLY`
+
+Target Examination:
+
+- `rt_ce_chair_20260923`
+
+Runtime IDs:
+
+- Comprehensive: `cmue43g1k009g2iaqdvlcrhz0`
+- roster: `cmue43g5p009n2iaqy4oo4rxg`
+- finalisation: `cmue43gi8009x2iaqjruordh6`
+- final result: `cmue43gid009z2iaqwzfcx02p`
+
+Verified:
+
+- configuration HTTP `200`;
+- roster lock HTTP `201`;
+- MEMBER_1 mark attempt safe `404`;
+- Chairman exact mark `4.1234 / 5`;
+- repeated same submission idempotent;
+- first mark froze mode;
+- return attempt in `CHAIRMAN_ONLY` HTTP `409`;
+- MEMBER_1 finalisation safe `404`;
+- Chairman finalisation HTTP `201`;
+- final source count `1`;
+- duplicate finalisation idempotent;
+- final-evidence read HTTP `200`;
+- post-final mark HTTP `409`;
+- post-final mode mutation HTTP `409`;
+- credential/session baseline restored.
+
+### `COURSE_DISTRIBUTED`
+
+Target Examination:
+
+- `rt_ce_dist_20260923`
+
+Runtime IDs:
+
+- Comprehensive: `cmue4bgna00aq2iaqf61wzb52`
+- course: `cmue4bgng00as2iaqqwx1iyck`
+- roster: `cmue4bgpw00ax2iaqdi6otqpo`
+
+Verified:
+
+- configuration HTTP `200`;
+- roster lock HTTP `201`;
+- allocation to unbound External rejected with HTTP `409` and no residue;
+- exact allocation to current MEMBER_1 HTTP `200`;
+- allocation provenance/audit verified;
+- Chairman and MEMBER_2 mark attempts safe `404`;
+- MEMBER_1 revision 1 submitted;
+- distribution froze after marking started;
+- post-mark reallocation HTTP `409`;
+- Chairman exact return created;
+- MEMBER_1 revision 2 preserved exact predecessor/return provenance;
+- revision 1 remained immutable history;
+- MEMBER_2 correction safe `404`;
+- Chairman finalisation HTTP `201`;
+- exact final mark `3.3333 / 5`;
+- final source count `1`;
+- final source bound to revision 2 only;
+- returned revision 1 excluded;
+- duplicate finalisation idempotent;
+- post-final mark/distribution mutation HTTP `409`;
+- credential/session baseline restored.
+
+Runtime limitation:
+
+The successful `COURSE_DISTRIBUTED` path used one applicable course assigned to internal MEMBER_1.
+
+This campaign did not server-runtime verify:
+
+- multi-course distribution among multiple Committee members;
+- successful distributed marking by a digitally bound External Member.
+
+A non-fatal duplicate-finalisation test parser emitted a Python `KeyError`; the correct parser then processed the real response and all product assertions passed. This is recorded as test-harness noise, not a product defect.
+
+### Regular pre-finalisation absence
+
+Target Examination:
+
+- `rt_ce_absence_20260923`
+
+Runtime IDs:
+
+- registration: `cmue3w3yb008o2iaqyvp1wfpj`
+- Comprehensive: `cmue4l90k00c82iaqb48bt6qb`
+- roster: `cmue4l92c00cf2iaqtohhhppi`
+- absence: `cmue4l96500cl2iaqpzidpobl`
+
+Verified:
+
+- MEMBER_1 absence attempt safe `404`;
+- wrong registration safe `404`;
+- Chairman absence HTTP `201`;
+- exact Chairman provenance;
+- exactly one absence audit;
+- workflow moved/froze into `MARKING`;
+- absence created no zero mark;
+- same-reason repeat HTTP `201` with same ID;
+- changed-reason repeat HTTP `409`;
+- original reason remained unchanged;
+- one absence row and one audit only;
+- mark after absence HTTP `409`;
+- unresolved absence normal finalisation HTTP `409`;
+- mode/configuration mutation HTTP `409`;
+- direct PostgreSQL UPDATE rejected;
+- direct PostgreSQL DELETE rejected;
+- mark rows `0`;
+- finalisation rows `0`;
+- `resolution_status = SPECIAL_OR_FAILURE_RESOLUTION_REQUIRED`.
+
+Current semantics:
+
+- same reason -> idempotent;
+- changed reason -> HTTP `409`;
+- existing absence evidence -> immutable.
+
+The initial absence harness incorrectly expected changed reason to return HTTP `201`. The harness stopped on that incorrect expectation. A later read-only recovery probe confirmed no product defect, no duplicate evidence, restored credentials/sessions, zero marks/finalisations and preservation of the three verified mode packages. The corrected final closure then passed.
+
+### Power-cut recovery evidence
+
+A real power cut made the Ubuntu VM unreachable during the absence campaign.
+
+After power restoration:
+
+- repository remained clean/aligned at `abd2505a49c18b7d663152b96d02670e949d6574`;
+- PostgreSQL active;
+- Nginx active;
+- `pm2-sh002.service` active;
+- `lexora-api` automatically restored;
+- PM2 PID changed normally from `18530` to `1418`;
+- direct API HTTP `200`;
+- Nginx API HTTP `200`;
+- database `lexora_lms`;
+- `pg_is_in_recovery()` returned `false`.
+
+This strengthens reboot/power-restoration persistence evidence. It is **not active-transaction crash-consistency testing**.
+
+### Private rollback backups
+
+Validated private server backups:
+
+- `/home/sh002/lexora-private-backups/lexora_lms-before-comprehensive-alternate-runtime-20260923T125056Z.dump`
+  - mode `0600`
+  - SHA-256 `43cad16f4d5f138b0cdc8165163ea6de25b81b0db6f52425e3fb57e3d4a1948c`
+  - `pg_restore --list`: PASS
+
+- `/home/sh002/lexora-private-backups/lexora_lms-before-comprehensive-absence-runtime-20260923T131513Z.dump`
+  - mode `0600`
+  - SHA-256 `6306af5bf4f5c657f11f80c17ff3294436e6a3d7016ad84525d21b96fde6ea4d`
+  - `pg_restore --list`: PASS
+
+These are private rollback artifacts, not Git artifacts.
+
+### Runtime Evidence Boundary / Non-Claims
+
+This campaign provides **strong targeted authenticated server-runtime evidence**, not exhaustive coverage.
+
+Known limitations:
+
+- alternate-mode fixtures used one certified REGULAR student;
+- target alternate modes used one applicable course;
+- successful distributed path used internal MEMBER_1;
+- successful External distributed marking was not exercised;
+- multi-course/multi-member distribution was not exercised;
+- concurrency matrices were not exhaustively rerun on the ordinary server;
+- every cross-department/forged-header/direct-ID permutation was not repeated for every endpoint;
+- direct-DB prerequisite creation is not Examination setup API verification;
+- the power-cut event is not active-transaction crash-consistency verification;
+- local/disposable automated tests remain separate evidence.
+
+Do not reinterpret this checkpoint as `100%`, fully, exhaustively, or production proven.
+
+### Remaining Comprehensive scope
+
+The full Comprehensive Examination feature remains **PARTIAL**.
+
+Pending:
+
+- Special Comprehensive application/evidence/recommendation/permission/deadline/fee/approval/audit;
+- Special/failure resolution of Regular absence;
+- IRREGULAR Comprehensive workflow;
+- IMPROVEMENT Comprehensive workflow;
+- broader frontend integration;
+- any later exhaustive assurance matrix if required.
+
+### Next academic boundary
+
+Confirmed theoretical-course structure remains:
+
+- Formative activities `/30`;
+- Attendance `/5`;
+- Comprehensive `/5`;
+- Final Formative `/40`;
+- Summative `/60`.
+
+The generic attendance record/capture foundation does **not** mean authoritative academic Attendance `/5` is implemented.
+
+Next sequence:
+
+1. implement authoritative Attendance `/5`;
+2. typecheck/build and focused verification;
+3. targeted authenticated runtime verification;
+4. implement authoritative locked Final Formative `/40` from `/30 + /5 + /5`;
+5. then proceed to locked Formative `/40` + locked Summative `/60` result integration.
+
+The result layer must consume the authoritative locked Final Formative `/40`, not rebuild it independently from raw components.
