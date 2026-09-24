@@ -2787,3 +2787,133 @@ A real power cut during the campaign provided additional reboot-persistence evid
 6. then continue to Final Formative `/40` + locked Summative `/60` result integration.
 
 The existing generic attendance infrastructure is not the authoritative Attendance `/5` calculation.
+
+<!-- roadmap-authoritative-attendance-5-local-disposable-verified-20260924 -->
+
+## Authoritative Formative Attendance `/5` Status Supersession — 2026-09-24
+
+Current authoritative Attendance `/5` backend status:
+
+**BACKEND IMPLEMENTED + INDEPENDENTLY REVIEWED + LOCAL / DISPOSABLE POSTGRESQL VERIFIED;
+COMMIT/PUSH, ORDINARY DEPLOYMENT AND AUTHENTICATED RUNTIME VERIFICATION PENDING**
+
+This section supersedes earlier roadmap statements that authoritative Attendance
+`/5` is unimplemented or only a rule/foundation boundary, only for the bounded
+backend implementation described here.
+
+Historical status text remains preserved as point-in-time evidence.
+
+### Verified backend boundary
+
+Implemented scope now includes:
+
+- server-derived Attendance `/5`;
+- rule version
+  `FORMATIVE_ATTENDANCE_5_APPROVED_20260920_V1`;
+- `PRESENT` / `ABSENT` authoritative academic evidence;
+- missing/conflicting/unresolved evidence blocking instead of automatic absence;
+- exact Batch Coordinator academic authority;
+- department + StudentBatch + AcademicTerm scope;
+- current Enrollment and CourseOffering revalidation;
+- immutable/versioned source packages;
+- stale-evidence protection;
+- verification/finalisation/locking lifecycle;
+- controlled reopen/correction lineage;
+- post-lock raw-evidence protection;
+- concurrency-safe transitions;
+- direct-database academic integrity protection.
+
+The approved period-closure rule is implemented:
+
+> non-cancelled `SCHEDULED` or `ACTIVE` ClassSession present
+> → Attendance `/5` cannot be `FINALISED` or `LOCKED`.
+
+Preview/calculation may continue while the period is open.
+
+`VERIFIED` may exist when currently conducted evidence is otherwise resolved.
+
+### Verification status
+
+Local focused result:
+
+- `75` total;
+- `74` passed;
+- `0` failed;
+- `1` expected disposable-PostgreSQL skip.
+
+Final isolated real PostgreSQL result:
+
+- `54` total;
+- `54` passed;
+- `0` failed;
+- `0` skipped.
+
+Migration SHA-256:
+
+`12c981ade6f5f1ed7b4682300e8d52cf873054a475429e3f62818464d09d8b66`
+
+Compiled PostgreSQL verifier SHA-256:
+
+`1361dcd18d24cea2e3141467517220797e748614f85b8a0505c0c107bf800fc3`
+
+The ordinary `lexora_lms` database was not accessed by disposable verification.
+
+### Important non-claims
+
+This checkpoint does not claim:
+
+- implementation commit/push;
+- ordinary database migration;
+- deployment;
+- authenticated application-runtime verification;
+- production-grade biometric reconciliation;
+- complete Examination Eligibility redesign;
+- frontend completion;
+- Final Formative `/40` completion.
+
+Attendance `/5` remains separate from Examination Eligibility.
+
+Production biometric sync reconciliation remains a separate hardening backlog.
+
+Changing the historical class set after authoritative Attendance locking remains
+a future separately authorised academic workflow.
+
+### Formative component status
+
+Current component boundaries:
+
+- Activities `/30`:
+  implemented, committed, pushed, deployed and targeted authenticated
+  server-runtime verified for the ordinary Teacher submission boundary;
+- Attendance `/5`:
+  implemented and local/disposable PostgreSQL verified; commit/deployment and
+  authenticated runtime verification remain pending;
+- Regular Comprehensive `/5`:
+  implemented with strong targeted authenticated runtime evidence for the
+  verified Regular scope; the complete Comprehensive feature remains partial.
+
+These components still do **not** constitute authoritative locked Final
+Formative `/40`.
+
+The complete Formative workflow therefore remains:
+
+**PARTIAL / ACTIVE BACKEND DEVELOPMENT**
+
+### Next focused sequence
+
+1. review the final Attendance `/5` implementation + documentation diff;
+2. create one focused implementation/documentation commit and push it;
+3. inspect and reconcile the currently dirty Ubuntu server worktree before any
+   deployment action;
+4. fast-forward the server only after the worktree is understood and clean;
+5. create a validated private pre-migration backup;
+6. apply the reviewed Attendance migration to the ordinary PostgreSQL database;
+7. verify migration history/catalog/drift plus API build and health;
+8. run targeted authenticated Attendance `/5` runtime verification;
+9. reconcile the resulting deployed runtime evidence in documentation;
+10. only then implement authoritative locked Final Formative `/40`;
+11. after that continue to locked Final Formative `/40` + locked Summative
+    `/60` result integration.
+
+The final result layer must consume authoritative locked Final Formative `/40`;
+it must not rebuild that `/40` independently from raw component records.

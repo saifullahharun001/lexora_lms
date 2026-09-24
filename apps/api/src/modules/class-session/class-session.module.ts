@@ -1,3 +1,4 @@
+import { ClassSessionEvidenceService } from "./class-session-evidence.service";
 import { Module } from "@nestjs/common";
 
 import { PrismaModule } from "@/common/prisma/prisma.module";
@@ -19,7 +20,9 @@ import { ClassSessionsController } from "./presentation/http/class-sessions.cont
   controllers: [
     ClassSessionsController
   ],
+  exports: [ClassSessionEvidenceService],
   providers: [
+    ClassSessionEvidenceService,
     ClassSessionService,
     {
       provide: CLASS_SESSION_REPOSITORY,

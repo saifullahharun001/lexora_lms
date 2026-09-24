@@ -871,6 +871,10 @@ model AcademicTerm {
 }
 
 model BatchCoordinatorAssignment {
+  attendanceVersions FormativeAttendanceVersion[]
+  attendanceTransitions FormativeAttendanceTransition[]
+  attendanceCorrections FormativeAttendanceCorrection[]
+  @@unique([id, departmentId, studentBatchId, academicTermId, coordinatorUserId], map: "attendance_coordinator_scope_uq")
   id                 String                           @id @default(cuid())
   departmentId       String                           @map("department_id")
   studentBatchId     String                           @map("student_batch_id")
@@ -1461,6 +1465,8 @@ model CurriculumCoursePrerequisite {
 }
 
 model CourseOffering {
+  attendanceVersions FormativeAttendanceVersion[]
+  @@unique([id, departmentId, studentBatchId, academicTermId], map: "attendance_offering_scope_uq")
   formativeActivities FormativeActivity[]
   @@unique([id, departmentId], map: "formative_offering_scope_uq")
   id                           String                    @id @default(cuid())
@@ -1604,6 +1610,8 @@ model TeacherCourseAssignment {
 }
 
 model Enrollment {
+  attendanceVersions FormativeAttendanceVersion[]
+  attendanceCorrections FormativeAttendanceCorrection[]
   @@unique([id, departmentId], map: "enrollment_comprehensive_scope_uq")
   ExaminationCandidateCourse_enrollment ExaminationCandidateCourse[] @relation("ExaminationCandidateCourse_enrollment")
   formativeMarks FormativeMarkEvidence[]
@@ -1650,6 +1658,10 @@ model Enrollment {
 }
 
 model ClassSession {
+  attendanceEvidenceRevision Int @default(0) @map("attendance_evidence_revision")
+  attendanceSourceItems FormativeAttendanceSourceItem[]
+  attendanceCorrections FormativeAttendanceCorrection[]
+  @@unique([id, departmentId, courseOfferingId], map: "attendance_session_scope_uq")
   id                      String                   @id @default(cuid())
   departmentId            String                   @map("department_id")
   courseOfferingId        String                   @map("course_offering_id")
@@ -1681,6 +1693,10 @@ model ClassSession {
 }
 
 model AttendanceRecord {
+  attendanceEvidenceRevision Int @default(0) @map("attendance_evidence_revision")
+  attendanceSourceItems FormativeAttendanceSourceItem[]
+  resolutionStatus String @default("RESOLVED") @map("resolution_status") @db.VarChar(32)
+  conflictEvidenceJson Json? @map("conflict_evidence_json")
   id                String                 @id @default(cuid())
   departmentId      String                 @map("department_id")
   classSessionId    String                 @map("class_session_id")
@@ -4070,4 +4086,113 @@ model ComprehensiveFinalSource {
   result ComprehensiveFinalResult @relation("ComprehensiveFinalSource_result", fields: [resultId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivefinalsource_result_fk")
   mark ComprehensiveMark @relation("ComprehensiveFinalSource_mark", fields: [markId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "ce_comprehensivefinalsource_mark_fk")
   @@map("comprehensive_final_sources")
+}
+
+
+// Attendance /5 owns these immutable packages; Eligibility has no relation to them.
+model FormativeAttendanceVersion {
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  courseOfferingId String @map("course_offering_id")
+  enrollmentId String @map("enrollment_id")
+  studentUserId String @map("student_user_id")
+  studentBatchId String @map("student_batch_id")
+  academicTermId String @map("academic_term_id")
+  revision Int
+  previousId String? @unique @map("previous_id")
+  reason String? @db.VarChar(2000)
+  ruleVersionCode String @map("rule_version_code")
+  calculationBasis String @map("calculation_basis")
+  presentCount Int @map("present_count")
+  conductedCount Int @map("conducted_count")
+  percentage Decimal? @db.Decimal(12,6)
+  mark Decimal? @db.Decimal(2,1)
+  status String @db.VarChar(16)
+  sourceFingerprint String @map("source_fingerprint") @db.VarChar(64)
+  configurationJson Json @map("configuration_json")
+  diagnosticsJson Json @map("diagnostics_json")
+  actorUserId String @map("actor_user_id")
+  coordinatorAssignmentId String @map("coordinator_assignment_id")
+  calculatedAt DateTime @default(now()) @map("calculated_at")
+  offering CourseOffering @relation(fields: [courseOfferingId, departmentId, studentBatchId, academicTermId], references: [id, departmentId, studentBatchId, academicTermId], onDelete: Restrict, onUpdate: Restrict)
+  enrollment Enrollment @relation(fields: [enrollmentId, departmentId, courseOfferingId, studentUserId], references: [id, departmentId, courseOfferingId, studentUserId], onDelete: Restrict, onUpdate: Restrict)
+  coordinator BatchCoordinatorAssignment @relation(fields: [coordinatorAssignmentId, departmentId, studentBatchId, academicTermId, actorUserId], references: [id, departmentId, studentBatchId, academicTermId, coordinatorUserId], onDelete: Restrict, onUpdate: Restrict)
+  previous FormativeAttendanceVersion? @relation("AttendanceRevision", fields: [previousId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  next FormativeAttendanceVersion? @relation("AttendanceRevision")
+  items FormativeAttendanceSourceItem[]
+  transitions FormativeAttendanceTransition[]
+  corrections FormativeAttendanceCorrection[]
+  @@unique([departmentId, enrollmentId, revision], map: "attendance_revision_uq")
+  @@unique([id, departmentId, courseOfferingId, enrollmentId], map: "attendance_version_scope_uq")
+  @@map("formative_attendance_versions")
+}
+
+model FormativeAttendanceSourceItem {
+  sessionEvidenceRevision Int @default(0) @map("session_evidence_revision")
+  recordEvidenceRevision Int? @map("record_evidence_revision")
+  id String @id @default(cuid())
+  versionId String @map("version_id")
+  departmentId String @map("department_id")
+  courseOfferingId String @map("course_offering_id")
+  enrollmentId String @map("enrollment_id")
+  classSessionId String @map("class_session_id")
+  attendanceRecordId String? @map("attendance_record_id")
+  correctionId String? @map("correction_id")
+  status String? @db.VarChar(16)
+  basisFingerprint String @map("basis_fingerprint") @db.VarChar(64)
+  evidenceJson Json @map("evidence_json")
+  version FormativeAttendanceVersion @relation(fields: [versionId, departmentId, courseOfferingId, enrollmentId], references: [id, departmentId, courseOfferingId, enrollmentId], onDelete: Restrict, onUpdate: Restrict)
+  session ClassSession @relation(fields: [classSessionId, departmentId, courseOfferingId], references: [id, departmentId, courseOfferingId], onDelete: Restrict, onUpdate: Restrict)
+  record AttendanceRecord? @relation(fields: [attendanceRecordId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  correction FormativeAttendanceCorrection? @relation(fields: [correctionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  @@unique([versionId, classSessionId])
+  @@map("formative_attendance_source_items")
+}
+
+model FormativeAttendanceTransition {
+  id String @id @default(cuid())
+  versionId String @map("version_id")
+  departmentId String @map("department_id")
+  courseOfferingId String @map("course_offering_id")
+  enrollmentId String @map("enrollment_id")
+  studentBatchId String @map("student_batch_id")
+  academicTermId String @map("academic_term_id")
+  state String @db.VarChar(16)
+  reason String? @db.VarChar(2000)
+  actorUserId String @map("actor_user_id")
+  coordinatorAssignmentId String @map("coordinator_assignment_id")
+  occurredAt DateTime @default(now()) @map("occurred_at")
+  version FormativeAttendanceVersion @relation(fields: [versionId, departmentId, courseOfferingId, enrollmentId], references: [id, departmentId, courseOfferingId, enrollmentId], onDelete: Restrict, onUpdate: Restrict)
+  coordinator BatchCoordinatorAssignment @relation(fields: [coordinatorAssignmentId, departmentId, studentBatchId, academicTermId, actorUserId], references: [id, departmentId, studentBatchId, academicTermId, coordinatorUserId], onDelete: Restrict, onUpdate: Restrict)
+  @@unique([versionId, state])
+  @@map("formative_attendance_transitions")
+}
+
+model FormativeAttendanceCorrection {
+  sessionEvidenceRevision Int @default(0) @map("session_evidence_revision")
+  recordEvidenceRevision Int? @map("record_evidence_revision")
+  id String @id @default(cuid())
+  versionId String @map("version_id")
+  departmentId String @map("department_id")
+  courseOfferingId String @map("course_offering_id")
+  enrollmentId String @map("enrollment_id")
+  studentUserId String @map("student_user_id")
+  studentBatchId String @map("student_batch_id")
+  academicTermId String @map("academic_term_id")
+  classSessionId String @map("class_session_id")
+  revision Int
+  status String @db.VarChar(16)
+  reason String @db.VarChar(2000)
+  basisFingerprint String @map("basis_fingerprint") @db.VarChar(64)
+  originalEvidenceJson Json @map("original_evidence_json")
+  actorUserId String @map("actor_user_id")
+  coordinatorAssignmentId String @map("coordinator_assignment_id")
+  occurredAt DateTime @default(now()) @map("occurred_at")
+  version FormativeAttendanceVersion @relation(fields: [versionId, departmentId, courseOfferingId, enrollmentId], references: [id, departmentId, courseOfferingId, enrollmentId], onDelete: Restrict, onUpdate: Restrict)
+  enrollment Enrollment @relation(fields: [enrollmentId, departmentId, courseOfferingId, studentUserId], references: [id, departmentId, courseOfferingId, studentUserId], onDelete: Restrict, onUpdate: Restrict)
+  session ClassSession @relation(fields: [classSessionId, departmentId, courseOfferingId], references: [id, departmentId, courseOfferingId], onDelete: Restrict, onUpdate: Restrict)
+  coordinator BatchCoordinatorAssignment @relation(fields: [coordinatorAssignmentId, departmentId, studentBatchId, academicTermId, actorUserId], references: [id, departmentId, studentBatchId, academicTermId, coordinatorUserId], onDelete: Restrict, onUpdate: Restrict)
+  items FormativeAttendanceSourceItem[]
+  @@unique([enrollmentId, classSessionId, revision])
+  @@map("formative_attendance_corrections")
 }

@@ -90,6 +90,8 @@ const EXACT_PERMISSION_POLICIES: Record<string, { resource: string; action: stri
 } as const;
 
 const SENSITIVE_ROLE_ADMISSION_POLICIES = {
+  // Admission only; current exact BatchCoordinatorAssignment is mandatory in the transaction.
+  "attendance.formative.coordinate": ["teacher", "department_admin"],
   [COURSE_MANAGEMENT_POLICY_NAMES.COURSE_OUTLINE_COORDINATOR_REVIEW]: [
     "teacher",
     "department_admin"

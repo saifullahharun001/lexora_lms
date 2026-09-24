@@ -170,12 +170,6 @@ export class AttendanceService {
       ...input
     });
 
-    await this.writeAudit(ATTENDANCE_AUDIT_EVENTS.RECORD_CAPTURED, "attendance_record", record, {
-      classSessionId: input.classSessionId,
-      enrollmentId: input.enrollmentId,
-      sourceType: input.sourceType
-    });
-
     return record;
   }
 
@@ -238,14 +232,6 @@ export class AttendanceService {
     if (!record) {
       throw new NotFoundException("Attendance record not found");
     }
-
-    await this.writeAudit(ATTENDANCE_AUDIT_EVENTS.RECORD_OVERRIDDEN, "attendance_record", record, {
-      previousStatus: existing.status,
-      status: input.status,
-      previousSourceType: existing.sourceType,
-      sourceType: AttendanceSourceType.MANUAL,
-      overrideReason: input.overrideReason
-    });
 
     return record;
   }

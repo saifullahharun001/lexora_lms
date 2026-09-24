@@ -37776,3 +37776,403 @@ Next sequence:
 5. then proceed to locked Formative `/40` + locked Summative `/60` result integration.
 
 The result layer must consume the authoritative locked Final Formative `/40`, not rebuild it independently from raw components.
+
+<!-- authoritative-attendance-5-local-disposable-verified-20260924 -->
+
+## Authoritative Formative Attendance `/5` — Local / Disposable PostgreSQL Verification Checkpoint — 2026-09-24
+
+### Evidence classification and supersession
+
+The authoritative Formative Attendance `/5` backend checkpoint is now:
+
+**IMPLEMENTED + INDEPENDENTLY REVIEWED + LOCAL / DISPOSABLE POSTGRESQL VERIFIED**
+
+This section supersedes earlier statements that authoritative academic
+Attendance `/5` is unimplemented or only a rule/foundation boundary, only for
+the bounded backend implementation and verification scope described here.
+
+Historical pending text remains preserved as point-in-time evidence.
+
+This checkpoint does **not** claim that Attendance `/5` is:
+
+- committed or pushed;
+- deployed to the Ubuntu runtime repository;
+- applied to the ordinary Lexora PostgreSQL database;
+- targeted authenticated application-runtime verified;
+- complete frontend functionality;
+- exhaustive production assurance.
+
+At the time of this checkpoint:
+
+- repository baseline HEAD was
+  `4c5f6fa41a2191d0c805107a124d9c4a008ed53b`;
+- `origin/main` matched that baseline;
+- the Attendance `/5` implementation remained uncommitted;
+- the ordinary `lexora_lms` database was not modified by disposable verification.
+
+### Authoritative academic rule
+
+The verified Attendance rule version is:
+
+`FORMATIVE_ATTENDANCE_5_APPROVED_20260920_V1`
+
+Server-derived Attendance `/5` bands are:
+
+- `>= 90%` → `5.0`;
+- `>= 85%` → `4.5`;
+- `>= 80%` → `4.0`;
+- `>= 75%` → `3.5`;
+- `>= 70%` → `3.0`;
+- `>= 65%` → `2.5`;
+- `>= 60%` → `2.0`;
+- `< 60%` → `0`.
+
+Threshold comparison uses the exact attended/conducted count ratio before
+display rounding.
+
+The authoritative percentage remains:
+
+`Present Count / Counted Conducted Classes * 100`
+
+The client does not supply the authoritative percentage or `/5` mark.
+
+### Attendance evidence semantics
+
+For authoritative Attendance `/5`:
+
+- current authoritative attendance values are `PRESENT` and `ABSENT`;
+- no new `LATE`, `EXCUSED`, `PARTIAL` or manual-override status is introduced;
+- missing evidence does not silently become `ABSENT`;
+- conflict, unresolved reconciliation, missing evidence or unsupported legacy
+  evidence blocks the affected academic Attendance calculation;
+- unresolved evidence blocks finalisation/locking;
+- legacy unsupported statuses require controlled resolution rather than silent
+  conversion;
+- Attendance `/5` remains academically separate from Examination Eligibility.
+
+### Authority boundary
+
+The ordinary Course Teacher captures attendance evidence.
+
+The server calculates Attendance `/5`.
+
+Academic Attendance verification/finalisation/locking requires the exact current
+Batch Coordinator assignment for:
+
+- department;
+- `StudentBatch`;
+- `AcademicTerm`;
+- exact Coordinator user.
+
+A broad role label alone is not sufficient authority.
+
+Department Admin does not implicitly become Batch Coordinator.
+
+Teacher does not implicitly become Batch Coordinator.
+
+Student has no academic Attendance transition authority.
+
+The implementation preserves:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- `@RequirePolicy()`;
+- request context;
+- department isolation;
+- object-level authorization;
+- safe not-found behavior where applicable;
+- service-level exact Coordinator-assignment validation;
+- database-level current academic-scope validation.
+
+### Academic-period closure rule
+
+The approved rule is:
+
+> If any non-cancelled `SCHEDULED` or `ACTIVE` ClassSession exists for the
+> CourseOffering, Attendance `/5` cannot be `FINALISED` or `LOCKED`.
+
+Preview/calculation remains permitted while the period is open.
+
+`VERIFIED` may exist when currently conducted evidence is otherwise resolved.
+
+A cancelled session does not keep the Attendance period open.
+
+The rule is enforced at both application and PostgreSQL academic-transition
+boundaries.
+
+This rule operates on authoritative ClassSession rows already present in Lexora;
+it does not independently prove that an omitted teaching event was entered into
+the system.
+
+### Conducted-session source-package integrity
+
+The verified source package requires the exact valid conducted-session set.
+
+The PostgreSQL boundary rejects:
+
+- omitted valid conducted sessions;
+- extra non-conducted sessions;
+- fabricated source-item attendance status;
+- unresolved source records presented as ready evidence;
+- archived source records presented as ready evidence;
+- mismatched record/session/enrollment identity;
+- malformed direct AttendanceRecord academic identity;
+- stale source evidence;
+- stale correction lineage.
+
+Authoritative versions, source items, transitions and corrections remain
+immutable/versioned under the verified database boundary.
+
+### Current academic-scope validation
+
+Every authoritative Attendance version, transition and correction revalidates
+current academic scope.
+
+CourseOffering requirements include:
+
+- exact department;
+- exact StudentBatch;
+- exact AcademicTerm;
+- non-null StudentBatch;
+- not archived;
+- not `CANCELED`;
+- not `ARCHIVED`.
+
+Enrollment requirements include:
+
+- exact department;
+- exact CourseOffering;
+- exact student;
+- exact AcademicTerm;
+- `APPROVED`;
+- not archived;
+- not dropped.
+
+The exact currently valid Batch Coordinator assignment is revalidated as well.
+
+Foreign-key identity alone is not treated as sufficient academic authority.
+
+### Stale evidence and concurrency
+
+Real PostgreSQL verification confirmed:
+
+- stale attendance status cannot verify/finalise/lock;
+- stale reconciliation state cannot verify/finalise/lock;
+- stale archival state cannot verify/finalise/lock;
+- stale ClassSession facts cannot verify/finalise/lock;
+- database evidence revisions cannot be reset to bypass staleness;
+- source mutation after verification in the same transaction is rejected;
+- concurrent finalisation converges to one valid immutable event;
+- concurrent locking versus class opening converges to a safe outcome;
+- concurrent reopen/revision does not create competing successors.
+
+### Reopen and correction
+
+Correction after authoritative locking uses immutable correction overlay/version
+lineage.
+
+Reopening does not unlock historical raw evidence.
+
+Verified behavior includes:
+
+- historical raw AttendanceRecord mutation remains blocked after reopening;
+- historical counted ClassSession facts remain protected after reopening;
+- new ClassSession insertion after a historical Attendance lock remains blocked,
+  including after reopen;
+- failed correction/audit transaction rolls back;
+- controlled correction overlay can create and relock a successor version
+  without rewriting the original raw attendance evidence.
+
+Any future exceptional workflow that changes the historical class set after
+Attendance locking requires a separately authorised and audited design.
+
+### Local focused verification
+
+Final local focused result after harness corrections:
+
+- total: `75`;
+- passed: `74`;
+- failed: `0`;
+- skipped: `1`.
+
+The single skipped case was the deliberately opt-in disposable PostgreSQL suite
+when the dedicated disposable database variables were absent locally.
+
+Also passed:
+
+- Prisma validate;
+- Prisma Client generation;
+- API typecheck;
+- API build;
+- `git diff --check`.
+
+### Final disposable PostgreSQL verification
+
+Final isolated PostgreSQL verification used:
+
+- PostgreSQL image:
+  `postgres:18.4-alpine3.23`;
+- loopback-only random host port;
+- disposable database:
+  `lexora_attendance_test`;
+- no persistent volume;
+- existing sudo-only Docker administration boundary;
+- exact reviewed migration by SHA-256;
+- exact corrected compiled PostgreSQL verifier by SHA-256;
+- no ordinary `lexora_lms` database access.
+
+Final migration SHA-256:
+
+`12c981ade6f5f1ed7b4682300e8d52cf873054a475429e3f62818464d09d8b66`
+
+Final compiled PostgreSQL verifier SHA-256:
+
+`1361dcd18d24cea2e3141467517220797e748614f85b8a0505c0c107bf800fc3`
+
+Final PostgreSQL result:
+
+- tests: `54`;
+- passed: `54`;
+- failed: `0`;
+- skipped: `0`;
+- cancelled: `0`;
+- todo: `0`.
+
+Real PostgreSQL coverage included:
+
+- deferred incomplete-package rejection;
+- exact active Coordinator assignment enforcement;
+- wrong-role/no-assignment rejection;
+- invalid current Enrollment rejection;
+- invalid current CourseOffering rejection;
+- existing-version invalid-scope rejection;
+- exact conducted-session set;
+- fabricated/unresolved/archived source rejection;
+- malformed AttendanceRecord identity rejection;
+- mismatched source reference rejection;
+- pre-lock ClassSession creation;
+- normal pre-lock capture;
+- stale-evidence detection;
+- evidence-revision protection;
+- `SCHEDULED` period-open finalise/lock rejection;
+- `ACTIVE` period-open finalise/lock rejection;
+- cancelled-session finalisation/locking allowance;
+- deferred same-transaction stale detection;
+- correction-lineage enforcement;
+- lifecycle ordering;
+- immutable package/source behavior;
+- concurrent finalisation;
+- lock-versus-class-opening concurrency;
+- post-lock source protection;
+- reopen rollback;
+- concurrent reopen/revision convergence;
+- historical source immutability;
+- post-lock new-ClassSession rejection;
+- correction rollback;
+- correction-overlay relock without raw-source rewriting.
+
+Final disposable container cleanup:
+
+**PASS**
+
+Ordinary Lexora database accessed:
+
+**NO**
+
+### Verification-harness incident record
+
+Three verification-harness/environment issues occurred before the final clean
+run. They must not be reclassified later as product defects.
+
+#### Windows Docker preflight
+
+The initial Windows attempt stopped because the `docker` command was not
+available.
+
+No container was created and no database test executed.
+
+Classification:
+
+**verification environment issue**
+
+#### SQL parser final-tail defect
+
+The first server-side run exposed a test-harness parser issue where
+semicolon-less generated SQL tails were discarded.
+
+The parser was corrected to preserve the final non-whitespace SQL tail while
+retaining dollar-quoted PL/pgSQL handling and transaction-wrapper filtering.
+
+Migration/product code was unchanged.
+
+Classification:
+
+**verification-harness defect**
+
+#### PostgreSQL NOT NULL assertion shape
+
+A later run reached the deliberate rollback probe.
+
+PostgreSQL correctly returned SQLSTATE `23502`, but Prisma surfaced structured
+`P2010` metadata rather than the brittle text originally expected by the test.
+
+The assertion was corrected to require structured Prisma/PostgreSQL metadata:
+
+- `PrismaClientKnownRequestError`;
+- Prisma `P2010`;
+- PostgreSQL SQLSTATE `23502`.
+
+No generic text fallback is used.
+
+Migration/product code was unchanged.
+
+Classification:
+
+**verification-harness assertion issue**
+
+The final isolated rerun after these corrections passed `54/54`.
+
+### Current accurate classification
+
+Authoritative Formative Attendance `/5` backend:
+
+- implementation: **YES**;
+- independent review: **YES**;
+- local focused/static verification: **PASS**;
+- isolated real PostgreSQL verification: **PASS**;
+- implementation commit/push: **PENDING**;
+- ordinary database migration: **PENDING**;
+- deployment: **PENDING**;
+- targeted authenticated application-runtime verification: **PENDING**;
+- frontend integration: **PENDING**.
+
+Production-grade biometric sync reconciliation remains a separate hardening
+boundary and is not closed by this checkpoint.
+
+The complete Formative Assessment `/40` remains:
+
+**PARTIAL / ACTIVE BACKEND DEVELOPMENT**
+
+The academic dependency remains:
+
+`Activities /30 + Attendance /5 + Comprehensive Examination /5 = Final Formative /40`
+
+The future final-result layer must consume authoritative locked Final Formative
+`/40`, not independently reconstruct it from raw component records.
+
+### Next safe sequence
+
+1. review and commit/push this exact Attendance `/5` implementation,
+   tests and documentation reconciliation;
+2. independently inspect and reconcile the currently dirty Ubuntu server
+   worktree before any pull, fast-forward, migration or deployment;
+3. fast-forward the Ubuntu runtime repository only after the worktree is
+   understood and clean;
+4. perform ordinary-database migration preflight and create a validated private
+   rollback backup;
+5. deploy the reviewed Attendance migration;
+6. verify migration history, catalog/drift, API build and health;
+7. execute targeted authenticated Attendance `/5` runtime verification,
+   including allowed and blocked authority/isolation cases;
+8. reconcile deployed runtime evidence in documentation;
+9. only then implement authoritative locked Final Formative `/40`.

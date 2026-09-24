@@ -86,3 +86,6 @@ backups/
 
 !apps/api/prisma/migrations/202609210002_add_regular_comprehensive_workflow/
 !apps/api/prisma/migrations/202609210002_add_regular_comprehensive_workflow/migration.sql
+
+!apps/api/prisma/migrations/202609230001_add_authoritative_formative_attendance/
+!apps/api/prisma/migrations/202609230001_add_authoritative_formative_attendance/migration.sql
