@@ -38176,3 +38176,424 @@ The future final-result layer must consume authoritative locked Final Formative
    including allowed and blocked authority/isolation cases;
 8. reconcile deployed runtime evidence in documentation;
 9. only then implement authoritative locked Final Formative `/40`.
+
+
+<!-- authoritative-attendance-5-targeted-runtime-verified-20260925 -->
+
+## Authoritative Formative Attendance `/5` — Ordinary Deployment and Targeted Authenticated Runtime Verification — 2026-09-25
+
+### Current classification
+
+The authoritative Formative Attendance `/5` backend is now:
+
+**IMPLEMENTED + REVIEWED + COMMITTED + PUSHED + DEPLOYED + ORDINARY POSTGRESQL MIGRATED + TARGETED AUTHENTICATED SERVER-RUNTIME VERIFIED**
+
+This is strong targeted runtime evidence. It is not an exhaustive or production-completeness claim.
+
+Implementation commit:
+
+`3455c1484e87b0e84d71ae3babfc3ec62b8dbe37`
+
+Migration-checksum preservation correction:
+
+`2047ac62c6aeddf312aa81fd0f51f712b8641aef`
+
+Migration:
+
+`202609230001_add_authoritative_formative_attendance`
+
+Authoritative migration SHA-256:
+
+`12c981ade6f5f1ed7b4682300e8d52cf873054a475429e3f62818464d09d8b66`
+
+The migration contains the exact previously disposable-PostgreSQL-verified bytes:
+
+- CR bytes: `439`;
+- LF bytes: `469`;
+- Git attribute: `text: unset`.
+
+The correction changed only Git line-ending preservation. CRLF-to-LF normalization of the corrected migration exactly reproduced the previous committed LF content, proving no SQL semantic change.
+
+### Ordinary PostgreSQL deployment
+
+Ordinary runtime database:
+
+`lexora_lms`
+
+PostgreSQL:
+
+`18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)`
+
+Immediately before migration:
+
+- repository migrations: `35`;
+- completed migrations: `34`;
+- pending migrations: exactly `1`;
+- exact pending migration: `202609230001_add_authoritative_formative_attendance`;
+- target migration-history rows: `0`;
+- unresolved incomplete migrations: `0`;
+- target Attendance tables/functions/triggers/new columns: absent.
+
+Selected pre-migration row counts:
+
+- departments: `2`;
+- users: `39`;
+- academic_programs: `4`;
+- curriculum_versions: `8`;
+- curriculum_courses: `61`;
+- course_offerings: `16`;
+- teacher_course_assignments: `6`;
+- enrollments: `14`;
+- class_sessions: `4`;
+- attendance_records: `1`;
+- batch_coordinator_assignments: `0`.
+
+A validated private custom-format pre-migration backup was created:
+
+`/home/sh002/lexora-private-backups/lexora_lms-before-202609230001_add_authoritative_formative_attendance-20260924T174934Z.dump`
+
+Properties:
+
+- SHA-256: `6067b6665d86d58cb182c37382475594e57829f9f89685124b89018792a0ffee`;
+- size: `981653` bytes;
+- TOC entries: `1391`;
+- file mode: `0600`;
+- backup directory mode: `0700`;
+- `pg_restore --list`: PASS.
+
+Migration deployment then passed.
+
+Post-deployment migration history verified:
+
+- target rows: exactly `1`;
+- checksum: exact expected SHA-256;
+- finished: true;
+- rolled back: false;
+- applied steps: `1`;
+- unresolved incomplete migrations: `0`.
+
+Live target catalog verified:
+
+- `formative_attendance_versions`: present;
+- `formative_attendance_source_items`: present;
+- `formative_attendance_transitions`: present;
+- `formative_attendance_corrections`: present;
+- `attendance_evidence_revision_seq`: present;
+- expected new source columns: `4`;
+- expected target functions: `7`;
+- expected target triggers: `13`.
+
+No authoritative Attendance rows were automatically backfilled.
+
+Existing selected business-row counts remained unchanged.
+
+Final Prisma migration status:
+
+`Database schema is up to date!`
+
+A second `prisma migrate deploy` was a true no-op:
+
+`No pending migrations to apply.`
+
+### Application activation
+
+After migration, the existing built API was activated through a controlled PM2 restart.
+
+PM2:
+
+- PID before: `1579`;
+- PID after: `70094`;
+- restart count before: `0`;
+- restart count after: `1`;
+- final state: online.
+
+Runtime platform verification:
+
+- direct API health: PASS;
+- Nginx API health: PASS;
+- Nginx: active;
+- PostgreSQL: active;
+- API listener: exactly `127.0.0.1:4000`;
+- repository: clean and aligned at `2047ac62c6aeddf312aa81fd0f51f712b8641aef`.
+
+All Formative Attendance HTTP routes remained behind `AuthGuard`, `PolicyGuard` and `@RequirePolicy(FORMATIVE_ATTENDANCE_POLICY)`.
+
+### Authenticated academic-authority runtime verification
+
+The runtime target reused the isolated `sumrtc_*` academic fixture:
+
+- CourseOffering: `sumrtc_offering_20260904010135_320c`;
+- Enrollment: `sumrtc_enrollment_20260904010135_320c`;
+- StudentBatch: `sumrtc_batch_20260904010135_320c`;
+- AcademicTerm: `term_law_2025_2026_s1`.
+
+Before the exact Coordinator assignment:
+
+- unauthenticated request: HTTP `401`;
+- Teacher without exact assignment: safe HTTP `404`;
+- Department Admin without exact assignment: safe HTTP `404`;
+- Student: HTTP `403`.
+
+After a temporary exact Batch Coordinator assignment was created for the canonical Law Teacher:
+
+- assigned Teacher/Coordinator read: HTTP `200`;
+- zero-conducted-class preview: `BLOCKED`;
+- conducted count: `0`;
+- mark: `null`;
+- diagnostic: `ZERO_CONDUCTED_SESSIONS`;
+- GET created no Attendance version.
+
+Additional authority/isolation verification:
+
+- Department Admin did not inherit Coordinator authority;
+- forged `x-department-id` did not replace the authenticated Law department;
+- direct nonexistent Enrollment ID returned safe HTTP `404`;
+- live Coordinator-assignment deactivation immediately removed access;
+- reactivation restored access;
+- assignment removal again produced safe HTTP `404`.
+
+That authority-gate campaign created zero authoritative Attendance versions/items/transitions/corrections/audits and removed its temporary assignment.
+
+### Targeted authenticated Attendance evidence/lifecycle campaign
+
+Successful runtime evidence tag:
+
+`20260924T183053Z`
+
+A second validated private backup was created immediately before the successful evidence/lifecycle mutation:
+
+`/home/sh002/lexora-private-backups/lexora_lms-before-attendance5-runtime-20260924T183053Z.dump`
+
+SHA-256:
+
+`17e793555f3f5b5ca8de5ff53b084b372bb847e3f1f2a4b6879f2b4e4b1b8ca2`
+
+Runtime verification established:
+
+1. one valid conducted class with no Attendance evidence produced:
+   - `BLOCKED`;
+   - mark `null`;
+   - `MISSING_ATTENDANCE_EVIDENCE`;
+   - attempted `VERIFIED` transition rejected;
+   - no failed-transition residue.
+
+2. adding one resolved `PRESENT` source produced:
+   - present count: `1`;
+   - conducted count: `1`;
+   - percentage: `100`;
+   - mark: `5/5`;
+   - status: `READY`.
+
+3. the older BLOCKED version became stale after source change and could not be verified.
+
+4. unchanged calculation was idempotent and did not create another version.
+
+5. `READY -> VERIFIED` passed.
+
+6. a non-cancelled `SCHEDULED` ClassSession blocked `FINALISED` with the attendance-period-open rule.
+
+7. canceling that open ClassSession removed it from the closure gate.
+
+8. `VERIFIED -> FINALISED -> LOCKED` passed.
+
+9. repeated `LOCKED` transition was idempotent and created no duplicate transition.
+
+10. calculation while the current version was LOCKED was rejected.
+
+11. historical raw-source protection blocked:
+    - AttendanceRecord mutation;
+    - counted ClassSession mutation;
+    - creation of a new ClassSession beneath the historical locked Attendance source boundary.
+
+12. reopening required a nonblank reason.
+
+13. controlled reopening created a READY successor version.
+
+14. historical raw evidence remained protected after reopening.
+
+15. legacy `LATE` correction was rejected.
+
+16. controlled Coordinator correction to `ABSENT` created an immutable correction overlay and successor version without rewriting the original raw `PRESENT` AttendanceRecord.
+
+17. corrected result became:
+    - present count: `0`;
+    - conducted count: `1`;
+    - percentage: `0`;
+    - mark: `0/5`;
+    - status: `READY`.
+
+18. corrected version again passed:
+    - `VERIFIED`;
+    - `FINALISED`;
+    - `LOCKED`.
+
+19. corrected repeated LOCK remained idempotent.
+
+20. direct mutation/deletion of authoritative version/transition/correction evidence was blocked.
+
+21. live Coordinator-assignment deactivation removed access from the same still-valid Teacher access token with safe HTTP `404`.
+
+### Durable runtime evidence
+
+Immutable version lineage:
+
+- v1 `cmufvb0pd000r2i32330mo6d6` — `BLOCKED`;
+- v2 `cmufvb0u3000w2i32jix5s3lm` — `READY`, `5/5`, later `LOCKED`;
+- v3 `cmufvb11t001h2i32te6ge6c7` — reopened READY successor;
+- v4 `cmufvb149001q2i32ypc1r9dz` — corrected `0/5`, later `LOCKED`.
+
+Final durable target evidence cardinality:
+
+- runtime ClassSessions: `2`;
+- raw AttendanceRecords: `1`;
+- authoritative versions: `4`;
+- source items: `4`;
+- transitions: `7`;
+- corrections: `1`;
+- scoped `attendance.formative.*` SUCCESS audits: `12`.
+
+Audit action cardinality:
+
+- `attendance.formative.calculated`: `4`;
+- `attendance.formative.verified`: `2`;
+- `attendance.formative.finalised`: `2`;
+- `attendance.formative.locked`: `2`;
+- `attendance.formative.reopened`: `1`;
+- `attendance.formative.corrected`: `1`.
+
+The successful runtime Coordinator assignment is retained because immutable Attendance evidence references it.
+
+Assignment:
+
+`rt_att5_coord_20260924T183053Z`
+
+Final assignment state:
+
+- status: `INACTIVE`;
+- `unassigned_at`: populated.
+
+Fresh runtime authentication sessions were revoked after the campaign.
+
+The canonical Teacher password hash was restored.
+
+No raw password, access token, refresh token, password hash, database credential or production secret is recorded here.
+
+Final platform state:
+
+- PM2 PID: `70094`;
+- direct API health: PASS;
+- Nginx API health: PASS;
+- API listener: `127.0.0.1:4000`;
+- repository: clean and origin-aligned.
+
+### Verification-harness and deployment incidents
+
+The following incidents are classified as verification/deployment-harness issues rather than Attendance product defects.
+
+#### Migration checksum portability
+
+The disposable-verified migration had CRLF-bearing bytes, while the first Git commit normalized the migration to LF.
+
+The SQL content was proven equivalent after CRLF-to-LF normalization.
+
+A path-specific `.gitattributes` `-text` rule and exact raw re-index preserved the reviewed migration bytes.
+
+Correction commit:
+
+`2047ac62c6aeddf312aa81fd0f51f712b8641aef`
+
+No manual `_prisma_migrations` edit and no `prisma migrate resolve` were used.
+
+#### Prisma `_sql_identifier` runtime-harness deserialization
+
+The first read-only authority harness used `array_agg(column_name)` against `information_schema.columns`.
+
+PostgreSQL returned `_sql_identifier`, which Prisma could not deserialize.
+
+The corrected harness projected supported text values explicitly.
+
+No product source, application state or Attendance academic state changed.
+
+#### Windows command-line transport limit
+
+The first attempt to transport the large lifecycle script as one Base64 command-line argument failed locally before `ssh.exe` could launch:
+
+`The filename or extension is too long`
+
+The script was then written to a UTF-8 no-BOM temporary file, transferred by SCP, verified by SHA-256 on the server and executed from the temporary file.
+
+Transport artifact SHA-256:
+
+`4c925288d205be4105a4be4b40d06e9ca4b69a60d9bdeb2090fb264e67d36ef8`
+
+The local and remote script SHA values matched exactly.
+
+#### Duplicate lifecycle rerun safety guard
+
+After the successful durable runtime evidence had intentionally been retained, the same lifecycle campaign was accidentally/redundantly invoked again.
+
+Second run tag:
+
+`20260924T183208Z`
+
+Its initial target inventory correctly found the already-retained successful evidence:
+
+- sessions: `2`;
+- records: `1`;
+- versions: `4`;
+- items: `4`;
+- transitions: `7`;
+- corrections: `1`;
+- audits: `12`.
+
+The harness therefore stopped at its non-empty-baseline guard before creating any new authoritative rows:
+
+`AUTHORITATIVE_ROWS_CREATED=false`
+
+PM2, API health, listener binding and repository state remained unchanged.
+
+That refused duplicate run created one additional valid database snapshot before the baseline guard:
+
+`/home/sh002/lexora-private-backups/lexora_lms-before-attendance5-runtime-20260924T183208Z.dump`
+
+SHA-256:
+
+`0c3f410837d6da5f3ef37b91ab48192934eca54148804b034c95820239d10664`
+
+This second archive is a post-success snapshot containing the retained runtime evidence. It is not the pre-runtime rollback backup for the successful campaign.
+
+### Evidence boundary / non-claims
+
+This checkpoint provides strong targeted authenticated Ubuntu server-runtime evidence for the authoritative Attendance `/5` workflow.
+
+It does not claim:
+
+- exhaustive permutation coverage;
+- complete production assurance;
+- frontend completion;
+- biometric hardware integration;
+- replacement of the separately verified generic Attendance capture/import foundation;
+- Special Comprehensive completion;
+- IRREGULAR/IMPROVEMENT Comprehensive completion;
+- authoritative locked Final Formative `/40` completion;
+- final-result publication completion.
+
+The historical shared Attendance enum may still contain `LATE` and `EXCUSED` for compatibility, but the authoritative Attendance `/5` source/correction workflow accepts only current `PRESENT` or `ABSENT` evidence.
+
+### Superseding Attendance `/5` status
+
+The authoritative Attendance `/5` backend is no longer pending.
+
+Its current tested status is:
+
+**IMPLEMENTED + REVIEWED + COMMITTED + PUSHED + DEPLOYED + ORDINARY POSTGRESQL MIGRATED + TARGETED AUTHENTICATED SERVER-RUNTIME VERIFIED**
+
+Historical earlier statements remain preserved as point-in-time evidence.
+
+The complete Formative Assessment workflow remains partial because authoritative locked Final Formative `/40` has not yet been implemented.
+
+The next academic boundary remains:
+
+`Activities /30 + Attendance /5 + Comprehensive /5 -> authoritative locked Final Formative /40`
+
+The result layer must consume the future authoritative locked Final Formative `/40`; it must not independently reconstruct final Formative marks from raw component evidence.

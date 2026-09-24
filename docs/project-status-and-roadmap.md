@@ -2917,3 +2917,89 @@ The complete Formative workflow therefore remains:
 
 The final result layer must consume authoritative locked Final Formative `/40`;
 it must not rebuild that `/40` independently from raw component records.
+
+
+<!-- roadmap-authoritative-attendance-5-targeted-runtime-verified-20260925 -->
+
+## Authoritative Attendance `/5` Runtime Status Supersession — 2026-09-25
+
+Implementation commit:
+
+`3455c1484e87b0e84d71ae3babfc3ec62b8dbe37`
+
+Migration-checksum preservation correction:
+
+`2047ac62c6aeddf312aa81fd0f51f712b8641aef`
+
+Current classification:
+
+> **Authoritative Formative Attendance `/5` is implemented, reviewed, committed, pushed, deployed to the ordinary PostgreSQL runtime and has strong targeted authenticated Ubuntu server-runtime evidence for exact Batch Coordinator authority, server-side calculation, evidence completeness, lifecycle locking, reopening/correction, immutable provenance and audit behavior.**
+
+This supersedes older roadmap statements that authoritative Attendance `/5` is still pending.
+
+Verified deployed boundaries include:
+
+- exact `BatchCoordinatorAssignment + StudentBatch + AcademicTerm` authority;
+- no Department Admin implicit academic Coordinator authority;
+- forged-department-header resistance;
+- safe direct-object denial;
+- zero-conducted and missing-evidence blocking;
+- authoritative rule `FORMATIVE_ATTENDANCE_5_APPROVED_20260920_V1`;
+- resolved `PRESENT` / `ABSENT` evidence only;
+- server-derived percentage and `/5`;
+- 100% attendance -> `5/5`;
+- controlled correction example -> `0/5`;
+- stale-source rejection;
+- immutable relational source snapshots and DB-owned evidence revisions;
+- `READY -> VERIFIED -> FINALISED -> LOCKED`;
+- non-cancelled `SCHEDULED` / `ACTIVE` ClassSession closure blocking;
+- canceled-session exclusion from the closure gate;
+- historical raw-source lock across reopening;
+- mandatory reopen/correction reasons;
+- correction overlay without raw AttendanceRecord rewrite;
+- corrected successor relocking;
+- append-only authoritative versions/transitions/corrections;
+- transaction-coupled Attendance audit evidence;
+- live Coordinator authority revocation;
+- ordinary PostgreSQL migration checksum identity and idempotent deploy;
+- loopback-only API runtime preserved.
+
+Successful lifecycle runtime tag:
+
+`20260924T183053Z`
+
+Durable final target evidence:
+
+- versions: `4`;
+- source items: `4`;
+- transitions: `7`;
+- corrections: `1`;
+- scoped Attendance SUCCESS audits: `12`;
+- final current version: `cmufvb149001q2i32ypc1r9dz`;
+- final current workflow state: `LOCKED`;
+- final corrected runtime mark: `0/5`.
+
+The runtime Coordinator assignment referenced by immutable evidence is retained in `INACTIVE` state rather than deleted.
+
+This remains targeted evidence, not exhaustive production assurance.
+
+### Formative status after Attendance `/5` closure
+
+The current component boundaries are:
+
+- Formative Activities `/30`: implemented and targeted authenticated server-runtime verified;
+- Attendance `/5`: implemented and targeted authenticated server-runtime verified;
+- Regular Comprehensive `/5`: core backend implemented with strong targeted authenticated server-runtime evidence, while the complete Comprehensive feature remains partial for Special / IRREGULAR / IMPROVEMENT scope;
+- authoritative locked Final Formative `/40`: not yet implemented.
+
+Therefore the overall Formative Assessment domain remains:
+
+**PARTIAL / ACTIVE BACKEND DEVELOPMENT**
+
+The next focused academic implementation boundary is the authoritative locked Final Formative `/40` composition from authoritative component evidence:
+
+`Activities /30 + Attendance /5 + Comprehensive /5 = Final Formative /40`
+
+The final-result layer must consume that future authoritative locked `/40` result rather than independently recalculating it from mutable/raw component data.
+
+Frontend integration remains separate and pending.
