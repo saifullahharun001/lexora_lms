@@ -38597,3 +38597,135 @@ The next academic boundary remains:
 `Activities /30 + Attendance /5 + Comprehensive /5 -> authoritative locked Final Formative /40`
 
 The result layer must consume the future authoritative locked Final Formative `/40`; it must not independently reconstruct final Formative marks from raw component evidence.
+
+
+<!-- runtime-governance-supersession-formative-attendance-20260926 -->
+
+## Formative / Attendance Governance Supersession — 2026-09-26
+
+### Current implementation sequence supersession
+
+This governance checkpoint supersedes the immediately preceding sequencing
+statement that identified authoritative Final Formative `/40` as the next
+implementation boundary.
+
+The current required implementation order is now:
+
+1. Class Session scheduled-end auto-completion and non-conducted handling;
+2. Department Chairman role plus explicit Attendance read/correction authority;
+3. Examination Committee Chairman semester/examination-wide atomic Attendance
+   `/5` generation and irreversible Attendance freeze;
+4. activity-level Formative Activities submission/correction and Chairman
+   Activities `/30` finalisation;
+5. automatic authoritative Final Formative `/40`;
+6. locked Formative `/40` + locked Summative `/60` result integration.
+
+The current confirmed governance also does not recognise Batch Coordinator as an
+academic authority.
+
+Historical `BatchCoordinatorAssignment`-based Attendance and Course Outline
+runtime evidence remains valid evidence of the implementations actually tested,
+but those assignments must not be treated as final institutional authority.
+
+This checkpoint does not invent a replacement authority for Course Outline
+review/approval.
+
+### Evidence preservation
+
+The previously documented and runtime-verified Attendance `/5` campaign remains
+valid historical implementation evidence.
+
+In particular, the runtime evidence for:
+
+- implementation commits;
+- migration identity/checksum;
+- authenticated authorization behavior;
+- server-derived calculation;
+- source snapshots;
+- audit records;
+- concurrency/idempotency behavior;
+- Batch Coordinator authority;
+- `READY -> VERIFIED -> FINALISED -> LOCKED`;
+- reopen/correction/relock behavior;
+- retained runtime evidence IDs;
+
+must not be deleted or rewritten as if the tested implementation never existed.
+
+### Later policy decision
+
+A later confirmed academic-policy decision now supersedes the target authority
+and lifecycle model used by that deployed Attendance implementation.
+
+The current target policy is:
+
+- Attendance evidence is continuously persisted/synchronised;
+- assigned Course Teacher may correct assigned-course Attendance before final
+  generation with mandatory reason;
+- Department Chairman and Department Admin may correct department-scoped
+  Attendance only through explicit dedicated correction permissions and with
+  mandatory reason;
+- Student cannot correct Attendance;
+- applicable Examination Committee Chairman performs one examination/semester
+  wide atomic `Generate Attendance Marks` action covering all applicable courses
+  and students;
+- any incomplete/conflicting required evidence causes the whole generation to
+  fail;
+- successful generation creates immutable Attendance `/5` evidence and freezes
+  the underlying applicable Attendance data;
+- no ordinary reopen, correction or regenerate path exists after successful
+  generation.
+
+The numerical calculation rule itself is not superseded.
+
+`FORMATIVE_ATTENDANCE_5_APPROVED_20260920_V1`
+
+matches the confirmed Appendix 4 rubric:
+
+- `90%–100% -> 5.0`;
+- `85%–<90% -> 4.5`;
+- `80%–<85% -> 4.0`;
+- `75%–<80% -> 3.5`;
+- `70%–<75% -> 3.0`;
+- `65%–<70% -> 2.5`;
+- `60%–<65% -> 2.0`;
+- `<60% -> 0`.
+
+### Activities `/30`
+
+The existing runtime-verified Teacher whole-package `MARKS_SUBMITTED` evidence
+also remains valid historical/current-code evidence.
+
+A later confirmed policy requires the target design to use:
+
+- activity-level submission/finalisation;
+- reason-required pre-freeze correction with preserved history;
+- Examination Committee Chairman finalisation of authoritative Activities `/30`;
+- immutable source freeze after Chairman finalisation.
+
+The exact Chairman Activities-finalisation batching scope remains intentionally
+unresolved and must not be invented.
+
+### Final Formative `/40`
+
+The confirmed target architecture now requires automatic materialisation of:
+
+`Activities /30 + Attendance /5 + Comprehensive /5 = Final Formative /40`
+
+from exact final authoritative component sources.
+
+There is no separate human Final Formative approval/finalisation action.
+
+### Current classification
+
+The correct current classification after this governance decision is:
+
+**CONFIRMED ACADEMIC POLICY DOCUMENTED; CURRENT DEPLOYED ACTIVITIES/ATTENDANCE
+IMPLEMENTATION PARTIALLY POLICY-SUPERSEDED; BACKEND REDESIGN PENDING.**
+
+This checkpoint does NOT claim:
+
+- backend redesign implementation;
+- Prisma migration;
+- deployment;
+- new authenticated runtime verification;
+- automatic Final Formative `/40` implementation.

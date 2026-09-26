@@ -421,3 +421,40 @@ academic evidence.
 Published-result consumers must continue to depend only on the future
 authoritative published-result layer, preserving the replaceable provider
 boundary for `LEXORA_INTERNAL` and future `CU_CENTRAL` sources.
+
+
+<!-- result-architecture-final-formative-source-clarification-20260926 -->
+
+## Final Formative Source Clarification — 2026-09-26
+
+The authoritative Final Formative `/40` is automatically materialised by the
+Formative domain when the exact three required final component sources exist for
+the same student/course:
+
+- finalised Activities `/30`;
+- generated and frozen Attendance `/5`;
+- Chairman-finalised Comprehensive `/5`.
+
+No additional human `Finalise Formative /40`, `VERIFIED`, `APPROVED` or
+`FINALISED` action is required at the aggregate `/40` boundary.
+
+The aggregate must preserve exact component source identities/versions and
+academic provenance.
+
+Result Processing must consume that exact immutable authoritative `/40`.
+
+It must not reconstruct the Formative total from raw Activities, Attendance or
+Comprehensive records.
+
+This clarification does not change the later confirmed result architecture:
+
+- authoritative Formative `/40`;
+- Chairman-approved locked Summative `/60`;
+- server-derived `/100`;
+- separate component pass checks;
+- Examination Committee Chairman complete-result finalisation;
+- official result documents;
+- Controller publication;
+- published-result registry;
+- downstream GPA/CGPA/transcript/result consumption;
+- replaceable result-provider boundary.

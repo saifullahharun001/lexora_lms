@@ -287,7 +287,7 @@ A Course Teacher may:
 - review submissions;
 - provide feedback;
 - enter formative marks;
-- submit final formative marks;
+- submit/finalise individual formative activity marks within assigned courses before Chairman component finalisation;
 - view CLO coverage and attainment;
 - prepare Course Files;
 - participate in assigned-course discussions;
@@ -397,7 +397,7 @@ Students may not:
 The system should support:
 
 - Co-Teacher;
-- Batch Coordinator;
+- Department Chairman;
 - Programme Coordinator;
 - Comprehensive Examination Panel Member;
 - Academic Integrity Reviewer;
@@ -860,33 +860,80 @@ The system must prevent:
 
 # 10. Class Session Lifecycle
 
-## 10.1 Session States
+## 10.1 Session States and Conducted-Class Boundary
 
-- Draft
-- Scheduled
-- Active
-- Ended/Completed
-- Archived
-- Cancelled
-- Rescheduled
-- Locked
+The Class Session model must support the existing controlled lifecycle while
+distinguishing an actually conducted class from a merely scheduled class.
 
-## 10.2 Attendance Rule
+The broader controlled lifecycle retains the following academic/session
+outcomes where applicable:
 
-Attendance may be captured only during the Active state.
+- Draft;
+- Scheduled;
+- Active;
+- Ended/Completed;
+- Cancelled;
+- Rescheduled;
+- Locked;
+- Archived.
 
-## 10.3 Cancelled Session
+The policy below changes the conducted-class completion semantics; it does not
+remove the other controlled lifecycle outcomes.
 
-A cancelled session:
+For the ordinary conducted-class path:
+
+~~~text
+SCHEDULED
+-> assigned Course Teacher explicitly starts the class
+-> ACTIVE
+-> configured scheduled end time is reached
+-> COMPLETED automatically
+~~~
+
+The scheduled end time is authoritative.
+
+A Teacher starting the class late does not silently extend the scheduled end
+time.
+
+Any authorised reschedule or extension must be explicit, scope-checked and
+audited.
+
+If a scheduled class is never started by the scheduled end time:
+
+- it must not become an attendance-bearing `COMPLETED` class;
+- it must enter an approved non-conducted/non-counting outcome;
+- the exact implementation state/enum name remains to be selected during the
+  backend redesign;
+- it must not create an absence;
+- it must not enter the Attendance denominator.
+
+Existing archive, cancellation and lock behavior must remain controlled and
+auditable where applicable.
+
+## 10.2 Attendance Capture Rule
+
+Attendance may be captured only while the Class Session is `ACTIVE`.
+
+Automatic completion at scheduled end must prevent further ordinary Attendance
+capture for that session.
+
+## 10.3 Cancelled and Non-Conducted Sessions
+
+A cancelled or otherwise validly non-conducted session:
 
 - is not counted as conducted;
 - does not create absence;
-- is excluded from the attendance denominator.
+- is excluded from the Attendance denominator.
 
 ## 10.4 Teacher Scope
 
-Only an assigned teacher may manage the session.
+Only an assigned Course Teacher may perform ordinary Teacher-controlled Class
+Session actions for that Course Offering.
 
+Direct object access outside the Teacher's assignment scope must remain blocked.
+
+Department-wide read or administrative authority does not silently replace the
+assigned-Teacher requirement for ordinary Teacher session actions.
 ---
 
 # 11. Attendance Management
@@ -976,41 +1023,84 @@ Cancelled and invalid sessions are excluded.
 
 ## 11.9 Attendance Mark Rubric
 
+The current approved Appendix 4 — Attendance Marking Scheme (Formative) is:
+
 | Attendance percentage | Attendance mark |
 |---|---:|
-| 100% | 5 |
-| 90% to below 100% | 4 |
-| 80% to below 90% | 3 |
-| 70% to below 80% | 2 |
-| 60% to below 70% | 0 |
+| 90% to 100% | 5.0 |
+| 85% to below 90% | 4.5 |
+| 80% to below 85% | 4.0 |
+| 75% to below 80% | 3.5 |
+| 70% to below 75% | 3.0 |
+| 65% to below 70% | 2.5 |
+| 60% to below 65% | 2.0 |
+| Below 60% | 0 |
 
-There is no 1-mark band.
+The authoritative percentage and `/5` mark are calculated server-side.
 
-Below-60% attendance mark remains configurable until formally approved.
+The current rule identity is:
+
+`FORMATIVE_ATTENDANCE_5_APPROVED_20260920_V1`
+
+The client must not provide an authoritative Attendance percentage or final
+Attendance `/5` value.
 
 ## 11.10 Attendance Workflow
 
-```text
-OPEN
-→ CAPTURED
-→ TEACHER_SUBMITTED
-→ DEPARTMENT_VERIFIED
-→ ELIGIBILITY_FINALISED
-→ LOCKED
-```
+Attendance is continuously persisted/synchronised from actually conducted
+classes.
 
-Correction:
+There is no separate ordinary Teacher or Batch Coordinator attendance-submission
+workflow.
 
-```text
-REOPENING_REQUESTED
-→ AUTHORISED
-→ CORRECTED
-→ REVERIFIED
-→ RELOCKED
-```
+Before authoritative Attendance `/5` generation:
 
-All original and corrected values remain preserved.
+- the assigned Course Teacher may correct Attendance only for their assigned
+  course;
+- Department Chairman may correct department-scoped Attendance only through an
+  explicit dedicated correction permission;
+- Department Admin may correct department-scoped Attendance only through an
+  explicit dedicated correction permission;
+- Student may never correct Attendance;
+- every correction requires a mandatory reason;
+- previous and revised values, actor, timestamp, source/provenance and audit
+  history must be preserved.
 
+The applicable Examination Committee Chairman owns the action:
+
+`Generate Attendance Marks`
+
+One Chairman action applies to the relevant examination/semester and covers all
+applicable courses and students.
+
+The generation operation is academically atomic.
+
+If any required course/student Attendance evidence is incomplete, unresolved,
+conflicting or otherwise invalid:
+
+- the complete generation attempt fails;
+- no authoritative Attendance `/5` is generated;
+- no applicable Attendance evidence is frozen;
+- partial semester generation is not permitted.
+
+If validation succeeds:
+
+- the server calculates all authoritative Attendance `/5` values;
+- exact source evidence and rule/version provenance are bound into immutable
+  academic evidence;
+- the applicable underlying Attendance evidence is frozen.
+
+After successful generation:
+
+- no ordinary Attendance correction is permitted;
+- no reopen is permitted;
+- no regeneration is permitted;
+- no ordinary replacement Attendance `/5` version is permitted.
+
+The Examination Committee Chairman does not manually enter or override the
+server-derived Attendance `/5`.
+
+Historical values and correction evidence must never be silently overwritten.
 ---
 
 # 12. Examination Eligibility
@@ -1457,42 +1547,92 @@ Course Teacher sees read-only:
 
 # 18. Final Formative Assessment — 40 Marks
 
-```text
-Final Formative Mark
+The authoritative Final Formative Mark is:
+
+~~~text
+Final Formative /40
 =
-Activities /30
+Finalised Activities /30
 +
-Attendance /5
+Generated and Frozen Attendance /5
 +
-Comprehensive Examination /5
-```
+Chairman-Finalised Comprehensive Examination /5
+~~~
 
-Validation:
+The three component sources are independent authoritative academic boundaries.
 
-- activities ≤30;
-- attendance ≤5;
-- Comprehensive Examination ≤5;
-- total ≤40;
-- required components present;
-- feedback complete;
-- no blocking integrity case;
-- no unauthorised override.
+## 18.1 Required Authoritative Sources
 
-Workflow:
+For the same student/course, Final Formative `/40` may exist only when all three
+authoritative component sources exist:
 
-```text
-DRAFT
-→ COMPONENT_VALIDATION
-→ TEACHER_SUBMITTED
-→ VERIFIED
-→ APPROVED
-→ LOCKED
-```
+- finalised Activities `/30`;
+- generated and frozen Attendance `/5`;
+- Chairman-finalised Comprehensive Examination `/5`.
 
-No improvement is permitted for formative assessment.
+Partial authoritative Final Formative `/40` records are not permitted.
 
-Locked formative marks are carried forward to improvement examinations.
+## 18.2 Automatic Materialisation
 
+There is no separate human `Finalise Formative /40` action.
+
+There is no separate aggregate-level workflow such as:
+
+~~~text
+TEACHER_SUBMITTED
+-> VERIFIED
+-> APPROVED
+-> FINALISED
+-> LOCKED
+~~~
+
+When the final required component becomes available, the server automatically
+materialises the authoritative Final Formative `/40`.
+
+The operation must be concurrency-safe and idempotent.
+
+## 18.3 Integrity Requirements
+
+The authoritative `/40` must:
+
+- require all three authoritative component sources to belong to the same
+  department, student/enrolment, Course Offering, academic term and applicable
+  examination context;
+- require Activities to be within `0..30`;
+- require Attendance to be within `0..5`;
+- require Comprehensive Examination to be within `0..5`;
+- derive the exact `/40` as the server-side sum of those authoritative
+  components;
+- reject missing, duplicate, mismatched, stale or non-final component sources;
+- reject client-supplied authoritative component marks or total `/40`;
+- bind the exact authoritative Activities source identity/version;
+- bind the exact authoritative Attendance generation identity/version;
+- bind the exact authoritative Comprehensive finalisation/result identity;
+- preserve student, enrolment, course offering, department, academic term,
+  examination and applicable academic-rule provenance;
+- preserve component full marks and awarded marks;
+- be immutable after creation;
+- be audit-ready.
+
+The aggregate must not be independently reconstructed later from mutable or raw
+component records.
+
+## 18.4 Downstream Result Processing
+
+The later Final Result workflow must consume this exact authoritative immutable
+Final Formative `/40`.
+
+It combines with the exact Examination Committee Chairman-approved and locked
+Summative `/60`.
+
+The server then derives the course total `/100` and applies the separately
+confirmed Formative and Summative pass requirements.
+
+Under the current approved policy, an improvement examination must not alter the
+authoritative Formative component.
+
+Any future change to that rule requires an explicit later academic-policy
+supersession; it must not be inferred by the software.
 ---
 
 # 19. Summative Examination Marks Management — 60 Marks
@@ -2765,3 +2905,53 @@ See:
 
 This supersession is a target/architecture decision and is not an implementation or
 runtime-completion claim.
+
+<!-- academic-policy-supersession-20260926 -->
+
+## Academic Policy Supersession — 2026-09-26
+
+The Class Session, Attendance, Formative Activities and Final Formative sections
+above have been reconciled to the academic policy confirmed on 2026-09-26.
+
+This supersedes conflicting earlier target-policy wording, including:
+
+- Batch Coordinator as a current academic authority;
+- Batch Coordinator as an Attendance `/5` academic authority;
+- a separate Teacher/Coordinator Attendance submission/verification lifecycle;
+- post-generation Attendance reopen/regenerate behavior;
+- the older Attendance marking bands that conflict with the confirmed Appendix 4
+  scheme;
+- whole-package Teacher submission as the final intended Activities `/30`
+  architecture;
+- a separate human approval/finalisation workflow for aggregate Final Formative
+  `/40`.
+
+Important evidence boundary:
+
+- the current confirmed governance does not recognise Batch Coordinator as an
+  academic authority;
+- historical `BatchCoordinatorAssignment`-based implementations, including
+  Attendance and Course Outline checkpoints, remain valid evidence of what was
+  implemented and tested at those historical checkpoints;
+- this policy does not invent a replacement authority for an unrelated workflow
+  such as Course Outline review; that authority must be separately confirmed
+  before redesign;
+- historical runtime evidence remains valid evidence of the implementation that
+  was actually tested at the relevant checkpoint;
+- that evidence must not be deleted or rewritten;
+- the current backend remains partially policy-superseded until the documented
+  redesign is implemented and runtime verified;
+- the Attendance numerical rule
+  `FORMATIVE_ATTENDANCE_5_APPROVED_20260920_V1` remains aligned with the confirmed
+  Appendix 4 marking scheme.
+
+Current unresolved implementation-policy detail:
+
+- the exact batching/UI scope for Examination Committee Chairman finalisation of
+  Activities `/30` remains intentionally undecided and must not be invented.
+
+See also:
+
+- `docs/project-status-and-roadmap.md`;
+- `docs/runtime-test-checklist.md`;
+- `docs/result-processing-publication-architecture.md`.

@@ -3003,3 +3003,108 @@ The next focused academic implementation boundary is the authoritative locked Fi
 The final-result layer must consume that future authoritative locked `/40` result rather than independently recalculating it from mutable/raw component data.
 
 Frontend integration remains separate and pending.
+
+
+<!-- roadmap-formative-policy-reconciliation-20260926 -->
+
+## Formative / Attendance Academic Policy Supersession — 2026-09-26
+
+### Classification
+
+A later confirmed academic-policy decision now supersedes parts of the current
+deployed Activities `/30` and Attendance `/5` workflow design.
+
+This is a POLICY / ROADMAP supersession only.
+
+It does not claim that the backend redesign has been implemented, migrated,
+deployed or runtime verified.
+
+Historical runtime evidence remains valid evidence of the implementation tested
+at the time.
+
+The current confirmed governance does not recognise Batch Coordinator as an
+academic authority.
+
+Therefore any existing `BatchCoordinatorAssignment`-based academic workflow is
+historical/current-code evidence rather than final institutional authority.
+
+This includes the previously implemented Course Outline Coordinator path.
+
+This policy does not assign a replacement Course Outline reviewer/approver.
+That authority remains unresolved and must not be invented.
+
+### Attendance `/5`
+
+The current numerical rule remains valid:
+
+`FORMATIVE_ATTENDANCE_5_APPROVED_20260920_V1`
+
+Current approved bands are:
+
+- `90%–100% -> 5.0`;
+- `85%–<90% -> 4.5`;
+- `80%–<85% -> 4.0`;
+- `75%–<80% -> 3.5`;
+- `70%–<75% -> 3.0`;
+- `65%–<70% -> 2.5`;
+- `60%–<65% -> 2.0`;
+- `<60% -> 0`.
+
+The deployed Batch Coordinator authority and:
+
+`READY -> VERIFIED -> FINALISED -> LOCKED`
+
+Attendance lifecycle are no longer the target academic model.
+
+The target model is:
+
+- continuous Attendance evidence;
+- reason-required authorised corrections before academic freeze;
+- separate Department Chairman and Department Admin roles/permissions;
+- semester/examination-wide atomic Attendance `/5` generation by the applicable
+  Examination Committee Chairman;
+- immutable freeze after successful generation;
+- no ordinary reopen/regenerate path.
+
+Backend redesign remains pending.
+
+### Activities `/30`
+
+The deployed whole-package Teacher `MARKS_SUBMITTED` evidence remains valid
+runtime evidence for the implementation tested.
+
+The confirmed target model is activity-level submission/correction followed by
+Examination Committee Chairman finalisation of the authoritative `/30`.
+
+Backend redesign remains pending.
+
+### Final Formative `/40`
+
+The authoritative `/40` will be automatically materialised when all three
+authoritative component sources are available:
+
+- finalised Activities `/30`;
+- generated/frozen Attendance `/5`;
+- Chairman-finalised Comprehensive `/5`.
+
+No separate Final Formative human approval/finalisation button is required.
+
+### Revised implementation order
+
+1. preserve and document the confirmed policy supersession;
+2. implement scheduled-end Class Session auto-completion plus a non-counting
+   outcome for scheduled sessions that were never started;
+3. implement the distinct Department Chairman role and explicit ordinary
+   Attendance read/correction permissions;
+4. redesign Attendance correction/freeze and Examination Committee Chairman
+   semester-wide atomic Attendance `/5` generation;
+5. redesign Activities around activity-level authoritative submissions,
+   reason-required pre-freeze corrections and Chairman `/30` finalisation;
+6. implement automatic authoritative Final Formative `/40`;
+7. integrate authoritative locked `/40` with Chairman-approved locked Summative
+   `/60`;
+8. continue the already confirmed complete-result finalisation, document and
+   publication architecture.
+
+Do not proceed directly from the currently deployed Batch Coordinator Attendance
+workflow into Final Formative `/40`.
