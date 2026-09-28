@@ -38729,3 +38729,444 @@ This checkpoint does NOT claim:
 - deployment;
 - new authenticated runtime verification;
 - automatic Final Formative `/40` implementation.
+
+
+## Class Session scheduled-end reconciliation — 2026-09-27
+
+Implementation boundary: scheduled-end Class Session lifecycle only. No Department
+Chairman, Attendance generation, Activities /30 or Final Formative /40 redesign.
+
+- Due valid ACTIVE sessions become COMPLETED with actualEndAt = scheduledEndAt.
+- Due never-started SCHEDULED sessions become NOT_CONDUCTED, with nonConductedAt
+  = scheduledEndAt and null actual start/end. This is distinct from cancellation;
+  neither outcome contributes to the conducted Attendance denominator.
+- Startup and periodic database sweeps process at most 100 candidates per pass.
+  CLASS_SESSION_RECONCILIATION_INTERVAL_MS defaults to 10000 and accepts integer
+  values from 1000 through 60000. Offering-first locks and SKIP LOCKED coordinate
+  processes; database state/time, conditional writes and transactional success
+  audits determine correctness. Scan cursors only provide bounded progress past
+  conflicts. Shutdown cancels the timer and drains the current sweep.
+- Ordinary activation, extension, cancellation and updates cannot bypass an
+  expired boundary. Early manual completion remains available; late manual
+  completion ends at scheduledEndAt. Manual lifecycle/update audits are atomic.
+- Attendance capture still requires an assigned Teacher, matching scoped
+  identities and ACTIVE status; service, repository and additive database guards
+  enforce the scheduled end even during reconciliation lag.
+- Corrupt start evidence and historical Attendance locks fail closed. Each sweep
+  reports per-session conflicts without logging raw database errors. Operators
+  must diagnose these through the existing controlled evidence process; ordinary
+  requests cannot override the guard. Historical migration/guards and Attendance
+  fingerprint fields remain unchanged.
+
+Migration: `202609270001_class_session_scheduled_end` adds NOT_CONDUCTED,
+non_conducted_at, class_sessions_due_idx, provenance checks and additive deadline
+guards. It must be deployed before the updated application. No server database
+was migrated during implementation.
+
+This is local implementation evidence, not deployment or authenticated runtime
+verification. The existing Batch Coordinator Attendance boundary remains
+historical, runtime-verified and policy-superseded; its redesign is still pending.
+
+Pending controlled deployment/runtime checks (not performed locally):
+
+- [ ] Apply the new migration through the normal approved deployment process.
+- [ ] Restart after scheduled-end downtime; verify logical timestamps and one audit.
+- [ ] Run two API processes; verify exactly one success audit per due session.
+- [ ] Verify assigned Teacher, deactivated/unassigned Teacher and wrong-department
+      direct-object requests; ensure x-department-id cannot override principal scope.
+- [ ] Verify capture immediately before/at/after scheduledEndAt with a delayed sweep.
+- [ ] Verify late activation/extension/cancellation rejection and capped completion.
+- [ ] Verify NOT_CONDUCTED creates no Attendance/absence and no denominator item.
+- [ ] Verify a protected historical Attendance conflict is surfaced and unchanged.
+- [ ] Exercise shutdown and restart with an outstanding reconciliation batch.
+
+The PostgreSQL automated suites require an explicitly disposable loopback database
+whose name ends in `_test`, LEXORA_ATTENDANCE_TEST_DATABASE_URL, and
+LEXORA_ATTENDANCE_DISPOSABLE_DB_CONFIRM=YES_DISPOSABLE. They never fall back to
+DATABASE_URL. Database connection values must not be logged or committed.
+
+Local automated validation for this implementation:
+
+- Prisma client generation and schema validation passed.
+- API typecheck and Nest/CommonJS build passed.
+- Focused Class Session, Attendance, Eligibility Attendance regression, config and
+  Prisma suites: 98 passed, 0 failed, 2 database suites skipped because no
+  explicitly disposable PostgreSQL database was configured.
+- PostgreSQL migration execution, database concurrency and database rollback
+  assertions remain unverified locally until those opt-in suites run.
+- No server database migration, deployment, commit or push was performed.
+
+
+### Scheduled-end correction compatibility review — 2026-09-27
+
+Source inspection confirms that ordinary raw Attendance override was already
+ACTIVE-only before this scheduled-end change. Post-class correction currently
+uses FormativeAttendanceService.correct: an immutable
+formative_attendance_corrections overlay and successor version, with exact current
+Coordinator assignment, scoped identities, mandatory reason, database timestamp,
+source lineage and transactional audit. This is preservation of the historical
+implementation, not endorsement or expansion of its superseded authority.
+
+The deadline trigger continues to cover INSERT/UPDATE on attendance_records.
+Mutable override_by_user_id/override_reason fields are not sufficient proof of a
+fresh authorised and audited correction; no raw UPDATE exemption was introduced.
+The existing post-class overlay path does not write attendance_records and remains
+outside the capture deadline trigger. Historical freeze and immutable evidence
+checks remain unchanged. Expanding post-class raw override would require a
+separate authority/history design and is not implemented here.
+
+Before NOT_CONDUCTED, reconciliation and the additive database guard now reject
+any existing raw AttendanceRecord (including archived records),
+FormativeAttendanceSourceItem, or FormativeAttendanceCorrection for that session.
+The offering mutex serializes these checks with evidence writers. Contradictions
+leave the session/evidence untouched, count as reconciliation conflicts and emit
+no success audit. An import-batch reference alone is not a student Attendance
+outcome; raw records and immutable academic evidence are the checked relations.
+
+Compatibility regressions cover the actual post-class correction overlay,
+reason/actor/department/freeze rejection, direct capture-like writes (including
+forged raw override metadata), and contradictory never-started evidence. The
+historical migration remains unchanged. PostgreSQL assertions still require the
+explicit disposable database opt-in; local unit tests are not runtime evidence.
+
+Correction-pass validation: API typecheck, build and Prisma validation passed;
+focused Class Session, Attendance, academic-context, Eligibility regression,
+configuration and schema tests: 109 passed, 0 failed, 2 PostgreSQL suites skipped
+(no explicitly disposable database configured). Real migration/concurrency
+verification remains pending. No server migration/deployment was performed.
+
+
+### Verifier-found PostgreSQL defect and invariant correction - 2026-09-27
+
+The external verifier reported a real disposable PostgreSQL run that passed the
+major scheduled-end, concurrency, rollback, capture-deadline and historical
+Attendance tests but failed:
+`contradictory raw evidence prevents non-conducted reconciliation and direct transition`.
+The direct SQL UPDATE to NOT_CONDUCTED was not rejected as expected. This is
+retained defect evidence, NOT a successful PostgreSQL verification checkpoint.
+
+Root cause: the relational contradiction check was nested under the OLD expired
+state condition. A future SCHEDULED row could therefore become NOT_CONDUCTED
+with valid-looking provenance. The test's aggregate conflicts >= 1 assertion
+could also be satisfied by the older persistent corrupt ACTIVE fixture, masking
+whether the contradictory target was actually eligible for reconciliation.
+
+The corrected new migration validates every UPDATE whose NEW status is
+NOT_CONDUCTED: OLD must be SCHEDULED and due, the schedule must be unchanged,
+OLD and NEW start/end/cancellation evidence must be null, nonConductedAt must
+equal OLD scheduledEndAt, and raw records, source items and correction overlays
+must all be absent. Violations use SQLSTATE 23514; contradictory relations retain
+the specific Attendance-evidence diagnostic. Other expired-state rules remain.
+Ordinary updates that would retain SCHEDULED with an end at/before database time
+are now rejected in the service and database; future rescheduling remains allowed.
+
+The repaired PostgreSQL fixture captures valid ACTIVE Attendance, changes only
+status/start evidence while its deadline is future, and waits roughly one second
+using database time. A cursor excludes older fixtures, an exact candidate query
+must return only the contradictory target, and reconciliation must report exactly
+one conflict and zero transitions. Session and Attendance snapshots must remain
+unchanged, no target success audit may exist, and direct transition must fail
+with the contradictory-evidence message and SQLSTATE 23514. Separate direct-SQL
+tests cover premature clean transitions, provenance rewrites and backdated edits;
+the positive due clean-session reconciliation tests remain.
+
+No historical migration, raw capture/correction/freeze boundary, reconciler
+locking/pagination or runtime behavior was changed. Corrected PostgreSQL
+verification is PENDING until the external disposable database suite is rerun
+and passes. No deployment or server database migration was performed by Codex.
+
+Local invariant-correction validation: API typecheck, build and Prisma validation
+passed. The focused suite reported 113 tests: 111 passed, 0 failed, 2 PostgreSQL
+suites skipped because no explicit disposable database was configured locally.
+`git diff --check` passed. These local results do not close the verifier-found
+PostgreSQL defect checkpoint; the corrected real-DB rerun remains pending.
+
+<!-- class-session-scheduled-end-corrected-disposable-verified-20260927 -->
+
+## Class Session Scheduled-End / Non-Conducted Lifecycle — Corrected Disposable PostgreSQL Verification — 2026-09-27
+
+### Current classification
+
+The bounded Class Session scheduled-end / non-conducted backend implementation is now:
+
+**IMPLEMENTED + LOCAL/STATIC VERIFIED + DISPOSABLE POSTGRESQL VERIFIED**
+
+This classification is limited to the reviewed backend boundary described below.
+
+It does **not** claim that the implementation is:
+
+- committed or pushed;
+- deployed to the Ubuntu runtime repository;
+- applied to the ordinary `lexora_lms` PostgreSQL database;
+- PM2/runtime deployed;
+- targeted authenticated HTTP/API runtime verified;
+- frontend complete;
+- exhaustive production assurance.
+
+Repository baseline during implementation and verification:
+
+`97e183695be5837ed3441e195aef0352d1e1779a`
+
+At this checkpoint:
+
+- local `HEAD` matched `origin/main`;
+- implementation remained uncommitted;
+- nothing was staged;
+- no push was performed;
+- ordinary Lexora PostgreSQL was not accessed by the disposable campaign.
+
+### Implemented lifecycle boundary
+
+The reviewed implementation provides:
+
+- `NOT_CONDUCTED` as an explicit Class Session lifecycle state;
+- `nonConductedAt` as durable non-conducted provenance;
+- due-session indexing by lifecycle status and scheduled end;
+- database-backed scheduled-end reconciliation;
+- startup catch-up and bounded periodic reconciliation;
+- concurrency-safe processing with row locking / `SKIP LOCKED`;
+- idempotent repeated reconciliation;
+- valid due `ACTIVE` sessions transition to `COMPLETED`;
+- automatic completion records `actualEndAt = scheduledEndAt`;
+- late Teacher start does not extend the authoritative scheduled end;
+- due never-started `SCHEDULED` sessions transition to `NOT_CONDUCTED`;
+- `NOT_CONDUCTED` preserves null actual start/end evidence;
+- Attendance capture is rejected at or after `scheduledEndAt`;
+- expired activation, schedule extension and cancellation cannot bypass reconciliation;
+- ordinary rescheduling cannot manufacture an already-expired `SCHEDULED` row;
+- future rescheduling remains allowed;
+- lifecycle success audit and mutation are transactionally consistent;
+- corrupt `ACTIVE` evidence fails closed;
+- contradictory Attendance evidence blocks `NOT_CONDUCTED`;
+- historical Attendance protections remain preserved.
+
+### First disposable PostgreSQL verifier result — defect detected
+
+The first real disposable PostgreSQL campaign was **not** a successful verification checkpoint.
+
+It correctly exposed an implementation/test gap:
+
+- a direct `SCHEDULED -> NOT_CONDUCTED` database transition could bypass the contradictory-Attendance-evidence check when the old session deadline had not yet been reached;
+- the related regression test used an aggregate conflict assertion that could be satisfied by an older corrupt fixture.
+
+The failed verifier evidence is intentionally preserved as historical defect evidence.
+
+No ordinary runtime database was modified by that failed disposable campaign.
+
+### Corrective implementation
+
+The implementation was corrected so every attempted `NOT_CONDUCTED` transition independently requires:
+
+- old state `SCHEDULED`;
+- authoritative scheduled end already reached;
+- unchanged scheduled start/end values;
+- null old and new actual start evidence;
+- null old and new actual end evidence;
+- null old and new cancellation evidence;
+- `nonConductedAt = OLD.scheduledEndAt`;
+- no raw Attendance record for the Class Session;
+- no `FormativeAttendanceSourceItem` for the Class Session;
+- no `FormativeAttendanceCorrection` for the Class Session.
+
+Contradictory Attendance evidence raises a database constraint error and leaves the session and evidence unchanged.
+
+The service and database boundary also reject generic schedule updates that would persist a `SCHEDULED` session with `scheduledEndAt` at or before current database time.
+
+The PostgreSQL regression was corrected to isolate the contradictory target row and attribute the conflict to that row rather than relying on unrelated aggregate conflicts.
+
+### Local/static verification after correction
+
+After the correction:
+
+- API TypeScript typecheck: **PASS**;
+- API NestJS build: **PASS**;
+- Prisma schema validation: **PASS**;
+- `git diff --check`: **PASS**;
+- focused tests: **111 passed, 0 failed**;
+- two opt-in PostgreSQL suites were skipped locally because no disposable local PostgreSQL database was configured.
+
+Those local skips were subsequently superseded by the real disposable PostgreSQL campaign below.
+
+### Corrected real disposable PostgreSQL verification
+
+The corrected implementation was verified against an isolated disposable `postgres:16-alpine` PostgreSQL instance running on `vmserver`.
+
+The container was bound only to:
+
+`127.0.0.1:55439`
+
+The local test process connected through an SSH tunnel.
+
+Corrected PostgreSQL test result:
+
+- tests: `67`;
+- passed: `67`;
+- failed: `0`;
+- skipped: `0`;
+- cancelled: `0`;
+- todo: `0`.
+
+The Class Session scheduled-end suite verified:
+
+- enum, timestamp, due index and provenance constraint installation;
+- concurrent sweeps produce exactly one transition and one success audit per due row;
+- future `SCHEDULED` sessions cannot directly become `NOT_CONDUCTED`;
+- exact non-conducted schedule/provenance requirements;
+- generic backdated `SCHEDULED` updates are rejected;
+- future rescheduling remains permitted;
+- expired activation, extension and cancellation cannot race the sweep;
+- Attendance capture deadline is enforced at the database boundary;
+- corrupt `ACTIVE` evidence remains unchanged and is surfaced as a reconciliation conflict;
+- audit failure rolls back the Class Session mutation and evidence revision;
+- bounded keyset reconciliation continues correctly;
+- contradictory raw Attendance evidence blocks both reconciliation and direct `NOT_CONDUCTED` transition;
+- post-class Attendance correction continues through the existing protected immutable correction-overlay path rather than mutable raw override fields.
+
+The historical authoritative Attendance PostgreSQL suite also passed completely in the same disposable campaign, preserving:
+
+- authority checks;
+- exact academic identity validation;
+- immutable Attendance packages;
+- stale-source protection;
+- historical-lock protection;
+- correction lineage;
+- concurrency handling;
+- transactional rollback behavior.
+
+Expected negative-path reconciliation tests emitted error-level diagnostic logs for deliberately corrupt, audit-failure and contradictory fixtures. Those logs corresponded to successful fail-closed assertions; they were not test failures.
+
+### Disposable verification safety boundary
+
+Verified campaign safety:
+
+- Docker execution location: `vmserver` only;
+- ordinary `lexora_lms` database accessed: **No**;
+- server repository edited: **No**;
+- PM2 changed: **No**;
+- Nginx changed: **No**;
+- local commit created: **No**;
+- local push performed: **No**;
+- local reviewed worktree changed by verification: **No**;
+- staged files after verification: **None**;
+- SSH tunnel stopped after verification;
+- disposable PostgreSQL container removed after verification.
+
+### Remaining boundary
+
+The Class Session scheduled-end / non-conducted backend is disposable-PostgreSQL verified, but ordinary runtime deployment remains pending.
+
+Before claiming deployment/runtime completion, the required sequence remains:
+
+1. final implementation diff/scope review;
+2. focused commit and push;
+3. clean Ubuntu source promotion;
+4. ordinary PostgreSQL preflight;
+5. validated private rollback backup;
+6. reviewed migration deployment to ordinary `lexora_lms`;
+7. live migration-history/catalog/drift verification;
+8. server typecheck/build;
+9. controlled PM2 restart;
+10. direct and Nginx health verification;
+11. targeted authenticated Class Session / Attendance runtime tests;
+12. runtime documentation reconciliation.
+
+The next policy implementation boundary after this Class Session work remains the distinct Department Chairman role plus explicit Attendance read/correction authority. The historical Batch Coordinator-based Attendance implementation remains historical verified evidence but is policy-superseded as the target authority model.
+
+<!-- class-session-final-cancellation-integrity-pg-verified-20260928 -->
+
+### Final cancellation-integrity hardening and PostgreSQL verification — 2026-09-28
+
+A final implementation review found one additional database integrity gap in
+the expired `ACTIVE -> COMPLETED` boundary.
+
+The scheduled-end database guard already required valid old start evidence,
+null old completion/cancellation evidence, `NEW.status = COMPLETED`, unchanged
+actual start evidence and `NEW.actualEndAt = OLD.scheduledEndAt`.
+
+However, it did not explicitly require `NEW.canceledAt` to remain null.
+
+That could permit a malformed direct database write to attempt a contradictory
+state combining:
+
+- `status = COMPLETED`;
+- `actualEndAt = scheduledEndAt`;
+- non-null `canceledAt`.
+
+This was treated as an academic-evidence integrity defect because canceled
+Class Sessions are excluded from the conducted Attendance denominator.
+
+The new migration was hardened so expired `ACTIVE -> COMPLETED` now additionally
+requires:
+
+`NEW.canceled_at IS NULL`
+
+The historical authoritative Attendance migration remains unchanged.
+
+A dedicated real PostgreSQL regression now verifies that:
+
+- a genuinely due `ACTIVE` session cannot be written as both completed and
+  canceled;
+- the malformed write fails with PostgreSQL SQLSTATE `23514`;
+- the complete Class Session row remains unchanged after rejection;
+- no success audit is created for the rejected mutation;
+- normal scheduled-end reconciliation subsequently succeeds;
+- the final row is `COMPLETED`;
+- `actualEndAt = scheduledEndAt`;
+- `canceledAt = NULL`;
+- original valid `actualStartAt` is preserved;
+- exactly one success audit is created by valid reconciliation.
+
+Local verification after this hardening:
+
+- focused tests: `111 passed`, `0 failed`;
+- two explicitly opt-in PostgreSQL suites skipped locally;
+- API TypeScript typecheck: **PASS**;
+- API Nest/CommonJS build: **PASS**;
+- Prisma validation: **PASS**;
+- `git diff --check`: **PASS**.
+
+The corrected implementation was then rerun against an isolated disposable
+`postgres:16-alpine` PostgreSQL instance on `vmserver`, accessed only through
+loopback and an SSH tunnel.
+
+Final real PostgreSQL result:
+
+- tests: `68`;
+- passed: `68`;
+- failed: `0`;
+- skipped: `0`;
+- cancelled: `0`;
+- todo: `0`.
+
+The new cancellation-integrity regression passed.
+
+The complete historical authoritative Attendance PostgreSQL suite also passed
+in the same campaign.
+
+Expected error-level reconciliation logs for deliberately corrupt,
+audit-failure and contradictory fixtures were fail-closed negative-path
+evidence and were not test failures.
+
+Disposable verification safety:
+
+- ordinary `lexora_lms` database accessed: **No**;
+- server repository edited: **No**;
+- PM2 changed: **No**;
+- Nginx changed: **No**;
+- disposable PostgreSQL container removed after verification;
+- no local commit created;
+- no push performed.
+
+Current bounded classification remains:
+
+**IMPLEMENTED + LOCAL/STATIC VERIFIED + DISPOSABLE POSTGRESQL VERIFIED**
+
+The final-review cancellation-integrity defect is resolved and real-PostgreSQL
+verified.
+
+This does not claim ordinary runtime migration, deployment, PM2 runtime
+verification, or authenticated HTTP/API runtime verification.
+
+The next implementation boundary remains Department Chairman plus explicit
+Attendance read/correction authority after this Class Session slice is safely
+committed and promoted through the controlled runtime deployment process.

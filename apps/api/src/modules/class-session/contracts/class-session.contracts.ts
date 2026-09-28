@@ -12,6 +12,7 @@ export interface ClassSessionRecord {
   scheduledEndAt: Date;
   actualStartAt?: Date | null;
   actualEndAt?: Date | null;
+  nonConductedAt?: Date | null;
   location?: string | null;
   externalSourceRef?: string | null;
   lockedAt?: Date | null;

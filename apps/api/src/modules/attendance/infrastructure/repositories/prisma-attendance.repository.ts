@@ -203,7 +203,8 @@ export class PrismaAttendanceRepository implements AttendanceRepositoryPort {
     if (!rows.length) throw new BadRequestException("Class session not found");
     const session = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
       SELECT id FROM class_sessions WHERE id = ${sessionId} AND department_id = ${departmentId}
-      AND status = 'ACTIVE' AND archived_at IS NULL AND canceled_at IS NULL FOR UPDATE
+      AND status = 'ACTIVE' AND scheduled_end_at > (clock_timestamp() AT TIME ZONE 'UTC')
+      AND archived_at IS NULL AND canceled_at IS NULL FOR UPDATE
     `);
     if (!session.length) throw new ConflictException("Attendance capture/override requires an ACTIVE session; use Coordinator correction after completion");
   }

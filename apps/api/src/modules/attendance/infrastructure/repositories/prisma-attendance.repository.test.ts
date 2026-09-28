@@ -17,6 +17,7 @@ function harness() {
         return e.id === "enrollment" && e.departmentId === "law" && e.courseOfferingId === "offering" && e.studentUserId === "student" &&
           e.status === "APPROVED" && !e.archivedAt && !e.droppedAt ? [{ id: e.id }] : [];
       }
+      if (sql.sql.includes("FROM class_sessions WHERE")) assert.ok(sql.sql.includes("scheduled_end_at > (clock_timestamp() AT TIME ZONE 'UTC')"));
       return sql.sql.includes("teacher_course_assignments") ? state.assigned ? [{ id: "assignment" }] : [] :
         sql.sql.includes("FROM class_sessions WHERE") ? state.active ? [{ id: "session" }] : [] : [{ id: "offering" }];
     },

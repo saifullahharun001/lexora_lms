@@ -78,44 +78,25 @@ export class ClassSessionService {
   }
 
   async update(id: string, input: UpdateClassSessionInput) {
-    const current = await this.findVisibleSession(id);
-
-    if (!current) {
-      throw new NotFoundException("Class session not found");
-    }
-
-    if (
-      current.status === ClassSessionStatus.LOCKED ||
-      current.status === ClassSessionStatus.ARCHIVED
-    ) {
-      throw new BadRequestException("Locked or archived class sessions cannot be updated");
-    }
-
-    if (
-      current.status !== ClassSessionStatus.SCHEDULED &&
-      (input.scheduledStartAt || input.scheduledEndAt)
-    ) {
-      throw new BadRequestException("Scheduled dates can only be updated before activation");
-    }
-
-    this.assertScheduledRange(
-      input.scheduledStartAt ?? current.scheduledStartAt,
-      input.scheduledEndAt ?? current.scheduledEndAt
-    );
-
-    await this.assertTeacherAssignment(current.courseOfferingId, input.teacherAssignmentId);
-
+    await this.getById(id);
     try {
-      const session = await this.repository.update(this.getDepartmentId(), id, input);
-
-      if (!session) {
-        throw new NotFoundException("Class session not found");
-      }
-
-      await this.writeAudit(CLASS_SESSION_AUDIT_EVENTS.RECORD_UPDATED, session, {
-        updatedFields: Object.keys(input)
-      });
-
+      const session = await this.repository.mutate(this.getDepartmentId(), id,
+        this.shouldConstrainToTeacher() ? this.getActorId() : undefined, async (current, now) => {
+          this.assertBeforeDeadline(current, now);
+          if ([ClassSessionStatus.LOCKED, ClassSessionStatus.ARCHIVED, ClassSessionStatus.NOT_CONDUCTED].some((s) => s === current.status)) {
+            throw new BadRequestException("Locked, archived or non-conducted class sessions cannot be updated");
+          }
+          if (current.status !== ClassSessionStatus.SCHEDULED && (input.scheduledStartAt || input.scheduledEndAt)) {
+            throw new BadRequestException("Scheduled dates can only be updated before activation");
+          }
+          this.assertScheduledRange(input.scheduledStartAt ?? current.scheduledStartAt, input.scheduledEndAt ?? current.scheduledEndAt);
+          if (current.status === ClassSessionStatus.SCHEDULED && (input.scheduledEndAt ?? current.scheduledEndAt) <= now) {
+            throw new BadRequestException("Updated scheduled session must have a future scheduled end");
+          }
+          await this.assertTeacherAssignment(current.courseOfferingId, input.teacherAssignmentId);
+          return { data: input, audit: this.auditData(CLASS_SESSION_AUDIT_EVENTS.RECORD_UPDATED, current, { updatedFields: Object.keys(input) }) };
+        });
+      if (!session) throw new NotFoundException("Class session not found");
       return session;
     } catch (error) {
       this.rethrowKnownError(error, "Class session code already exists for this course offering");
@@ -143,31 +124,23 @@ export class ClassSessionService {
   }
 
   private async transition(id: string, action: LifecycleAction) {
-    const current = await this.findVisibleSession(id);
-
-    if (!current) {
-      throw new NotFoundException("Class session not found");
-    }
-
-    const now = new Date();
-    const transition = this.buildTransition(action, current, now);
-    const session = await this.repository.updateLifecycle(
-      this.getDepartmentId(),
-      id,
-      transition.from,
-      transition.data
-    );
-
-    if (!session) {
-      throw new BadRequestException(`Class session cannot ${action} from ${current.status}`);
-    }
-
-    await this.writeAudit(transition.auditEvent, session, {
-      previousStatus: current.status,
-      status: transition.to
-    });
-
+    await this.getById(id);
+    const session = await this.repository.mutate(this.getDepartmentId(), id,
+      this.shouldConstrainToTeacher() ? this.getActorId() : undefined, async (current, now) => {
+        if (action !== "complete") this.assertBeforeDeadline(current, now);
+        const transition = this.buildTransition(action, current, now);
+        return { data: transition.data, audit: this.auditData(transition.auditEvent, current, {
+          previousStatus: current.status, status: transition.to, automatic: false,
+        }) };
+      });
+    if (!session) throw new NotFoundException("Class session not found");
     return session;
+  }
+
+  private assertBeforeDeadline(current: ClassSessionRecord, now: Date) {
+    if ((current.status === ClassSessionStatus.SCHEDULED || current.status === ClassSessionStatus.ACTIVE) && current.scheduledEndAt <= now) {
+      throw new ConflictException("Class session scheduled end has passed; lifecycle reconciliation is required");
+    }
   }
 
   private buildTransition(action: LifecycleAction, current: ClassSessionRecord, now: Date) {
@@ -177,18 +150,24 @@ export class ClassSessionService {
           throw new BadRequestException("Only scheduled class sessions can be activated");
         }
 
+        if (current.actualStartAt || current.actualEndAt || current.canceledAt) throw new ConflictException("Invalid scheduled class evidence");
+
         return {
           from: ClassSessionStatus.SCHEDULED,
           to: ClassSessionStatus.ACTIVE,
           auditEvent: CLASS_SESSION_AUDIT_EVENTS.RECORD_ACTIVATED,
           data: {
             status: ClassSessionStatus.ACTIVE,
-            actualStartAt: current.actualStartAt ?? now
+            actualStartAt: now
           }
         };
       case "complete":
         if (current.status !== ClassSessionStatus.ACTIVE) {
           throw new BadRequestException("Only active class sessions can be completed");
+        }
+
+        if (!current.actualStartAt || current.actualEndAt || current.canceledAt || current.actualStartAt >= current.scheduledEndAt || current.actualStartAt >= now) {
+          throw new ConflictException("Valid class start evidence is required for completion");
         }
 
         return {
@@ -197,7 +176,7 @@ export class ClassSessionService {
           auditEvent: CLASS_SESSION_AUDIT_EVENTS.RECORD_COMPLETED,
           data: {
             status: ClassSessionStatus.COMPLETED,
-            actualEndAt: now
+            actualEndAt: now < current.scheduledEndAt ? now : current.scheduledEndAt
           }
         };
       case "cancel":
@@ -301,7 +280,9 @@ export class ClassSessionService {
         courseOfferingId,
         status: TeacherAssignmentStatus.ACTIVE,
         unassignedAt: null,
-        archivedAt: null
+        archivedAt: null,
+        assignedAt: { lte: new Date() },
+        teacherUser: { status: "ACTIVE", archivedAt: null, deletedAt: null }
       },
       select: {
         id: true
@@ -325,7 +306,9 @@ export class ClassSessionService {
         teacherUserId: this.getActorId(),
         status: TeacherAssignmentStatus.ACTIVE,
         unassignedAt: null,
-        archivedAt: null
+        archivedAt: null,
+        assignedAt: { lte: new Date() },
+        teacherUser: { status: "ACTIVE", archivedAt: null, deletedAt: null }
       },
       select: {
         id: true
@@ -384,23 +367,17 @@ export class ClassSessionService {
     target: ClassSessionRecord,
     metadata?: AuditMetadata
   ) {
-    const requestContext = this.requestContextService.get();
+    await this.prisma.auditLog.create({ data: this.auditData(action, target, metadata) });
+  }
 
-    await this.prisma.auditLog.create({
-      data: {
-        requestId: requestContext?.requestId,
-        actorUserId: this.getActorId(),
-        actorType: "USER",
-        departmentId: this.getDepartmentId(),
-        action,
-        targetType: "class_session",
-        targetId: target.id,
-        outcome: "SUCCESS",
-        ipAddress: requestContext?.audit.ipAddress,
-        userAgent: requestContext?.audit.userAgent,
-        contextJson: metadata as Prisma.InputJsonValue | undefined
-      }
-    });
+  private auditData(action: string, target: ClassSessionRecord, metadata?: AuditMetadata): Prisma.AuditLogUncheckedCreateInput {
+    const requestContext = this.requestContextService.get();
+    return {
+      requestId: requestContext?.requestId, actorUserId: this.getActorId(), actorType: "USER",
+      departmentId: this.getDepartmentId(), action, targetType: "class_session", targetId: target.id,
+      outcome: "SUCCESS", ipAddress: requestContext?.audit.ipAddress, userAgent: requestContext?.audit.userAgent,
+      contextJson: metadata as Prisma.InputJsonValue | undefined
+    };
   }
 
   private rethrowKnownError(error: unknown, message: string): never {

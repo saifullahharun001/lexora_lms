@@ -133,3 +133,10 @@ test("accepts explicit TCP and disabled mode without an endpoint", () => {
   const disabled = validateEnv({ ...base, MALWARE_SCANNER_MODE: "disabled" });
   assert.equal(disabled.MALWARE_SCANNER_TRANSPORT, undefined);
 });
+
+test("Class Session reconciliation interval has validated finite bounds", () => {
+  const config = { MALWARE_SCANNER_MODE: "disabled" };
+  assert.equal(parses(config).CLASS_SESSION_RECONCILIATION_INTERVAL_MS, 10_000);
+  for (const value of ["0", "999", "60001", "NaN", "1500.5"]) rejects({ ...config, CLASS_SESSION_RECONCILIATION_INTERVAL_MS: value });
+  for (const value of ["1000", "60000"]) assert.equal(parses({ ...config, CLASS_SESSION_RECONCILIATION_INTERVAL_MS: value }).CLASS_SESSION_RECONCILIATION_INTERVAL_MS, Number(value));
+});

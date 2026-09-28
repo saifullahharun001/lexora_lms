@@ -19,6 +19,8 @@ test("complete current outcomes use conducted classes as the denominator and ret
 
 test("canceled including later locked/archived sessions and invalid/nonconducted sessions are excluded", () => {
   const ignored = [
+    { ...session("not-conducted"), status: "NOT_CONDUCTED", actualStartAt: null, actualEndAt: null },
+    { ...session("malformed-not-conducted"), status: "NOT_CONDUCTED" },
     { ...session("scheduled"), status: "SCHEDULED" }, { ...session("active"), status: "ACTIVE", actualEndAt: null },
     { ...session("canceled"), status: "CANCELED", canceledAt: start },
     { ...session("locked-canceled"), status: "LOCKED", canceledAt: start },

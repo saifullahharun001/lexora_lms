@@ -4,14 +4,14 @@ import { BadRequestException, ConflictException, ForbiddenException, NotFoundExc
 import { AttendanceService } from "./attendance.service";
 
 function harness() {
-  const state = { role: "teacher", departmentId: "law", assigned: true, sessionState: "ACTIVE", legacy: null as string | null, writes: 0 };
+  const state = { role: "teacher", departmentId: "law", assigned: true, sessionState: "ACTIVE", scheduledEndAt: new Date("2099-01-01"), legacy: null as string | null, writes: 0 };
   const input = { classSessionId: "session", enrollmentId: "enrollment", studentUserId: "student", status: "PRESENT", sourceType: "MANUAL" } as const;
   const service = new AttendanceService({
     saveAttendanceRecord: async (data: unknown) => { state.writes++; return { id: "record", ...(data as object) }; },
     findAttendanceRecordById: async () => ({ id: "record", status: state.legacy ?? "PRESENT", sourceType: "MANUAL" }),
     overrideAttendanceRecord: async () => { state.writes++; return { id: "record" }; },
   } as any, {
-    classSession: { findFirst: async ({ where }: any) => where.departmentId === "law" && where.id === "session" ? { id: "session", departmentId: "law", courseOfferingId: "offering", status: state.sessionState } : null },
+    classSession: { findFirst: async ({ where }: any) => where.departmentId === "law" && where.id === "session" ? { id: "session", departmentId: "law", courseOfferingId: "offering", status: state.sessionState, scheduledEndAt: state.scheduledEndAt } : null },
     enrollment: { findFirst: async ({ where }: any) => where.id === "enrollment" ? { id: "enrollment", departmentId: "law", courseOfferingId: "offering", studentUserId: "student" } : { id: "other", courseOfferingId: "different-offering", studentUserId: "student" } },
     teacherCourseAssignment: { findFirst: async () => state.assigned ? { id: "assignment" } : null },
     attendanceRecord: { findFirst: async () => state.legacy ? { status: state.legacy } : null },
@@ -26,7 +26,7 @@ test("assigned Teacher capture still requires active session, matching offering/
   await h.service.captureAttendance(h.input); assert.equal(h.state.writes, 1);
   h.state.assigned = false; await assert.rejects(h.service.captureAttendance(h.input), ForbiddenException);
   h.state.assigned = true;
-  for (const sessionState of ["SCHEDULED", "COMPLETED", "CANCELED", "LOCKED", "ARCHIVED"]) {
+  for (const sessionState of ["NOT_CONDUCTED", "SCHEDULED", "COMPLETED", "CANCELED", "LOCKED", "ARCHIVED"]) {
     h.state.sessionState = sessionState; await assert.rejects(h.service.captureAttendance(h.input), BadRequestException);
   }
   h.state.sessionState = "ACTIVE";
@@ -55,4 +55,12 @@ test("current Present/Absent override retains mandatory reason", async () => {
   await assert.rejects(h.service.overrideAttendance("record", { status: "ABSENT", overrideReason: " " }), BadRequestException);
   await h.service.overrideAttendance("record", { status: "ABSENT", overrideReason: "Reconciled evidence" });
   assert.equal(h.state.writes, 1);
+});
+
+for (const offset of [0, -1]) test(`capture at/after end (${offset}) is rejected during scheduler lag`, async (t) => {
+  const now = new Date("2026-09-27T10:00:00Z");
+  t.mock.timers.enable({ apis: ["Date"], now });
+  const h = harness(); h.state.scheduledEndAt = new Date(now.getTime() + offset);
+  await assert.rejects(h.service.captureAttendance(h.input), /scheduledEndAt/);
+  assert.equal(h.state.writes, 0);
 });

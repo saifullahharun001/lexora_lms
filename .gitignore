@@ -89,3 +89,6 @@ backups/
 
 !apps/api/prisma/migrations/202609230001_add_authoritative_formative_attendance/
 !apps/api/prisma/migrations/202609230001_add_authoritative_formative_attendance/migration.sql
+
+!apps/api/prisma/migrations/202609270001_class_session_scheduled_end/
+!apps/api/prisma/migrations/202609270001_class_session_scheduled_end/migration.sql

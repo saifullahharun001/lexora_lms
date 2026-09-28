@@ -1,4 +1,6 @@
 import { ClassSessionEvidenceService } from "./class-session-evidence.service";
+import { ClassSessionLifecycleReconciler } from "./application/services/class-session-lifecycle.reconciler";
+import { ClassSessionLifecycleRuntime } from "./application/services/class-session-lifecycle.runtime";
 import { Module } from "@nestjs/common";
 
 import { PrismaModule } from "@/common/prisma/prisma.module";
@@ -22,6 +24,8 @@ import { ClassSessionsController } from "./presentation/http/class-sessions.cont
   ],
   exports: [ClassSessionEvidenceService],
   providers: [
+    ClassSessionLifecycleRuntime,
+    ClassSessionLifecycleReconciler,
     ClassSessionEvidenceService,
     ClassSessionService,
     {

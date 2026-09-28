@@ -38,6 +38,7 @@ type SessionForAttendance = {
   departmentId: string;
   courseOfferingId: string;
   status: ClassSessionStatus;
+  scheduledEndAt: Date;
 };
 
 type EnrollmentForAttendance = {
@@ -157,6 +158,10 @@ export class AttendanceService {
       throw new BadRequestException("Attendance can only be captured for active class sessions");
     }
 
+    if (new Date() >= session.scheduledEndAt) {
+      throw new BadRequestException("Attendance capture closes at scheduledEndAt");
+    }
+
     const previous = await this.prisma.attendanceRecord.findFirst({ where: {
       departmentId: this.getDepartmentId(), classSessionId: session.id, enrollmentId: enrollment.id,
     }, select: { status: true } });
@@ -271,7 +276,8 @@ export class AttendanceService {
         id: true,
         departmentId: true,
         courseOfferingId: true,
-        status: true
+        status: true,
+        scheduledEndAt: true
       }
     });
 

@@ -34,6 +34,14 @@ export interface UpdateClassSessionInput {
   externalSourceRef?: string | null;
 }
 
+export interface ClassSessionMutation {
+  data: Prisma.ClassSessionUpdateManyMutationInput;
+  audit: Prisma.AuditLogUncheckedCreateInput;
+}
+
+export interface DueSessionCursor { scheduledEndAt: Date; id: string }
+export interface ReconciliationResult { cursor: DueSessionCursor | null; processed: number; conflicts: number }
+
 export interface ClassSessionRepositoryPort {
   create(input: CreateClassSessionInput): Promise<ClassSessionRecord>;
   findMany(filters: ClassSessionListFilters): Promise<ClassSessionRecord[]>;
@@ -42,15 +50,11 @@ export interface ClassSessionRepositoryPort {
     id: string,
     assignedTeacherUserId?: string
   ): Promise<ClassSessionRecord | null>;
-  update(
+  mutate(
     departmentId: string,
     id: string,
-    input: UpdateClassSessionInput
+    assignedTeacherUserId: string | undefined,
+    build: (current: ClassSessionRecord, now: Date) => Promise<ClassSessionMutation>
   ): Promise<ClassSessionRecord | null>;
-  updateLifecycle(
-    departmentId: string,
-    id: string,
-    whereStatus: ClassSessionStatus | ClassSessionStatus[],
-    data: Prisma.ClassSessionUpdateManyMutationInput
-  ): Promise<ClassSessionRecord | null>;
+  reconcileDue(cursor?: DueSessionCursor): Promise<ReconciliationResult>;
 }

@@ -27,6 +27,7 @@ export const envSchema = z
       .enum(["development", "test", "production"])
       .default("development"),
     PORT: z.coerce.number().int().positive().default(4000),
+    CLASS_SESSION_RECONCILIATION_INTERVAL_MS: z.coerce.number().int().min(1_000).max(60_000).default(10_000),
     DATABASE_URL: z
       .string()
       .regex(postgresUrlPattern, "DATABASE_URL must be a PostgreSQL URL"),

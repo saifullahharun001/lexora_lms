@@ -2955,3 +2955,20 @@ See also:
 - `docs/project-status-and-roadmap.md`;
 - `docs/runtime-test-checklist.md`;
 - `docs/result-processing-publication-architecture.md`.
+
+
+## Class Session scheduled-end reconciliation — 2026-09-27
+
+The scheduled-end boundary is implemented locally: valid started sessions complete
+at scheduledEndAt; never-started sessions become NOT_CONDUCTED with durable
+nonConductedAt provenance and no conducted Attendance denominator contribution.
+Startup/periodic database reconciliation and transactional lifecycle audits are
+implemented; expired activation, extension, cancellation and capture fail closed.
+Historical Attendance guards, fingerprints and authority boundaries are preserved.
+
+Migration `202609270001_class_session_scheduled_end` requires controlled deployment.
+No server migration, deployment or authenticated runtime verification is claimed.
+See the dated implementation and pending runtime checks in
+[the runtime checklist](runtime-test-checklist.md). The next boundary remains
+Department Chairman plus explicit Attendance read/correction authority; Attendance
+/5 generation, Activities /30 and automatic Final Formative /40 remain pending.

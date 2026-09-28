@@ -227,6 +227,7 @@ enum ClassSessionStatus {
   SCHEDULED
   ACTIVE
   COMPLETED
+  NOT_CONDUCTED
   CANCELED
   LOCKED
   ARCHIVED
@@ -1672,6 +1673,7 @@ model ClassSession {
   scheduledEndAt          DateTime                 @map("scheduled_end_at")
   actualStartAt           DateTime?                @map("actual_start_at")
   actualEndAt             DateTime?                @map("actual_end_at")
+  nonConductedAt          DateTime?                @map("non_conducted_at")
   location                String?
   externalSourceRef       String?                  @map("external_source_ref")
   status                  ClassSessionStatus       @default(SCHEDULED)
@@ -1687,6 +1689,7 @@ model ClassSession {
   attendanceImportBatches AttendanceImportBatch[]
 
   @@unique([courseOfferingId, sessionCode])
+  @@index([status, scheduledEndAt, id], map: "class_sessions_due_idx")
   @@index([departmentId])
   @@index([courseOfferingId])
   @@map("class_sessions")

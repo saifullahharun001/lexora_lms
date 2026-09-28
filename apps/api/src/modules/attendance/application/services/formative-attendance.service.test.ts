@@ -197,3 +197,32 @@ test("ordered concurrent duplicate locks and reopen requests leave one current s
   const results = await Promise.allSettled([h.service.reopen("offering", "enrollment", v.id, "Reason"), h.service.reopen("offering", "enrollment", v.id, "Reason")]);
   assert.equal(results.filter((r) => r.status === "fulfilled").length, 1); assert.equal(h.state.versions.length, 2);
 });
+
+
+test("post-class pre-lock correction uses an authorised audited overlay and never rewrites raw capture", async () => {
+  const h = harness(); const before = JSON.stringify(h.state.records);
+  const version = await h.calculate();
+  const corrected = await h.service.correct("offering", "enrollment", version.id, "session", { status: "ABSENT", reason: "Signed register correction" });
+  assert.equal(h.state.sessions[0].status, "COMPLETED");
+  assert.equal(corrected.previousId, version.id); assert.equal(corrected.workflowState, "READY");
+  assert.equal(h.state.corrections[0].actorUserId, "coordinator");
+  assert.equal(h.state.corrections[0].coordinatorAssignmentId, "assignment");
+  assert.equal(h.state.corrections[0].reason, "Signed register correction");
+  assert.equal(h.state.corrections[0].originalEvidenceJson.records[0].status, "PRESENT");
+  assert.equal(JSON.stringify(h.state.records), before);
+  assert.ok(h.state.audits.some((a) => a.action === "attendance.formative.corrected" && a.actorUserId === "coordinator" && a.departmentId === "law"));
+});
+
+test("post-class correction keeps required reason, exact actor/department and freeze checks", async () => {
+  const h = harness(); const version = await h.calculate();
+  const correct = () => h.service.correct("offering", "enrollment", version.id, "session", { status: "ABSENT", reason: "Signed register" });
+  assert.throws(() => h.service.correct("offering", "enrollment", version.id, "session", { status: "ABSENT", reason: "  " }), BadRequestException);
+  h.principal.actorId = "unassigned-teacher"; await assert.rejects(correct(), NotFoundException);
+  h.principal.actorId = "coordinator"; h.principal.activeDepartmentId = "other";
+  h.principal.roleAssignments[0]!.departmentId = "other";
+  await assert.rejects(correct(), NotFoundException);
+  h.principal.activeDepartmentId = "law"; h.principal.roleAssignments[0]!.departmentId = "law";
+  for (const state of ["VERIFIED", "FINALISED", "LOCKED"] as const) await h.transition(version.id, state);
+  await assert.rejects(correct(), ConflictException);
+  assert.equal(h.state.corrections.length, 0); assert.equal(h.state.records[0].status, "PRESENT");
+});
