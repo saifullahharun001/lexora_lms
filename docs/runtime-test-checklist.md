@@ -39170,3 +39170,322 @@ verification, or authenticated HTTP/API runtime verification.
 The next implementation boundary remains Department Chairman plus explicit
 Attendance read/correction authority after this Class Session slice is safely
 committed and promoted through the controlled runtime deployment process.
+
+## Class Session Step 1 deployed runtime closure - 2026-09-28
+
+This checkpoint supersedes only the earlier statements that the Class Session
+scheduled-end migration, ordinary-database deployment, PM2 activation, startup
+reconciliation and authenticated runtime verification were still pending.
+
+Historical implementation evidence, failed verifier evidence, corrective work,
+disposable PostgreSQL verification and earlier pre-deployment checkpoints remain
+preserved.
+
+### Implementation and deployment identity
+
+Verified implementation commit:
+
+- `343aea075212b9dcc8c96be081abd253433d6f9d`
+- message: `Implement class session scheduled-end reconciliation`
+
+Final runtime repository state:
+
+- branch: `main`;
+- server `HEAD`: `343aea075212b9dcc8c96be081abd253433d6f9d`;
+- `origin/main`: `343aea075212b9dcc8c96be081abd253433d6f9d`;
+- repository: clean.
+
+### Pre-migration validation and rollback safety
+
+Before ordinary migration:
+
+- server Prisma validation passed;
+- Prisma Client generation passed;
+- API typecheck passed;
+- API build passed;
+- focused compiled server tests passed `33/33`;
+- ordinary database was confirmed as `lexora_lms`;
+- incomplete Prisma migrations: `0`;
+- target completed migrations: `0`;
+- validated private pre-migration backup was retained;
+- backup size: `1912132` bytes;
+- backup SHA-256:
+  `1c62c089a68e97c0d690a825b6fca56f916acd52c0c4b650e318fa3101941072`;
+- backup listing validation passed;
+- credentials and raw secrets were not documented.
+
+### Ordinary PostgreSQL migration
+
+Migration:
+
+- `202609270001_class_session_scheduled_end`
+
+Deployment result:
+
+- Prisma found `36` migrations;
+- target migration applied successfully;
+- completed target migration count became `1`;
+- incomplete migration count remained `0`;
+- Prisma reported `Database schema is up to date!`.
+
+Migration integrity:
+
+- source migration SHA-256:
+  `0418367020b0dc7ee03aa26b30b762710a2fc181d5dab292757c85ebb1c96b17`;
+- database-recorded migration checksum:
+  `0418367020b0dc7ee03aa26b30b762710a2fc181d5dab292757c85ebb1c96b17`;
+- checksum comparison passed.
+
+Live catalog verification passed for:
+
+- `NOT_CONDUCTED` enum value;
+- `non_conducted_at` column;
+- `class_sessions_due_idx`;
+- `class_session_non_conducted_check`;
+- `class_session_deadline_guard`;
+- `class_session_attendance_deadline_guard`;
+- historical `attendance_session_write_guard`;
+- historical `attendance_record_write_guard`.
+
+Expected catalog fingerprint was `1|1|1|1|1|1|1|1`.
+
+The migration itself did not reconcile the due Class Session fixtures.
+Immediately before PM2 activation their states remained:
+
+- historical unassigned fixture: `SCHEDULED`;
+- historical assigned/started fixture: `ACTIVE`.
+
+Selected academic/business counts also remained unchanged through migration.
+
+### Controlled startup reconciliation
+
+Before activation, the only due runtime fixtures were explicitly inspected.
+
+Historical unassigned fixture:
+
+- Class Session ID: `cmpbiuqrt000r2ide7eyou2ge`;
+- status before activation: `SCHEDULED`;
+- no actual start/end;
+- no cancellation evidence;
+- raw Attendance records: `0`;
+- authoritative source items: `0`;
+- corrections: `0`;
+- import batches: `0`.
+
+Historical assigned/started fixture:
+
+- Class Session ID: `cmpbj0yob00152idexwimmanr`;
+- status before activation: `ACTIVE`;
+- valid existing actual-start evidence under the implemented guard;
+- no actual end;
+- no cancellation evidence;
+- raw Attendance records: `1`;
+- authoritative source items: `0`;
+- corrections: `0`;
+- import batches: `1`.
+
+Neither related CourseOffering had a latest locked authoritative Attendance package,
+so the historical Attendance lock gate did not block reconciliation.
+
+PM2 was intentionally restarted:
+
+- PID before restart: `1666`;
+- PID after restart: `27085`;
+- two initial health probes observed the expected brief restart connection gap;
+- Direct API and Nginx health recovered to HTTP `200` on attempt `3`.
+
+Startup reconciliation then passed on the first observed reconciliation check:
+
+- `cmpbiuqrt000r2ide7eyou2ge`
+  `SCHEDULED -> NOT_CONDUCTED`;
+- `cmpbj0yob00152idexwimmanr`
+  `ACTIVE -> COMPLETED`.
+
+Verified lifecycle invariants:
+
+- `NOT_CONDUCTED.nonConductedAt == scheduledEndAt`;
+- `NOT_CONDUCTED.actualStartAt == NULL`;
+- `NOT_CONDUCTED.actualEndAt == NULL`;
+- `NOT_CONDUCTED.canceledAt == NULL`;
+- `COMPLETED.actualEndAt == scheduledEndAt`;
+- `COMPLETED.canceledAt == NULL`;
+- original started-session `actualStartAt` was preserved.
+
+### Attendance evidence preservation
+
+Academic/business count fingerprint before and after startup reconciliation remained:
+
+`6|2|4|4|7|1`
+
+representing:
+
+- Class Sessions: `6`;
+- Attendance records: `2`;
+- authoritative Attendance versions: `4`;
+- authoritative source items: `4`;
+- authoritative transitions: `7`;
+- authoritative corrections: `1`.
+
+For the started fixture:
+
+- raw Attendance remained `1|EXCUSED`;
+- canceled historical import batch remained `1|CANCELED`;
+- authoritative source items remained `0`;
+- corrections remained `0`.
+
+Attendance evidence revisions advanced through the existing evidence-revision mechanism:
+
+- never-started fixture: `3 -> 10`;
+- started fixture: `4 -> 11`.
+
+No raw Attendance evidence or import evidence was rewritten by the reconciliation.
+
+### Automatic reconciliation audit evidence
+
+Exactly one successful automatic SERVICE audit was verified for each transition:
+
+- `class-session.record.not-conducted`;
+- `class-session.record.completed`.
+
+Both carried:
+
+- actor type `SERVICE`;
+- null actor user;
+- target type `class_session`;
+- `automatic=true`;
+- source `scheduled-end-reconciliation`;
+- previous status;
+- resulting status.
+
+Historical target audit counts advanced exactly once:
+
+- never-started fixture: `1 -> 2`;
+- started fixture: `2 -> 3`.
+
+### Authenticated HTTP and authorization runtime matrix
+
+Fresh authenticated runtime sessions were created for:
+
+- `admin.law@cu.ac.bd` as `department_admin`;
+- `teacher.law@cu.ac.bd` as `teacher`;
+- `student.law@cu.ac.bd` as `student`.
+
+The assigned Teacher's canonical active LAW-101 assignment was revalidated before
+the HTTP matrix.
+
+Verified Class Session authorization results:
+
+- unauthenticated direct read -> HTTP `401`;
+- Department Admin read of reconciled Law fixtures -> HTTP `200`;
+- assigned Teacher read of assigned Class Session -> HTTP `200`;
+- Teacher direct read of unassigned Class Session -> safe HTTP `404`;
+- forged `x-department-id: dept_bus_test` did not override the authenticated
+  Teacher's real Law principal scope; assigned Law object remained HTTP `200`;
+- Student direct Class Session read -> HTTP `403`;
+- Teacher activation attempt against unassigned Class Session -> safe HTTP `404`.
+
+### Scheduled-end Attendance capture runtime matrix
+
+Against the already-ended assigned Class Session:
+
+- unauthenticated capture -> HTTP `401`;
+- assigned Teacher capture -> HTTP `400`;
+- Department Admin capture -> HTTP `403`;
+- Student capture -> HTTP `403`.
+
+This runtime evidence confirms the deployed boundary preserves:
+
+- `AuthGuard`;
+- `PolicyGuard`;
+- `@RequirePolicy()`;
+- authenticated principal/request context;
+- department isolation;
+- Teacher assigned-course object authorization;
+- safe not-found behavior;
+- Teacher-only Attendance capture;
+- scheduled-end Attendance capture closure.
+
+### Negative-test academic-state preservation
+
+Before and after the authenticated security matrix:
+
+- target Class Session fingerprints matched exactly;
+- raw Attendance fingerprint matched exactly;
+- import-evidence fingerprint matched exactly;
+- academic/business counts remained `6|2|4|4|7|1`;
+- target audit counts remained `2|3`.
+
+Therefore the rejected requests left no academic mutation residue.
+
+### Runtime authentication-session cleanup
+
+Exactly three fresh matrix authentication sessions were created.
+
+Explicit logout results:
+
+- Admin logout -> HTTP `201`;
+- Teacher logout -> HTTP `201`;
+- Student logout -> HTTP `201`.
+
+After cleanup:
+
+- matrix sessions created: `3`;
+- matrix sessions still active: `0`.
+
+No raw access token, refresh token, password, password hash or database credential
+is preserved in documentation.
+
+### Final runtime safety
+
+Final observed state:
+
+- PM2 PID: `27085`;
+- Direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- NestJS listener: `127.0.0.1:4000`;
+- repository: clean;
+- `HEAD == origin/main == 343aea075212b9dcc8c96be081abd253433d6f9d`.
+
+No wildcard application listener was accepted.
+
+### Verification boundaries and non-claims
+
+The real disposable PostgreSQL campaign already verified concurrent scheduled-end
+repository sweeps and exactly-one transition/audit behavior.
+
+The deployed Ubuntu runtime campaign verified the real ordinary database, one active
+PM2 API process, startup reconciliation, authenticated HTTP authorization boundaries
+and scheduled-end Attendance capture closure.
+
+A separate live multi-PM2-process reconciliation campaign was not performed in this
+deployment checkpoint. Exact near-boundary authenticated capture timing with an
+artificially delayed reconciler was also not separately repeated on the ordinary
+runtime database; the database deadline behavior was covered by the real disposable
+PostgreSQL campaign, while the deployed authenticated campaign verified post-end
+capture rejection.
+
+These are not claimed as newly performed live production-topology tests.
+
+This checkpoint does not claim:
+
+- cloud production deployment;
+- public Internet exposure;
+- HTTPS completion;
+- production monitoring/alerting completion;
+- Department Chairman implementation;
+- replacement Attendance correction authority;
+- Exam Committee Chairman Attendance `/5` generation;
+- Activities `/30` redesign/finalisation;
+- automatic Final Formative `/40`;
+- final result publication completion.
+
+### Current classification
+
+Within the current Ubuntu VM runtime boundary, the Class Session scheduled-end
+Step 1 is:
+
+**IMPLEMENTED + COMMITTED/PUSHED + ORDINARY-DB DEPLOYED + RUNTIME VERIFIED**
+
+The next academic implementation boundary remains Department Chairman role plus
+explicit department-scoped Attendance read/correction authority, preserving mandatory
+reason/history/auditability, object-level authorization and department isolation.

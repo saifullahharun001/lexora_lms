@@ -2972,3 +2972,44 @@ See the dated implementation and pending runtime checks in
 [the runtime checklist](runtime-test-checklist.md). The next boundary remains
 Department Chairman plus explicit Attendance read/correction authority; Attendance
 /5 generation, Activities /30 and automatic Final Formative /40 remain pending.
+
+## Class Session Step 1 runtime closure - 2026-09-28
+
+The scheduled-end Class Session lifecycle is now implemented, deployed and runtime
+verified within the current Ubuntu VM environment.
+
+Verified behavior:
+
+- a valid started session automatically becomes `COMPLETED` when due;
+- `actualEndAt` is anchored to `scheduledEndAt`;
+- a due never-started session becomes `NOT_CONDUCTED`;
+- `nonConductedAt` records the authoritative scheduled-end provenance;
+- `NOT_CONDUCTED` is distinct from cancellation and is excluded from conducted
+  Attendance evidence;
+- migration itself does not reconcile business rows;
+- startup/periodic reconciliation is database-backed and audit-producing;
+- historical Attendance evidence is preserved;
+- post-scheduled-end raw Attendance capture is blocked;
+- Teacher access remains object-scoped to actively assigned CourseOfferings;
+- direct unassigned Teacher object access/mutation returns safe not-found;
+- a forged `x-department-id` does not replace the authenticated principal's
+  department scope;
+- Student Class Session access remains policy-blocked under the current model;
+- Department Admin and Student Attendance capture remain blocked.
+
+Implementation/runtime commit:
+
+`343aea075212b9dcc8c96be081abd253433d6f9d`
+
+Ordinary migration:
+
+`202609270001_class_session_scheduled_end`
+
+A separate live multi-process PM2 reconciliation campaign is not claimed; concurrent
+repository reconciliation and database deadline behavior were verified against real
+disposable PostgreSQL.
+
+The next design boundary remains Department Chairman authority plus explicit
+department-scoped Attendance read/correction authority. Attendance `/5` generation,
+Activities `/30`, automatic Final Formative `/40`, and later final-result stages remain
+separate pending work unless independently implemented and runtime verified.

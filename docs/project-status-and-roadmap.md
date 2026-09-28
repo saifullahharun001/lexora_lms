@@ -3125,3 +3125,57 @@ See the dated implementation and pending runtime checks in
 [the runtime checklist](runtime-test-checklist.md). The next boundary remains
 Department Chairman plus explicit Attendance read/correction authority; Attendance
 /5 generation, Activities /30 and automatic Final Formative /40 remain pending.
+
+## Class Session Step 1 runtime closure - 2026-09-28
+
+This section supersedes the earlier deployment-pending classification for the
+scheduled-end Class Session boundary.
+
+Implementation commit
+`343aea075212b9dcc8c96be081abd253433d6f9d` is now deployed on the Ubuntu runtime
+server.
+
+Migration `202609270001_class_session_scheduled_end` is applied to the ordinary
+`lexora_lms` PostgreSQL database with matching source/database checksum and verified
+live catalog.
+
+Runtime verification passed for:
+
+- startup `SCHEDULED -> NOT_CONDUCTED`;
+- startup `ACTIVE -> COMPLETED`;
+- exact scheduled-end provenance;
+- preservation of historical Attendance evidence;
+- exactly one automatic success audit per reconciled fixture;
+- unauthenticated request blocking;
+- Department Admin Class Session read;
+- assigned-Teacher direct read;
+- unassigned-Teacher safe not-found;
+- forged department-header resistance;
+- Student Class Session policy denial;
+- unassigned Teacher mutation denial;
+- assigned Teacher post-end Attendance capture denial;
+- non-Teacher Attendance capture denial;
+- negative-test academic-state preservation;
+- runtime authentication-session cleanup;
+- Direct/Nginx health and loopback-only application binding.
+
+Real disposable PostgreSQL verification separately covers concurrent scheduled-end
+repository sweeps and database deadline enforcement.
+
+A separate live multi-PM2-process reconciliation campaign is not claimed by this
+checkpoint.
+
+Within the current Ubuntu VM runtime boundary, **Class Session Step 1 is complete and
+runtime verified**.
+
+The next focused implementation sequence remains:
+
+1. Department Chairman role and department-scoped ordinary academic read authority;
+2. Department Chairman/Admin Attendance correction authority with mandatory
+   reason/history/audit before Attendance generation/freeze;
+3. Exam Committee Chairman atomic Attendance `/5` generation and freeze;
+4. Activities `/30` redesign and Chairman finalisation;
+5. automatic authoritative Final Formative `/40`;
+6. locked `/40` plus locked Summative `/60` into final-result processing.
+
+Cloud-production hardening remains separate.
