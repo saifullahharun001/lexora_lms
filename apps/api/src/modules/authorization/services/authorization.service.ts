@@ -5,6 +5,7 @@ import type {
   PrincipalContext
 } from "@lexora/types";
 import { Injectable } from "@nestjs/common";
+import { correctionAuthorities } from "@/modules/attendance/domain/attendance-correction-authority";
 
 import {
   isPermissionGrantFromLoadedRole,
@@ -103,6 +104,7 @@ const SENSITIVE_ROLE_ADMISSION_POLICIES = {
 } as const satisfies Partial<Record<string, readonly PlatformRole[]>>;
 
 const STATIC_ROLE_POLICIES: Record<PlatformRole, string[]> = {
+  department_chairman: ["attendance.record.read"],
   poe_chairman: [],
   comprehensive_external: [],
   department_admin: [
@@ -305,6 +307,8 @@ export class AuthorizationService {
   }
 
   isAllowed(principal: PrincipalContext, requiredPolicy: string): boolean {
+    // Deliberately precedes all static policies and wildcard resolution.
+    if (requiredPolicy === "attendance.record.correct") return correctionAuthorities(principal).length > 0;
     const admittedRoles =
       SENSITIVE_ROLE_ADMISSION_POLICIES[
         requiredPolicy as keyof typeof SENSITIVE_ROLE_ADMISSION_POLICIES

@@ -220,6 +220,9 @@ export class PrismaIdentityAccessRepository
     );
     const permissions: PermissionGrant[] = validUserRoles.flatMap((userRole) =>
       userRole.role.rolePermissions.map((rolePermission) => ({
+        id: rolePermission.permission.id,
+        code: rolePermission.permission.code,
+        rolePermissionId: rolePermission.id,
         resource: rolePermission.permission.resource,
         action: rolePermission.permission.action,
         scope: rolePermission.permission.scope.toLowerCase() as PermissionGrant["scope"],

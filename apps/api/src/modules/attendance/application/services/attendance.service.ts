@@ -184,7 +184,7 @@ export class AttendanceService {
     return this.repository.findAttendanceRecords({
       departmentId: this.getDepartmentId(),
       ...filters,
-      ...(this.shouldConstrainToTeacher() ? { assignedTeacherUserId: this.getActorId() } : {})
+      ...(this.shouldConstrainToTeacher(true) ? { assignedTeacherUserId: this.getActorId() } : {})
     });
   }
 
@@ -261,7 +261,7 @@ export class AttendanceService {
     return this.repository.findAttendanceRecordById(
       this.getDepartmentId(),
       id,
-      this.shouldConstrainToTeacher() ? this.getActorId() : undefined
+      this.shouldConstrainToTeacher(true) ? this.getActorId() : undefined
     );
   }
 
@@ -362,7 +362,7 @@ export class AttendanceService {
   }
 
   private assertTeacherCapturePrincipal() {
-    if (!this.hasRole("teacher") || this.hasRole("department_admin")) {
+    if (!this.hasRole("teacher") || this.hasRole("department_admin") || this.hasRole("department_chairman")) {
       throw new ForbiddenException("Only assigned teachers can capture attendance");
     }
   }
@@ -415,7 +415,7 @@ export class AttendanceService {
   }
 
   private assertNotStudentBroadEndpoint() {
-    if (this.hasRole("student") && !this.hasRole("department_admin") && !this.hasRole("teacher")) {
+    if (this.hasRole("student")) {
       throw new ForbiddenException("Students must use the attendance self endpoint");
     }
   }
@@ -426,8 +426,9 @@ export class AttendanceService {
     }
   }
 
-  private shouldConstrainToTeacher() {
-    return this.hasRole("teacher") && !this.hasRole("department_admin");
+  private shouldConstrainToTeacher(ordinaryRecordRead = false) {
+    return this.hasRole("teacher") && !this.hasRole("department_admin") &&
+      !(ordinaryRecordRead && this.hasRole("department_chairman"));
   }
 
   private getDepartmentId() {
@@ -450,7 +451,7 @@ export class AttendanceService {
     return principal.actorId;
   }
 
-  private hasRole(role: "department_admin" | "teacher" | "student") {
+  private hasRole(role: "department_admin" | "department_chairman" | "teacher" | "student") {
     const principal = this.requestContextService.get()?.principal;
     const departmentId = principal?.activeDepartmentId;
 

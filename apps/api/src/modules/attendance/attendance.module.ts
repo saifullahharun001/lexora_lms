@@ -9,6 +9,7 @@ import { RequestContextModule } from "@/common/request-context/request-context.m
 import { AuthorizationModule } from "@/modules/authorization/authorization.module";
 import { PlatformModule } from "@/platform/platform.module";
 import { AttendanceService } from "./application/services/attendance.service";
+import { AttendanceCorrectionService } from "./application/services/attendance-correction.service";
 import { ATTENDANCE_REPOSITORY } from "./domain/attendance.constants";
 import { PrismaAttendanceRepository } from "./infrastructure/repositories/prisma-attendance.repository";
 import { AttendanceController } from "./presentation/http/attendance.controller";
@@ -26,6 +27,7 @@ import { AttendanceController } from "./presentation/http/attendance.controller"
     AttendanceController
   ],
   providers: [
+    AttendanceCorrectionService,
     FormativeAttendanceService,
     AttendanceService,
     {

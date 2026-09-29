@@ -276,8 +276,16 @@ VALUES ('correction','v1','${department}','correction-offering','correction-enro
       });
       const rows = await client.$queryRawUnsafe<Array<{ status: string }>>("SELECT status FROM attendance_records WHERE id='correction-record'");
       assert.equal(rows[0]!.status, "PRESENT");
-      const overlay = await client.formativeAttendanceCorrection.findUniqueOrThrow({ where: { id: "correction" } });
-      assert.equal(overlay.status, "ABSENT"); assert.equal(overlay.actorUserId, "coordinator"); assert.ok(overlay.occurredAt);
+      const overlays = await client.$queryRawUnsafe<Array<{
+        status: string;
+        actor_user_id: string;
+        occurred_at: Date;
+      }>>("SELECT status, actor_user_id, occurred_at FROM formative_attendance_corrections WHERE id='correction'");
+      assert.equal(overlays.length, 1);
+      const overlay = overlays[0]!;
+      assert.equal(overlay.status, "ABSENT");
+      assert.equal(overlay.actor_user_id, "coordinator");
+      assert.ok(overlay.occurred_at);
       for (const state of ["VERIFIED", "FINALISED", "LOCKED"]) await execute(`INSERT INTO formative_attendance_transitions
 (id,version_id,department_id,course_offering_id,enrollment_id,student_batch_id,academic_term_id,state,actor_user_id,coordinator_assignment_id)
 VALUES ('${state}','v2','law','correction-offering','correction-enrollment','batch','term','${state}','coordinator','assignment')`);

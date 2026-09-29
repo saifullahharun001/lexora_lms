@@ -1,6 +1,7 @@
 export type ActorType = "user" | "service";
 
 export type PlatformRole =
+  | "department_chairman"
   | "department_admin"
   | "teacher"
   | "student"
@@ -10,6 +11,10 @@ export type PlatformRole =
   | "comprehensive_external";
 
 export interface PermissionGrant {
+  /** Persisted identities required by sensitive operations; absent legacy grants fail closed. */
+  id?: string;
+  code?: string;
+  rolePermissionId?: string;
   action: string;
   resource: string;
   scope: "department" | "self" | "public_verification";

@@ -287,26 +287,25 @@ function validateProvisioningDefinitions() {
     fail("At least one authorization provisioning definition is required");
   }
 
-  const permissionCodes = new Set<string>();
-  const permissionSemantics = new Set<string>();
+  const permissionCodes = new Map<string, string>();
+  const permissionSemantics = new Map<string, string>();
+  const roleGrants = new Set<string>();
 
   for (const definition of definitions) {
-    if (permissionCodes.has(definition.permission.code)) {
-      fail("Authorization provisioning definitions contain a duplicate code");
-    }
-    permissionCodes.add(definition.permission.code);
-
     const semantics = [
       definition.permission.resource,
       definition.permission.action,
       definition.permission.scope,
     ].join("\u0000");
-    if (permissionSemantics.has(semantics)) {
-      fail(
-        "Authorization provisioning definitions contain duplicate permission semantics",
-      );
+    const code = definition.permission.code;
+    const grant = `${code}\u0000${definition.targetRoleCode}`;
+    if (roleGrants.has(grant) || (permissionCodes.has(code) && permissionCodes.get(code) !== semantics) ||
+      (permissionSemantics.has(semantics) && permissionSemantics.get(semantics) !== code)) {
+      fail("Authorization provisioning definitions contain duplicate grants or conflicting permission identities");
     }
-    permissionSemantics.add(semantics);
+    roleGrants.add(grant);
+    permissionCodes.set(code, semantics);
+    permissionSemantics.set(semantics, code);
     if (
       definition.targetRoleCode.length === 0 ||
       definition.targetRoleCode.trim() !== definition.targetRoleCode
@@ -449,7 +448,10 @@ export async function applyAuthorizationProvisioning(
         definition,
       ] of AUTHORIZATION_PROVISIONING_DEFINITIONS.entries()) {
         const definitionPlan = plan.definitions[index]!;
-        const permissionCreated = definitionPlan.permission.state === "ABSENT";
+        // Multiple exact roles may receive the same canonical permission. Re-resolve
+        // after earlier inserts in this transaction; never create an alias or duplicate.
+        const existingPermission = await resolvePermission(tx, definition);
+        const permissionCreated = existingPermission === null;
         const rolePermissionCreated =
           definitionPlan.roleLink.state === "ABSENT";
         const hasChanges = permissionCreated || rolePermissionCreated;
@@ -469,7 +471,7 @@ export async function applyAuthorizationProvisioning(
               data: definition.permission,
               select: { id: true },
             })
-          : { id: definitionPlan.permission.id! };
+          : { id: existingPermission!.id };
         const rolePermission = rolePermissionCreated
           ? await tx.rolePermission.create({
               data: {
@@ -525,14 +527,8 @@ export async function applyAuthorizationProvisioning(
 export function sanitizedProvisioningSummary(
   result: AuthorizationProvisioningResult,
 ) {
-  const resultsByCode = new Map(
-    result.definitions.map((definition) => [
-      definition.permissionCode,
-      definition,
-    ]),
-  );
-  const definitions = result.plan.definitions.map((definition) => {
-    const definitionResult = resultsByCode.get(definition.permission.code);
+  const definitions = result.plan.definitions.map((definition, index) => {
+    const definitionResult = result.definitions[index];
     return {
       targetRole: definition.targetRole,
       permission: definition.permission,

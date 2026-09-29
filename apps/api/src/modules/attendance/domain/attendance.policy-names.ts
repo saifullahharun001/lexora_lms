@@ -1,4 +1,5 @@
 export const ATTENDANCE_POLICY_NAMES = {
+  RECORD_CORRECT: "attendance.record.correct",
   RECORD_READ: "attendance.record.read",
   RECORD_CAPTURE: "attendance.record.capture",
   RECORD_OVERRIDE: "attendance.record.override",

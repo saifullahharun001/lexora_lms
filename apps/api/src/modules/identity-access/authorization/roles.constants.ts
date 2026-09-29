@@ -1,4 +1,5 @@
 export const PLATFORM_ROLES = {
+  DEPARTMENT_CHAIRMAN: "department_chairman",
   POE_CHAIRMAN: "poe_chairman",
   COMPREHENSIVE_EXTERNAL: "comprehensive_external",
   DEPARTMENT_ADMIN: "department_admin",
@@ -11,6 +12,7 @@ export const PLATFORM_ROLES = {
 export type PlatformRole = (typeof PLATFORM_ROLES)[keyof typeof PLATFORM_ROLES];
 
 export const PRIVILEGED_PLATFORM_ROLES = [
+  PLATFORM_ROLES.DEPARTMENT_CHAIRMAN,
   PLATFORM_ROLES.DEPARTMENT_ADMIN,
   PLATFORM_ROLES.TEACHER,
   PLATFORM_ROLES.AUDITOR,

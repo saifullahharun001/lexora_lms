@@ -7,7 +7,9 @@ const now = Date.now();
 
 function rolePermission() {
   return {
+    id: "rp-a",
     permission: {
+      id: "permission-a", code: "course-management.course.read_department",
       resource: "course-management.course",
       action: "read",
       scope: "DEPARTMENT"
@@ -78,6 +80,7 @@ test("loadAuthProfile retains valid role permission provenance and lifecycle que
   assert.deepEqual(profile?.roles, ["teacher"]);
   assert.deepEqual(profile?.permissions, [
     {
+      id: "permission-a", code: "course-management.course.read_department", rolePermissionId: "rp-a",
       resource: "course-management.course",
       action: "read",
       scope: "department",

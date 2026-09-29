@@ -175,6 +175,16 @@ export const EXAMINATION_WORKFLOW_PROVISIONING = EXAMINATION_PERMISSION_DEFINITI
     targetRoleCode: `${d.resource}.${d.action}` === EXAMINATION_POLICIES.APPOINT ? PLATFORM_ROLES.DEPARTMENT_ADMIN : PLATFORM_ROLES.TEACHER,
     auditAction: `authorization.${d.resource}.${d.action}.provisioned` }));
 
+export const ATTENDANCE_CORRECTION_PROVISIONING = [
+  PLATFORM_ROLES.TEACHER, PLATFORM_ROLES.DEPARTMENT_CHAIRMAN, PLATFORM_ROLES.DEPARTMENT_ADMIN,
+].map((targetRoleCode) => ({
+  permission: {
+    code: PERMISSIONS.ATTENDANCE.RECORD_CORRECT_DEPARTMENT,
+    resource: "attendance.record", action: "correct", scope: PermissionScope.DEPARTMENT,
+    description: "Reason-required pre-freeze Attendance correction; exact role and academic object authority required",
+  }, targetRoleCode, auditAction: "authorization.attendance-record-correct.provisioned",
+}));
+
 export const AUTHORIZATION_PROVISIONING_DEFINITIONS = [
   SYLLABUS_VERSION_MANAGE_PROVISIONING,
   SYLLABUS_VERSION_LIFECYCLE_MANAGE_PROVISIONING,
@@ -189,6 +199,7 @@ export const AUTHORIZATION_PROVISIONING_DEFINITIONS = [
   SUMMATIVE_EXAMINATION_CHAIRMAN_APPROVAL_PROVISIONING,
   FORMATIVE_MARK_ADJUST_PROVISIONING,
   ...EXAMINATION_WORKFLOW_PROVISIONING,
+  ...ATTENDANCE_CORRECTION_PROVISIONING,
 ] as const;
 
 export type AuthorizationProvisioningDefinition =

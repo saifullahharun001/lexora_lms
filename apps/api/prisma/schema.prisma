@@ -1466,6 +1466,7 @@ model CurriculumCoursePrerequisite {
 }
 
 model CourseOffering {
+  ordinaryAttendanceCorrections FormativeAttendanceCorrection[]
   attendanceVersions FormativeAttendanceVersion[]
   @@unique([id, departmentId, studentBatchId, academicTermId], map: "attendance_offering_scope_uq")
   formativeActivities FormativeActivity[]
@@ -4172,10 +4173,13 @@ model FormativeAttendanceTransition {
 }
 
 model FormativeAttendanceCorrection {
+  authorityKind String @default("LEGACY_COORDINATOR") @map("authority_kind") @db.VarChar(32)
+  authorityJson Json? @map("authority_json")
+  previousEvidenceJson Json? @map("previous_evidence_json")
   sessionEvidenceRevision Int @default(0) @map("session_evidence_revision")
   recordEvidenceRevision Int? @map("record_evidence_revision")
   id String @id @default(cuid())
-  versionId String @map("version_id")
+  versionId String? @map("version_id")
   departmentId String @map("department_id")
   courseOfferingId String @map("course_offering_id")
   enrollmentId String @map("enrollment_id")
@@ -4189,12 +4193,13 @@ model FormativeAttendanceCorrection {
   basisFingerprint String @map("basis_fingerprint") @db.VarChar(64)
   originalEvidenceJson Json @map("original_evidence_json")
   actorUserId String @map("actor_user_id")
-  coordinatorAssignmentId String @map("coordinator_assignment_id")
+  coordinatorAssignmentId String? @map("coordinator_assignment_id")
   occurredAt DateTime @default(now()) @map("occurred_at")
-  version FormativeAttendanceVersion @relation(fields: [versionId, departmentId, courseOfferingId, enrollmentId], references: [id, departmentId, courseOfferingId, enrollmentId], onDelete: Restrict, onUpdate: Restrict)
+  offering CourseOffering @relation(fields: [courseOfferingId, departmentId, studentBatchId, academicTermId], references: [id, departmentId, studentBatchId, academicTermId], onDelete: Restrict, onUpdate: Restrict, map: "attendance_correction_offering_scope_fk")
+  version FormativeAttendanceVersion? @relation(fields: [versionId, departmentId, courseOfferingId, enrollmentId], references: [id, departmentId, courseOfferingId, enrollmentId], onDelete: Restrict, onUpdate: Restrict)
   enrollment Enrollment @relation(fields: [enrollmentId, departmentId, courseOfferingId, studentUserId], references: [id, departmentId, courseOfferingId, studentUserId], onDelete: Restrict, onUpdate: Restrict)
   session ClassSession @relation(fields: [classSessionId, departmentId, courseOfferingId], references: [id, departmentId, courseOfferingId], onDelete: Restrict, onUpdate: Restrict)
-  coordinator BatchCoordinatorAssignment @relation(fields: [coordinatorAssignmentId, departmentId, studentBatchId, academicTermId, actorUserId], references: [id, departmentId, studentBatchId, academicTermId, coordinatorUserId], onDelete: Restrict, onUpdate: Restrict)
+  coordinator BatchCoordinatorAssignment? @relation(fields: [coordinatorAssignmentId, departmentId, studentBatchId, academicTermId, actorUserId], references: [id, departmentId, studentBatchId, academicTermId, coordinatorUserId], onDelete: Restrict, onUpdate: Restrict)
   items FormativeAttendanceSourceItem[]
   @@unique([enrollmentId, classSessionId, revision])
   @@map("formative_attendance_corrections")

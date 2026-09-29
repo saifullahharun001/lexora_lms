@@ -5,6 +5,8 @@ import { RequirePolicy } from "@/modules/authorization/decorators/require-policy
 import { AuthGuard } from "@/modules/authorization/guards/auth.guard";
 import { PolicyGuard } from "@/modules/authorization/guards/policy.guard";
 import { AttendanceService } from "../../application/services/attendance.service";
+import { AttendanceCorrectionService } from "../../application/services/attendance-correction.service";
+import { CreateAttendanceCorrectionDto } from "../dto/create-attendance-correction.dto";
 import { ATTENDANCE_POLICY_NAMES } from "../../domain/attendance.policy-names";
 import { CreateAttendanceImportBatchDto } from "../dto/create-attendance-import-batch.dto";
 import { CreateAttendanceRecordDto } from "../dto/create-attendance-record.dto";
@@ -19,7 +21,15 @@ import { ResourceIdParamDto } from "../dto/resource-id-param.dto";
 })
 @UseGuards(AuthGuard, PolicyGuard)
 export class AttendanceController {
-  constructor(private readonly attendanceService: AttendanceService) {}
+  constructor(private readonly attendanceService: AttendanceService,
+    private readonly corrections: AttendanceCorrectionService) {}
+
+  @Post("corrections")
+  @RequirePolicy(ATTENDANCE_POLICY_NAMES.RECORD_CORRECT)
+  correct(@Body() body: CreateAttendanceCorrectionDto) {
+    return this.corrections.correct({ classSessionId: body.classSessionId, enrollmentId: body.enrollmentId,
+      status: body.status, reason: body.reason });
+  }
 
   @Post("import-batches")
   @RequirePolicy(ATTENDANCE_POLICY_NAMES.IMPORT_BATCH_CREATE)

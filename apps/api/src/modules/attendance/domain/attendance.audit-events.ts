@@ -1,4 +1,5 @@
 export const ATTENDANCE_AUDIT_EVENTS = {
+  RECORD_CORRECTED: "attendance.record.corrected",
   RECORD_CAPTURED: "attendance.record.captured",
   RECORD_OVERRIDDEN: "attendance.record.overridden",
   RECORD_IMPORTED: "attendance.record.imported",

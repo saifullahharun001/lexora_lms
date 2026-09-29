@@ -30,7 +30,7 @@ test("authoritative correction DTO rejects legacy statuses and client academic t
 test("dedicated admission does not accept student, generic labels, or wildcard grants", () => {
   const service = new AuthorizationService();
   const principal: PrincipalContext = { actorId: "user", actorType: "user", isAuthenticated: true, activeDepartmentId: "law", roleAssignments: [], permissions: [] };
-  for (const role of ["teacher", "department_admin", "student", "support", "auditor", "poe_chairman", "comprehensive_external"] as const) {
+  for (const role of ["teacher", "department_admin", "department_chairman", "student", "support", "auditor", "poe_chairman", "comprehensive_external"] as const) {
     principal.roleAssignments = [{ departmentId: "law", role, roleId: "role", userRoleId: "ur" }];
     principal.permissions = [{ resource: "*", action: "*", scope: "department", source: { departmentId: "law", roleId: "role", userRoleId: "ur" } }];
     assert.equal(service.isAllowed(principal, FORMATIVE_ATTENDANCE_POLICY), role === "teacher" || role === "department_admin");

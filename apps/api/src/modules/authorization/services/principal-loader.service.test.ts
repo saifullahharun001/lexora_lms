@@ -4,8 +4,27 @@ import test from "node:test";
 import { DepartmentStatus, UserStatus } from "@prisma/client";
 
 import { PrincipalLoaderService } from "./principal-loader.service";
+import { AuthorizationService } from "./authorization.service";
 
 const now = Date.now();
+
+test("Chairman identity and exact persisted correction grant survive principal loading; stale roles do not", async () => {
+  const assignment = userRole({ role: { ...userRole().role, code: "department_chairman", rolePermissions: [{
+    id: "rp", permission: { id: "permission", code: "attendance.record.correct_department",
+      resource: "attendance.record", action: "correct", scope: "DEPARTMENT" },
+  }] } });
+  const authorization = new AuthorizationService();
+  for (const revokedAt of [null, new Date()]) {
+    const principal = await harness(user({ userRoles: [{ ...assignment, revokedAt }] })).service.loadPrincipal("user-a");
+    assert.ok(principal);
+    assert.equal(authorization.isAllowed(principal, "attendance.record.correct"), revokedAt === null);
+    if (!revokedAt) {
+      assert.equal(principal.roleAssignments[0]?.role, "department_chairman");
+      assert.equal(principal.permissions[0]?.id, "permission");
+      assert.equal(principal.permissions[0]?.rolePermissionId, "rp");
+    }
+  }
+});
 
 function permission(resource = "course-management.course") {
   return {

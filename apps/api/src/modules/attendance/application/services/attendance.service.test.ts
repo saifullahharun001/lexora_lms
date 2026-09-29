@@ -21,6 +21,38 @@ function harness() {
   return { service, state, input };
 }
 
+test("Chairman reads only principal department; Teacher assignment and Student self-read stay scoped", async () => {
+  const roles = ["department_chairman"];
+  const calls: any[] = [];
+  const service = new AttendanceService({
+    findAttendanceRecords: async (filters: any) => { calls.push(filters); return []; },
+    findAttendanceRecordById: async (department: string, id: string, teacher: string) => {
+      calls.push({ department, id, teacher }); return id === "foreign" ? null : { id };
+    },
+    findImportBatches: async (filters: any) => { calls.push(filters); return []; },
+  } as any, {} as any, { get: () => ({ departmentId: "forged", principal: { actorId: "actor", activeDepartmentId: "law",
+    roleAssignments: roles.map((role) => ({ role, departmentId: "law" })) } }) } as any);
+  await service.listAttendanceRecords({ limit: 20, offset: 0 }); assert.equal(calls.at(-1).departmentId, "law");
+  assert.equal(calls.at(-1).assignedTeacherUserId, undefined);
+  await assert.rejects(service.getAttendanceRecord("foreign"), NotFoundException);
+  roles.push("teacher"); await service.listAttendanceRecords({ limit: 20, offset: 0 }); assert.equal(calls.at(-1).assignedTeacherUserId, undefined);
+  await service.listImportBatches({ limit: 20, offset: 0 }); assert.equal(calls.at(-1).assignedTeacherUserId, "actor");
+  roles.splice(0, roles.length, "teacher"); await service.listAttendanceRecords({ limit: 20, offset: 0 }); assert.equal(calls.at(-1).assignedTeacherUserId, "actor");
+  roles.splice(0, roles.length, "student"); assert.throws(() => service.listAttendanceRecords({ limit: 20, offset: 0 }), ForbiddenException);
+  await service.listMyAttendanceRecords({ limit: 20, offset: 0 }); assert.equal(calls.at(-1).studentUserId, "actor");
+  for (const mixed of [["student", "teacher"], ["student", "department_chairman"],
+    ["student", "teacher", "department_chairman"], ["student", "department_admin"]]) {
+    roles.splice(0, roles.length, ...mixed);
+    const before = calls.length;
+    assert.throws(() => service.listAttendanceRecords({ limit: 20, offset: 0 }), ForbiddenException);
+    await assert.rejects(service.getAttendanceRecord("own-department-record"), ForbiddenException);
+    assert.throws(() => service.listImportBatches({ limit: 20, offset: 0 }), ForbiddenException);
+    assert.equal(calls.length, before);
+    await service.listMyAttendanceRecords({ limit: 20, offset: 0 });
+    assert.equal(calls.at(-1).studentUserId, "actor");
+  }
+});
+
 test("assigned Teacher capture still requires active session, matching offering/student and department", async () => {
   const h = harness();
   await h.service.captureAttendance(h.input); assert.equal(h.state.writes, 1);
@@ -34,7 +66,7 @@ test("assigned Teacher capture still requires active session, matching offering/
   await assert.rejects(h.service.captureAttendance({ ...h.input, studentUserId: "another" }), BadRequestException);
   h.state.departmentId = "other"; await assert.rejects(h.service.captureAttendance(h.input), NotFoundException);
   h.state.departmentId = "law";
-  for (const role of ["student", "department_admin"]) { h.state.role = role; await assert.rejects(h.service.captureAttendance(h.input), ForbiddenException); }
+  for (const role of ["student", "department_admin", "department_chairman"]) { h.state.role = role; await assert.rejects(h.service.captureAttendance(h.input), ForbiddenException); }
   assert.equal(h.state.writes, 1);
 });
 

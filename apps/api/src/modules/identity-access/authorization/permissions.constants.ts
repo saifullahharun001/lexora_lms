@@ -70,6 +70,7 @@ export const PERMISSIONS = {
     ENROLLMENT_ARCHIVE_DEPARTMENT: "enrollment.enrollment.archive_department"
   },
   ATTENDANCE: {
+    RECORD_CORRECT_DEPARTMENT: "attendance.record.correct_department",
     RECORD_READ_DEPARTMENT: "attendance.record.read_department",
     RECORD_READ_ASSIGNED: "attendance.record.read_assigned",
     RECORD_READ_SELF: "attendance.record.read_self",

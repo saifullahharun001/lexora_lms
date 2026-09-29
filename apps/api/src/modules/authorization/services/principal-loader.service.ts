@@ -79,6 +79,9 @@ export class PrincipalLoaderService {
     const permissions = validUserRoles.flatMap((userRole) =>
       userRole.role.rolePermissions.map(
         (rolePermission): PermissionGrant => ({
+          id: rolePermission.permission.id,
+          code: rolePermission.permission.code,
+          rolePermissionId: rolePermission.id,
           resource: rolePermission.permission.resource,
           action: rolePermission.permission.action,
           scope: rolePermission.permission.scope.toLowerCase() as PermissionGrant["scope"],
