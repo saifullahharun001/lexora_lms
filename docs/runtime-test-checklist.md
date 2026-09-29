@@ -39489,3 +39489,236 @@ Step 1 is:
 The next academic implementation boundary remains Department Chairman role plus
 explicit department-scoped Attendance read/correction authority, preserving mandatory
 reason/history/auditability, object-level authorization and department isolation.
+
+<!-- step2-attendance-correction-runtime-closure-20260929 -->
+
+## Department Chairman + ordinary Attendance correction — Step 2 deployed runtime closure — 2026-09-29
+
+This later checkpoint supersedes earlier chronological wording that the distinct
+Department Chairman role and replacement ordinary pre-freeze Attendance
+read/correction authority were still pending. Historical evidence remains valid
+for its original checkpoint and is not deleted.
+
+### Classification
+
+Within the current Ubuntu VM runtime boundary, Step 2 is:
+
+**IMPLEMENTED + COMMITTED/PUSHED + DISPOSABLE POSTGRESQL VERIFIED + ORDINARY-DB DEPLOYED + AUTHORIZATION PROVISIONED + PM2 ACTIVATED + AUTHENTICATED RUNTIME VERIFIED**
+
+Implementation commit:
+
+`5b1538fff4a407b9df93f4079fc8105fb2a64751`
+
+Migration/checksum-preservation commit:
+
+`d93bf3f18b6ed9936c2670e089923dacd640e524`
+
+Ordinary migration:
+
+`202609280001_ordinary_attendance_corrections`
+
+Canonical migration SHA-256:
+
+`0e9adee6843d6740f1f9473d7a68c71632979abdd38dae0781169c9571513bca`
+
+The migration was disposable-PostgreSQL verified and then deployed to the
+ordinary PostgreSQL 18.6 database. Migration history/checksum, Prisma status,
+second-deploy idempotency, Prisma validation/generation, API typecheck and API
+build all passed.
+
+The migration bootstrapped the generic `department_chairman` role for the two
+existing departments but did not appoint a user as Department Chairman.
+
+### Permanent authorization provisioning
+
+Canonical persisted permission:
+
+`attendance.record.correct_department`
+
+Semantics:
+
+- resource: `attendance.record`;
+- action: `correct`;
+- scope: `DEPARTMENT`.
+
+For `dept_law_test`, exactly three RolePermission links were provisioned:
+
+- `teacher`;
+- `department_chairman`;
+- `department_admin`.
+
+Provisioning SERVICE audits: `3`.
+
+No Department Chairman user appointment was implicitly created by migration or
+provisioning. A second provisioning apply was a true no-op.
+
+### Ordinary runtime activation
+
+Controlled PM2 activation verified:
+
+- pre-restart PID: `1572`;
+- verification PID: `32673`;
+- direct API: HTTP `200`;
+- Nginx API: HTTP `200`;
+- listener: exactly `127.0.0.1:4000`;
+- unauthenticated Attendance correction route: HTTP `401`.
+
+### Authenticated runtime/security matrix
+
+Runtime tag:
+
+`20260929T130710Z_37004`
+
+Fresh principals were authenticated for Department Admin, Teacher, Student and
+Department Chairman.
+
+Verified outcomes included:
+
+- assigned Teacher raw capture: HTTP `201`;
+- Department Admin raw capture: HTTP `403`;
+- Department Chairman raw capture: HTTP `403`;
+- Student raw capture: HTTP `403`;
+- correction while Class Session remained `ACTIVE`: safe HTTP `404`;
+- Department Chairman ordinary Attendance read: HTTP `200`;
+- Student broad Attendance read: HTTP `403`;
+- Student own Attendance read: HTTP `200`;
+- assigned Teacher correction with missing raw evidence: HTTP `201`;
+- scheduled-end automatic completion: PASS;
+- post-end raw capture: HTTP `400`;
+- Department Admin correction: HTTP `201`;
+- Department Chairman correction: HTTP `201`;
+- forged `x-department-id` could not override the authenticated principal;
+- Student correction: HTTP `403`;
+- blank correction reason: HTTP `400`;
+- `NOT_CONDUCTED` correction: safe HTTP `404`;
+- cross-department direct-object correction: safe HTTP `404`;
+- historical locked Attendance correction: HTTP `409`;
+- same Teacher token after live assignment revocation: safe HTTP `404`.
+
+Exactly three ordinary correction rows were created, representing:
+
+- `ASSIGNED_TEACHER`;
+- `DEPARTMENT_ADMIN`;
+- `DEPARTMENT_CHAIRMAN`.
+
+Correction SUCCESS audits: `3`.
+Distinct correction actors: `3`.
+Audit/context matches: `3`.
+Authoritative Attendance versions created by ordinary correction: `0`.
+
+The raw AttendanceRecord remained unchanged. Its before/after evidence
+fingerprint was identical:
+
+`c49d2e8300b4646ad5dda0f4d30b59d0`
+
+Therefore ordinary correction is append-only correction evidence and does not
+rewrite raw Attendance.
+
+Historical locked Attendance evidence remained unchanged:
+
+- versions: `4`;
+- transitions: `7`;
+- legacy corrections: `1`;
+- historical raw records: `1`.
+
+### Harness incidents and cleanup evidence
+
+Several verifier-only failures occurred during the campaign and must not be
+interpreted as Lexora product failures:
+
+- Windows command-line length prevented the first oversized SSH invocation;
+- an initial login-payload helper misused stdin with a Python heredoc;
+- an initial login-response verifier parsed roles/permissions from the wrong
+  response level;
+- an initial cleanup attempt tried to delete immutable ordinary Attendance
+  correction evidence.
+
+PostgreSQL rejected that delete with:
+
+`Attendance academic evidence is immutable`
+
+The cleanup transaction fully rolled back. A read-only recovery inspection
+proved no partial database delete and confirmed that
+`attendance_correction_immutable` remained enabled.
+
+The immutability trigger was never disabled, bypassed or dropped.
+
+### Final runtime-evidence policy
+
+The accepted cleanup policy is:
+
+**RETAIN AND NEUTRALIZE IMMUTABLE RUNTIME ACADEMIC EVIDENCE**
+
+Final neutralization verified:
+
+- immutable ordinary corrections retained: `3`;
+- distinct correction authority kinds retained: `3`;
+- raw Teacher Attendance evidence retained: `1`;
+- correction success audits retained: `3`;
+- temporary Chairman user: `ARCHIVED`;
+- temporary Chairman password hash: cleared;
+- temporary Chairman role assignment: revoked;
+- run-scoped active sessions: `0`;
+- run-scoped revoked sessions: `5`;
+- retained runtime CourseOffering: `ARCHIVED`;
+- retained runtime Enrollment: `ARCHIVED`;
+- retained runtime TeacherCourseAssignment: `ARCHIVED`;
+- current retained-fixture correction-scope offering: `0`;
+- current retained-fixture correction-scope enrollment: `0`;
+- current retained-fixture Teacher authority: `0`;
+- active Law Department Chairman runtime/test appointments: `0`.
+
+Exact pre-fixture global row-count restoration is intentionally not claimed
+because verified immutable academic evidence remains retained.
+
+Sanitized private runtime evidence SHA-256 values:
+
+- pre-cleanup evidence:
+  `ef4abcdb76e56521c689f4e8a3c501aa093f570ad15c39978f7778dbed427d9e`;
+- retained runtime manifest:
+  `911a267e0b44a03f7cd21e378bcf4a875c4c04472bb808e15225646e5cb927f0`;
+- post-neutralization verification:
+  `6151c28b257f08e1cdaacb98fbca718edf0d4a8b1fbeb84c4527fc45f6938c09`.
+
+Validated pre-migration rollback backup SHA-256:
+
+`d7f5fb8d930e1cc7b72f4afee0d0a74b0e8924008c87961c13149a4abf9838f4`
+
+No raw password, access/refresh token, password hash, database credential or
+other authentication secret is recorded in this checkpoint.
+
+### Runtime-backed policy
+
+Before future authoritative Attendance `/5` generation:
+
+- assigned Teacher may correct only their currently assigned course;
+- Department Chairman may correct same-department Attendance only through the
+  explicit correction permission;
+- Department Admin may correct same-department Attendance only through the
+  explicit correction permission;
+- Student may never correct Attendance;
+- correction reason is mandatory;
+- correction lineage is append-only;
+- raw AttendanceRecord is not rewritten;
+- cross-department direct-object access fails safely;
+- `x-department-id` cannot override the authenticated principal;
+- historical locked Attendance blocks ordinary correction.
+
+After successful future authoritative Attendance `/5` generation/freeze:
+
+- no ordinary Attendance correction;
+- no reopen;
+- no regeneration;
+- no ordinary replacement Attendance `/5` version.
+
+### Remaining boundary
+
+This checkpoint does not claim cloud/public production deployment, HTTPS,
+production monitoring completion, production-grade biometric synchronization,
+Attendance `/5` generation completion, Activities `/30` completion, automatic
+Final Formative `/40` completion, frontend completion or final-result publication
+completion.
+
+The next focused academic implementation boundary is:
+
+**Exam Committee Chairman atomic semester/exam-wide Attendance `/5` generation and freeze**

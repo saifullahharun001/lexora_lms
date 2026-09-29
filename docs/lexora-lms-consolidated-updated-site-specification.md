@@ -3013,3 +3013,45 @@ The next design boundary remains Department Chairman authority plus explicit
 department-scoped Attendance read/correction authority. Attendance `/5` generation,
 Activities `/30`, automatic Final Formative `/40`, and later final-result stages remain
 separate pending work unless independently implemented and runtime verified.
+
+<!-- step2-attendance-correction-site-closure-20260929 -->
+
+## Department Chairman and ordinary Attendance correction — Step 2 runtime closure — 2026-09-29
+
+This later runtime checkpoint supersedes earlier implementation-pending wording
+for the Department Chairman plus ordinary pre-freeze Attendance
+read/correction boundary.
+
+The backend now runtime-verifies:
+
+- distinct department-scoped `department_chairman` role;
+- no implicit Chairman user appointment;
+- explicit `attendance.record.correct_department` permission;
+- assigned-Teacher-only correction for the exact live course assignment;
+- Department Chairman and Department Admin reason-required correction;
+- Student correction denial;
+- Student self-read with broad-read denial;
+- cross-department safe-not-found behavior;
+- authenticated-principal department precedence over `x-department-id`;
+- `NOT_CONDUCTED` and historical locked Attendance protection;
+- append-only correction lineage and audit provenance;
+- no raw AttendanceRecord rewrite.
+
+The runtime campaign also proved the correction immutability boundary:
+attempted deletion of successful correction evidence was rejected by the
+database and fully rolled back. Database immutability was not disabled or
+bypassed.
+
+The accepted cleanup rule is to retain immutable runtime academic evidence and
+neutralize temporary operational authority.
+
+The next separate academic boundary is:
+
+**Exam Committee Chairman atomic semester/exam-wide Attendance `/5` generation and freeze**
+
+After successful Attendance `/5` generation, no ordinary correction, reopen,
+regeneration or ordinary replacement `/5` version is permitted.
+
+Activities `/30`, automatic Final Formative `/40`, later final-result
+publication, frontend completion and cloud/public production hardening remain
+separate pending work.

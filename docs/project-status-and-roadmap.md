@@ -3179,3 +3179,55 @@ The next focused implementation sequence remains:
 6. locked `/40` plus locked Summative `/60` into final-result processing.
 
 Cloud-production hardening remains separate.
+
+<!-- step2-attendance-correction-roadmap-closure-20260929 -->
+
+## Department Chairman + ordinary Attendance correction — Step 2 runtime closure — 2026-09-29
+
+This section supersedes earlier roadmap wording that listed Department Chairman
+authority and ordinary Attendance correction as pending.
+
+Within the current Ubuntu VM boundary, Step 2 is now:
+
+**IMPLEMENTED + COMMITTED/PUSHED + ORDINARY-DB DEPLOYED + AUTHORIZATION PROVISIONED + AUTHENTICATED RUNTIME VERIFIED**
+
+The distinct `department_chairman` role exists independently from user
+appointment. Neither migration nor provisioning appointed a permanent Chairman.
+
+Canonical ordinary correction permission:
+
+`attendance.record.correct_department`
+
+It is provisioned in the Law department to assigned Teacher, Department
+Chairman and Department Admin.
+
+Authenticated runtime verification covers Teacher-only raw capture, live
+assigned-Teacher correction authority, Department Chairman/Admin correction,
+Student denial, mandatory reason, safe cross-department object isolation,
+principal-department precedence over `x-department-id`, historical-lock
+protection, append-only correction history, raw AttendanceRecord immutability
+and transaction-coupled audit/provenance.
+
+Successful controlled runtime corrections are database-immutable academic
+evidence. They were retained rather than forcibly deleted. Temporary runtime
+authority was neutralized: the temporary Chairman identity/role and run-scoped
+sessions are non-active, and the retained runtime offering, enrollment and
+Teacher assignment are archived.
+
+Exact pre-fixture global row-count restoration is intentionally not claimed.
+
+The next focused academic implementation sequence is now:
+
+1. **Exam Committee Chairman atomic semester/exam-wide Attendance `/5`
+   generation and freeze**;
+2. Activities `/30` redesign/finalisation;
+3. automatic authoritative Final Formative `/40`;
+4. integration of locked Formative `/40` with locked Summative `/60`;
+5. complete-result finalisation, required result documents, Controller
+   publication, GPA/CGPA and transcript workflow.
+
+After future Attendance `/5` generation succeeds, no ordinary Attendance
+correction, reopen or regeneration path may remain.
+
+Cloud/public production hardening and frontend completion remain separate
+pending work.
