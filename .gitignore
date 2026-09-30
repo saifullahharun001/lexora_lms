@@ -94,3 +94,5 @@ backups/
 !apps/api/prisma/migrations/202609270001_class_session_scheduled_end/migration.sql
 !apps/api/prisma/migrations/202609280001_ordinary_attendance_corrections/
 !apps/api/prisma/migrations/202609280001_ordinary_attendance_corrections/migration.sql
+!apps/api/prisma/migrations/202609290001_chairman_attendance_generation/
+!apps/api/prisma/migrations/202609290001_chairman_attendance_generation/migration.sql

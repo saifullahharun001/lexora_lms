@@ -1,4 +1,6 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { AttendanceMarkGenerationService } from "../../application/services/attendance-mark-generation.service";
+import { AttendanceExaminationParamDto } from "../dto/generate-attendance-marks.dto";
 import { Prisma } from "@prisma/client";
 
 import { RequirePolicy } from "@/modules/authorization/decorators/require-policy.decorator";
@@ -22,7 +24,16 @@ import { ResourceIdParamDto } from "../dto/resource-id-param.dto";
 @UseGuards(AuthGuard, PolicyGuard)
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService,
-    private readonly corrections: AttendanceCorrectionService) {}
+    private readonly corrections: AttendanceCorrectionService,
+    private readonly generation: AttendanceMarkGenerationService) {}
+
+  @Post("examinations/:examinationId/marks/generate")
+  @RequirePolicy(ATTENDANCE_POLICY_NAMES.MARK_GENERATE)
+  generate(@Param() params: AttendanceExaminationParamDto, @Body() body?: unknown) {
+    if (body !== undefined && (body === null || typeof body !== "object" || Array.isArray(body) || Object.keys(body).length))
+      throw new BadRequestException("Attendance generation accepts only the route Examination ID and no request body");
+    return this.generation.generate(params.examinationId);
+  }
 
   @Post("corrections")
   @RequirePolicy(ATTENDANCE_POLICY_NAMES.RECORD_CORRECT)

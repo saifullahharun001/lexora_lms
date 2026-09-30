@@ -49,6 +49,7 @@ const EXPLICIT_DEPARTMENT_ADMIN_PERMISSION_POLICIES = {
 } as const;
 
 const EXPLICIT_TEACHER_PERMISSION_POLICIES = {
+  "attendance.mark.generate": { resource: "attendance.mark", action: "generate", scope: "department" },
   [PERMISSIONS.FORMATIVE.MARK_ADJUST]: {
     resource: "formative.mark",
     action: "adjust",
@@ -91,8 +92,6 @@ const EXACT_PERMISSION_POLICIES: Record<string, { resource: string; action: stri
 } as const;
 
 const SENSITIVE_ROLE_ADMISSION_POLICIES = {
-  // Admission only; current exact BatchCoordinatorAssignment is mandatory in the transaction.
-  "attendance.formative.coordinate": ["teacher", "department_admin"],
   [COURSE_MANAGEMENT_POLICY_NAMES.COURSE_OUTLINE_COORDINATOR_REVIEW]: [
     "teacher",
     "department_admin"
@@ -307,6 +306,8 @@ export class AuthorizationService {
   }
 
   isAllowed(principal: PrincipalContext, requiredPolicy: string): boolean {
+    if (requiredPolicy === "attendance.mark.generate" &&
+      (!principal.isAuthenticated || principal.actorType !== "user" || !principal.actorId || !principal.activeDepartmentId)) return false;
     // Deliberately precedes all static policies and wildcard resolution.
     if (requiredPolicy === "attendance.record.correct") return correctionAuthorities(principal).length > 0;
     const admittedRoles =

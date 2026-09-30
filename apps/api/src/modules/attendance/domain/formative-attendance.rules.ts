@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { ATTENDANCE_MARK_RULE, attendanceMarkForCounts } from "./attendance-mark.rule";
 
-export const FORMATIVE_ATTENDANCE_POLICY = "attendance.formative.coordinate";
 export interface AttendanceDiagnostic {
   code: string;
   enrollmentId: string;
@@ -63,13 +62,13 @@ export function calculateAttendance(scope: AttendanceScope, sessions: SessionEvi
     if (!relationshipValid) issue("INVALID_SOURCE_RELATIONSHIP", "Source identity does not match this enrollment and offering", session.id, evidence);
     else if (effective.length > 1) issue("AMBIGUOUS_EFFECTIVE_EVIDENCE", "More than one effective attendance record exists", session.id, effective);
     else if (correction && correction.basisFingerprint !== basisFingerprint)
-      issue("STALE_RECONCILIATION", "Evidence changed after the Coordinator correction; reconcile again", session.id, evidence, correction.id);
+      issue("STALE_RECONCILIATION", "Evidence changed after the Attendance correction; reconcile again", session.id, evidence, correction.id);
     else if (correction) status = correction.status;
     else if (!effective.length) issue("MISSING_ATTENDANCE_EVIDENCE", "Resolve attendance for this conducted class; missing does not mean absent", session.id);
     else {
       const record = effective[0]!;
       if (record.resolutionStatus !== "RESOLVED") issue(record.resolutionStatus === "CONFLICT" ? "UNRESOLVED_CONFLICT" : "UNRESOLVED_RECONCILIATION",
-        "Coordinator reconciliation is required", session.id, effective);
+        "Attendance reconciliation is required", session.id, effective);
       else status = record.status;
     }
     if (status !== null && status !== "PRESENT" && status !== "ABSENT") {

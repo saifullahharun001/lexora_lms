@@ -616,6 +616,7 @@ model Department {
 }
 
 model User {
+  attendanceGenerations FormativeAttendanceGeneration[]
   ComprehensiveExamination_rosterLockedByUser ComprehensiveExamination[] @relation("ComprehensiveExamination_rosterLockedByUser")
   ComprehensiveExamination_markingStartedByUser ComprehensiveExamination[] @relation("ComprehensiveExamination_markingStartedByUser")
   ComprehensiveCourse_allocationChangedByUser ComprehensiveCourse[] @relation("ComprehensiveCourse_allocationChangedByUser")
@@ -905,6 +906,7 @@ model BatchCoordinatorAssignment {
 }
 
 model Examination {
+  attendanceGenerations FormativeAttendanceGeneration[]
   ComprehensiveExamination_examination ComprehensiveExamination[] @relation("ComprehensiveExamination_examination")
   ExaminationCandidateRegistration_examination ExaminationCandidateRegistration[] @relation("ExaminationCandidateRegistration_examination")
   ExaminationCandidateList_examination ExaminationCandidateList[] @relation("ExaminationCandidateList_examination")
@@ -946,6 +948,7 @@ model Examination {
 }
 
 model ExaminationCourse {
+  attendanceVersions FormativeAttendanceVersion[]
   @@unique([id, departmentId], map: "examination_course_comprehensive_scope_uq")
   ComprehensiveCourse_examinationCourse ComprehensiveCourse[] @relation("ComprehensiveCourse_examinationCourse")
   ExaminationCandidateCourse_examinationCourse ExaminationCandidateCourse[] @relation("ExaminationCandidateCourse_examinationCourse")
@@ -1009,6 +1012,7 @@ model ExaminationCourse {
 }
 
 model ExaminationCommittee {
+  attendanceGenerations FormativeAttendanceGeneration[]
   @@unique([id, departmentId], map: "examination_committee_comprehensive_scope_uq")
   ComprehensiveExamination_committee ComprehensiveExamination[] @relation("ComprehensiveExamination_committee")
   /// One stable committee container per Examination; appointment changes are preserved in ExaminationCommitteeAssignment history.
@@ -1030,6 +1034,7 @@ model ExaminationCommittee {
 }
 
 model ExaminationCommitteeAssignment {
+  attendanceGenerations FormativeAttendanceGeneration[]
   ComprehensiveExamination_rosterLockedByAssignment ComprehensiveExamination[] @relation("ComprehensiveExamination_rosterLockedByAssignment")
   ComprehensiveExamination_markingStartedByAssignment ComprehensiveExamination[] @relation("ComprehensiveExamination_markingStartedByAssignment")
   ComprehensiveCourse_allocationChangedByAssignment ComprehensiveCourse[] @relation("ComprehensiveCourse_allocationChangedByAssignment")
@@ -4116,11 +4121,17 @@ model FormativeAttendanceVersion {
   configurationJson Json @map("configuration_json")
   diagnosticsJson Json @map("diagnostics_json")
   actorUserId String @map("actor_user_id")
-  coordinatorAssignmentId String @map("coordinator_assignment_id")
+  coordinatorAssignmentId String? @map("coordinator_assignment_id")
+  generationId String? @map("generation_id")
+  examinationId String? @map("examination_id")
+  examinationCourseId String? @map("examination_course_id")
+  generation FormativeAttendanceGeneration? @relation(fields: [generationId, departmentId, examinationId, actorUserId], references: [id, departmentId, examinationId, chairmanUserId], onDelete: Restrict, onUpdate: Restrict, map: "attendance_generated_parent_fk")
+  examinationCourse ExaminationCourse? @relation(fields: [examinationCourseId, departmentId, examinationId, courseOfferingId], references: [id, departmentId, examinationId, courseOfferingId], onDelete: Restrict, onUpdate: Restrict, map: "attendance_generated_course_fk")
+  @@unique([generationId, enrollmentId], map: "attendance_generation_enrollment_uq")
   calculatedAt DateTime @default(now()) @map("calculated_at")
   offering CourseOffering @relation(fields: [courseOfferingId, departmentId, studentBatchId, academicTermId], references: [id, departmentId, studentBatchId, academicTermId], onDelete: Restrict, onUpdate: Restrict)
   enrollment Enrollment @relation(fields: [enrollmentId, departmentId, courseOfferingId, studentUserId], references: [id, departmentId, courseOfferingId, studentUserId], onDelete: Restrict, onUpdate: Restrict)
-  coordinator BatchCoordinatorAssignment @relation(fields: [coordinatorAssignmentId, departmentId, studentBatchId, academicTermId, actorUserId], references: [id, departmentId, studentBatchId, academicTermId, coordinatorUserId], onDelete: Restrict, onUpdate: Restrict)
+  coordinator BatchCoordinatorAssignment? @relation(fields: [coordinatorAssignmentId, departmentId, studentBatchId, academicTermId, actorUserId], references: [id, departmentId, studentBatchId, academicTermId, coordinatorUserId], onDelete: Restrict, onUpdate: Restrict)
   previous FormativeAttendanceVersion? @relation("AttendanceRevision", fields: [previousId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   next FormativeAttendanceVersion? @relation("AttendanceRevision")
   items FormativeAttendanceSourceItem[]
@@ -4203,4 +4214,35 @@ model FormativeAttendanceCorrection {
   items FormativeAttendanceSourceItem[]
   @@unique([enrollmentId, classSessionId, revision])
   @@map("formative_attendance_corrections")
+}
+
+/// One immutable Chairman action; the complete child package is validated at commit.
+model FormativeAttendanceGeneration {
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  examinationId String @map("examination_id")
+  academicProgramId String @map("academic_program_id")
+  academicSessionId String @map("academic_session_id")
+  academicTermId String @map("academic_term_id")
+  committeeId String @map("committee_id")
+  chairmanAssignmentId String @map("chairman_assignment_id")
+  chairmanUserId String @map("chairman_user_id")
+  chairmanAssignedAtSnapshot DateTime @map("chairman_assigned_at_snapshot")
+  userRoleId String @map("user_role_id")
+  roleId String @map("role_id")
+  ruleVersionCode String @map("rule_version_code")
+  courseCount Int @map("course_count")
+  resultCount Int @map("result_count")
+  sourceFingerprint String @map("source_fingerprint") @db.VarChar(64)
+  scopeJson Json @map("scope_json")
+  generatedAt DateTime @default(now()) @map("generated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  examination Examination @relation(fields: [examinationId, departmentId, academicProgramId, academicSessionId, academicTermId], references: [id, departmentId, academicProgramId, academicSessionId, academicTermId], onDelete: Restrict, onUpdate: Restrict, map: "attendance_generation_exam_fk")
+  committee ExaminationCommittee @relation(fields: [committeeId, departmentId, examinationId], references: [id, departmentId, examinationId], onDelete: Restrict, onUpdate: Restrict, map: "attendance_generation_committee_fk")
+  chairmanAssignment ExaminationCommitteeAssignment @relation(fields: [chairmanAssignmentId, departmentId, committeeId], references: [id, departmentId, committeeId], onDelete: Restrict, onUpdate: Restrict, map: "attendance_generation_assignment_fk")
+  chairman User @relation(fields: [chairmanUserId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "attendance_generation_chairman_fk")
+  versions FormativeAttendanceVersion[]
+  @@unique([departmentId, examinationId], map: "attendance_generation_exam_uq")
+  @@unique([id, departmentId, examinationId, chairmanUserId], map: "attendance_generation_identity_uq")
+  @@map("formative_attendance_generations")
 }

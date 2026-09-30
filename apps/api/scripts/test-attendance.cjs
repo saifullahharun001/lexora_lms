@@ -12,10 +12,9 @@ function tests(directory) {
 const files = [
   ...["attendance", "class-session", "authorization", "identity-access"].flatMap((name) => tests(`src/modules/${name}`)),
   ...tests("src/common/authorization"),
-  "dist/src/modules/academic/attendance-academic-context.service.test.js",
   "dist/src/modules/eligibility/application/services/eligibility-attendance.regression.test.js",
   "dist/prisma/authorization/provision-authorization.test.js",
-  ...["formative-attendance", "class-session-scheduled-end", "ordinary-attendance-corrections"]
+  ...["formative-attendance", "class-session-scheduled-end", "ordinary-attendance-corrections", "attendance-mark-generation"]
     .flatMap((name) => ["schema", "database"].map((kind) => `dist/prisma/${name}.${kind}.test.js`)),
 ].sort();
 const result = spawnSync(process.execPath, ["--test", "--require", path.join(__dirname, "register-test-paths.cjs"), ...files],

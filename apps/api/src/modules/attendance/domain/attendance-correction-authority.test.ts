@@ -19,7 +19,7 @@ test("Department Chairman has its own privileged role and only ordinary Attendan
   const p = correctionPrincipal("department_chairman"); p.permissions = [];
   assert.equal(authorization.isAllowed(p, "attendance.record.read"), true);
   for (const policy of ["attendance.record.correct", "attendance.record.capture", "attendance.record.override",
-    "attendance.import-batch.create", "class-session.record.create", "attendance.formative.coordinate",
+    "attendance.import-batch.create", "class-session.record.create", "attendance.mark.generate",
     "course-management.course-outline.approve", "summative-examination.chairman-approval.approve",
     "summative-examination.examiner-marks.enter", "comprehensive-examination.workspace.read", "result-processing.result.publish"]) {
     assert.equal(authorization.isAllowed(p, policy), false, policy);

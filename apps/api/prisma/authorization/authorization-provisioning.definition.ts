@@ -175,6 +175,14 @@ export const EXAMINATION_WORKFLOW_PROVISIONING = EXAMINATION_PERMISSION_DEFINITI
     targetRoleCode: `${d.resource}.${d.action}` === EXAMINATION_POLICIES.APPOINT ? PLATFORM_ROLES.DEPARTMENT_ADMIN : PLATFORM_ROLES.TEACHER,
     auditAction: `authorization.${d.resource}.${d.action}.provisioned` }));
 
+export const ATTENDANCE_MARK_GENERATE_PROVISIONING = {
+  permission: {
+    code: PERMISSIONS.ATTENDANCE.MARK_GENERATE_DEPARTMENT,
+    resource: "attendance.mark", action: "generate", scope: PermissionScope.DEPARTMENT,
+    description: "Examination-wide Attendance generation; exact current internal Committee Chairman required",
+  }, targetRoleCode: PLATFORM_ROLES.TEACHER, auditAction: "authorization.attendance-mark-generate.provisioned",
+} as const;
+
 export const ATTENDANCE_CORRECTION_PROVISIONING = [
   PLATFORM_ROLES.TEACHER, PLATFORM_ROLES.DEPARTMENT_CHAIRMAN, PLATFORM_ROLES.DEPARTMENT_ADMIN,
 ].map((targetRoleCode) => ({
@@ -200,6 +208,7 @@ export const AUTHORIZATION_PROVISIONING_DEFINITIONS = [
   FORMATIVE_MARK_ADJUST_PROVISIONING,
   ...EXAMINATION_WORKFLOW_PROVISIONING,
   ...ATTENDANCE_CORRECTION_PROVISIONING,
+  ATTENDANCE_MARK_GENERATE_PROVISIONING,
 ] as const;
 
 export type AuthorizationProvisioningDefinition =

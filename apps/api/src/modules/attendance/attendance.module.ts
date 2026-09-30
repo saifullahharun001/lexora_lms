@@ -1,7 +1,6 @@
-import { AcademicModule } from "@/modules/academic/academic.module";
+import { AttendanceMarkGenerationService } from "./application/services/attendance-mark-generation.service";
+import { AttendanceMarkGenerationAuthorizerService } from "./application/services/attendance-mark-generation-authorizer.service";
 import { ClassSessionModule } from "@/modules/class-session/class-session.module";
-import { FormativeAttendanceService } from "./application/services/formative-attendance.service";
-import { FormativeAttendanceController } from "./presentation/http/formative-attendance.controller";
 import { Module } from "@nestjs/common";
 
 import { PrismaModule } from "@/common/prisma/prisma.module";
@@ -16,19 +15,19 @@ import { AttendanceController } from "./presentation/http/attendance.controller"
 
 @Module({
   imports: [
-    AcademicModule, ClassSessionModule,
+    ClassSessionModule,
     PlatformModule,
     AuthorizationModule,
     PrismaModule,
     RequestContextModule
   ],
   controllers: [
-    FormativeAttendanceController,
     AttendanceController
   ],
   providers: [
+    AttendanceMarkGenerationService,
+    AttendanceMarkGenerationAuthorizerService,
     AttendanceCorrectionService,
-    FormativeAttendanceService,
     AttendanceService,
     {
       provide: ATTENDANCE_REPOSITORY,
