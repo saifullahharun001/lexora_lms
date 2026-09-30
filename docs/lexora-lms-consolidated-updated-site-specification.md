@@ -3055,3 +3055,88 @@ regeneration or ordinary replacement `/5` version is permitted.
 Activities `/30`, automatic Final Formative `/40`, later final-result
 publication, frontend completion and cloud/public production hardening remain
 separate pending work.
+
+<!-- step3-chairman-attendance-generation-site-closure-20260930 -->
+
+## Attendance `/5` Step 3 runtime closure — 2026-09-30
+
+The Examination Committee Chairman Attendance-generation model already specified
+above is now implemented, deployed to the ordinary PostgreSQL database,
+authorization-provisioned, activated under PM2 and authenticated-runtime verified
+within the current Ubuntu VM backend boundary.
+
+The runtime-verified authority model is:
+
+- the persisted generation permission is
+  `attendance.mark.generate_department`;
+- its semantics are resource `attendance.mark`, action `generate`, scope
+  `DEPARTMENT`;
+- the persisted coarse grant is attached to the internal Teacher role;
+- that coarse grant alone does not authorise an ordinary Teacher to generate
+  Attendance marks;
+- the server additionally requires the exact current applicable internal
+  Examination Committee `CHAIRMAN` appointment and live persisted authority;
+- no permanent Chairman role assignment is invented by provisioning.
+
+The runtime-verified generation route is:
+
+`POST /api/v1/attendance/examinations/:examinationId/marks/generate`
+
+The client supplies only the Examination identity. The server resolves the governed
+department/examination/committee/course/enrollment scope and calculates the
+authoritative Attendance percentage and `/5` mark.
+
+An isolated ordinary-runtime example verified:
+
+`3 PRESENT / 4 counted conducted sessions = 75% -> 3.5 / 5`
+
+The resulting authoritative generated version was persisted as `READY` with:
+
+- exact rule identity
+  `FORMATIVE_ATTENDANCE_5_APPROVED_20260920_V1`;
+- immutable generated parent/provenance;
+- exact Chairman assignment/user snapshot;
+- source fingerprint;
+- four immutable Attendance source items;
+- zero generated workflow transitions;
+- exactly one typed `attendance.mark.generated` SUCCESS audit.
+
+The Chairman did not manually enter or override the calculated percentage or mark.
+
+The post-generation freeze was also runtime verified.
+
+After successful generation:
+
+- duplicate generation is rejected;
+- ordinary Attendance correction is rejected;
+- raw Attendance mutation is database-blocked;
+- relevant ClassSession source mutation is database-blocked;
+- a new ClassSession cannot be added to the generated Attendance scope;
+- the generated Attendance ExaminationCourse scope cannot be changed;
+- Enrollment scope cannot be reactivated/expanded into the generated package;
+- no ordinary reopen or replacement generated `/5` path exists.
+
+The freeze does not indiscriminately lock unrelated Summative-only fields. A
+Summative-only ExaminationCourse `marking_deadline` update remained independently
+writable during the controlled database freeze test.
+
+Immutable runtime academic evidence was retained after verification. Temporary
+runtime authority and mutable fixture wrappers were neutralized/archived, while:
+
+- the generated parent/version/source package remained intact;
+- raw Attendance and completed ClassSession evidence remained intact;
+- the generation success audit remained intact;
+- permanent generation authorization remained intact;
+- relevant database immutability/freeze triggers remained enabled.
+
+Historical Batch Coordinator-based Attendance evidence remains valid historical
+evidence of the implementation previously tested, but its authority/lifecycle is
+not the current target model.
+
+The next separate academic implementation boundary is:
+
+**activity-level Formative Activities submission/correction and Examination Committee Chairman Activities `/30` finalisation**
+
+Automatic authoritative Final Formative `/40`, locked Formative/Summative
+integration, complete-result finalisation/publication, frontend completion and
+cloud/public production hardening remain separate work.

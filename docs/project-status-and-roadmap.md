@@ -3231,3 +3231,102 @@ correction, reopen or regeneration path may remain.
 
 Cloud/public production hardening and frontend completion remain separate
 pending work.
+
+<!-- step3-chairman-attendance-generation-roadmap-closure-20260930 -->
+
+## Examination Committee Chairman Attendance `/5` generation and freeze — Step 3 runtime closure — 2026-09-30
+
+This later checkpoint supersedes earlier roadmap wording that described the current
+Attendance `/5` backend redesign as pending.
+
+Historical roadmap text remains preserved as point-in-time evidence and should be
+read together with this later closure.
+
+Historical Batch Coordinator-based Attendance `/5` implementation/runtime evidence
+also remains valid historical evidence. The old Batch Coordinator authority and
+mutable:
+
+`READY -> VERIFIED -> FINALISED -> LOCKED`
+
+Attendance lifecycle remain policy-superseded by the current Chairman-owned
+generation/freeze architecture.
+
+Within the current Ubuntu VM backend/runtime boundary, Step 3 is now:
+
+**IMPLEMENTED + COMMITTED/PUSHED + DISPOSABLE POSTGRESQL VERIFIED + ORDINARY-DB DEPLOYED + AUTHORIZATION PROVISIONED + PM2 ACTIVATED + AUTHENTICATED RUNTIME VERIFIED + RUNTIME EVIDENCE RETAINED/NEUTRALIZED**
+
+Implementation commit:
+
+`df1da4fe6a19cc12d18a64e7cf6ff97b1e4f40af`
+
+Migration/checksum-preservation commit:
+
+`9e963e0caf533d14ff30cd490cbfb3be42fe55fc`
+
+Migration:
+
+`202609290001_chairman_attendance_generation`
+
+Canonical migration SHA-256:
+
+`dce67f2d6167effff133c2c7ee18983f93d4d4862c321314b8c40c755b8dd28b`
+
+The permanent Law authorization uses:
+
+`attendance.mark.generate_department`
+
+with:
+
+- resource `attendance.mark`;
+- action `generate`;
+- scope `DEPARTMENT`;
+- persisted target role `teacher`.
+
+The coarse Teacher grant does not make an ordinary Teacher the academic generation
+authority. Generation additionally requires the exact current applicable internal
+Examination Committee `CHAIRMAN` appointment and live persisted authority chain.
+
+Authenticated ordinary-runtime evidence verified:
+
+- unauthenticated generation: HTTP `401`;
+- Teacher with the persisted coarse grant but without Chairman appointment:
+  HTTP `403` from the Attendance generation Chairman authorizer;
+- exact current Chairman generation: HTTP `201`;
+- server-derived example:
+  `75% -> 3.5/5`;
+- exactly one generation parent;
+- exactly one generated `READY` Attendance version;
+- four immutable source items;
+- zero generated lifecycle transitions;
+- exactly one typed `attendance.mark.generated` SUCCESS audit;
+- duplicate generation: HTTP `409`;
+- post-generation ordinary correction: HTTP `409`;
+- raw Attendance mutation blocked;
+- relevant ClassSession mutation/new session blocked;
+- generated Attendance ExaminationCourse scope mutation blocked;
+- Enrollment reactivation/expansion blocked;
+- unrelated Summative-only ExaminationCourse field update remained allowed.
+
+Runtime academic evidence was retained rather than deleted. Temporary Chairman,
+Teacher-assignment and fixture authority was neutralized, the isolated mutable
+wrappers were archived, campaign-created authentication sessions were revoked, and
+permanent generation authorization plus all relevant database protection triggers
+remained intact.
+
+Accordingly, the current focused academic backend sequence is now:
+
+1. **Activities `/30` redesign and Examination Committee Chairman finalisation**;
+2. automatic authoritative Final Formative `/40`;
+3. locked Formative `/40` + locked Summative `/60` integration;
+4. complete course-result Chairman finalisation;
+5. required result-document generation;
+6. Controller of Examinations publication;
+7. canonical published-result consumption, GPA/CGPA and transcript workflow.
+
+Step 1 Class Session scheduled-end handling, Step 2 ordinary pre-freeze Attendance
+correction, and Step 3 Chairman Attendance `/5` generation/freeze are therefore
+closed within their documented backend/runtime boundaries.
+
+This checkpoint does not claim frontend completion, biometric production-sync
+completion, complete Formative `/40`, complete-result publication or cloud/public
+production hardening.

@@ -39722,3 +39722,434 @@ completion.
 The next focused academic implementation boundary is:
 
 **Exam Committee Chairman atomic semester/exam-wide Attendance `/5` generation and freeze**
+
+<!-- step3-chairman-attendance-generation-runtime-closure-20260930 -->
+
+## Examination Committee Chairman Attendance `/5` generation and irreversible freeze — Step 3 deployed runtime closure — 2026-09-30
+
+This later checkpoint supersedes earlier chronological wording that the current
+Examination Committee Chairman Attendance `/5` generation/freeze redesign remained
+pending.
+
+Historical Batch Coordinator-based Attendance `/5` implementation and runtime
+evidence remains valid evidence of the implementation actually tested at those
+historical checkpoints. It is not deleted or rewritten. The historical authority
+and mutable:
+
+`READY -> VERIFIED -> FINALISED -> LOCKED`
+
+workflow remain policy-superseded for the current target architecture.
+
+### Classification
+
+Within the current Ubuntu VM backend/runtime boundary, Step 3 is:
+
+**IMPLEMENTED + COMMITTED/PUSHED + DISPOSABLE POSTGRESQL VERIFIED + ORDINARY-DB DEPLOYED + AUTHORIZATION PROVISIONED + PM2 ACTIVATED + AUTHENTICATED RUNTIME VERIFIED + RUNTIME EVIDENCE RETAINED/NEUTRALIZED**
+
+This classification is limited to the tested backend/runtime boundary. It does not
+claim frontend completion, biometric production-sync completion, cloud/public
+production hardening, Activities `/30`, Final Formative `/40`, complete-result
+finalisation or official result publication.
+
+### Implementation and migration identity
+
+Implementation commit:
+
+`df1da4fe6a19cc12d18a64e7cf6ff97b1e4f40af`
+
+Commit subject:
+
+`feat: add chairman attendance generation and freeze`
+
+Implementation delta:
+
+- `31` files;
+- `1953` insertions;
+- `630` deletions.
+
+Migration/checksum-preservation commit:
+
+`9e963e0caf533d14ff30cd490cbfb3be42fe55fc`
+
+Commit subject:
+
+`chore: preserve chairman attendance migration bytes`
+
+Ordinary migration:
+
+`202609290001_chairman_attendance_generation`
+
+Canonical migration SHA-256:
+
+`dce67f2d6167effff133c2c7ee18983f93d4d4862c321314b8c40c755b8dd28b`
+
+The migration bytes were deliberately preserved after a line-ending normalization
+difference was detected before ordinary-database mutation. Historical migrations
+were not modified.
+
+### Final pre-deployment verification
+
+Final real disposable PostgreSQL verification:
+
+`314/314 PASS`
+
+Final server compiled focused Step 3 regression:
+
+`75/75 PASS`
+
+Also verified:
+
+- Prisma schema validation: PASS;
+- Prisma Client generation: PASS;
+- API typecheck: PASS;
+- API build: PASS.
+
+An early compiled-artifact inspection incorrectly expected the literal permission
+code inside the compiled provisioning-definition JavaScript file even though the
+definition imported the canonical permission constant. A semantic compiled-definition
+inspection subsequently passed. This was a verification-harness assumption error,
+not a product failure.
+
+### Ordinary PostgreSQL deployment and rollback safety
+
+Ordinary database:
+
+- PostgreSQL `18.6`;
+- database: `lexora_lms`;
+- database target remained loopback-only.
+
+Validated pre-migration private backup:
+
+`/home/sh002/lexora-private-backups/lexora_lms-before-202609290001_chairman_attendance_generation-20260930T153405Z.dump`
+
+Backup SHA-256:
+
+`55ac5a05b85528e0ef87de2c00cf4973355cae7243167bd594559d3b562a2815`
+
+The backup passed `pg_restore --list`.
+
+Ordinary deployment verified:
+
+- the target migration was the only pending migration;
+- migration deployment succeeded;
+- the migration-history row is complete;
+- the database checksum matches the canonical source checksum;
+- target generation table/columns/indexes/constraints/functions/triggers exist;
+- migration itself created no generation business rows;
+- pre/post existing-business fingerprint remained unchanged;
+- Prisma migration status reported up to date;
+- a second migration deployment was a true no-op;
+- PM2 was not restarted as part of migration deployment;
+- direct and Nginx health remained HTTP `200`.
+
+### Permanent generation authorization
+
+Canonical persisted permission:
+
+`attendance.mark.generate_department`
+
+Semantics:
+
+- resource: `attendance.mark`;
+- action: `generate`;
+- scope: `DEPARTMENT`.
+
+Target persisted role:
+
+`teacher`
+
+This coarse Teacher RolePermission is not sufficient by itself to authorise
+generation.
+
+Successful generation additionally requires the exact live persisted authority
+chain, including:
+
+- authenticated principal in the real department;
+- active internal Teacher UserRole;
+- exact persisted generation RolePermission;
+- active User;
+- current applicable non-archived Examination;
+- current applicable ExaminationCommittee;
+- exact current active internal `CHAIRMAN` appointment;
+- appointment not expired, unassigned or archived.
+
+No permanent Examination Committee Chairman role assignment was invented.
+
+Authorization provisioning was executed through the canonical provisioning
+mechanism:
+
+- explicit department selector;
+- dry-run first;
+- dry-run performed zero writes;
+- existing provisioning definitions were no-ops;
+- only the Step 3 permission/link/audit required creation;
+- first apply created exactly one permission;
+- exactly one Law Teacher RolePermission link was created;
+- non-Teacher generation links: `0`;
+- provisioning SERVICE audit:
+  `authorization.attendance-mark-generate.provisioned`;
+- provisioning audit cardinality: exactly `1`;
+- second apply: true no-op.
+
+### Live PM2 activation
+
+Controlled PM2 activation verified:
+
+- pre-activation PID: `1380`;
+- activated PID: `45937`;
+- PM2 status: online;
+- direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- application listener: exactly `127.0.0.1:4000`;
+- unauthenticated generation route: HTTP `401`.
+
+Generation route:
+
+`POST /api/v1/attendance/examinations/:examinationId/marks/generate`
+
+The request supplies the Examination identity only. The authoritative department,
+Committee, Chairman authority, rule, course scope, Enrollment scope, Attendance
+source evidence, percentage and `/5` marks are resolved/calculated server-side.
+
+### Isolated authenticated runtime fixture
+
+Primary runtime tag:
+
+`20260930T170020Z_60437`
+
+Run-scoped StudentBatch prerequisite:
+
+`rt_step3_batch_20260930T164328Z_55938`
+
+The isolated fixture contained:
+
+- one CourseOffering;
+- one current Teacher assignment;
+- one approved Enrollment;
+- one Examination;
+- one ExaminationCourse;
+- one ExaminationCommittee;
+- four completed conducted ClassSessions;
+- three raw `PRESENT` Attendance records;
+- one raw `ABSENT` Attendance record;
+- zero open ClassSessions;
+- zero Chairman appointments before authority-negative testing;
+- zero generation rows before the successful generation test.
+
+The database generation-scope resolver accepted exactly the intended one-course,
+one-enrollment scope.
+
+Expected server calculation:
+
+`3 / 4 = 75% -> 3.5 / 5`
+
+### Request-time authorization verification
+
+A fresh login response exposed `user.permissions` as a string list and did not
+include the newly provisioned Step 3 permission code in that response projection.
+
+This did not represent a failure of the protected request authorization path.
+
+A decisive protected generation request using the same fresh Teacher principal,
+before creation of a Chairman appointment, returned:
+
+HTTP `403`
+
+with:
+
+`Attendance generation access denied`
+
+That message originates from the Step 3 Chairman authorizer rather than PolicyGuard's:
+
+`Access denied by policy`
+
+Therefore the request had passed policy admission using the request-time principal
+loaded from persisted authority and was then correctly denied because the exact
+current Chairman appointment was absent.
+
+This login-response/request-principal projection asymmetry is retained as an
+observation for future frontend/auth-response review. It is not classified as a
+failure of Step 3 backend authorization.
+
+### Authenticated Chairman generation success
+
+A temporary current internal Examination Committee `CHAIRMAN` appointment was then
+created only for the isolated runtime Examination.
+
+Fresh authenticated generation returned:
+
+HTTP `201`
+
+Authoritative generation ID:
+
+`cmuodxvhg00112ig1ez8rtyr4`
+
+Generated Attendance version ID:
+
+`cmuodxvhn00132ig12o1tk29c`
+
+Rule:
+
+`FORMATIVE_ATTENDANCE_5_APPROVED_20260920_V1`
+
+Verified result:
+
+- percentage: numeric `75`;
+- Attendance mark: `3.5 / 5`;
+- generated version status: `READY`;
+- generated lifecycle transitions: `0`;
+- generated source items: `4`;
+- generation parents: exactly `1`;
+- generated versions: exactly `1`;
+- typed `attendance.mark.generated` SUCCESS audits: exactly `1`.
+
+Generation source fingerprint:
+
+`4268ab17516ad619b8d72d99bee0f8dd0ef4395a824cb5498451eab5c0c85910`
+
+The generation operation did not rewrite raw Attendance/ClassSession source evidence.
+The Chairman did not manually supply or override the percentage or `/5` mark.
+
+### Irreversible post-generation freeze verification
+
+Authenticated application-level verification established:
+
+- duplicate Chairman generation: HTTP `409`;
+- duplicate message:
+  `Attendance has already been generated for this Examination`;
+- ordinary Attendance correction after generation: HTTP `409`;
+- correction message:
+  `Attendance correction is closed or its evidence changed; reload before retrying`;
+- duplicate generation evidence created: `0`;
+- post-generation correction evidence/audit created: `0`.
+
+Direct real-PostgreSQL freeze probes established:
+
+- raw Attendance UPDATE: BLOCKED;
+- existing ClassSession source mutation: BLOCKED;
+- new ClassSession inside generated scope: BLOCKED;
+- ExaminationCourse Attendance-scope mutation: BLOCKED;
+- Enrollment reactivation/expansion into generated scope: BLOCKED;
+- unrelated Summative-only ExaminationCourse `marking_deadline` update: ALLOWED.
+
+All successful probe writes in that matrix were enclosed in an outer transaction
+that was rolled back.
+
+Protected package fingerprint remained unchanged.
+
+The initial freeze verifier's final string assertion did not accept PostgreSQL's
+text rendering of numeric `75` as `75.000000`. All substantive freeze checks had
+already passed.
+
+A subsequent strictly read-only numeric verification established:
+
+`Generation|NumericInvariant|FourSources|OneAudit = 1|1|1|1`
+
+Persisted result:
+
+`75.000000% -> 3.5/5 | READY | transitions=0`
+
+Freeze-evidence cardinality:
+
+`Generation|Version|Post-generationCorrections|SuccessAudit = 1|1|0|1`
+
+The earlier non-zero verifier exit was therefore a harness formatting defect rather
+than a product/runtime failure.
+
+### Runtime evidence preservation and final neutralization
+
+Accepted cleanup rule remains:
+
+**RETAIN AND NEUTRALIZE IMMUTABLE RUNTIME ACADEMIC EVIDENCE**
+
+Pre-neutralization private sanitized evidence:
+
+`/home/sh002/.local/state/lexora/step3-attendance-runtime/evidence/pre-neutralization-20260930T174717Z.txt`
+
+SHA-256:
+
+`1ef483be23a28827681b1ce86a58ed71504e6600d2b9b7f428f5bb427f84251e`
+
+Final neutralization evidence:
+
+`/home/sh002/.local/state/lexora/step3-attendance-runtime/evidence/final-neutralization-20260930T175826Z.txt`
+
+SHA-256:
+
+`bb4a1fe0aaba91001db67f088d91c0f3cdd3faca9de6a338b0391a6fcee63b09`
+
+Final neutralization verified:
+
+- generated Attendance parent retained;
+- generated Attendance version retained;
+- generated source items retained: `4`;
+- generation SUCCESS audit retained: `1`;
+- raw Attendance records retained: `4`;
+- completed ClassSessions retained: `4`;
+- generated ExaminationCourse retained;
+- immutable generated/raw evidence fingerprint unchanged;
+- temporary Chairman assignment retained historically but changed to `INACTIVE`;
+- Chairman `unassigned_at` populated;
+- current runtime Chairman authority: `0`;
+- runtime Teacher assignment changed to `INACTIVE`;
+- Teacher assignment `unassigned_at` populated;
+- current runtime Teacher assignment authority: `0`;
+- runtime Enrollment archived;
+- runtime CourseOffering archived;
+- runtime Examination archived;
+- runtime ExaminationCommittee archived;
+- runtime StudentBatch archived;
+- exactly seven campaign-created `Python-urllib/3.14` authentication sessions revoked;
+- pre-campaign canonical Admin/Teacher/Student sessions remained unchanged;
+- permanent generation permission/link/provisioning audit remained `1|1|1`;
+- all nine relevant Attendance-generation/immutability triggers remained enabled;
+- active runtime manifest names were retired into retained evidence state;
+- direct API health remained HTTP `200`;
+- Nginx API health remained HTTP `200`;
+- PM2 PID remained `45937`;
+- repository remained clean/aligned at
+  `9e963e0caf533d14ff30cd490cbfb3be42fe55fc`.
+
+No raw access token, refresh token, password, password hash, database credential or
+production secret is recorded in this documentation.
+
+### Safe verification-harness notes
+
+The following failures occurred during the runtime campaign but did not represent
+product failures:
+
+1. An early full-fixture prerequisite gate assumed an existing matching StudentBatch.
+   It stopped before full-fixture mutation; a dedicated run-scoped StudentBatch was
+   then created.
+2. An early enum gate assumed PostgreSQL enum type `AttendanceStatus`; read-only
+   catalog inspection established the live type as `AttendanceRecordStatus`.
+   The failed attempt stopped before business-row mutation.
+3. A source-inspection helper attempted to use unavailable `rg` on the Ubuntu server.
+   It failed before database/login/runtime mutation.
+4. A login-response permission-code assertion produced a false negative because
+   login-response permissions and request-time persisted principal authority are
+   different projections. The actual protected request proved correct PolicyGuard
+   admission followed by Chairman-authorizer denial.
+5. The final freeze text assertion did not accept PostgreSQL's `75.000000` numeric
+   rendering. A later numeric comparison passed without writes.
+
+### Current Step 3 conclusion and next boundary
+
+The current Examination Committee Chairman Attendance `/5` generation and
+irreversible freeze backend boundary is complete and runtime verified within the
+tested Ubuntu VM environment.
+
+The next focused academic implementation boundary is now:
+
+**activity-level Formative Activities submission/correction and Examination Committee Chairman Activities `/30` finalisation**
+
+Subsequent separate boundaries remain:
+
+1. automatic authoritative Final Formative `/40`;
+2. locked Formative `/40` + locked Summative `/60` integration;
+3. complete course-result Chairman finalisation;
+4. required result-document generation;
+5. Controller of Examinations publication;
+6. canonical published-result consumption, GPA/CGPA and transcript workflow.
+
+Cloud/public production hardening and frontend completion remain separately pending.
