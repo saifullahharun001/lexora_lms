@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { GUARDS_METADATA } from "@nestjs/common/constants";
+import { GUARDS_METADATA, PATH_METADATA } from "@nestjs/common/constants";
+import { BadRequestException, ForbiddenException, UnauthorizedException } from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import { DepartmentContextResolver } from "@/common/department-context/department-context.resolver";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
 import { AuthGuard } from "@/modules/authorization/guards/auth.guard";
@@ -16,10 +19,43 @@ test("every Formative route requires AuthGuard, PolicyGuard and its narrow polic
   assert.deepEqual(Reflect.getMetadata(GUARDS_METADATA, FormativeAssessmentController), [AuthGuard, PolicyGuard]);
   for (const [name, policy] of Object.entries({ list: FORMATIVE_POLICIES.READ, create: FORMATIVE_POLICIES.MANAGE,
     update: FORMATIVE_POLICIES.MANAGE, startMarking: FORMATIVE_POLICIES.MANAGE, mark: FORMATIVE_POLICIES.MANAGE,
-    adjust: FORMATIVE_POLICIES.ADJUST, read: FORMATIVE_POLICIES.READ, submit: FORMATIVE_POLICIES.SUBMIT })) {
+    adjust: FORMATIVE_POLICIES.ADJUST, read: FORMATIVE_POLICIES.READ, submissions: FORMATIVE_POLICIES.READ, submit: FORMATIVE_POLICIES.SUBMIT })) {
     assert.equal(Reflect.getMetadata(REQUIRE_POLICY_KEY, (FormativeAssessmentController.prototype as any)[name]), policy);
   }
   assert.equal("finalise" in FormativeAssessmentController.prototype, false);
+});
+
+test("activity submit replaces legacy write route and rejects all supplied authority/source fields", () => {
+  const calls: unknown[] = [];
+  const controller = new FormativeAssessmentController({ submitActivity: (...args: unknown[]) => calls.push(args) } as any);
+  assert.equal(Reflect.getMetadata(PATH_METADATA, controller.submit), "activities/:activityId/submit");
+  for (const name of Object.getOwnPropertyNames(FormativeAssessmentController.prototype)) {
+    assert.notEqual(Reflect.getMetadata(PATH_METADATA, (controller as any)[name]), "enrollments/:enrollmentId/submit");
+  }
+  for (const field of ["departmentId", "teacherId", "teacherAssignmentId", "weightedMark", "total", "enrollmentIds", "submittedAt", "sourceFingerprint"]) {
+    assert.throws(() => controller.submit("offering", "activity", { [field]: "forged" }), BadRequestException);
+  }
+  controller.submit("offering", "activity", {});
+  assert.deepEqual(calls, [["offering", "activity"]]);
+});
+
+test("actual route guards deny missing authentication, Student and Department Admin; principal defeats forged header", async () => {
+  const request: any = { headers: { "x-department-id": "other" } };
+  const execution: any = { getHandler: () => FormativeAssessmentController.prototype.submit,
+    getClass: () => FormativeAssessmentController, switchToHttp: () => ({ getRequest: () => request }) };
+  await assert.rejects(new AuthGuard({} as any, {} as any, {} as any).canActivate(execution), UnauthorizedException);
+  const departments: unknown[] = [];
+  const guard = new PolicyGuard(new Reflector(), new AuthorizationService(), new DepartmentContextResolver(),
+    { setDepartment: (department: unknown) => departments.push(department), get: () => ({}) } as any,
+    { write: async () => undefined } as any);
+  for (const role of ["student", "department_admin"]) {
+    request.principal = { actorId: "actor", actorType: "user", isAuthenticated: true, activeDepartmentId: "law",
+      roleAssignments: [{ departmentId: "law", role, roleId: "r", userRoleId: "ur" }], permissions: [] };
+    await assert.rejects(guard.canActivate(execution), ForbiddenException);
+  }
+  request.principal.roleAssignments[0].role = "teacher";
+  assert.equal(await guard.canActivate(execution), true);
+  assert.equal((departments.at(-1) as any).departmentId, "law");
 });
 
 test("DTO rejects client weighted totals and validates explicit missing state", async () => {

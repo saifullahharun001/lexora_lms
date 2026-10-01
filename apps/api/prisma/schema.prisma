@@ -1591,6 +1591,7 @@ model CourseOutlineCorrectionRequest {
 }
 
 model TeacherCourseAssignment {
+  activitySubmissions FormativeActivitySubmission[]
   formativeMarks FormativeMarkEvidence[]
   formativeSubmissions FormativeTeacherSubmission[]
   @@unique([id, departmentId, courseOfferingId, teacherUserId], map: "formative_assignment_scope_uq")
@@ -1617,6 +1618,7 @@ model TeacherCourseAssignment {
 }
 
 model Enrollment {
+  activitySubmissionItems FormativeActivitySubmissionItem[]
   attendanceVersions FormativeAttendanceVersion[]
   attendanceCorrections FormativeAttendanceCorrection[]
   @@unique([id, departmentId], map: "enrollment_comprehensive_scope_uq")
@@ -3641,6 +3643,7 @@ enum FormativeTeacherSubmissionState {
 }
 
 model FormativeActivity {
+  submissions FormativeActivitySubmission[]
   id String @id @default(cuid())
   departmentId String @map("department_id")
   courseOfferingId String @map("course_offering_id")
@@ -3661,6 +3664,7 @@ model FormativeActivity {
 
 // Append-only revisions. A null raw/weighted mark explicitly represents missing evidence.
 model FormativeMarkEvidence {
+  activitySubmissionItems FormativeActivitySubmissionItem[]
   id String @id @default(cuid())
   departmentId String @map("department_id")
   courseOfferingId String @map("course_offering_id")
@@ -3730,6 +3734,52 @@ model FormativeSubmissionItem {
   @@unique([submissionId, activityId], map: "formative_submission_activity_uq")
   @@index([markEvidenceId], map: "formative_submission_mark_idx")
   @@map("formative_submission_items")
+}
+
+// Immutable Teacher activity packages, not Chairman final results. Freshness is derived from live sources.
+model FormativeActivitySubmission {
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  courseOfferingId String @map("course_offering_id")
+  activityId String @map("activity_id")
+  version Int
+  previousId String? @unique @map("previous_id")
+  activityVersion Int @map("activity_version")
+  rawMaximum Decimal @map("raw_maximum") @db.Decimal(6,2)
+  assignedWeight Decimal @map("assigned_weight") @db.Decimal(6,2)
+  ruleVersionCode String @map("rule_version_code") @db.VarChar(64)
+  enrollmentCount Int @map("enrollment_count")
+  sourceFingerprint String @map("source_fingerprint") @db.VarChar(64)
+  sourceSnapshotJson Json @map("source_snapshot_json")
+  actorUserId String @map("actor_user_id")
+  teacherAssignmentId String @map("teacher_assignment_id")
+  assignmentAssignedAt DateTime @map("assignment_assigned_at")
+  submittedAt DateTime @default(now()) @map("submitted_at")
+  activity FormativeActivity @relation(fields: [activityId, departmentId, courseOfferingId], references: [id, departmentId, courseOfferingId], onDelete: Restrict, onUpdate: Restrict, map: "fa_submission_activity_fk")
+  teacherAssignment TeacherCourseAssignment @relation(fields: [teacherAssignmentId, departmentId, courseOfferingId, actorUserId], references: [id, departmentId, courseOfferingId, teacherUserId], onDelete: Restrict, onUpdate: Restrict, map: "fa_submission_assignment_fk")
+  previous FormativeActivitySubmission? @relation("ActivitySubmissionRevision", fields: [previousId, departmentId, courseOfferingId, activityId], references: [id, departmentId, courseOfferingId, activityId], onDelete: Restrict, onUpdate: Restrict, map: "fa_submission_previous_fk")
+  successors FormativeActivitySubmission[] @relation("ActivitySubmissionRevision")
+  items FormativeActivitySubmissionItem[]
+  @@unique([id, departmentId, courseOfferingId, activityId], map: "fa_submission_scope_uq")
+  @@unique([departmentId, activityId, version], map: "fa_submission_version_uq")
+  @@index([departmentId, courseOfferingId], map: "fa_submission_offering_idx")
+  @@map("formative_activity_submissions")
+}
+
+model FormativeActivitySubmissionItem {
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  courseOfferingId String @map("course_offering_id")
+  activityId String @map("activity_id")
+  enrollmentId String @map("enrollment_id")
+  submissionId String @map("submission_id")
+  markEvidenceId String @map("mark_evidence_id")
+  submission FormativeActivitySubmission @relation(fields: [submissionId, departmentId, courseOfferingId, activityId], references: [id, departmentId, courseOfferingId, activityId], onDelete: Restrict, onUpdate: Restrict, map: "fa_item_submission_fk")
+  enrollment Enrollment @relation(fields: [enrollmentId, departmentId, courseOfferingId], references: [id, departmentId, courseOfferingId], onDelete: Restrict, onUpdate: Restrict, map: "fa_item_enrollment_fk")
+  mark FormativeMarkEvidence @relation(fields: [markEvidenceId, departmentId, courseOfferingId, enrollmentId, activityId], references: [id, departmentId, courseOfferingId, enrollmentId, activityId], onDelete: Restrict, onUpdate: Restrict, map: "fa_item_mark_fk")
+  @@unique([submissionId, enrollmentId], map: "fa_item_enrollment_uq")
+  @@index([markEvidenceId], map: "fa_item_mark_idx")
+  @@map("formative_activity_submission_items")
 }
 
 enum ExaminationCandidateCategory {

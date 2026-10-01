@@ -6,7 +6,7 @@ import { RequestContextService } from "@/common/request-context/request-context.
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { FORMATIVE_POLICIES } from "../../domain/formative.policy-names";
 import { FORMATIVE_AUDIT_EVENTS } from "../../domain/formative.audit-events";
-import { deriveTeacherSubmission, formativeDecimal, FORMATIVE_METHODS, weightedMark } from "../../domain/formative.rules";
+import { deriveActivitySubmission, formativeDecimal, FORMATIVE_METHODS, FORMATIVE_RULE, weightedMark, type FormativeConfiguration } from "../../domain/formative.rules";
 
 export interface ActivityInput {
   title: string;
@@ -27,7 +27,7 @@ interface Authority {
   actorUserId: string;
   teacherAssignmentId: string;
   assignmentAssignedAt: Date;
-  configuration: Prisma.InputJsonObject;
+  configuration: FormativeConfiguration | null;
 }
 
 @Injectable()
@@ -41,8 +41,10 @@ export class FormativeAssessmentService {
   createActivity(courseOfferingId: string, input: ActivityInput) {
     return this.withOffering(courseOfferingId, FORMATIVE_POLICIES.MANAGE, async (tx, authority) => {
       await this.assertSchemeEditable(tx, authority.departmentId, courseOfferingId);
+      const data = this.activityData(input);
+      await this.assertWeightBudget(tx, authority.departmentId, courseOfferingId, data.assignedWeight);
       const activity = await tx.formativeActivity.create({ data: {
-        ...this.activityData(input), departmentId: authority.departmentId, courseOfferingId,
+        ...data, departmentId: authority.departmentId, courseOfferingId,
       } });
       await this.audit(tx, authority, FORMATIVE_AUDIT_EVENTS.ACTIVITY_CREATED, activity.id);
       return activity;
@@ -52,10 +54,12 @@ export class FormativeAssessmentService {
   updateActivity(courseOfferingId: string, activityId: string, input: ActivityInput) {
     return this.withOffering(courseOfferingId, FORMATIVE_POLICIES.MANAGE, async (tx, authority) => {
       const activity = await this.activity(tx, authority.departmentId, courseOfferingId, activityId);
-      await this.assertSchemeEditable(tx, authority.departmentId, courseOfferingId);
+      await this.assertSchemeEditable(tx, authority.departmentId, courseOfferingId, activityId);
       if (activity.status !== "DRAFT") throw new ConflictException("Only draft activities can be edited");
+      const data = this.activityData(input);
+      await this.assertWeightBudget(tx, authority.departmentId, courseOfferingId, data.assignedWeight, activity.id);
       const revised = await tx.formativeActivity.update({ where: { id: activity.id }, data: {
-        ...this.activityData(input), version: { increment: 1 },
+        ...data, version: { increment: 1 },
       } });
       await this.audit(tx, authority, FORMATIVE_AUDIT_EVENTS.ACTIVITY_UPDATED, activity.id, { previousVersion: activity.version, version: revised.version });
       return revised;
@@ -65,7 +69,7 @@ export class FormativeAssessmentService {
   startMarking(courseOfferingId: string, activityId: string) {
     return this.withOffering(courseOfferingId, FORMATIVE_POLICIES.MANAGE, async (tx, authority) => {
       const activity = await this.activity(tx, authority.departmentId, courseOfferingId, activityId);
-      await this.assertSchemeEditable(tx, authority.departmentId, courseOfferingId);
+      await this.assertSchemeEditable(tx, authority.departmentId, courseOfferingId, activityId);
       if (activity.status !== "DRAFT") throw new ConflictException("Activity is already in marking");
       const revised = await tx.formativeActivity.update({ where: { id: activity.id }, data: {
         status: "MARKING", version: { increment: 1 },
@@ -108,6 +112,10 @@ export class FormativeAssessmentService {
       const activity = await this.activity(tx, departmentId, courseOfferingId, activityId);
       await this.enrollment(tx, departmentId, courseOfferingId, enrollmentId);
       await this.assertNotSubmitted(tx, departmentId, courseOfferingId, enrollmentId);
+      const submitted = await tx.formativeActivitySubmission.findFirst({ where: { departmentId, courseOfferingId, activityId } });
+      if (!reason && submitted) {
+        throw new ForbiddenException("Submitted activity evidence requires the explicit adjustment endpoint and reason");
+      }
       if (activity.status !== "MARKING") throw new ConflictException("Activity is not in marking");
       if (!["CLEAR", "PENDING_REVIEW", "BLOCKED"].includes(input.integrityStatus) || typeof input.feedbackCompleted !== "boolean") {
         throw new BadRequestException("Invalid mark evidence");
@@ -121,7 +129,9 @@ export class FormativeAssessmentService {
       const previous = await tx.formativeMarkEvidence.findFirst({
         where: { departmentId, courseOfferingId, enrollmentId, activityId }, orderBy: { revision: "desc" },
       });
-      if (reason && !previous) throw new BadRequestException("An existing mark is required for adjustment");
+      // A newly approved enrollment can join a previously submitted activity only
+      // through the same explicit, reasoned adjustment authority.
+      if (reason && !previous && !submitted) throw new BadRequestException("An existing mark is required for adjustment");
       if (previous && previous.integrityStatus !== "CLEAR" && input.integrityStatus === "CLEAR") {
         throw new ForbiddenException("Resolution authority for recorded integrity cases is not implemented");
       }
@@ -145,44 +155,81 @@ export class FormativeAssessmentService {
     });
   }
 
-  submit(courseOfferingId: string, enrollmentId: string) {
+  submitActivity(courseOfferingId: string, activityId: string) {
     return this.withOffering(courseOfferingId, FORMATIVE_POLICIES.SUBMIT, async (tx, authority) => {
       const { departmentId } = authority;
-      await this.enrollment(tx, departmentId, courseOfferingId, enrollmentId);
-      await this.assertNotSubmitted(tx, departmentId, courseOfferingId, enrollmentId);
-      const activities = await tx.formativeActivity.findMany({
-        where: { departmentId, courseOfferingId }, orderBy: { id: "asc" },
-        include: { marks: { where: { departmentId, courseOfferingId, enrollmentId }, orderBy: { revision: "desc" }, take: 1 } },
+      const activity = await this.activity(tx, departmentId, courseOfferingId, activityId);
+      if (activity.status !== "MARKING") throw new ConflictException("Activity is not in marking");
+      await this.assertCurrentWeightBudget(tx, departmentId, courseOfferingId);
+      const enrollments = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        SELECT id FROM enrollments WHERE department_id = ${departmentId} AND course_offering_id = ${courseOfferingId}
+        AND status = 'APPROVED' AND archived_at IS NULL ORDER BY id COLLATE "C" FOR SHARE
+      `);
+      const marks = await tx.formativeMarkEvidence.findMany({
+        where: { departmentId, courseOfferingId, activityId, enrollmentId: { in: enrollments.map((enrollment) => enrollment.id) } },
+        orderBy: [{ enrollmentId: "asc" }, { revision: "desc" }], distinct: ["enrollmentId"],
       });
-      const derived = deriveTeacherSubmission(activities.map((activity) => ({
-        activityId: activity.id, status: activity.status, rawMaximum: activity.rawMaximum,
-        assignedWeight: activity.assignedWeight, mark: activity.marks[0] ?? null,
-      })));
-      const snapshot = activities.map((activity) => {
-        const mark = activity.marks[0]!;
-        return {
-          activityId: activity.id, activityVersion: activity.version, title: activity.title, method: activity.method,
-          rawMaximum: activity.rawMaximum.toFixed(2), assignedWeight: activity.assignedWeight.toFixed(2),
-          markEvidenceId: mark.id, markRevision: mark.revision, rawMark: mark.rawMark!.toFixed(2),
-          weightedMark: mark.weightedMark!.toFixed(2), feedback: mark.feedback,
-          feedbackCompleted: mark.feedbackCompleted, integrityStatus: mark.integrityStatus,
-        };
+      const latest = new Map(marks.map((mark) => [mark.enrollmentId, mark]));
+      const sources = enrollments.map((enrollment) => ({ enrollmentId: enrollment.id, mark: latest.get(enrollment.id) ?? null }));
+      if (!authority.configuration) throw new BadRequestException("Assessment configuration is required");
+      const derived = deriveActivitySubmission(activity, sources, authority.configuration);
+      const previous = await tx.formativeActivitySubmission.findFirst({
+        where: { departmentId, courseOfferingId, activityId }, orderBy: { version: "desc" },
       });
-      const submission = await tx.formativeTeacherSubmission.create({ data: {
-        departmentId, courseOfferingId, enrollmentId, totalWeightedMark: derived.total,
-        totalWeight: derived.weights, ruleVersionCode: derived.ruleVersionCode,
-        sourceSnapshotJson: { configuration: authority.configuration, activities: snapshot }, actorUserId: authority.actorUserId,
-        teacherAssignmentId: authority.teacherAssignmentId, assignmentAssignedAt: authority.assignmentAssignedAt,
+      if (previous?.sourceFingerprint === derived.sourceFingerprint) throw new ConflictException("Activity sources are unchanged");
+      const submission = await tx.formativeActivitySubmission.create({ data: {
+        departmentId, courseOfferingId, activityId, version: (previous?.version ?? 0) + 1, previousId: previous?.id,
+        activityVersion: activity.version, rawMaximum: activity.rawMaximum, assignedWeight: activity.assignedWeight,
+        ...derived, actorUserId: authority.actorUserId, teacherAssignmentId: authority.teacherAssignmentId,
+        assignmentAssignedAt: authority.assignmentAssignedAt,
       } });
-      await tx.formativeSubmissionItem.createMany({ data: snapshot.map((source) => ({
-        departmentId, courseOfferingId, enrollmentId, submissionId: submission.id,
-        activityId: source.activityId, markEvidenceId: source.markEvidenceId,
+      await tx.formativeActivitySubmissionItem.createMany({ data: derived.sourceSnapshotJson.sources.map((source) => ({
+        departmentId, courseOfferingId, activityId, enrollmentId: source.enrollmentId,
+        submissionId: submission.id, markEvidenceId: source.markEvidenceId,
       })) });
-      await this.audit(tx, authority, FORMATIVE_AUDIT_EVENTS.ACTIVITIES_TEACHER_SUBMITTED, submission.id, {
-        enrollmentId, ruleVersionCode: derived.ruleVersionCode, total: derived.total.toFixed(2),
+      await this.audit(tx, authority, FORMATIVE_AUDIT_EVENTS.ACTIVITY_TEACHER_SUBMITTED, submission.id, {
+        courseOfferingId, activityId, activityVersion: activity.version, version: submission.version,
+        previousSubmissionId: previous?.id ?? null, enrollmentCount: derived.enrollmentCount,
+        sourceFingerprint: derived.sourceFingerprint, ruleVersionCode: derived.ruleVersionCode,
       });
       return submission;
     });
+  }
+
+  readActivitySubmissions(courseOfferingId: string, activityId: string) {
+    return this.withOffering(courseOfferingId, FORMATIVE_POLICIES.READ, async (tx, authority) => {
+      const { departmentId } = authority;
+      await this.activity(tx, departmentId, courseOfferingId, activityId);
+      const submissions = await tx.formativeActivitySubmission.findMany({
+        where: { departmentId, courseOfferingId, activityId }, orderBy: { version: "asc" }, include: { items: true },
+      });
+      const freshness = await tx.$queryRaw<Array<{ id: string; isCurrent: boolean }>>(Prisma.sql`
+        SELECT id, formative_activity_submission_is_current(id) AS "isCurrent"
+        FROM formative_activity_submissions WHERE department_id = ${departmentId}
+          AND course_offering_id = ${courseOfferingId} AND activity_id = ${activityId}
+      `);
+      return submissions.map((submission) => ({ ...submission, isCurrent: freshness.find((row) => row.id === submission.id)?.isCurrent ?? false }));
+    });
+  }
+
+  private async assertCurrentWeightBudget(tx: Prisma.TransactionClient, departmentId: string, courseOfferingId: string) {
+    // Submission defense for invalid historical/imported state, under withOffering's mutex.
+    const activities = await tx.formativeActivity.findMany({
+      where: { departmentId, courseOfferingId }, select: { assignedWeight: true },
+    });
+    const total = activities.reduce((sum, activity) => sum.add(activity.assignedWeight), new Prisma.Decimal(0));
+    if (total.gt(FORMATIVE_RULE.maximum)) throw new BadRequestException("Current Formative activity configuration exceeds the /30 budget");
+  }
+
+  private async assertWeightBudget(tx: Prisma.TransactionClient, departmentId: string, courseOfferingId: string,
+    replacement: Prisma.Decimal, excludeActivityId?: string) {
+    // withOffering already holds the offering mutex in this Serializable transaction.
+    // Every configured activity counts: there is no archived/non-counting activity state.
+    const activities = await tx.formativeActivity.findMany({
+      where: { departmentId, courseOfferingId }, select: { id: true, assignedWeight: true },
+    });
+    const total = activities.reduce((sum, activity) => activity.id === excludeActivityId ? sum : sum.add(activity.assignedWeight), replacement);
+    if (total.gt(FORMATIVE_RULE.maximum)) throw new BadRequestException("Activity weights cannot exceed the offering's 30.00 budget");
   }
 
   private activityData(input: ActivityInput) {
@@ -209,8 +256,9 @@ export class FormativeAssessmentService {
     return enrollments[0]!;
   }
 
-  private async assertSchemeEditable(tx: Prisma.TransactionClient, departmentId: string, courseOfferingId: string) {
-    if (await tx.formativeTeacherSubmission.findFirst({ where: { departmentId, courseOfferingId } })) {
+  private async assertSchemeEditable(tx: Prisma.TransactionClient, departmentId: string, courseOfferingId: string, activityId?: string) {
+    if (await tx.formativeTeacherSubmission.findFirst({ where: { departmentId, courseOfferingId } }) ||
+        (activityId && await tx.formativeActivitySubmission.findFirst({ where: { departmentId, courseOfferingId, activityId } }))) {
       throw new ConflictException("Activity configuration is frozen after the first Teacher submission");
     }
   }
@@ -264,7 +312,7 @@ export class FormativeAssessmentService {
           `);
           if (!permissions.length) throw new ForbiddenException("Exact formative adjustment permission is required");
         }
-        const configuration = policy === FORMATIVE_POLICIES.READ ? {} : await this.standardConfiguration(tx, departmentId, courseOfferingId);
+        const configuration = policy === FORMATIVE_POLICIES.READ ? null : await this.standardConfiguration(tx, departmentId, courseOfferingId);
         return work(tx, { departmentId, actorUserId: principal.actorId, teacherAssignmentId: assignment.id, assignmentAssignedAt: assignment.assignedAt, configuration });
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (error) {
@@ -276,7 +324,7 @@ export class FormativeAssessmentService {
     }
   }
 
-  private async standardConfiguration(tx: Prisma.TransactionClient, departmentId: string, courseOfferingId: string): Promise<Prisma.InputJsonObject> {
+  private async standardConfiguration(tx: Prisma.TransactionClient, departmentId: string, courseOfferingId: string): Promise<FormativeConfiguration> {
     const components = await tx.$queryRaw<Array<{
       templateId: string; templateVersion: number; componentId: string; code: string;
       maximumMarks: Prisma.Decimal; totalMarks: Prisma.Decimal; isRequired: boolean;
@@ -287,7 +335,7 @@ export class FormativeAssessmentService {
       JOIN course_assessment_templates t ON t.id = cc.assessment_template_id AND t.department_id = cc.department_id
       JOIN assessment_template_components c ON c.assessment_template_id = t.id AND c.department_id = t.department_id
       WHERE o.id = ${courseOfferingId} AND o.department_id = ${departmentId}
-        AND t.archived_at IS NULL ORDER BY c.code FOR SHARE OF cc, t, c
+        AND t.archived_at IS NULL ORDER BY c.code COLLATE "C" FOR SHARE OF cc, t, c
     `);
     const expected: Record<string, string> = { FORMATIVE_ACTIVITIES: "30", ATTENDANCE: "5", COMPREHENSIVE_EXAMINATION: "5", SUMMATIVE_EXAMINATION: "60" };
     if (components.length !== 4 || components.some((component) => !component.isRequired || !expected[component.code] ||

@@ -5,4 +5,5 @@ export const FORMATIVE_AUDIT_EVENTS = {
   MARK_RECORDED: "formative.mark.recorded",
   MARK_ADJUSTED: "formative.mark.adjusted",
   ACTIVITIES_TEACHER_SUBMITTED: "formative.activities.teacher-submitted",
+  ACTIVITY_TEACHER_SUBMITTED: "formative.activity.teacher-submitted",
 } as const;

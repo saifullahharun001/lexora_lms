@@ -22,6 +22,8 @@ const files = [
   "dist/prisma/regular-comprehensive.schema.test.js",
   "dist/prisma/regular-comprehensive.database.test.js",
   "dist/prisma/formative-teacher-submission.schema.test.js",
+  "dist/prisma/formative-activity-submission.schema.test.js",
+  "dist/prisma/formative-activity-submission.database.test.js",
   "dist/prisma/summative-examination-committee-foundation.schema.test.js",
   "dist/prisma/external-examination-committee-member.schema.test.js",
 ].sort();

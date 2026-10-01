@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 
 export const FORMATIVE_RULE = Object.freeze({
@@ -70,4 +71,46 @@ export function deriveTeacherSubmission(sources: SubmissionSource[]) {
   if (!weights.eq(FORMATIVE_RULE.maximum)) throw new RangeError("Activity weights must total exactly 30");
   if (total.gt(FORMATIVE_RULE.maximum)) throw new RangeError("Invalid activity total");
   return { total, weights, ruleVersionCode: FORMATIVE_RULE.versionCode };
+}
+
+/** One activity across the complete server-resolved approved enrollment set. */
+export type FormativeConfiguration = {
+  templateId: string;
+  templateVersion: number;
+  components: Array<{ id: string; code: string; maximum: string }>;
+};
+
+export function deriveActivitySubmission(activity: {
+  id: string; departmentId: string; courseOfferingId: string; version: number; title: string; method: string;
+  status: string; rawMaximum: Prisma.Decimal; assignedWeight: Prisma.Decimal;
+}, sources: Array<{ enrollmentId: string; mark: (NonNullable<SubmissionSource["mark"]> & {
+  id: string; revision: number; rawMaximum: Prisma.Decimal; assignedWeight: Prisma.Decimal;
+}) | null }>, configuration: FormativeConfiguration) {
+  if (activity.status !== "MARKING" || !sources.length) throw new RangeError("A marking activity with approved enrollments is required");
+  if (new Set(sources.map((source) => source.enrollmentId)).size !== sources.length) throw new RangeError("Duplicate enrollment source");
+  const snapshot = [...sources].sort((a, b) => Buffer.compare(Buffer.from(a.enrollmentId), Buffer.from(b.enrollmentId))).map(({ enrollmentId, mark }) => {
+    if (!mark || mark.rawMark === null) throw new RangeError("Every approved enrollment requires a raw mark");
+    if (!mark.feedbackCompleted || !mark.feedback?.trim()) throw new RangeError("Completed written feedback is required");
+    if (mark.integrityStatus !== "CLEAR") throw new RangeError("Unresolved integrity case");
+    const derived = weightedMark(mark.rawMark, activity.rawMaximum, activity.assignedWeight);
+    if (!mark.rawMaximum.eq(activity.rawMaximum) || !mark.assignedWeight.eq(activity.assignedWeight) || !mark.weightedMark?.eq(derived)) {
+      throw new RangeError("Inconsistent mark evidence");
+    }
+    return { enrollmentId, markEvidenceId: mark.id, markRevision: mark.revision, rawMark: mark.rawMark.toFixed(2),
+      weightedMark: derived.toFixed(2), feedback: mark.feedback, feedbackCompleted: true, integrityStatus: "CLEAR" };
+  });
+  // UTF-8 byte-length framing, C/byte ordering; also implemented by the PostgreSQL package guard.
+  // Immutable evidence IDs identify the entire source, including feedback and integrity history.
+  const normalizedConfiguration = { templateId: configuration.templateId, templateVersion: configuration.templateVersion,
+    components: [...configuration.components].sort((a, b) => Buffer.compare(Buffer.from(a.code), Buffer.from(b.code)))
+      .map((component) => ({ id: component.id, code: component.code, maximum: formativeDecimal(component.maximum).toFixed(2) })) };
+  const tokens = [activity.departmentId, activity.courseOfferingId, activity.id, String(activity.version),
+    activity.rawMaximum.toFixed(2), activity.assignedWeight.toFixed(2), FORMATIVE_RULE.versionCode,
+    normalizedConfiguration.templateId, String(normalizedConfiguration.templateVersion),
+    ...normalizedConfiguration.components.flatMap((component) => [component.id, component.code, component.maximum]),
+    ...snapshot.flatMap((source) => [source.enrollmentId, source.markEvidenceId, String(source.markRevision)])];
+  const sourceFingerprint = createHash("sha256").update(tokens.map((value) => `${Buffer.byteLength(value, "utf8")}:${value}`).join("")).digest("hex");
+  return { ruleVersionCode: FORMATIVE_RULE.versionCode, enrollmentCount: snapshot.length, sourceFingerprint,
+    sourceSnapshotJson: { configuration: normalizedConfiguration, activity: { id: activity.id, version: activity.version, title: activity.title, method: activity.method,
+      rawMaximum: activity.rawMaximum.toFixed(2), assignedWeight: activity.assignedWeight.toFixed(2) }, sources: snapshot } };
 }

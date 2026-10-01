@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Param, Post, Put, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@/modules/authorization/guards/auth.guard";
 import { PolicyGuard } from "@/modules/authorization/guards/policy.guard";
 import { RequirePolicy } from "@/modules/authorization/decorators/require-policy.decorator";
@@ -55,9 +55,18 @@ export class FormativeAssessmentController {
     return this.service.read(offeringId, enrollmentId);
   }
 
-  @Post("enrollments/:enrollmentId/submit")
+  @Get("activities/:activityId/submissions")
+  @RequirePolicy(FORMATIVE_POLICIES.READ)
+  submissions(@Param("offeringId") offeringId: string, @Param("activityId") activityId: string) {
+    return this.service.readActivitySubmissions(offeringId, activityId);
+  }
+
+  @Post("activities/:activityId/submit")
   @RequirePolicy(FORMATIVE_POLICIES.SUBMIT)
-  submit(@Param("offeringId") offeringId: string, @Param("enrollmentId") enrollmentId: string) {
-    return this.service.submit(offeringId, enrollmentId);
+  submit(@Param("offeringId") offeringId: string, @Param("activityId") activityId: string, @Body() body?: unknown) {
+    if (body !== undefined && (body === null || typeof body !== "object" || Array.isArray(body) || Object.keys(body).length)) {
+      throw new BadRequestException("Activity submission takes no client source or authority fields");
+    }
+    return this.service.submitActivity(offeringId, activityId);
   }
 }
