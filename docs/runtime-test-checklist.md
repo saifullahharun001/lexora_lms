@@ -40306,3 +40306,29 @@ Subsequent separate boundaries remain:
 Canonical Ubuntu-server migration/deployment, authenticated HTTP authorization
 verification and ordinary-server runtime closure for Step 4A remain pending until the
 server is reachable.
+
+<!-- formative-step4b-chairman-batching-decision-20261002 -->
+
+## Formative Activities Step 4B batching decision — 2026-10-02
+
+This is an academic/workflow design decision only. It is not an implementation,
+deployment or runtime-verification claim.
+
+The previously unresolved Examination Committee Chairman Activities `/30`
+finalisation batching scope is now resolved:
+
+- finalisation is scoped to one Course Offering;
+- all eligible/enrolled students in that offering are finalised together in the
+  same batch;
+- individual student-level Activities `/30` finalisation is not permitted.
+
+This supersedes only the earlier statement that the Chairman batching scope was
+undecided.
+
+Exact API/endpoint shape, UI presentation, persistence model, readiness checks,
+transaction/freeze implementation and other Step 4B technical details remain to
+be established through current-source audit before coding.
+
+The next implementation boundary remains:
+
+**Examination Committee Chairman authoritative Activities `/30` finalisation**.

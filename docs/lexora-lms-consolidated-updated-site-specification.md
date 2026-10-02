@@ -2945,10 +2945,16 @@ Important evidence boundary:
   `FORMATIVE_ATTENDANCE_5_APPROVED_20260920_V1` remains aligned with the confirmed
   Appendix 4 marking scheme.
 
-Current unresolved implementation-policy detail:
+Resolved Activities `/30` Chairman batching decision — 2026-10-02:
 
-- the exact batching/UI scope for Examination Committee Chairman finalisation of
-  Activities `/30` remains intentionally undecided and must not be invented.
+- Examination Committee Chairman finalisation is scoped to one Course Offering;
+- the Chairman finalises that offering's full eligible/enrolled student roster
+  together as one batch;
+- individual student-level Activities `/30` finalisation is not permitted;
+- the earlier unresolved batching decision is therefore superseded;
+- exact endpoint/UI presentation and other implementation details not fixed by
+  this decision remain subject to source-driven Step 4B design and must not be
+  invented.
 
 See also:
 

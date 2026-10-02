@@ -3386,3 +3386,20 @@ this checkpoint.
 
 Frontend completion and cloud/public production hardening remain separate pending
 work.
+
+<!-- formative-step4b-chairman-batching-decision-20261002 -->
+
+## Activities `/30` Chairman finalisation batching decision — 2026-10-02
+
+The previously unresolved Step 4B batching scope is now confirmed:
+
+- one Chairman finalisation batch covers exactly one Course Offering;
+- the full eligible/enrolled student roster for that offering is finalised
+  together;
+- individual student-level Activities `/30` finalisation is not allowed.
+
+This decision resolves batching only. It does not claim Step 4B implementation
+or prescribe unreviewed API, UI, database or freeze details.
+
+Immediate next backend work remains source-driven design and implementation of
+Examination Committee Chairman authoritative Activities `/30` finalisation.
