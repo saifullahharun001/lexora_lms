@@ -1,4 +1,4 @@
-# Lexora LMS Runtime Test Checklist
+﻿# Lexora LMS Runtime Test Checklist
 
 ## Test Environment
 
@@ -40153,3 +40153,156 @@ Subsequent separate boundaries remain:
 6. canonical published-result consumption, GPA/CGPA and transcript workflow.
 
 Cloud/public production hardening and frontend completion remain separately pending.
+
+<!-- formative-step4a-local-postgresql-closure-20261001 -->
+
+## Formative Activities Step 4A — activity-level Teacher submission/correction local PostgreSQL closure — 2026-10-01
+
+This checkpoint supersedes only earlier current-status wording that described the
+activity-level Teacher Formative Activities submission/correction redesign as still
+pending.
+
+Historical whole-package Teacher `MARKS_SUBMITTED` evidence remains preserved as
+historical runtime evidence. It is not rewritten or deleted by this checkpoint.
+
+Implementation commit:
+
+`a86bf649b9d01216676772b359e4271298cff85e`
+
+Current Step 4A classification:
+
+**IMPLEMENTED + COMMITTED + INDEPENDENTLY SOURCE-REVIEWED + TYPECHECK/BUILD VERIFIED +
+INDEPENDENTLY DISPOSABLE-POSTGRESQL VERIFIED — CANONICAL SERVER DEPLOYMENT AND
+AUTHENTICATED SERVER-RUNTIME VERIFICATION PENDING**
+
+### Implemented boundary
+
+Step 4A implements the Course Teacher side of the target Activities workflow:
+
+- activity-level submission rather than a new whole-offering Teacher package;
+- exact assigned-Teacher and department/offering/activity scope enforcement;
+- immutable versioned activity submission parent/item evidence;
+- exact assessment-template and component provenance snapshots;
+- server-derived weighted marks under the versioned Activities rule;
+- reason-required pre-Chairman correction with append-only mark evidence;
+- correction stales the previous submitted package without rewriting history;
+- resubmission creates a successor version;
+- enrollment-scope changes stale earlier packages rather than mutating them;
+- typed audit evidence for activity submission/correction;
+- cumulative configured Activities weight cannot exceed `/30`;
+- existing historical over-budget configuration causes migration refusal and
+  controlled review rather than silent normalization;
+- legacy whole-package Teacher writes are retired while historical legacy evidence
+  remains readable/preserved.
+
+This checkpoint does NOT implement Examination Committee Chairman Activities `/30`
+finalisation or the post-Chairman authoritative freeze.
+
+The exact Chairman Activities-finalisation batching scope remains intentionally
+unresolved and must not be invented.
+
+### Real PostgreSQL defect discovery and correction
+
+The first real disposable PostgreSQL execution discovered a genuine production
+migration syntax defect.
+
+Executable migration statement `25/29`,
+`CREATE FUNCTION formative_activity_configuration(...)`, failed with PostgreSQL
+error `42601`.
+
+The PL/pgSQL `IF` condition contained an unparenthesized `CASE ... END` expression.
+The migration was minimally corrected by parenthesizing that CASE expression. The
+validation rule itself was not weakened or redesigned.
+
+A fresh independent PostgreSQL verification was then performed from the current
+source/build rather than relying on the implementation agent's reported result.
+
+### Independent disposable PostgreSQL verification
+
+Temporary fallback environment only:
+
+- WSL2;
+- Ubuntu `26.04.1 LTS`;
+- PostgreSQL `18.6`;
+- fresh user-owned disposable cluster;
+- PostgreSQL listened on `127.0.0.1` only;
+- a random high port was used;
+- the fresh database name ended in `_test`;
+- the ordinary system PostgreSQL `18/main` cluster remained down;
+- the ordinary Lexora database was not used.
+
+This WSL environment is not the canonical Lexora development/runtime server and this
+checkpoint must not be classified as authenticated server-runtime verification.
+
+Before the independent database run:
+
+- Prisma client generation: PASS;
+- API build: PASS.
+
+A later independent API typecheck before documentation reconciliation also passed.
+
+Final independent real PostgreSQL Step 4A suite:
+
+- tests: `27`;
+- passed: `27`;
+- failed: `0`;
+- skipped: `0`.
+
+The real PostgreSQL suite verified, among other protections:
+
+- atomic migration refusal for pre-existing DRAFT or MARKING Activities totals above
+  `/30`;
+- successful migration after invalid-fixture rollback;
+- preservation of existing partial/exact configuration and legacy evidence;
+- installed configuration-validator compilation and component-maximum enforcement;
+- legacy whole-package write retirement and historical revision/configuration freeze;
+- complete assigned-Teacher package scope and exact snapshots;
+- HALF_UP server arithmetic;
+- parent/item/mark-evidence immutability;
+- rejection and rollback of incomplete, forged-fingerprint, forged-snapshot,
+  forged-version and forged-scope packages;
+- rejection of forged assessment-template/component provenance even when accompanied
+  by a matching forged hash;
+- cumulative partial/exact/over-budget INSERT and replacement UPDATE enforcement;
+- concurrent INSERT and UPDATE budget serialization under Read Committed,
+  Repeatable Read and Serializable isolation;
+- stale-source rejection at commit;
+- rejection of forged weighted arithmetic;
+- reason-required correction by the exact current Teacher authority;
+- historical package staleness after correction or enrollment-scope change;
+- transaction rollback when audit persistence fails;
+- exactly one successor under concurrent resubmission with an unbroken version chain.
+
+The migration-test statement splitter regression also passed for the SQL constructs
+used by the current Step 4A migration.
+
+No raw database credential, access token, refresh token, password, password hash or
+production secret is recorded by this checkpoint.
+
+After verification, the disposable PostgreSQL cluster and its state were stopped and
+removed. The normal system `18/main` cluster remained down.
+
+### Current next boundary
+
+The Teacher activity-level submission/correction portion is no longer the next
+implementation task.
+
+The next focused academic implementation boundary is now:
+
+**Examination Committee Chairman authoritative Activities `/30` finalisation**
+
+The exact Chairman Activities-finalisation batching scope remains unresolved and must
+be established before implementation rather than invented.
+
+Subsequent separate boundaries remain:
+
+1. automatic authoritative Final Formative `/40`;
+2. locked Formative `/40` + locked Summative `/60` integration;
+3. complete course-result Chairman finalisation;
+4. required result-document generation;
+5. Controller of Examinations publication;
+6. canonical published-result consumption, GPA/CGPA and transcript workflow.
+
+Canonical Ubuntu-server migration/deployment, authenticated HTTP authorization
+verification and ordinary-server runtime closure for Step 4A remain pending until the
+server is reachable.

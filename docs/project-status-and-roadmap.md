@@ -3330,3 +3330,59 @@ closed within their documented backend/runtime boundaries.
 This checkpoint does not claim frontend completion, biometric production-sync
 completion, complete Formative `/40`, complete-result publication or cloud/public
 production hardening.
+
+<!-- formative-step4a-roadmap-closure-20261001 -->
+
+## Formative Activities activity-level submission/correction — Step 4A local closure — 2026-10-01
+
+This later checkpoint supersedes earlier roadmap wording that described the entire
+Activities backend redesign as pending.
+
+Historical whole-package Teacher `MARKS_SUBMITTED` implementation/runtime evidence
+remains valid historical evidence.
+
+Implementation commit:
+
+`a86bf649b9d01216676772b359e4271298cff85e`
+
+The current Step 4A boundary is:
+
+**IMPLEMENTED + COMMITTED + INDEPENDENTLY DISPOSABLE-POSTGRESQL VERIFIED —
+CANONICAL SERVER DEPLOYMENT/AUTHENTICATED RUNTIME PENDING**
+
+Step 4A now provides activity-level assigned-Teacher submission, immutable/versioned
+submission evidence, exact assessment-template/component provenance, `/30`
+configuration-budget protection, reason-required pre-Chairman correction with
+preserved history, stale-package handling and successor resubmission.
+
+A fresh isolated PostgreSQL `18.6` verification passed `27/27` tests with no failures
+or skips, including real migration, direct-SQL protection, rollback and concurrency
+coverage. The temporary WSL2 PostgreSQL environment was used only as a fallback while
+the canonical Ubuntu server was unreachable; it is not a replacement runtime
+environment.
+
+The overall Activities `/30` redesign is NOT complete.
+
+The next authority boundary is:
+
+**Examination Committee Chairman authoritative Activities `/30` finalisation**
+
+The exact Chairman Activities-finalisation batching scope remains intentionally
+unresolved and must not be invented.
+
+After Chairman Activities `/30` finalisation, the remaining sequence is:
+
+1. automatic authoritative Final Formative `/40` from exact final Activities `/30`,
+   Attendance `/5` and Comprehensive `/5` sources;
+2. locked Formative `/40` + Chairman-approved locked Summative `/60` integration;
+3. complete course-result Chairman finalisation;
+4. required result-document generation;
+5. Controller of Examinations publication;
+6. immutable published-result consumption for permitted student result, GPA/CGPA and
+   transcript workflows.
+
+No separate human Final Formative `/40` approval/finalisation action is introduced by
+this checkpoint.
+
+Frontend completion and cloud/public production hardening remain separate pending
+work.
