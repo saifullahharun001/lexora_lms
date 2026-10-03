@@ -40332,3 +40332,226 @@ be established through current-source audit before coding.
 The next implementation boundary remains:
 
 **Examination Committee Chairman authoritative Activities `/30` finalisation**.
+
+<!-- formative-step4b-local-postgresql-closure-20261003 -->
+
+## Formative Activities Step 4B — Chairman `/30` finalisation local PostgreSQL closure — 2026-10-03
+
+This checkpoint supersedes earlier current-status wording that described Examination
+Committee Chairman Activities `/30` finalisation as the next unimplemented backend
+boundary.
+
+Historical Step 4A evidence and the 2026-10-02 Chairman batching decision remain
+preserved. This section advances implementation/runtime status only.
+
+Implementation commit:
+
+`1ff9c60b07f91fb207b588a6d33ea17020728e8a`
+
+Policy/batching predecessor:
+
+`1309127703bc8f7a531420a85b4766c062710cd5`
+
+Current Step 4B classification:
+
+**IMPLEMENTED + COMMITTED + PUSHED + INDEPENDENTLY SOURCE-REVIEWED +
+PRISMA GENERATE/TYPECHECK/BUILD VERIFIED + FRESH REAL DISPOSABLE
+POSTGRESQL 18.6 VERIFIED — CANONICAL SERVER DEPLOYMENT AND AUTHENTICATED
+SERVER-RUNTIME VERIFICATION PENDING**
+
+### Implemented authority and batch boundary
+
+Step 4B implements authoritative Examination Committee Chairman finalisation of
+Activities `/30` for one exact ExaminationCourse/CourseOffering context.
+
+The implemented boundary preserves the confirmed academic batching decision:
+
+- one finalisation batch covers one Course Offering;
+- the full current approved/unarchived enrollment roster is finalised atomically;
+- individual student-level Activities `/30` finalisation is not permitted;
+- the exact current internal Examination Committee `CHAIRMAN` appointment is required;
+- the actor must remain an active same-department Teacher principal with the exact
+  department-scoped finalisation permission;
+- Course Teacher assignment is not reused as Chairman authority;
+- historical Teacher authority used to create valid Step 4A evidence need not remain
+  active at Chairman finalisation time.
+
+The HTTP surface is:
+
+- `GET /v1/formative/examination-courses/:examinationCourseId/activities/finalisation-workspace`;
+- `POST /v1/formative/examination-courses/:examinationCourseId/activities/finalise`.
+
+The workspace is informational/read-only. The POST operation recomputes and revalidates
+authoritative state inside the finalisation transaction rather than trusting the GET
+projection or client-supplied marks.
+
+### Readiness and authoritative evidence
+
+Finalisation requires, under the offering-level serialization boundary:
+
+- exact ExaminationCourse, Examination and CourseOffering scope;
+- at least one configured Formative Activity;
+- every relevant Activity in `MARKING`;
+- configured Activities full-mark/weight total exactly `/30`;
+- a non-empty approved/unarchived Enrollment roster;
+- one exact current Step 4A submission package for every required Activity;
+- every source package to pass current database-side source/package validation;
+- matching roster and required source provenance.
+
+The authoritative per-enrollment `/30` result is server-derived from the exact current
+Activity source packages. No client `/30` override is accepted.
+
+Final arithmetic rule:
+
+`FORMATIVE_ACTIVITIES_FINAL_30_SUM_V1`
+
+The implementation persists immutable finalisation parent/result/source evidence,
+including exact academic, authority and source provenance.
+
+Only one authoritative Activities finalisation may exist for a Course Offering,
+including where the same offering could otherwise be reachable through multiple
+ExaminationCourse contexts.
+
+Required success audit:
+
+`formative.activities.chairman-finalised`
+
+The success audit is transaction-coupled and exactly one matching success audit is
+required. An unrelated historical audit row cannot be UPDATE-converted into the
+protected success audit.
+
+### Freeze and post-finalisation behavior
+
+Successful finalisation freezes the authoritative Activities source boundary.
+
+The protected model blocks, where applicable:
+
+- new post-finalisation Activity mark revisions/submissions;
+- configuration mutation that would change the finalised source;
+- roster expansion/reactivation into the finalised batch;
+- duplicate/refinalisation attempts;
+- forged fingerprint, source-version, snapshot or arithmetic packages.
+
+Historical evidence is not destroyed merely because an earlier Teacher or Chairman
+authorization grant is later removed.
+
+Canonical finalised Enrollment departure/archive transitions remain possible without
+destroying the immutable finalisation snapshot.
+
+No ordinary Step 4B reopen, regenerate or per-student refinalisation path is introduced
+by this checkpoint.
+
+### Real PostgreSQL timezone defect discovery and correction
+
+The first independent real PostgreSQL run successfully installed the production
+migration but exposed a transaction-time Chairman-authority failure under the
+`Asia/Dhaka` PostgreSQL session timezone.
+
+The persisted authority timestamps involved are `timestamp without time zone`, while
+Prisma-bound JavaScript `Date` parameters were being sent as `timestamptz`. Direct
+comparison therefore depended on the PostgreSQL session timezone.
+
+The production authorizer was corrected without weakening exact authority checks or
+changing database timezone/configuration. Prisma-bound Date values are normalized to
+the intended UTC wall-clock timestamp semantics using:
+
+`(<bound Date>::timestamptz AT TIME ZONE 'UTC')`
+
+The correction applies to:
+
+- exact Chairman `assigned_at` snapshot equality;
+- assignment start-time validation;
+- assignment expiry validation;
+- UserRole expiry validation.
+
+A later real-database run confirmed that production correction, then exposed a
+test-fixture-only timezone defect where `now()` wrote an Asia/Dhaka wall-clock value
+into a `timestamp without time zone` expiry field. The regression fixture was corrected
+to use explicit UTC wall-clock timestamps. Production authority logic was not weakened
+for that test correction.
+
+### Final fresh disposable PostgreSQL 18.6 verification
+
+The final verification used a completely fresh user-owned PostgreSQL `18.6` cluster
+with:
+
+- PostgreSQL database timezone explicitly `Asia/Dhaka`;
+- loopback-only `127.0.0.1`;
+- random high port;
+- disposable database name ending in `_test`;
+- ordinary system PostgreSQL `18/main` remaining down;
+- ordinary Lexora database not used.
+
+Pre-run verification passed:
+
+- Prisma Client generation;
+- API typecheck;
+- API build;
+- `git diff --check`.
+
+Final Step 4B real PostgreSQL suite:
+
+- tests: `17`;
+- passed: `17`;
+- failed: `0`;
+- skipped: `0`.
+
+The real database campaign verified, among other protections:
+
+- production migration transaction/splitter correctness and unmodified installation;
+- `Asia/Dhaka` Chairman authority revalidation with exact UTC timestamp snapshots;
+- exact full-roster `/30` finalisation without requiring historical Course Teacher
+  assignment to remain active;
+- rejection of below/above-30 configuration, stale/corrected sources, roster mismatch
+  and missing/non-ready Activities;
+- changed, expired, inactive, unassigned and forged Chairman authority rejection;
+- forged fingerprint/snapshot/arithmetic/source-version rejection and rollback;
+- incomplete final-result/source-set rejection;
+- exactly one same-transaction success audit;
+- full rollback when required audit persistence fails;
+- rejection of UPDATE-conversion of unrelated historical audits into the protected
+  success audit;
+- canonical finalised Enrollment departure/archive preservation;
+- rejection of pre-approval regression and later roster reactivation/expansion;
+- preservation of immutable exact authority snapshots after later authorization-grant
+  removal;
+- concurrent duplicate finalisation producing exactly one offering-wide authoritative
+  batch;
+- correction/configuration/enrollment expansion losing to an already locked
+  finalisation;
+- source mutation holding the offering mutex winning first, followed by finalisation
+  retry/stale-evidence rejection.
+
+The successful fresh disposable PostgreSQL cluster was stopped and its disposable
+state removed after the PASS result. Earlier failed-run evidence was preserved during
+diagnosis rather than rewritten as successful evidence.
+
+No canonical Lexora server migration/deployment or authenticated HTTP runtime
+verification is claimed by this local PostgreSQL checkpoint.
+
+### Current next boundary
+
+The activity-level Teacher submission/correction boundary and the Chairman Activities
+`/30` finalisation boundary are now locally implemented and independently
+PostgreSQL-verified.
+
+The next focused academic implementation boundary is:
+
+**automatic authoritative Final Formative `/40` materialisation**
+
+It must consume the exact immutable:
+
+- finalised Activities `/30`;
+- generated/frozen Attendance `/5`;
+- Chairman-finalised Comprehensive Examination `/5`.
+
+Subsequent separate boundaries remain:
+
+1. locked Formative `/40` + Chairman-approved locked Summative `/60` integration;
+2. complete course-result Chairman finalisation;
+3. required result-document generation;
+4. Controller of Examinations publication;
+5. canonical published-result consumption, GPA/CGPA and transcript workflow.
+
+Canonical server deployment/authenticated runtime verification for Step 4B remains a
+separate pending promotion phase.

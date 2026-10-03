@@ -3403,3 +3403,74 @@ or prescribe unreviewed API, UI, database or freeze details.
 
 Immediate next backend work remains source-driven design and implementation of
 Examination Committee Chairman authoritative Activities `/30` finalisation.
+
+<!-- formative-step4b-roadmap-local-closure-20261003 -->
+
+## Activities `/30` Chairman finalisation — Step 4B local closure — 2026-10-03
+
+This checkpoint supersedes the earlier roadmap statement that Examination Committee
+Chairman authoritative Activities `/30` finalisation remained the next unimplemented
+backend task.
+
+Implementation commit:
+
+`1ff9c60b07f91fb207b588a6d33ea17020728e8a`
+
+Current classification:
+
+**IMPLEMENTED + COMMITTED + PUSHED + INDEPENDENTLY SOURCE-REVIEWED +
+TYPECHECK/BUILD VERIFIED + FRESH REAL DISPOSABLE POSTGRESQL 18.6 VERIFIED —
+CANONICAL SERVER DEPLOYMENT/AUTHENTICATED RUNTIME PENDING**
+
+The confirmed one-Course-Offering/current approved-unarchived full-roster batching rule is now implemented.
+Individual student-level Activities `/30` finalisation is not allowed.
+
+The current implementation includes:
+
+- exact ExaminationCourse/CourseOffering scope;
+- exact current internal Examination Committee Chairman authority;
+- department-scoped permission enforcement;
+- exact `/30` readiness;
+- current Step 4A source-package validation;
+- server-derived full-roster `/30` results;
+- immutable source and authority snapshots;
+- transaction-coupled success audit;
+- post-finalisation source/configuration/roster freeze protections;
+- duplicate and concurrency protection;
+- no ordinary reopen/regenerate/refinalise path.
+
+A fresh PostgreSQL `18.6` campaign with database timezone explicitly set to
+`Asia/Dhaka` completed `17/17` real database tests with `0` failures and `0` skips.
+
+During real PostgreSQL verification, a timezone-sensitive Prisma Date/raw-SQL
+authority comparison was discovered and corrected by normalising bound Date instants
+to UTC wall-clock `timestamp without time zone` semantics. A later test-fixture-only
+`now()` timezone issue was also corrected without weakening production authorization.
+
+The overall Activities `/30` backend redesign is therefore locally closed across:
+
+- Step 4A — activity-level Teacher submission/correction;
+- Step 4B — Examination Committee Chairman authoritative `/30` finalisation.
+
+Canonical server deployment and authenticated HTTP runtime verification remain
+pending and must not be inferred from the disposable PostgreSQL closure.
+
+The next academic backend boundary is now:
+
+**automatic authoritative Final Formative `/40` materialisation**
+
+from the exact final:
+
+`Activities /30 + Attendance /5 + Comprehensive Examination /5`.
+
+After that, the remaining sequence is:
+
+1. locked Formative `/40` + Chairman-approved locked Summative `/60` integration;
+2. complete course-result Chairman finalisation;
+3. required result-document generation;
+4. Controller of Examinations publication;
+5. immutable published-result consumption for permitted student result, GPA/CGPA and
+   transcript workflows.
+
+Frontend completion, canonical server promotion and cloud/public production hardening
+remain separate work.

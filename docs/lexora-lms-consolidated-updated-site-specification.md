@@ -3146,3 +3146,43 @@ The next separate academic implementation boundary is:
 Automatic authoritative Final Formative `/40`, locked Formative/Summative
 integration, complete-result finalisation/publication, frontend completion and
 cloud/public production hardening remain separate work.
+
+<!-- formative-step4b-spec-implementation-supersession-20261003 -->
+
+## Activities `/30` Step 4B implementation supersession — 2026-10-03
+
+The previously confirmed Activities `/30` Chairman batching policy is now implemented
+locally at:
+
+`1ff9c60b07f91fb207b588a6d33ea17020728e8a`
+
+This implementation does not change the academic policy. It implements the already
+confirmed rule that:
+
+- one Examination Committee Chairman finalisation is scoped to one Course Offering;
+- the full current approved/unarchived enrollment roster is finalised together;
+- individual student-level Activities `/30` finalisation is not permitted.
+
+The backend now derives the authoritative `/30` from exact current activity-level
+Teacher submission evidence, requires exact `/30` readiness, preserves immutable source
+and authority provenance, and freezes the governed source/configuration/roster boundary
+after successful finalisation.
+
+The finalisation authority is the exact current internal Examination Committee
+Chairman within the same department and examination context. Course Teacher assignment
+alone is not Chairman authority.
+
+The implementation has passed fresh real disposable PostgreSQL `18.6` verification in
+an explicitly non-UTC `Asia/Dhaka` database environment.
+
+This is a local implementation/database-verification checkpoint only. Canonical server
+deployment and authenticated server-runtime verification remain pending.
+
+The next separate Formative boundary is automatic authoritative Final Formative `/40`
+materialisation from the exact:
+
+- finalised Activities `/30`;
+- generated/frozen Attendance `/5`;
+- Chairman-finalised Comprehensive Examination `/5`.
+
+No separate human Final Formative `/40` approval action is introduced.
