@@ -12,6 +12,7 @@ import {
   AUTHORIZATION_PROVISIONING_DEFINITIONS,
   ATTENDANCE_CORRECTION_PROVISIONING,
   ATTENDANCE_MARK_GENERATE_PROVISIONING,
+  FORMATIVE_ACTIVITIES_FINALISE_PROVISIONING,
   EXAMINATION_WORKFLOW_PROVISIONING,
   BATCH_COORDINATOR_ASSIGNMENT_MANAGE_PROVISIONING,
   FORMATIVE_MARK_ADJUST_PROVISIONING,
@@ -161,6 +162,7 @@ const expectedExaminationWorkflowDefinitions = [
 const teacherAcademicDutyPermissionCodes: ReadonlySet<string> =
   new Set([
     ATTENDANCE_MARK_GENERATE_PROVISIONING.permission.code,
+    FORMATIVE_ACTIVITIES_FINALISE_PROVISIONING.permission.code,
     summativeExaminerMarksDefinition.permission.code,
     summativeMemberReviewDefinition.permission.code,
     summativeChairmanApprovalDefinition.permission.code,
@@ -395,7 +397,7 @@ function baseState(): TestState {
 }
 
 function withExaminationWorkflow(state: TestState): TestState {
-  for (const definition of [...EXAMINATION_WORKFLOW_PROVISIONING, ...ATTENDANCE_CORRECTION_PROVISIONING, ATTENDANCE_MARK_GENERATE_PROVISIONING]) {
+  for (const definition of [...EXAMINATION_WORKFLOW_PROVISIONING, ...ATTENDANCE_CORRECTION_PROVISIONING, ATTENDANCE_MARK_GENERATE_PROVISIONING, FORMATIVE_ACTIVITIES_FINALISE_PROVISIONING]) {
     const id = `workflow-${definition.permission.code}`;
     if (!state.permissions.some((p) => p.id === id)) state.permissions.push({ id, ...definition.permission });
     state.rolePermissions.push({ id: `link-${id}-${definition.targetRoleCode}`, permissionId: id,
@@ -848,6 +850,7 @@ test("definition set preserves existing authorities and adds exact Formative Tea
     ...expectedExaminationWorkflowDefinitions,
     ...ATTENDANCE_CORRECTION_PROVISIONING,
     ATTENDANCE_MARK_GENERATE_PROVISIONING,
+    FORMATIVE_ACTIVITIES_FINALISE_PROVISIONING,
   ]);
   assert.equal(
     new Set(
@@ -1496,6 +1499,7 @@ test("all absent definitions are provisioned and audited in one Serializable tra
     ...expectedExaminationWorkflowDefinitions.map((definition) => definition.permission.code),
     ATTENDANCE_CORRECTION_PROVISIONING[0]!.permission.code,
     ATTENDANCE_MARK_GENERATE_PROVISIONING.permission.code,
+    FORMATIVE_ACTIVITIES_FINALISE_PROVISIONING.permission.code,
   ]);
   assert.deepEqual(h.counters.rolePermissionCreateCodes, [
     manageDefinition.permission.code,
@@ -1513,6 +1517,7 @@ test("all absent definitions are provisioned and audited in one Serializable tra
     ...expectedExaminationWorkflowDefinitions.map((definition) => definition.permission.code),
     ...ATTENDANCE_CORRECTION_PROVISIONING.map((d) => d.permission.code),
     ATTENDANCE_MARK_GENERATE_PROVISIONING.permission.code,
+    FORMATIVE_ACTIVITIES_FINALISE_PROVISIONING.permission.code,
   ]);
   assert.deepEqual(h.counters.auditActions, [
     manageDefinition.auditAction,
@@ -1530,6 +1535,7 @@ test("all absent definitions are provisioned and audited in one Serializable tra
     ...expectedExaminationWorkflowDefinitions.map((definition) => definition.auditAction),
     ...ATTENDANCE_CORRECTION_PROVISIONING.map((d) => d.auditAction),
     ATTENDANCE_MARK_GENERATE_PROVISIONING.auditAction,
+    FORMATIVE_ACTIVITIES_FINALISE_PROVISIONING.auditAction,
   ]);
   assert.equal(h.counters.transactions, 1);
   assert.deepEqual(h.counters.isolationLevels, [
@@ -1552,6 +1558,7 @@ test("permission code mismatches including binding fail closed without committed
     summativeChairmanApprovalDefinition,
     formativeMarkAdjustDefinition,
     ATTENDANCE_MARK_GENERATE_PROVISIONING,
+    FORMATIVE_ACTIVITIES_FINALISE_PROVISIONING,
   ] as const) {
     const state = baseState();
     state.permissions.push({
@@ -1584,6 +1591,7 @@ test("equivalent semantics under incompatible codes including binding fail close
     summativeChairmanApprovalDefinition,
     formativeMarkAdjustDefinition,
     ATTENDANCE_MARK_GENERATE_PROVISIONING,
+    FORMATIVE_ACTIVITIES_FINALISE_PROVISIONING,
   ] as const) {
     const state = baseState();
     state.permissions.push({
@@ -2100,6 +2108,7 @@ test("sanitized multi-definition summary is deterministic, compact, and secret-f
         ...EXAMINATION_WORKFLOW_PROVISIONING.map((d) => d.permission.code),
         ...ATTENDANCE_CORRECTION_PROVISIONING.map((d) => d.permission.code),
         ATTENDANCE_MARK_GENERATE_PROVISIONING.permission.code,
+        FORMATIVE_ACTIVITIES_FINALISE_PROVISIONING.permission.code,
       ],
     );
     assert.deepEqual(
@@ -2120,6 +2129,7 @@ test("sanitized multi-definition summary is deterministic, compact, and secret-f
         ...EXAMINATION_WORKFLOW_PROVISIONING.map((d) => d.targetRoleCode),
         ...ATTENDANCE_CORRECTION_PROVISIONING.map((d) => d.targetRoleCode),
         ATTENDANCE_MARK_GENERATE_PROVISIONING.targetRoleCode,
+        FORMATIVE_ACTIVITIES_FINALISE_PROVISIONING.targetRoleCode,
       ],
     );
     assert.equal(summary.definitions[0]!.noOp, true);
@@ -2172,6 +2182,34 @@ test("Attendance generation provisions exactly one Teacher grant with audit and 
 test("Attendance generation permission audit failure rolls back the exact grant and prior provisioning writes", async () => {
   const initial = baseState();
   const h = makeHarness(initial, { failAuditForCode: "attendance.mark.generate_department" });
+  await assert.rejects(applyAuthorizationProvisioning(h.client, byCode));
+  assert.deepEqual(h.state(), initial);
+});
+
+test("Activities finalisation provisions exactly one Teacher grant with audit and repeat is a no-op", async () => {
+  const state = completeState();
+  const definition = FORMATIVE_ACTIVITIES_FINALISE_PROVISIONING;
+  const ids = state.permissions.filter((p) => p.code === definition.permission.code).map((p) => p.id);
+  state.permissions = state.permissions.filter((p) => !ids.includes(p.id));
+  state.rolePermissions = state.rolePermissions.filter((p) => !ids.includes(p.permissionId));
+  const h = makeHarness(state);
+  const planned = await planAuthorizationProvisioning(h.client, byCode);
+  assert.equal(h.counters.writes, 0);
+  assert.equal(planFor(planned, definition.permission.code).targetRole.code, "teacher");
+  await applyAuthorizationProvisioning(h.client, byCode);
+  assert.deepEqual(h.counters.permissionCreateCodes, ["formative.activities.finalise_department"]);
+  assert.deepEqual(h.counters.rolePermissionCreateCodes, ["formative.activities.finalise_department"]);
+  assert.deepEqual(h.counters.auditActions, ["authorization.formative-activities-finalise.provisioned"]);
+  const permission = h.state().permissions.find((p) => p.code === definition.permission.code)!;
+  assert.deepEqual(h.state().rolePermissions.filter((p) => p.permissionId === permission.id).map((p) => p.roleId), [teacherRoleA.id]);
+  const writes = h.counters.writes;
+  assert.equal(sanitizedProvisioningSummary(await applyAuthorizationProvisioning(h.client, byCode)).noOp, true);
+  assert.equal(h.counters.writes, writes);
+});
+
+test("Activities finalisation permission audit failure rolls back provisioning", async () => {
+  const initial = baseState();
+  const h = makeHarness(initial, { failAuditForCode: "formative.activities.finalise_department" });
   await assert.rejects(applyAuthorizationProvisioning(h.client, byCode));
   assert.deepEqual(h.state(), initial);
 });

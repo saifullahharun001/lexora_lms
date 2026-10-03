@@ -320,3 +320,25 @@ test("audit failure rolls back activity, mark revision and submission together w
   assert.equal(h.state.submissions.length, 0);
   assert.equal(h.state.items.length, 0);
 });
+
+
+test("post-Chairman database freeze errors become safe conflicts without changing Course Teacher admission", async () => {
+  const errors = [
+    new Prisma.PrismaClientKnownRequestError("database failure", { code: "P2010", clientVersion: "6",
+      meta: { code: "23514", message: "Finalised Activities sources are frozen" } }),
+    new Prisma.PrismaClientKnownRequestError("database failure", { code: "P2004", clientVersion: "6",
+      meta: { database_error: "Finalised Activities sources are frozen" } }),
+    new Prisma.PrismaClientUnknownRequestError('PostgresError { code: "23514", message: "Finalised Activities sources are frozen" }', { clientVersion: "6" }),
+  ];
+  for (const error of errors) {
+    const h = harness();
+    const service = new FormativeAssessmentService({ $transaction: async () => { throw error; } } as never,
+      { get: () => ({ principal: h.principal }) } as never, new AuthorizationService());
+    for (const write of [
+      () => service.saveMark("offering", "activity", "enrollment", markInput),
+      () => service.submitActivity("offering", "activity"),
+    ]) await assert.rejects(write(), (actual: unknown) => actual instanceof ConflictException && actual.message === "Finalised Activities sources are frozen");
+    h.principal.roleAssignments[0]!.role = "department_admin";
+    await assert.rejects(service.saveMark("offering", "activity", "enrollment", markInput), ForbiddenException);
+  }
+});

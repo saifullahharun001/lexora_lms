@@ -49,6 +49,7 @@ const EXPLICIT_DEPARTMENT_ADMIN_PERMISSION_POLICIES = {
 } as const;
 
 const EXPLICIT_TEACHER_PERMISSION_POLICIES = {
+  "formative.activities.finalise": { resource: "formative.activities", action: "finalise", scope: "department" },
   "attendance.mark.generate": { resource: "attendance.mark", action: "generate", scope: "department" },
   [PERMISSIONS.FORMATIVE.MARK_ADJUST]: {
     resource: "formative.mark",
@@ -306,8 +307,14 @@ export class AuthorizationService {
   }
 
   isAllowed(principal: PrincipalContext, requiredPolicy: string): boolean {
-    if (requiredPolicy === "attendance.mark.generate" &&
+    if (["attendance.mark.generate", "formative.activities.finalise"].includes(requiredPolicy) &&
       (!principal.isAuthenticated || principal.actorType !== "user" || !principal.actorId || !principal.activeDepartmentId)) return false;
+    if (requiredPolicy === "formative.activities.finalise" && !principal.permissions.some((p) =>
+      p.id && p.rolePermissionId && p.code === PERMISSIONS.FORMATIVE.ACTIVITIES_FINALISE_DEPARTMENT &&
+      p.resource === "formative.activities" && p.action === "finalise" && p.scope === "department" &&
+      isPermissionGrantFromLoadedRole(principal, p) && principal.roleAssignments.some((r) =>
+        r.role === "teacher" && r.departmentId === principal.activeDepartmentId &&
+        r.userRoleId === p.source.userRoleId && r.roleId === p.source.roleId))) return false;
     // Deliberately precedes all static policies and wildcard resolution.
     if (requiredPolicy === "attendance.record.correct") return correctionAuthorities(principal).length > 0;
     const admittedRoles =

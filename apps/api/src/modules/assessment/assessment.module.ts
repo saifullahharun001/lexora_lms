@@ -1,3 +1,6 @@
+import { FormativeActivitiesFinalisationController } from "./presentation/http/formative-activities-finalisation.controller";
+import { FormativeActivitiesFinalisationService } from "./application/services/formative-activities-finalisation.service";
+import { FormativeActivitiesFinalisationAuthorizerService } from "./application/services/formative-activities-finalisation-authorizer.service";
 import { EvidenceAccessService } from "@/common/academic-evidence/evidence-access.service";
 import { ExaminationRegistrationModule } from "../examination-registration/examination-registration.module";
 import { SummativeExaminationModule } from "../summative-examination/summative-examination.module";
@@ -20,14 +23,14 @@ import { QuizzesController } from "./presentation/http/quizzes.controller";
 
 @Module({
   imports: [ExaminationRegistrationModule, SummativeExaminationModule, AuthorizationModule, PrismaModule, RequestContextModule],
-  controllers: [ComprehensiveExaminationController,
+  controllers: [FormativeActivitiesFinalisationController, ComprehensiveExaminationController,
     FormativeAssessmentController,
     AssignmentsController,
     AssignmentSubmissionsController,
     QuizzesController,
     QuizAttemptsController
   ],
-  providers: [EvidenceAccessService, ComprehensiveExaminationService,
+  providers: [FormativeActivitiesFinalisationService, FormativeActivitiesFinalisationAuthorizerService, EvidenceAccessService, ComprehensiveExaminationService,
     FormativeAssessmentService,
     AssessmentService,
     {

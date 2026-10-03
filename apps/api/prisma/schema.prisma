@@ -494,6 +494,7 @@ enum SummativeCommitteeMemberReviewOutcome {
 }
 
 model Department {
+  FormativeActivitiesFinalisation_departmentId FormativeActivitiesFinalisation[] @relation("FormativeActivitiesFinalisation_departmentId")
   ComprehensiveFinalSource_department ComprehensiveFinalSource[] @relation("ComprehensiveFinalSource_department")
   ComprehensiveFinalResult_department ComprehensiveFinalResult[] @relation("ComprehensiveFinalResult_department")
   ComprehensiveFinalisation_department ComprehensiveFinalisation[] @relation("ComprehensiveFinalisation_department")
@@ -616,6 +617,8 @@ model Department {
 }
 
 model User {
+  FormativeActivitiesFinalResult_studentUserId FormativeActivitiesFinalResult[] @relation("FormativeActivitiesFinalResult_studentUserId")
+  FormativeActivitiesFinalisation_chairmanUserId FormativeActivitiesFinalisation[] @relation("FormativeActivitiesFinalisation_chairmanUserId")
   attendanceGenerations FormativeAttendanceGeneration[]
   ComprehensiveExamination_rosterLockedByUser ComprehensiveExamination[] @relation("ComprehensiveExamination_rosterLockedByUser")
   ComprehensiveExamination_markingStartedByUser ComprehensiveExamination[] @relation("ComprehensiveExamination_markingStartedByUser")
@@ -906,6 +909,7 @@ model BatchCoordinatorAssignment {
 }
 
 model Examination {
+  FormativeActivitiesFinalisation_examinationId FormativeActivitiesFinalisation[] @relation("FormativeActivitiesFinalisation_examinationId")
   attendanceGenerations FormativeAttendanceGeneration[]
   ComprehensiveExamination_examination ComprehensiveExamination[] @relation("ComprehensiveExamination_examination")
   ExaminationCandidateRegistration_examination ExaminationCandidateRegistration[] @relation("ExaminationCandidateRegistration_examination")
@@ -948,6 +952,7 @@ model Examination {
 }
 
 model ExaminationCourse {
+  FormativeActivitiesFinalisation_examinationCourseId FormativeActivitiesFinalisation[] @relation("FormativeActivitiesFinalisation_examinationCourseId")
   attendanceVersions FormativeAttendanceVersion[]
   @@unique([id, departmentId], map: "examination_course_comprehensive_scope_uq")
   ComprehensiveCourse_examinationCourse ComprehensiveCourse[] @relation("ComprehensiveCourse_examinationCourse")
@@ -1012,6 +1017,7 @@ model ExaminationCourse {
 }
 
 model ExaminationCommittee {
+  FormativeActivitiesFinalisation_committeeId FormativeActivitiesFinalisation[] @relation("FormativeActivitiesFinalisation_committeeId")
   attendanceGenerations FormativeAttendanceGeneration[]
   @@unique([id, departmentId], map: "examination_committee_comprehensive_scope_uq")
   ComprehensiveExamination_committee ComprehensiveExamination[] @relation("ComprehensiveExamination_committee")
@@ -1034,6 +1040,7 @@ model ExaminationCommittee {
 }
 
 model ExaminationCommitteeAssignment {
+  FormativeActivitiesFinalisation_chairmanAssignmentId FormativeActivitiesFinalisation[] @relation("FormativeActivitiesFinalisation_chairmanAssignmentId")
   attendanceGenerations FormativeAttendanceGeneration[]
   ComprehensiveExamination_rosterLockedByAssignment ComprehensiveExamination[] @relation("ComprehensiveExamination_rosterLockedByAssignment")
   ComprehensiveExamination_markingStartedByAssignment ComprehensiveExamination[] @relation("ComprehensiveExamination_markingStartedByAssignment")
@@ -1471,6 +1478,7 @@ model CurriculumCoursePrerequisite {
 }
 
 model CourseOffering {
+  FormativeActivitiesFinalisation_courseOfferingId FormativeActivitiesFinalisation[] @relation("FormativeActivitiesFinalisation_courseOfferingId")
   ordinaryAttendanceCorrections FormativeAttendanceCorrection[]
   attendanceVersions FormativeAttendanceVersion[]
   @@unique([id, departmentId, studentBatchId, academicTermId], map: "attendance_offering_scope_uq")
@@ -1618,6 +1626,7 @@ model TeacherCourseAssignment {
 }
 
 model Enrollment {
+  FormativeActivitiesFinalResult_enrollmentId FormativeActivitiesFinalResult[] @relation("FormativeActivitiesFinalResult_enrollmentId")
   activitySubmissionItems FormativeActivitySubmissionItem[]
   attendanceVersions FormativeAttendanceVersion[]
   attendanceCorrections FormativeAttendanceCorrection[]
@@ -3643,6 +3652,7 @@ enum FormativeTeacherSubmissionState {
 }
 
 model FormativeActivity {
+  FormativeActivitiesFinalSourceItem_activityId FormativeActivitiesFinalSourceItem[] @relation("FormativeActivitiesFinalSourceItem_activityId")
   submissions FormativeActivitySubmission[]
   id String @id @default(cuid())
   departmentId String @map("department_id")
@@ -3664,6 +3674,7 @@ model FormativeActivity {
 
 // Append-only revisions. A null raw/weighted mark explicitly represents missing evidence.
 model FormativeMarkEvidence {
+  FormativeActivitiesFinalSourceItem_markEvidenceId FormativeActivitiesFinalSourceItem[] @relation("FormativeActivitiesFinalSourceItem_markEvidenceId")
   activitySubmissionItems FormativeActivitySubmissionItem[]
   id String @id @default(cuid())
   departmentId String @map("department_id")
@@ -3738,6 +3749,8 @@ model FormativeSubmissionItem {
 
 // Immutable Teacher activity packages, not Chairman final results. Freshness is derived from live sources.
 model FormativeActivitySubmission {
+  @@unique([id, activityId, version, sourceFingerprint], map: "fa_final_submission_binding_uq")
+  FormativeActivitiesFinalSourceItem_submissionId FormativeActivitiesFinalSourceItem[] @relation("FormativeActivitiesFinalSourceItem_submissionId")
   id String @id @default(cuid())
   departmentId String @map("department_id")
   courseOfferingId String @map("course_offering_id")
@@ -3767,6 +3780,8 @@ model FormativeActivitySubmission {
 }
 
 model FormativeActivitySubmissionItem {
+  @@unique([id, submissionId, activityId, markEvidenceId], map: "fa_final_item_binding_uq")
+  FormativeActivitiesFinalSourceItem_submissionItemId FormativeActivitiesFinalSourceItem[] @relation("FormativeActivitiesFinalSourceItem_submissionItemId")
   id String @id @default(cuid())
   departmentId String @map("department_id")
   courseOfferingId String @map("course_offering_id")
@@ -4295,4 +4310,72 @@ model FormativeAttendanceGeneration {
   @@unique([departmentId, examinationId], map: "attendance_generation_exam_uq")
   @@unique([id, departmentId, examinationId, chairmanUserId], map: "attendance_generation_identity_uq")
   @@map("formative_attendance_generations")
+}
+
+model FormativeActivitiesFinalisation {
+  FormativeActivitiesFinalResult_finalisationId FormativeActivitiesFinalResult[] @relation("FormativeActivitiesFinalResult_finalisationId")
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  department Department @relation("FormativeActivitiesFinalisation_departmentId", fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "faf_finalisations_department_id_fk")
+  examinationId String @map("examination_id")
+  examination Examination @relation("FormativeActivitiesFinalisation_examinationId", fields: [examinationId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "faf_finalisations_examination_id_fk")
+  examinationCourseId String @map("examination_course_id")
+  examinationCourse ExaminationCourse @relation("FormativeActivitiesFinalisation_examinationCourseId", fields: [examinationCourseId, departmentId, examinationId, courseOfferingId], references: [id, departmentId, examinationId, courseOfferingId], onDelete: Restrict, onUpdate: Restrict, map: "faf_finalisations_examination_course_id_fk")
+  courseOfferingId String @map("course_offering_id") @unique(map: "fa_final_offering_uq")
+  courseOffering CourseOffering @relation("FormativeActivitiesFinalisation_courseOfferingId", fields: [courseOfferingId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "faf_finalisations_course_offering_id_fk")
+  committeeId String @map("committee_id")
+  committee ExaminationCommittee @relation("FormativeActivitiesFinalisation_committeeId", fields: [committeeId, departmentId, examinationId], references: [id, departmentId, examinationId], onDelete: Restrict, onUpdate: Restrict, map: "faf_finalisations_committee_id_fk")
+  chairmanAssignmentId String @map("chairman_assignment_id")
+  chairmanAssignment ExaminationCommitteeAssignment @relation("FormativeActivitiesFinalisation_chairmanAssignmentId", fields: [chairmanAssignmentId, departmentId, committeeId], references: [id, departmentId, committeeId], onDelete: Restrict, onUpdate: Restrict, map: "faf_finalisations_chairman_assignment_id_fk")
+  chairmanUserId String @map("chairman_user_id")
+  chairmanUser User @relation("FormativeActivitiesFinalisation_chairmanUserId", fields: [chairmanUserId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "faf_finalisations_chairman_user_id_fk")
+  chairmanAssignedAtSnapshot DateTime @map("chairman_assigned_at_snapshot")
+  /// Exact finalisation-time authorization snapshots; subsequent grant removal is permitted.
+  userRoleId String @map("user_role_id")
+  roleId String @map("role_id")
+  permissionId String @map("permission_id")
+  rolePermissionId String @map("role_permission_id")
+  authoritySnapshotJson Json @map("authority_snapshot_json")
+  ruleVersionCode String @map("rule_version_code") @db.VarChar(64)
+  activityCount Int @map("activity_count")
+  resultCount Int @map("result_count")
+  sourceFingerprint String @map("source_fingerprint") @db.VarChar(64)
+  scopeJson Json @map("scope_json")
+  finalisedAt DateTime @map("finalised_at") @default(now())
+  @@map("formative_activities_finalisations")
+}
+
+model FormativeActivitiesFinalResult {
+  FormativeActivitiesFinalSourceItem_resultId FormativeActivitiesFinalSourceItem[] @relation("FormativeActivitiesFinalSourceItem_resultId")
+  id String @id @default(cuid())
+  finalisationId String @map("finalisation_id")
+  finalisation FormativeActivitiesFinalisation @relation("FormativeActivitiesFinalResult_finalisationId", fields: [finalisationId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "faf_final_results_finalisation_id_fk")
+  enrollmentId String @map("enrollment_id")
+  enrollment Enrollment @relation("FormativeActivitiesFinalResult_enrollmentId", fields: [enrollmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "faf_final_results_enrollment_id_fk")
+  studentUserId String @map("student_user_id")
+  studentUser User @relation("FormativeActivitiesFinalResult_studentUserId", fields: [studentUserId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "faf_final_results_student_user_id_fk")
+  mark Decimal @map("mark") @db.Decimal(6,2)
+  fullMark Decimal @map("full_mark") @db.Decimal(6,2)
+  sourceFingerprint String @map("source_fingerprint") @db.VarChar(64)
+  @@unique([finalisationId, enrollmentId], map: "fa_final_result_enrollment_uq")
+  @@map("formative_activities_final_results")
+}
+
+model FormativeActivitiesFinalSourceItem {
+  id String @id @default(cuid())
+  resultId String @map("result_id")
+  result FormativeActivitiesFinalResult @relation("FormativeActivitiesFinalSourceItem_resultId", fields: [resultId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "faf_final_source_items_result_id_fk")
+  activityId String @map("activity_id")
+  activity FormativeActivity @relation("FormativeActivitiesFinalSourceItem_activityId", fields: [activityId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "faf_final_source_items_activity_id_fk")
+  submissionId String @map("submission_id")
+  submission FormativeActivitySubmission @relation("FormativeActivitiesFinalSourceItem_submissionId", fields: [submissionId, activityId, submissionVersion, submissionFingerprint], references: [id, activityId, version, sourceFingerprint], onDelete: Restrict, onUpdate: Restrict, map: "faf_final_source_items_submission_id_fk")
+  submissionVersion Int @map("submission_version")
+  submissionFingerprint String @map("submission_fingerprint") @db.VarChar(64)
+  submissionItemId String @map("submission_item_id")
+  submissionItem FormativeActivitySubmissionItem @relation("FormativeActivitiesFinalSourceItem_submissionItemId", fields: [submissionItemId, submissionId, activityId, markEvidenceId], references: [id, submissionId, activityId, markEvidenceId], onDelete: Restrict, onUpdate: Restrict, map: "faf_final_source_items_submission_item_id_fk")
+  markEvidenceId String @map("mark_evidence_id")
+  markEvidence FormativeMarkEvidence @relation("FormativeActivitiesFinalSourceItem_markEvidenceId", fields: [markEvidenceId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "faf_final_source_items_mark_evidence_id_fk")
+  weightedMark Decimal @map("weighted_mark") @db.Decimal(6,2)
+  @@unique([resultId, activityId], map: "fa_final_source_activity_uq")
+  @@map("formative_activities_final_source_items")
 }

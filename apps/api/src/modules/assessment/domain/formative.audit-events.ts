@@ -1,4 +1,5 @@
 export const FORMATIVE_AUDIT_EVENTS = {
+  ACTIVITIES_CHAIRMAN_FINALISED: "formative.activities.chairman-finalised",
   ACTIVITY_CREATED: "formative.activity.created",
   ACTIVITY_UPDATED: "formative.activity.updated",
   ACTIVITY_MARKING_STARTED: "formative.activity.marking-started",

@@ -175,6 +175,13 @@ export const EXAMINATION_WORKFLOW_PROVISIONING = EXAMINATION_PERMISSION_DEFINITI
     targetRoleCode: `${d.resource}.${d.action}` === EXAMINATION_POLICIES.APPOINT ? PLATFORM_ROLES.DEPARTMENT_ADMIN : PLATFORM_ROLES.TEACHER,
     auditAction: `authorization.${d.resource}.${d.action}.provisioned` }));
 
+export const FORMATIVE_ACTIVITIES_FINALISE_PROVISIONING = {
+  permission: { code: PERMISSIONS.FORMATIVE.ACTIVITIES_FINALISE_DEPARTMENT,
+    resource: "formative.activities", action: "finalise", scope: PermissionScope.DEPARTMENT,
+    description: "Finalise one complete Activities /30 offering batch through its exact current Examination Committee Chairman",
+  }, targetRoleCode: PLATFORM_ROLES.TEACHER, auditAction: "authorization.formative-activities-finalise.provisioned",
+} as const;
+
 export const ATTENDANCE_MARK_GENERATE_PROVISIONING = {
   permission: {
     code: PERMISSIONS.ATTENDANCE.MARK_GENERATE_DEPARTMENT,
@@ -209,6 +216,7 @@ export const AUTHORIZATION_PROVISIONING_DEFINITIONS = [
   ...EXAMINATION_WORKFLOW_PROVISIONING,
   ...ATTENDANCE_CORRECTION_PROVISIONING,
   ATTENDANCE_MARK_GENERATE_PROVISIONING,
+  FORMATIVE_ACTIVITIES_FINALISE_PROVISIONING,
 ] as const;
 
 export type AuthorizationProvisioningDefinition =

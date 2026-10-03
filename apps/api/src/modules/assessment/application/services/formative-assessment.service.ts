@@ -316,6 +316,16 @@ export class FormativeAssessmentService {
         return work(tx, { departmentId, actorUserId: principal.actorId, teacherAssignmentId: assignment.id, assignmentAssignedAt: assignment.assignedAt, configuration });
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError &&
+        (error.meta?.code === "23514" || error.code === "P2004") &&
+        [error.meta?.message, error.meta?.database_error].some((message) =>
+          String(message).includes("Finalised Activities sources are frozen"))) {
+        throw new ConflictException("Finalised Activities sources are frozen");
+      }
+      if (error instanceof Prisma.PrismaClientUnknownRequestError &&
+        /message: "Finalised Activities sources are frozen"/.test(error.message)) {
+        throw new ConflictException("Finalised Activities sources are frozen");
+      }
       if (error instanceof RangeError) throw new BadRequestException(error.message);
       if (error instanceof Prisma.PrismaClientKnownRequestError && ["P2002", "P2034"].includes(error.code)) {
         throw new ConflictException("Concurrent or duplicate formative operation; reload before retrying");

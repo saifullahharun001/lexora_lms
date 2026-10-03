@@ -188,6 +188,7 @@ export const PERMISSIONS = {
       "system-configuration.integration.update_department"
   },
   FORMATIVE: {
+    ACTIVITIES_FINALISE_DEPARTMENT: "formative.activities.finalise_department",
     MARK_ADJUST: "formative.mark.adjust",
   },
   SUMMATIVE_EXAMINATION: {
