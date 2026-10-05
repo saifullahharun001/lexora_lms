@@ -3186,3 +3186,62 @@ materialisation from the exact:
 - Chairman-finalised Comprehensive Examination `/5`.
 
 No separate human Final Formative `/40` approval action is introduced.
+
+<!-- formative-step4-spec-runtime-closure-20261005 -->
+
+## Formative Activities `/30` Implementation and Runtime Supersession — 2026-10-05
+
+This implementation/runtime checkpoint supersedes earlier status wording in this
+specification that treated the current activity-level Activities redesign or Chairman
+Activities `/30` finalisation as local-only or canonical-server-runtime pending.
+
+It does not change the confirmed academic policy.
+
+The current implemented Activities architecture remains:
+
+- Course Teacher activity-level marking/submission;
+- reason-required authorised pre-Chairman correction with preserved evidence history;
+- stale predecessor package plus immutable successor resubmission;
+- exact configured `/30` budget;
+- server-derived weighted marks;
+- one Course Offering as the Chairman finalisation batch;
+- the full current approved/unarchived offering roster finalised atomically;
+- exact current internal Examination Committee Chairman authority;
+- immutable authoritative final result/source/authority evidence;
+- post-finalisation source/configuration/roster freeze protections;
+- no ordinary regenerate/refinalise path.
+
+The current Step 4A and Step 4B implementation is now deployed and targeted
+authenticated canonical-server runtime verified at application HEAD:
+
+`b7a80f8ac3c0d34363352ce213cd56e8f9727e2e`
+
+The retained canonical runtime example produced:
+
+`Activities /30 = 24.00 / 30.00`
+
+under:
+
+`FORMATIVE_ACTIVITIES_FINAL_30_SUM_V1`
+
+The successful finalisation binds exactly two current activity submission packages and
+one current enrollment result. The success audit
+`formative.activities.chairman-finalised` was persisted exactly once. Duplicate
+offering-wide finalisation and client-supplied final mark/source data were rejected.
+Controlled PostgreSQL mutation probes confirmed the authoritative finalisation/result/
+source boundary remains immutable.
+
+This is a targeted deployed-runtime closure. Broader Step 4A `27/27` and Step 4B
+`17/17` disposable PostgreSQL verification remains separate evidence for wider
+migration, rollback, database-guard and concurrency behavior.
+
+The authoritative Final Formative rule remains unchanged:
+
+`Final Formative /40 = Finalised Activities /30 + Generated/Frozen Attendance /5 + Chairman-Finalised Comprehensive Examination /5`
+
+The Final Formative `/40` must be materialised automatically from those exact
+authoritative sources. There is no separate human Final Formative `/40` approval
+action.
+
+This checkpoint does not claim complete Formative `/40`, final-result integration,
+publication, frontend completion or production hardening.

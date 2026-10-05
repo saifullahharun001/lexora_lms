@@ -3474,3 +3474,76 @@ After that, the remaining sequence is:
 
 Frontend completion, canonical server promotion and cloud/public production hardening
 remain separate work.
+
+<!-- formative-step4-roadmap-runtime-closure-20261005 -->
+
+## Formative Activities `/30` Canonical Runtime Closure — 2026-10-05
+
+This later roadmap checkpoint supersedes earlier current-status wording that described
+the current Step 4A activity-level Teacher workflow or Step 4B Chairman finalisation as
+canonical-server runtime pending.
+
+Runtime-verified application HEAD:
+
+`b7a80f8ac3c0d34363352ce213cd56e8f9727e2e`
+
+Implementation commits remain:
+
+- Step 4A:
+  `a86bf649b9d01216676772b359e4271298cff85e`;
+- Step 4B:
+  `1ff9c60b07f91fb207b588a6d33ea17020728e8a`.
+
+Current Activities `/30` classification:
+
+**IMPLEMENTED + DEPLOYED + TARGETED AUTHENTICATED CANONICAL-SERVER RUNTIME VERIFIED**
+
+The retained runtime fixture now contains one authoritative Chairman-finalised
+Activities result of:
+
+`24.00 / 30.00`
+
+under:
+
+`FORMATIVE_ACTIVITIES_FINAL_30_SUM_V1`
+
+The deployed runtime campaign verified the current Course Teacher activity-level
+submission/correction path, stale-package/successor behavior, exact Chairman authority,
+principal department isolation, rejection of client-supplied final source/value data,
+offering-wide finalisation, duplicate-finalisation rejection, exact immutable source
+binding, transaction-coupled audit evidence and post-finalisation database
+immutability probes.
+
+This runtime classification is intentionally narrow. Wider database, rollback and
+concurrency guarantees remain supported by the separately preserved Step 4A `27/27`
+and Step 4B `17/17` disposable PostgreSQL campaigns.
+
+The Activities `/30` redesign is therefore closed within its current tested
+backend/runtime boundary.
+
+The complete Formative Assessment `/40` is not complete.
+
+The next focused academic backend work is:
+
+**automatic authoritative Final Formative `/40` materialisation**
+
+from the exact:
+
+- finalised Activities `/30`;
+- generated/frozen Attendance `/5`;
+- Chairman-finalised Comprehensive Examination `/5`.
+
+No separate human Final Formative `/40` approval action is introduced.
+
+Subsequent separate boundaries remain:
+
+1. authoritative locked Formative `/40` + Chairman-approved locked Summative `/60`
+   integration;
+2. complete course-result Chairman finalisation;
+3. required official result-document generation;
+4. Controller of Examinations publication;
+5. immutable/versioned published-result registry and downstream GPA/CGPA/transcript
+   consumption.
+
+Frontend completion, correction/amendment hardening outside the verified boundaries and
+cloud/public production hardening remain separate work.

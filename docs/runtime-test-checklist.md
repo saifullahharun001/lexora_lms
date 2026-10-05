@@ -40555,3 +40555,241 @@ Subsequent separate boundaries remain:
 
 Canonical server deployment/authenticated runtime verification for Step 4B remains a
 separate pending promotion phase.
+
+<!-- formative-step4-canonical-runtime-closure-20261005 -->
+
+## Formative Activities Steps 4A/4B — Canonical Authenticated Server Runtime Closure — 2026-10-05
+
+This later checkpoint supersedes earlier current-status wording that classified the
+current activity-level Formative Activities Step 4A and Chairman Step 4B boundaries as
+canonical-server deployment/authenticated-runtime pending.
+
+Historical whole-package Formative evidence, the Step 4A disposable PostgreSQL
+closure, the Step 4B batching decision and the Step 4B disposable PostgreSQL closure
+remain preserved as point-in-time evidence.
+
+Implementation identities remain:
+
+- Step 4A activity-level Teacher submission/correction:
+  `a86bf649b9d01216676772b359e4271298cff85e`;
+- Step 4B Chairman Activities `/30` finalisation:
+  `1ff9c60b07f91fb207b588a6d33ea17020728e8a`;
+- Step 4B batching/policy predecessor:
+  `1309127703bc8f7a531420a85b4766c062710cd5`.
+
+Canonical runtime HEAD for this closure:
+
+`b7a80f8ac3c0d34363352ce213cd56e8f9727e2e`
+
+Current narrow classification:
+
+**FORMATIVE ACTIVITIES STEP 4A + STEP 4B ARE IMPLEMENTED + DEPLOYED +
+TARGETED AUTHENTICATED CANONICAL-SERVER RUNTIME VERIFIED.**
+
+This classification is limited to the current activity-level Activities `/30`
+submission/correction and Chairman finalisation boundary. It does not classify the
+complete Formative Assessment `/40`, complete result workflow, frontend or production
+hardening as complete.
+
+### Runtime fixture and preserved authoritative evidence
+
+Runtime fixture tag:
+
+`20261005T145422Z_50f921`
+
+Relevant runtime identities:
+
+- Department: `dept_law_test`;
+- Course Offering: `f4rt_20261005T145422Z_50f921_offering`;
+- ExaminationCourse: `f4rt_20261005T145422Z_50f921_exam_course`;
+- Enrollment: `f4rt_20261005T145422Z_50f921_enrollment`;
+- Course Teacher: `f4rt_20261005T145422Z_50f921_teacher`;
+- Chairman: `f4rt_20261005T145422Z_50f921_chairman`.
+
+The retained Step 4B authoritative finalisation is:
+
+`cmuvgcht300072i4dw35tv2ji`
+
+Final Activities result:
+
+`24.00 / 30.00`
+
+Finalisation rule:
+
+`FORMATIVE_ACTIVITIES_FINAL_30_SUM_V1`
+
+### Step 4A authenticated runtime verification
+
+The current activity-level Course Teacher workflow was exercised through the deployed
+NestJS HTTP boundary against the ordinary PostgreSQL runtime database.
+
+Verified runtime behavior included:
+
+- real Course Teacher login returned HTTP `201`;
+- two Activities were created successfully;
+- cumulative configuration above `/30` was rejected with HTTP `400`;
+- both Activities transitioned to `MARKING`;
+- server-derived weighted mark arithmetic was exercised;
+- Activity A revision 1 persisted `12/20 -> 9/15`;
+- Activity A package version 1 submitted successfully;
+- unchanged duplicate submission was rejected with HTTP `409`;
+- ordinary post-submission revision was rejected with HTTP `403`;
+- adjustment without a reason was rejected with HTTP `400`;
+- exact-authority reasoned adjustment succeeded and produced
+  `16/20 -> 12/15`;
+- the old Activity A package became stale rather than being rewritten;
+- Activity A version 2 was submitted as the current successor;
+- Activity B persisted `8/10 -> 12/15` and submitted successfully;
+- immutable Activity A version history and Activity B current package were read back
+  successfully.
+
+Final retained Step 4A evidence for the fixture was:
+
+- Formative Activities: `2`;
+- both Activities in `MARKING`;
+- configured Activities weight: `30.00`;
+- immutable mark-evidence rows: `3`;
+- activity-level submission packages: `3`;
+- current packages: `2`;
+- stale packages: `1`;
+- activity submission items: `3`;
+- legacy whole-package Teacher submissions: `0`;
+- current authoritative source arithmetic before Chairman finalisation:
+  `24.00 / 30.00`.
+
+Typed success-audit cardinality for the Step 4A campaign was:
+
+- `formative.activity.created`: `2`;
+- `formative.activity.marking-started`: `2`;
+- `formative.mark.recorded`: `2`;
+- `formative.mark.adjusted`: `1`;
+- `formative.activity.teacher-submitted`: `3`.
+
+Temporary authentication material was not printed. The temporary Teacher password hash
+was cleared and active runtime sessions returned to zero after the campaign.
+
+### Step 4B authenticated Chairman runtime verification
+
+The exact current Examination Committee Chairman finalisation boundary was then
+exercised through the deployed HTTP API using the retained Step 4A evidence.
+
+Verified HTTP/security behavior:
+
+- unauthenticated finalisation-workspace request returned HTTP `401`;
+- real Chairman login returned HTTP `201`;
+- exact Chairman finalisation workspace returned HTTP `200`;
+- forged `x-department-id` did not override the authenticated Chairman's department
+  scope;
+- client-supplied final mark was rejected with HTTP `400`;
+- client-supplied source fingerprint was rejected with HTTP `400`;
+- authoritative offering-wide Chairman finalisation returned HTTP `201`;
+- duplicate offering-wide finalisation was rejected with HTTP `409`.
+
+The successful finalisation persisted:
+
+- activity count: `2`;
+- result count: `1`;
+- exact current source packages: `2`;
+- stale source packages bound into finalisation: `0`;
+- source weighted total: `24.00`;
+- authoritative enrollment result: `24.00 / 30.00`;
+- source submission versions: `1` and `2`;
+- complete authority snapshot/provenance;
+- complete scope snapshot/provenance.
+
+The exact required success audit:
+
+`formative.activities.chairman-finalised`
+
+was persisted exactly once for the authoritative finalisation.
+
+Temporary Chairman authentication was cleaned after the campaign:
+
+- password hash cleared;
+- active runtime sessions: `0`;
+- no raw access token, refresh token, password or password hash was printed.
+
+### Post-finalisation immutability runtime probes
+
+Controlled direct-PostgreSQL no-op mutation probes confirmed the deployed database
+protections reject ordinary UPDATE attempts against:
+
+- the finalisation parent;
+- the final result;
+- the final source item;
+- the finalised Formative Activity source.
+
+After those negative probes, authoritative evidence cardinality remained unchanged:
+
+- finalisation parent: `1`;
+- result: `1`;
+- final source items: `2`;
+- matching success audit: `1`.
+
+The authoritative final Activities evidence therefore remained intact.
+
+### Platform safety after runtime closure
+
+Final server posture remained:
+
+- repository: clean and aligned before the documentation-only follow-up;
+- application HEAD/origin at the verified runtime commit;
+- Direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`;
+- NestJS application listener: `127.0.0.1:4000` only;
+- PostgreSQL remained the ordinary local runtime database;
+- no raw application/database secret was recorded in this evidence.
+
+A power interruption occurred between Step 4A and Step 4B. A separate read-only
+post-power-cut preflight confirmed service recovery, repository continuity, intact
+Step 4A durable evidence, intact Chairman fixture and zero Step 4B rows before
+finalisation. The PM2 process received a normal new process ID after restart; this did
+not change the application/runtime identity.
+
+### Evidence boundary
+
+This canonical-server campaign is intentionally classified as **targeted authenticated
+runtime verification**.
+
+It does not claim that every database/concurrency/rollback matrix was repeated on the
+ordinary server.
+
+Broader protection evidence remains separately preserved from:
+
+- the Step 4A fresh disposable PostgreSQL `18.6` campaign:
+  `27/27 PASS`;
+- the Step 4B fresh real PostgreSQL `18.6` `Asia/Dhaka` campaign:
+  `17/17 PASS`.
+
+Those campaigns cover wider migration, rollback, direct-database, stale-source,
+authority-expiry, transaction, audit-failure, roster, freeze and concurrency cases.
+The canonical runtime campaign adds deployed authenticated HTTP and ordinary-database
+evidence; it does not replace or inflate the scope of those earlier campaigns.
+
+### Current Activities `/30` status and next boundary
+
+Within the current tested backend/runtime boundary, the Formative Activities redesign is
+now closed across:
+
+1. Step 4A — activity-level Course Teacher submission/correction; and
+2. Step 4B — Examination Committee Chairman authoritative Activities `/30`
+   finalisation/freeze.
+
+The complete Formative Assessment remains **PARTIAL / ACTIVE BACKEND DEVELOPMENT**.
+
+The next focused academic backend boundary is:
+
+**automatic authoritative Final Formative `/40` materialisation**
+
+from the exact immutable authoritative sources:
+
+- finalised Activities `/30`;
+- generated/frozen Attendance `/5`;
+- Chairman-finalised Comprehensive Examination `/5`.
+
+There is no separate human Final Formative `/40` approval/finalisation action.
+
+Still outside this closure are complete Formative `/40`, Formative/Summative
+integration, complete course-result finalisation, official result-document generation,
+Controller publication, published-result consumption, frontend completion and broader
+cloud/public production hardening.
