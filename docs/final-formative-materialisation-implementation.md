@@ -851,3 +851,145 @@ Still pending:
 - Controller publication;
 - published-result registry/downstream GPA/CGPA/transcript integration;
 - frontend and broader production hardening.
+
+<!-- final-formative-canonical-runtime-supersession-20261007 -->
+
+## Canonical authenticated deployment/runtime supersession — 2026-10-07
+
+This checkpoint supersedes earlier **current-status** wording in this document that
+described the Final Formative implementation as uncommitted, not ordinary-database
+deployed, not PM2 activated, or not canonical authenticated-runtime verified.
+
+Historical pre-deployment evidence remains valid and preserved above.
+
+Runtime-verified implementation commit:
+
+`9c407ef4da4eaeb777a72e8cc7ec056f557fcb80`
+
+Current migration:
+
+`202610060001_automatic_final_formative`
+
+Current deployed migration SHA-256:
+
+`a504444c4d7197a0a21f5d882e84eca94ee7bec81fa5d8602d7dc6f395283d63`
+
+Current classification:
+
+**IMPLEMENTED + COMMITTED + PUSHED + ORDINARY-DB DEPLOYED + PM2 ACTIVATED +
+TARGETED AUTHENTICATED CANONICAL-SERVER RUNTIME VERIFIED FOR THE TESTED
+COMPREHENSIVE IDEMPOTENT TERMINAL-OWNER PATH**
+
+### Deployment and activation
+
+The exact committed implementation was promoted to the canonical Ubuntu runtime.
+
+The ordinary `lexora_lms` database received the target migration successfully and the
+deployed application was activated under PM2.
+
+Verified runtime posture included:
+
+- repository HEAD/origin:
+  `9c407ef4da4eaeb777a72e8cc7ec056f557fcb80`;
+- clean/aligned repository;
+- PM2 application online;
+- Direct API HTTP `200`;
+- Nginx API HTTP `200`;
+- NestJS listener restricted to `127.0.0.1:4000`;
+- no automatic startup materialisation before the controlled terminal-owner action.
+
+### Canonical authenticated materialisation
+
+The successful campaign began with no Final Formative aggregate/audit for the retained
+context and with authoritative source values:
+
+`24.00 + 3.50 + 4.00`
+
+The deployed application then verified:
+
+- unauthenticated terminal-owner call: HTTP `401`;
+- authenticated Teacher call to Chairman-only finalisation: safe HTTP `404`;
+- denied Teacher request created no Final Formative evidence;
+- authenticated current Chairman terminal-owner call: HTTP `201`;
+- exactly one immutable Final Formative aggregate:
+  `31.50 / 40.00`;
+- exact composition rule:
+  `FINAL_FORMATIVE_40_SUM_V1`;
+- exact component source/provenance bindings;
+- exactly one protected `SERVICE` success audit;
+- existing Comprehensive finalisation/audit remained exactly one.
+
+An authenticated repeated Chairman call with forged
+`x-department-id: dept_bus_test` remained bound to the real LAW principal scope:
+
+- aggregate/audit remained `1|1`;
+- Comprehensive finalisation/audit remained `1|1`;
+- foreign-department aggregate count remained `0`.
+
+The materialised aggregate rejected ordinary `UPDATE` and `DELETE`.
+Its protected success audit also rejected ordinary `UPDATE` and `DELETE`.
+
+Temporary authentication state was restored after the campaign:
+
+`2 NULL password hashes | 0 active sessions`
+
+No raw password, hash, token, database credential or other authentication secret was
+persisted in documentation.
+
+### Recovery evidence
+
+Validated private pre-runtime backup:
+
+`/home/sh002/lexora-private-backups/lexora_lms-before-ff40-canonical-runtime-20261007T162924Z.dump`
+
+SHA-256:
+
+`614e213470a9853376eb0d298609f2e27bbbe9f9baefc6dfbd5cf144e45812cb`
+
+File mode:
+
+`0600`
+
+The backup passed custom-format archive validation and remains outside Git.
+
+### Runtime evidence boundary
+
+This runtime closure is deliberately narrow.
+
+It directly demonstrates the deployed production Comprehensive terminal-owner
+integration invoking automatic Final Formative reconciliation through the tested
+**existing-finalisation idempotent path** against the ordinary PostgreSQL database.
+
+It does not separately claim that a newly created first-time Comprehensive finalisation
+was observed in the same canonical runtime campaign.
+
+It also does not replace the wider pre-deployment PostgreSQL matrix covering source
+arrival order, concurrent materialisation, rollback, malformed/stale/conflicting source
+packages, database constraints and audit-coupling failure cases.
+
+Those broader cases remain supported by the separately preserved current-byte
+PostgreSQL verification evidence. The canonical campaign supplies the missing deployed,
+authenticated HTTP/ordinary-database evidence for the tested path.
+
+### Next boundary
+
+The Final Formative implementation itself is closed within this tested backend/runtime
+scope.
+
+The next academic implementation boundary is not another `/40` approval layer.
+
+It is:
+
+**authoritative immutable Final Formative `/40` + Chairman-approved/final-locked
+Summative `/60` integration**
+
+The later complete-result engine must consume those two already-authoritative sources,
+preserve their exact identities/versions, and enforce the confirmed separate component
+pass thresholds:
+
+- Formative: `16/40`;
+- Summative: `24/60`.
+
+Complete course-result Chairman finalisation, official documents, Controller publication,
+published-result registry, GPA/CGPA/transcript consumption, frontend completion and
+broader production hardening remain separate later work.

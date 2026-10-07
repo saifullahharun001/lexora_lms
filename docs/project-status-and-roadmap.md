@@ -3709,3 +3709,105 @@ That later result layer must continue to preserve the confirmed separate pass th
 Complete course-result Chairman finalisation, official documents, Controller
 publication, published-result registry, GPA/CGPA/transcript consumption, frontend and
 broader production hardening remain separate later boundaries.
+
+<!-- final-formative-canonical-runtime-roadmap-closure-20261007 -->
+
+## Automatic authoritative Final Formative `/40` — canonical runtime roadmap closure — 2026-10-07
+
+This checkpoint supersedes earlier **current roadmap/status** wording that still places
+the Final Formative implementation before commit, ordinary deployment, PM2 activation,
+or canonical authenticated runtime verification.
+
+Historical roadmap entries remain preserved as point-in-time evidence.
+
+Runtime-verified implementation commit:
+
+`9c407ef4da4eaeb777a72e8cc7ec056f557fcb80`
+
+Current Final Formative classification:
+
+**IMPLEMENTED + COMMITTED + PUSHED + ORDINARY-DB DEPLOYED + PM2 ACTIVATED +
+TARGETED AUTHENTICATED CANONICAL-SERVER RUNTIME VERIFIED FOR THE TESTED
+COMPREHENSIVE IDEMPOTENT TERMINAL-OWNER PATH**
+
+Canonical runtime evidence includes:
+
+- pre-action aggregate/audit: `0|0`;
+- retained authoritative sources:
+  `24.00 + 3.50 + 4.00`;
+- unauthenticated terminal-owner request:
+  HTTP `401`;
+- Teacher attempt at Chairman finalisation:
+  safe HTTP `404`, no mutation;
+- Chairman terminal-owner request:
+  HTTP `201`;
+- authoritative Final Formative:
+  `31.50 / 40.00`;
+- rule:
+  `FINAL_FORMATIVE_40_SUM_V1`;
+- exact component source bindings;
+- protected `SERVICE` success audit:
+  exactly `1`;
+- authenticated repeat remained idempotent:
+  aggregate/audit `1|1`;
+- forged department header did not override the authenticated LAW scope;
+- foreign-department aggregate count:
+  `0`;
+- aggregate UPDATE/DELETE:
+  blocked;
+- protected audit UPDATE/DELETE:
+  blocked;
+- temporary auth cleanup:
+  `2|0`;
+- Direct and Nginx API health:
+  HTTP `200`;
+- API listener:
+  `127.0.0.1:4000` only;
+- repository:
+  clean/aligned.
+
+This is a targeted runtime closure. The successful canonical materialisation was
+observed through the existing Comprehensive-finalisation idempotent terminal-owner path.
+A brand-new first-time Comprehensive finalisation was not separately forced in this
+canonical campaign, and exhaustive disposable PostgreSQL concurrency/rollback matrices
+were not repeated against the ordinary database.
+
+Those limitations must remain explicit and must not be converted into broader
+production-readiness claims.
+
+### Current roadmap
+
+Automatic authoritative Final Formative `/40` is no longer the next implementation
+target.
+
+The next focused academic backend boundary is now:
+
+**authoritative immutable Final Formative `/40` + Chairman-approved/final-locked
+Summative `/60` integration**
+
+That boundary must:
+
+- consume the exact immutable Final Formative `/40`;
+- consume the exact Chairman-approved/final-locked Summative `/60`;
+- preserve both source identities and versions;
+- derive the complete course total server-side;
+- enforce the confirmed component passes separately:
+  - Formative: `16/40`;
+  - Summative: `24/60`;
+- never reconstruct either authoritative component from lower-level raw marks;
+- never accept client-provided authoritative component totals.
+
+Later separate boundaries remain:
+
+1. complete course-result grade/grade-point derivation;
+2. Examination Committee Chairman finalisation of the complete result;
+3. required official result-document generation;
+4. Controller of Examinations publication;
+5. immutable/versioned published-result registry;
+6. downstream student result / GPA / CGPA / transcript consumption;
+7. controlled correction/amendment hardening around completed authority boundaries;
+8. frontend completion;
+9. broader cloud/public production hardening.
+
+Mandatory Summative 2FA and formal candidate/exam-roll/physical-script governance also
+remain pending and must not be implied complete by the Final Formative runtime closure.

@@ -458,3 +458,65 @@ This clarification does not change the later confirmed result architecture:
 - published-result registry;
 - downstream GPA/CGPA/transcript/result consumption;
 - replaceable result-provider boundary.
+
+
+<!-- final-formative-runtime-architecture-supersession-20261007 -->
+
+## Runtime Evidence Supersession — authoritative Final Formative `/40` — 2026-10-07
+
+This note updates runtime evidence classification only. It does not change the confirmed
+result-finalisation/publication architecture.
+
+Automatic authoritative Final Formative `/40` is now implemented, committed, pushed,
+ordinary-database deployed, PM2 activated, and targeted authenticated canonical-server
+runtime verified for the tested Comprehensive idempotent terminal-owner path at:
+
+`9c407ef4da4eaeb777a72e8cc7ec056f557fcb80`
+
+The canonical runtime produced:
+
+`24.00 / 30 + 3.50 / 5 + 4.00 / 5 = 31.50 / 40`
+
+under:
+
+`FINAL_FORMATIVE_40_SUM_V1`
+
+The aggregate retained exact immutable component provenance, created exactly one
+protected `SERVICE` success audit, remained idempotent under authenticated repeat,
+preserved principal-derived department scope despite a forged department header, and
+rejected ordinary aggregate/audit UPDATE and DELETE attempts.
+
+This does not change the architectural separation between result processing and
+published-result consumption.
+
+The next result-processing boundary remains:
+
+**authoritative immutable Final Formative `/40` + Chairman-approved/final-locked
+Summative `/60` integration**
+
+The final-result layer must consume these existing authoritative component boundaries.
+It must not independently reconstruct Formative or Summative values from lower-level
+raw marking evidence.
+
+The confirmed separate pass thresholds remain:
+
+- Formative: `16/40`;
+- Summative: `24/60`.
+
+The current runtime-verified Final Formative `/40` is not itself:
+
+- a complete course result;
+- a complete-result Chairman finalisation;
+- an official publication;
+- a published-result registry entry;
+- student-facing published result evidence.
+
+Complete course-result Chairman finalisation, official documents, Controller of
+Examinations publication, immutable/versioned published-result registration and
+downstream GPA/CGPA/transcript consumption remain later distinct authority boundaries.
+
+The runtime classification is targeted. The canonical campaign observed automatic
+materialisation through an existing Comprehensive-finalisation idempotent terminal-owner
+path; it did not separately force a brand-new first-time Comprehensive finalisation.
+This limitation does not alter the confirmed architecture and must not be inflated into
+a broader production-readiness claim.
