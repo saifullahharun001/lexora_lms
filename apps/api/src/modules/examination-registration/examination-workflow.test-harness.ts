@@ -18,7 +18,7 @@ export function workflowHarness() {
   const state: Record<string, any[]> = Object.fromEntries(tables.map((t) => [t, []]));
   const epoch = new Date("2026-01-01T00:00:00Z");
   const flags = { auditFailure: false, stalePoe: false, wrongAcademicIdentity: false, foreignComponent: false, roleRevoked: false,
-    failAfterSources: false, expiredExternal: false, missingLivePermission: false };
+    failAfterSources: false, expiredExternal: false, missingLivePermission: false, materialisationFailure: false };
   let principal: PrincipalContext;
   const assignments: any[] = ["CHAIRMAN", "MEMBER_1", "MEMBER_2", "EXTERNAL_MEMBER"].map((seat) => ({ id: `appointment-${seat}`,
     departmentId: "law", examinationId: "exam", committeeId: "committee", seat, status: "ACTIVE", assignedAt: epoch,
@@ -170,7 +170,15 @@ export function workflowHarness() {
     return academic?.courses ?? currentCourses(student);
   } };
   const registration = new ExaminationRegistrationService(prisma, access, exams, students);
-  const service = new ComprehensiveExaminationService(prisma, access, exams, registration);
+  let reconciliations = 0;
+  const service = new ComprehensiveExaminationService(prisma, access, exams, registration, {
+    reconcileInTransaction: async (transaction: any, department: string, examination: string) => {
+      assert.equal(transaction, tx); assert.equal(department, "law"); assert.equal(examination, "exam");
+      assert.equal(state.comprehensiveExamination![0].status, "FINALISED");
+      assert.equal(state.auditLog!.filter((a) => a.action === "comprehensive.chairman.finalised").length, 1);
+      reconciliations++; if (flags.materialisationFailure) throw Error("aggregate failure"); return [];
+    },
+  } as never);
   const authority = new ExaminationAuthorityService(prisma, access, exams, { hash: async () => "NONCREDENTIAL_TEST_HASH" } as any);
   async function ready(mode: "ALL_MEMBERS_AVERAGE" | "COURSE_DISTRIBUTED" | "CHAIRMAN_ONLY" = "ALL_MEMBERS_AVERAGE", lockRoster = true) {
     as("poe"); await registration.createList("exam", "Official POE list reference");
@@ -193,6 +201,6 @@ export function workflowHarness() {
     as("CHAIRMAN");
   }
   return { service, registration, authority, state, flags, assignments, sourceCourses, studentAcademicSources, tx, access, prisma, queries, as, ready, markAll,
-    principal: () => principal };
+    principal: () => principal, reconciliations: () => reconciliations };
 }
 class ConflictExceptionForHarness extends ForbiddenException {}

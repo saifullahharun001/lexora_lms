@@ -909,6 +909,7 @@ model BatchCoordinatorAssignment {
 }
 
 model Examination {
+  formativeFinalResults FormativeFinalResult[]
   FormativeActivitiesFinalisation_examinationId FormativeActivitiesFinalisation[] @relation("FormativeActivitiesFinalisation_examinationId")
   attendanceGenerations FormativeAttendanceGeneration[]
   ComprehensiveExamination_examination ComprehensiveExamination[] @relation("ComprehensiveExamination_examination")
@@ -952,6 +953,7 @@ model Examination {
 }
 
 model ExaminationCourse {
+  formativeFinalResults FormativeFinalResult[]
   FormativeActivitiesFinalisation_examinationCourseId FormativeActivitiesFinalisation[] @relation("FormativeActivitiesFinalisation_examinationCourseId")
   attendanceVersions FormativeAttendanceVersion[]
   @@unique([id, departmentId], map: "examination_course_comprehensive_scope_uq")
@@ -1478,6 +1480,7 @@ model CurriculumCoursePrerequisite {
 }
 
 model CourseOffering {
+  formativeFinalResults FormativeFinalResult[]
   FormativeActivitiesFinalisation_courseOfferingId FormativeActivitiesFinalisation[] @relation("FormativeActivitiesFinalisation_courseOfferingId")
   ordinaryAttendanceCorrections FormativeAttendanceCorrection[]
   attendanceVersions FormativeAttendanceVersion[]
@@ -1626,6 +1629,7 @@ model TeacherCourseAssignment {
 }
 
 model Enrollment {
+  formativeFinalResults FormativeFinalResult[]
   FormativeActivitiesFinalResult_enrollmentId FormativeActivitiesFinalResult[] @relation("FormativeActivitiesFinalResult_enrollmentId")
   activitySubmissionItems FormativeActivitySubmissionItem[]
   attendanceVersions FormativeAttendanceVersion[]
@@ -4110,6 +4114,7 @@ model ComprehensiveMarkReturn {
 }
 
 model ComprehensiveFinalisation {
+  formativeFinalResults FormativeFinalResult[]
   ComprehensiveFinalResult_finalisation ComprehensiveFinalResult[] @relation("ComprehensiveFinalResult_finalisation")
   id String @id @default(cuid())
   departmentId String @map("department_id")
@@ -4131,6 +4136,7 @@ model ComprehensiveFinalisation {
 }
 
 model ComprehensiveFinalResult {
+  formativeFinalResults FormativeFinalResult[]
   ComprehensiveFinalSource_result ComprehensiveFinalSource[] @relation("ComprehensiveFinalSource_result")
   id String @id @default(cuid())
   departmentId String @map("department_id")
@@ -4165,6 +4171,7 @@ model ComprehensiveFinalSource {
 
 // Attendance /5 owns these immutable packages; Eligibility has no relation to them.
 model FormativeAttendanceVersion {
+  formativeFinalResults FormativeFinalResult[]
   id String @id @default(cuid())
   departmentId String @map("department_id")
   courseOfferingId String @map("course_offering_id")
@@ -4283,6 +4290,7 @@ model FormativeAttendanceCorrection {
 
 /// One immutable Chairman action; the complete child package is validated at commit.
 model FormativeAttendanceGeneration {
+  formativeFinalResults FormativeFinalResult[]
   id String @id @default(cuid())
   departmentId String @map("department_id")
   examinationId String @map("examination_id")
@@ -4313,6 +4321,7 @@ model FormativeAttendanceGeneration {
 }
 
 model FormativeActivitiesFinalisation {
+  formativeFinalResults FormativeFinalResult[]
   FormativeActivitiesFinalResult_finalisationId FormativeActivitiesFinalResult[] @relation("FormativeActivitiesFinalResult_finalisationId")
   id String @id @default(cuid())
   departmentId String @map("department_id")
@@ -4346,6 +4355,7 @@ model FormativeActivitiesFinalisation {
 }
 
 model FormativeActivitiesFinalResult {
+  formativeFinalResults FormativeFinalResult[]
   FormativeActivitiesFinalSourceItem_resultId FormativeActivitiesFinalSourceItem[] @relation("FormativeActivitiesFinalSourceItem_resultId")
   id String @id @default(cuid())
   finalisationId String @map("finalisation_id")
@@ -4378,4 +4388,50 @@ model FormativeActivitiesFinalSourceItem {
   weightedMark Decimal @map("weighted_mark") @db.Decimal(6,2)
   @@unique([resultId, activityId], map: "fa_final_source_activity_uq")
   @@map("formative_activities_final_source_items")
+}
+
+/// Complete immutable authoritative /40. No approval, amendment or partial lifecycle.
+model FormativeFinalResult {
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  examinationId String @map("examination_id")
+  examinationCourseId String @map("examination_course_id")
+  courseOfferingId String @map("course_offering_id")
+  enrollmentId String @map("enrollment_id")
+  studentUserId String @map("student_user_id")
+  academicProgramId String @map("academic_program_id")
+  academicSessionId String @map("academic_session_id")
+  academicTermId String @map("academic_term_id")
+  studentBatchId String @map("student_batch_id")
+  activitiesFinalisationId String @map("activities_finalisation_id")
+  activitiesResultId String @map("activities_result_id")
+  attendanceGenerationId String @map("attendance_generation_id")
+  attendanceVersionId String @map("attendance_version_id")
+  comprehensiveFinalisationId String @map("comprehensive_finalisation_id")
+  comprehensiveResultId String @map("comprehensive_result_id")
+  activitiesMark Decimal @map("activities_mark") @db.Decimal(10,6)
+  activitiesFullMark Decimal @map("activities_full_mark") @db.Decimal(10,6)
+  attendanceMark Decimal @map("attendance_mark") @db.Decimal(10,6)
+  attendanceFullMark Decimal @map("attendance_full_mark") @db.Decimal(10,6)
+  comprehensiveMark Decimal @map("comprehensive_mark") @db.Decimal(10,6)
+  comprehensiveFullMark Decimal @map("comprehensive_full_mark") @db.Decimal(10,6)
+  mark Decimal @map("mark") @db.Decimal(10,6)
+  fullMark Decimal @map("full_mark") @db.Decimal(10,6)
+  ruleVersionCode String @map("rule_version_code") @db.VarChar(64)
+  provenanceJson Json @map("provenance_json")
+  createdAt DateTime @default(now()) @map("created_at")
+  examination Examination @relation(fields: [examinationId,departmentId,academicProgramId,academicSessionId,academicTermId], references: [id,departmentId,academicProgramId,academicSessionId,academicTermId], onDelete: Restrict, onUpdate: Restrict, map: "ff_examination_fk")
+  examinationCourse ExaminationCourse @relation(fields: [examinationCourseId,departmentId,examinationId,courseOfferingId], references: [id,departmentId,examinationId,courseOfferingId], onDelete: Restrict, onUpdate: Restrict, map: "ff_examination_course_fk")
+  offering CourseOffering @relation(fields: [courseOfferingId,departmentId,studentBatchId,academicTermId], references: [id,departmentId,studentBatchId,academicTermId], onDelete: Restrict, onUpdate: Restrict, map: "ff_offering_fk")
+  enrollment Enrollment @relation(fields: [enrollmentId,departmentId,courseOfferingId,studentUserId], references: [id,departmentId,courseOfferingId,studentUserId], onDelete: Restrict, onUpdate: Restrict, map: "ff_enrollment_fk")
+  activitiesFinalisation FormativeActivitiesFinalisation @relation(fields: [activitiesFinalisationId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ff_activities_finalisation_fk")
+  activitiesResult FormativeActivitiesFinalResult @relation(fields: [activitiesResultId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ff_activities_result_fk")
+  attendanceGeneration FormativeAttendanceGeneration @relation(fields: [attendanceGenerationId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ff_attendance_generation_fk")
+  attendanceVersion FormativeAttendanceVersion @relation(fields: [attendanceVersionId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ff_attendance_version_fk")
+  comprehensiveFinalisation ComprehensiveFinalisation @relation(fields: [comprehensiveFinalisationId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ff_comprehensive_finalisation_fk")
+  comprehensiveResult ComprehensiveFinalResult @relation(fields: [comprehensiveResultId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "ff_comprehensive_result_fk")
+  @@unique([departmentId, examinationCourseId, enrollmentId], map: "ff_context_uq")
+  @@index([departmentId, examinationId], map: "ff_exam_idx")
+  @@index([departmentId, studentUserId], map: "ff_student_idx")
+  @@map("formative_final_results")
 }

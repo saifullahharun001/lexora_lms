@@ -1,5 +1,6 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
+import { FinalFormativeService } from "@/modules/final-formative/final-formative.service";
 import { PrismaService } from "@/common/prisma/prisma.service";
 import { RequestContextService } from "@/common/request-context/request-context.service";
 import { ClassSessionEvidenceService } from "@/modules/class-session/class-session-evidence.service";
@@ -56,7 +57,8 @@ const generationConflictGuards = new Set([
 export class AttendanceMarkGenerationService {
   constructor(private readonly prisma: PrismaService, private readonly context: RequestContextService,
     private readonly authorizer: AttendanceMarkGenerationAuthorizerService,
-    private readonly sessions: ClassSessionEvidenceService) {}
+    private readonly sessions: ClassSessionEvidenceService,
+    private readonly finalFormative: FinalFormativeService) {}
 
   async generate(examinationId: string) {
     // Only the route object identity is accepted. Every authority and scope value is resolved by the server.
@@ -156,6 +158,7 @@ export class AttendanceMarkGenerationService {
             targetId: generation.id, outcome: "SUCCESS", contextJson: summary,
             requestId: request?.requestId, ipAddress: request?.audit.ipAddress, userAgent: request?.audit.userAgent,
           } });
+          await this.finalFormative.reconcileInTransaction(tx, authority.departmentId, examinationId);
           return summary;
         }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, maxWait: 10000, timeout: 30000 });
       } catch (error) {

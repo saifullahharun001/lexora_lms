@@ -1,0 +1,25 @@
+INSERT INTO users VALUES ('s','d');
+INSERT INTO examinations VALUES ('x','d','p','session','term','EXAM_RULE');
+INSERT INTO examination_courses VALUES ('ec','d','x','o','p','session','term','batch','cc','cv','sv','template');
+INSERT INTO course_offerings VALUES ('o','d','batch','term','cc','sv');
+INSERT INTO enrollments VALUES ('e','d','o','s','term','cc','sca');
+INSERT INTO student_curriculum_assignments VALUES ('sca','d','s','p','cv');
+INSERT INTO formative_activities_finalisations VALUES ('af','d','x','ec','o','FORMATIVE_ACTIVITIES_FINAL_30_SUM_V1',1,1,repeat('a',64));
+INSERT INTO formative_activities_final_results VALUES ('ar','af','e','s',24,30,repeat('b',64));
+INSERT INTO formative_activities_final_source_items VALUES ('as','ar','activity','submission',1,repeat('c',64),'item','evidence');
+INSERT INTO formative_activity_submissions VALUES ('submission','d','o','activity',1,repeat('c',64));
+INSERT INTO formative_activity_submission_items VALUES ('item','submission','e','evidence');
+INSERT INTO formative_attendance_generations VALUES ('ag','d','x','p','session','term','FORMATIVE_ATTENDANCE_5_APPROVED_20260920_V1','chair',repeat('d',64),1);
+INSERT INTO formative_attendance_versions VALUES ('av','d','ag','e','s','o','x','ec','term','batch',
+  'FORMATIVE_ATTENDANCE_5_APPROVED_20260920_V1','READY',3.5,'[]','chair',NULL,1,1,repeat('e',64));
+INSERT INTO formative_attendance_source_items VALUES ('avs','av');
+INSERT INTO examination_candidate_lists VALUES ('list','d','x','CERTIFIED','p','session','term');
+INSERT INTO examination_candidate_registrations VALUES ('reg','d','x','list','s','REGULAR','sca',1);
+INSERT INTO examination_candidate_courses VALUES ('candidate','d','ec','e','reg');
+INSERT INTO comprehensive_examinations VALUES ('ce','d','x','FINALISED','2026-01-01','2026-01-01','2026-01-01','CHAIRMAN_ONLY','REGULAR_RULE','list');
+INSERT INTO comprehensive_finalisations VALUES ('cf','d','ce','2026-01-01','CHAIRMAN_ONLY','REGULAR_RULE',1);
+INSERT INTO comprehensive_courses VALUES ('co','d','ce','ec',5,1,NULL);
+INSERT INTO comprehensive_roster_entries VALUES ('roster','d','ce','candidate','co','reg',1);
+INSERT INTO comprehensive_final_results VALUES ('cr','d','cf','roster',4,5,'COMPREHENSIVE_EXACT_DECIMAL_V1');
+INSERT INTO comprehensive_final_sources VALUES ('cs','d','cr','cm');
+INSERT INTO comprehensive_marks VALUES ('cm','d','roster','SUBMITTED',5,'CHAIRMAN',1,'chair-appointment');

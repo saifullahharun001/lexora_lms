@@ -20,3 +20,5 @@ apps/api/prisma/migrations/202609020002_add_summative_calculated_committee_appro
 apps/api/prisma/migrations/202609230001_add_authoritative_formative_attendance/migration.sql -text
 apps/api/prisma/migrations/202609280001_ordinary_attendance_corrections/migration.sql -text
 apps/api/prisma/migrations/202609290001_chairman_attendance_generation/migration.sql -text
+
+apps/api/prisma/migrations/202610060001_automatic_final_formative/migration.sql -text

@@ -40793,3 +40793,362 @@ Still outside this closure are complete Formative `/40`, Formative/Summative
 integration, complete course-result finalisation, official result-document generation,
 Controller publication, published-result consumption, frontend completion and broader
 cloud/public production hardening.
+
+<!-- final-formative-predeployment-verification-closure-20261007 -->
+
+## Automatic authoritative Final Formative `/40` — pre-deployment verification closure — 2026-10-07
+
+This later checkpoint supersedes earlier current-status wording that described automatic
+Final Formative `/40` implementation or real PostgreSQL verification as still pending.
+
+Historical checkpoints remain valid evidence for the state actually tested at those
+times and are not deleted or rewritten.
+
+Working-tree implementation base:
+
+`354fd9560a06efd8a3e59440ded0cd9b64cfee06`
+
+Current classification:
+
+**IMPLEMENTED + LOCAL TYPECHECK/BUILD VERIFIED + CORRECTED MIGRATION REAL
+POSTGRESQL 18.6 VERIFIED + CORE FINAL-FORMATIVE REAL DB 76/76 PASS +
+SOURCE-OWNER REAL DB REGRESSIONS 43/43 PASS + OWNER-HOOK
+APPLICATION/HARNESS 117/117 PASS + EXACT-CURRENT ORDINARY-SNAPSHOT /
+PRISMA MIGRATION-CHAIN VERIFIED + UNCOMMITTED + NOT ORDINARY-DB
+DEPLOYED + NOT CANONICAL AUTHENTICATED-RUNTIME VERIFIED**
+
+No Final Formative commit or push has been performed.
+
+### Implemented academic boundary
+
+The authoritative Final Formative result is automatically materialised from the exact
+immutable authoritative sources:
+
+- Examination Committee Chairman-finalised Activities `/30`;
+- Examination Committee Chairman generated/frozen Attendance `/5`;
+- Examination Committee Chairman-finalised Comprehensive Examination `/5`.
+
+Rule:
+
+`FINAL_FORMATIVE_40_SUM_V1`
+
+The server derives:
+
+`Activities /30 + Attendance /5 + Comprehensive /5 = Final Formative /40`
+
+No separate human Final Formative approval/finalisation action is introduced.
+
+The implementation requires complete coherent authoritative sources before creating
+the aggregate and fails closed for missing, duplicate, stale, malformed, mismatched,
+non-final or out-of-scope source packages.
+
+The persisted aggregate binds the exact component source identities and academic
+scope/provenance. The authoritative aggregate and protected success-audit evidence are
+immutable under ordinary UPDATE/DELETE paths.
+
+### Migration identity
+
+Target migration:
+
+`202610060001_automatic_final_formative`
+
+Current reviewed migration SHA-256:
+
+`9893b7f82e0cccef763c4454200dd676a624280021613fce3653fe7796dbf7ec`
+
+An earlier real-PostgreSQL verification exposed SQLSTATE `42601` in the migration.
+Focused diagnosis traced it to PL/pgSQL condition syntax. The corrected migration
+preserved the intended academic, authorization and integrity design and was then
+successfully exercised against PostgreSQL 18.6.
+
+The earlier failed verification remains historical evidence and is superseded for
+current migration-validity status by the later successful campaigns below.
+
+### Core Final Formative real PostgreSQL 18.6 verification
+
+The actual corrected migration and actual `FinalFormativeService` were exercised
+against an explicitly disposable PostgreSQL 18.6 database.
+
+Result:
+
+- tests: `76`;
+- passed: `76`;
+- failed: `0`;
+- skipped: `0`.
+
+Coverage includes:
+
+- zero, partial and complete source readiness;
+- all six authoritative source-arrival orders;
+- exact Decimal arithmetic and six-decimal precision;
+- exact source identity/version binding;
+- department/student/enrollment/offering/term/examination scope enforcement;
+- stale, malformed, duplicate and non-final source rejection;
+- source-mark and full-mark bounds;
+- immutable aggregate/source replacement rejection;
+- real simultaneous Serializable attempts converging to one package/audit;
+- aggregate UPDATE/DELETE protection;
+- protected audit UPDATE/DELETE protection;
+- required-audit and transaction rollback cases;
+- native database checks and restrictive foreign keys;
+- forged persisted source identity, mark and provenance rejection.
+
+This is real PostgreSQL evidence for the aggregate migration, resolver, transaction,
+constraint, trigger, audit and concurrency boundaries.
+
+### Source-owner real PostgreSQL regressions
+
+The existing authoritative terminal source domains were independently rerun against
+the disposable real PostgreSQL environment after the integration changes:
+
+- Activities Chairman finalisation: `17/17 PASS`;
+- Attendance Chairman generation: `26/26 PASS`.
+
+Combined:
+
+`43/43 PASS`
+
+These suites verify continued correctness of the existing source packages and their
+database protections.
+
+They intentionally stub the Final Formative reconciliation dependency and therefore
+are not claimed as a real-PostgreSQL production-owner-to-aggregate integration test.
+
+### Production owner-hook application/harness verification
+
+Focused production-service/harness verification passed:
+
+- Activities owner hook: `17/17`;
+- Attendance owner hook: `21/21`;
+- Comprehensive owner hook/harness: `79/79`.
+
+Combined:
+
+`117/117 PASS`
+
+This evidence verifies production hook placement, transaction propagation and rollback
+behavior, including aggregate failure escaping or rolling back the owning terminal
+transaction as required.
+
+These hook suites use a mocked Final Formative dependency.
+
+Accordingly, the accepted terminal-hook evidence is compositional:
+
+1. production owner-hook suites verify application wiring, ordering and transaction
+   propagation;
+2. the `76/76` Final Formative real PostgreSQL suite verifies the actual aggregate
+   service and database boundary;
+3. the `43/43` source-owner real PostgreSQL regressions verify the authoritative
+   terminal source packages remain sound.
+
+No single real-PostgreSQL test invoking a production owner service with the actual
+`FinalFormativeService` is claimed by this checkpoint.
+
+The combined evidence is accepted as sufficient for the current terminal-hook
+composition boundary without adding another monolithic integration suite.
+
+### Exact-current ordinary snapshot and Prisma migration-chain compatibility
+
+A read-only custom-format snapshot of the current ordinary `lexora_lms` database was
+created before migration-chain verification.
+
+Snapshot properties:
+
+- size: `2,234,440` bytes;
+- TOC entries: `1612`;
+- SHA-256:
+  `b1f89a571058a23f563d2d50bda670452faf77e0744b73291ccf264747307a02`;
+- dump mode: `0600`;
+- private backup-directory mode: `0700`.
+
+The snapshot was restored into a fresh loopback-only PostgreSQL 18.6 disposable
+database:
+
+`lexora_ff40_chain_test`
+
+Pre-migration restored state:
+
+- public tables: `132`;
+- completed Prisma migrations: `40`;
+- incomplete migrations: `0`;
+- Final Formative migration-history rows: `0`;
+- `formative_final_results`: absent.
+
+Read-only comparison between ordinary and restored databases established:
+
+- public table count: exact match;
+- completed migration count: exact match;
+- migration-history fingerprint:
+  `285c97c880ab74fddc473b3981cb0d29` on both;
+- selected academic/business row cardinalities: exact match.
+
+The canonical Ubuntu repository contained exactly the same `40` completed migration
+directories recorded by the ordinary database.
+
+An isolated Prisma migration workspace was constructed from those exact `40`
+migrations plus the exact current reviewed Final Formative migration as migration
+`41`, together with the exact current local `schema.prisma`.
+
+Prisma validation passed.
+
+`prisma migrate deploy` was explicitly bound only to the disposable restored database
+and applied exactly:
+
+`202610060001_automatic_final_formative`
+
+Post-deployment verification established:
+
+- completed migrations: `41`;
+- incomplete migrations: `0`;
+- target migration rows: exactly `1`;
+- target migration completed: `1`;
+- target migration checksum:
+  `9893b7f82e0cccef763c4454200dd676a624280021613fce3653fe7796dbf7ec`;
+- `formative_final_results`: present;
+- `final_formative_sources(text,text,text)`: present;
+- `final_formative_matches(text,jsonb)`: present;
+- Final Formative application triggers on the aggregate table: `3`;
+- automatic aggregate backfill rows: `0`;
+- selected existing academic/business data: preserved.
+
+A second Prisma status/deploy cycle reported:
+
+`Database schema is up to date!`
+
+and:
+
+`No pending migrations to apply.`
+
+The second migration deployment was therefore a true no-op.
+
+### Ordinary-runtime and repository safety
+
+The ordinary `lexora_lms` database was never migrated for Final Formative during this
+verification campaign.
+
+Before and after disposable migration verification:
+
+- ordinary Final Formative migration-history rows: `0`;
+- ordinary `formative_final_results`: absent;
+- ordinary migration-history fingerprint: unchanged.
+
+The canonical Ubuntu repository remained:
+
+`HEAD == origin/main == 354fd9560a06efd8a3e59440ded0cd9b64cfee06`
+
+with a clean worktree.
+
+After disposable verification:
+
+- disposable PostgreSQL container: removed;
+- disposable database credential file: removed;
+- loopback port `55432`: free;
+- private snapshot and non-secret verification evidence: retained;
+- Direct API health: HTTP `200`;
+- Nginx API health: HTTP `200`.
+
+No database credential, access token, refresh token, password, password hash or other
+authentication secret is recorded in this checkpoint.
+
+### Current verification boundary and non-claims
+
+The automatic authoritative Final Formative `/40` implementation has crossed its:
+
+- local/static verification boundary;
+- actual PostgreSQL 18.6 aggregate verification boundary;
+- source-owner regression boundary;
+- production owner-hook application/harness boundary;
+- exact-current ordinary-snapshot migration compatibility boundary.
+
+It remains deliberately uncommitted and undeployed pending manual review.
+
+This checkpoint does not claim:
+
+- Final Formative implementation commit or push;
+- ordinary `lexora_lms` migration deployment;
+- Final Formative activation in the canonical PM2 application;
+- canonical authenticated terminal-source-to-aggregate runtime verification;
+- locked Formative `/40` plus Chairman-approved locked Summative `/60` integration;
+- complete course-result Chairman finalisation;
+- official result-document generation;
+- Controller of Examinations publication;
+- published-result GPA/CGPA/transcript consumption;
+- frontend completion;
+- cloud/public production readiness.
+
+The immediate operational boundary is:
+
+**manual implementation/documentation diff review -> focused commit decision ->
+controlled ordinary-database/application deployment -> canonical authenticated runtime
+verification**
+
+Only after the Final Formative `/40` canonical runtime boundary is closed should the
+next academic implementation boundary proceed:
+
+**authoritative locked Formative `/40` + Chairman-approved locked Summative `/60`
+integration**
+
+<!-- final-formative-current-bytes-runtime-supersession-20261007 -->
+
+## Automatic authoritative Final Formative `/40` — current-bytes pre-deployment runtime supersession — 2026-10-07
+
+This checkpoint supersedes earlier current-status references to the previously reviewed
+Final Formative migration hash while preserving all earlier runtime evidence as
+historical evidence.
+
+Current migration:
+
+`202610060001_automatic_final_formative`
+
+Current migration SHA-256:
+
+`a504444c4d7197a0a21f5d882e84eca94ee7bec81fa5d8602d7dc6f395283d63`
+
+Current pre-deployment evidence:
+
+- current-byte PostgreSQL 18.6 matrix: `371/371 PASS`, `0` failures, `0` skips;
+- exact restored ordinary-snapshot baseline:
+  `40 completed | 0 incomplete | target absent | Final Formative table absent`;
+- isolated migration workspace: exact `40 + 1`;
+- target migration deployment: PASS;
+- target recorded checksum: exact current SHA-256;
+- completed migrations after deployment: `41`;
+- incomplete migrations: `0`;
+- second migrate deploy: true no-op;
+- existing selected academic data: preserved;
+- exact retained authoritative source package:
+  `24.00 + 3.50 + 4.00 = 31.50 / 40`;
+- first hardened operational reconciliation:
+  `created=1 | existing=0 | notReady=0`;
+- persisted Final Formative:
+  `31.50 / 40.00`;
+- exact source bindings: PASS;
+- protected `SERVICE` success audit: exactly `1`;
+- protected audit context: exact match;
+- second hardened reconciliation:
+  `created=0 | existing=1 | notReady=0`;
+- aggregate after repeat: exactly `1`;
+- protected success audit after repeat: exactly `1`;
+- ordinary Final Formative state:
+  `0|ABSENT -> 0|ABSENT`;
+- ordinary migration-history fingerprint:
+  `17e2ee5d277fe5c806764ac26c061176`
+  unchanged before/after;
+- disposable container/state cleanup: PASS;
+- disposable loopback port `55432`: free after cleanup.
+
+Sanitised retained evidence SHA-256:
+
+`262e72ee6ab656a2823d02c93434f058ee8c5e911aaf67f7ddc6bcedcfa86dfc`
+
+Current classification:
+
+**IMPLEMENTED + CURRENT-BYTES REAL POSTGRESQL VERIFIED + EXACT-SNAPSHOT
+MIGRATION-CHAIN VERIFIED + ACTUAL HARDENED RECONCILIATION VERIFIED +
+ORDINARY DATABASE PROVEN UNCHANGED + UNCOMMITTED + NOT ORDINARY-DB DEPLOYED +
+NOT CANONICAL AUTHENTICATED-RUNTIME VERIFIED**
+
+This remains a pre-deployment closure only.
+
+No staging, commit, push, ordinary database migration, PM2 activation or canonical
+authenticated `/40` runtime closure is claimed by this checkpoint.

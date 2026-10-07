@@ -3547,3 +3547,165 @@ Subsequent separate boundaries remain:
 
 Frontend completion, correction/amendment hardening outside the verified boundaries and
 cloud/public production hardening remain separate work.
+
+<!-- final-formative-roadmap-predeployment-closure-20261007 -->
+
+## Automatic authoritative Final Formative `/40` — pre-deployment closure — 2026-10-07
+
+This later roadmap checkpoint supersedes earlier current-status wording that described
+automatic authoritative Final Formative `/40` as the next unimplemented backend
+feature.
+
+Historical roadmap checkpoints remain valid for the state known at those times and
+are not deleted or rewritten.
+
+Working-tree implementation base:
+
+`354fd9560a06efd8a3e59440ded0cd9b64cfee06`
+
+Current Final Formative `/40` classification:
+
+**IMPLEMENTED + LOCAL TYPECHECK/BUILD VERIFIED + REAL POSTGRESQL 18.6 VERIFIED +
+CORE FINAL-FORMATIVE DB 76/76 PASS + SOURCE-OWNER REAL DB REGRESSIONS 43/43 PASS +
+OWNER-HOOK APPLICATION/HARNESS 117/117 PASS + EXACT-CURRENT ORDINARY-SNAPSHOT /
+PRISMA MIGRATION-CHAIN VERIFIED + UNCOMMITTED + NOT ORDINARY-DB DEPLOYED +
+NOT CANONICAL AUTHENTICATED-RUNTIME VERIFIED**
+
+The implementation automatically materialises the authoritative `/40` only from the
+exact immutable authoritative component sources:
+
+- Chairman-finalised Activities `/30`;
+- Chairman-generated/frozen Attendance `/5`;
+- Chairman-finalised Comprehensive Examination `/5`.
+
+Rule:
+
+`FINAL_FORMATIVE_40_SUM_V1`
+
+There is no separate human Final Formative approval/finalisation action.
+
+The aggregate preserves exact academic scope, source identities, source versions,
+component marks/full marks and provenance, and is protected against ordinary
+replacement, UPDATE and DELETE paths.
+
+### Verification status
+
+The current implementation has passed:
+
+- local Prisma validation/generation;
+- API typecheck and Nest/CommonJS build;
+- corrected migration execution against real PostgreSQL 18.6;
+- Final Formative real-database suite: `76/76`;
+- Activities and Attendance source-owner real-database regressions: `43/43`;
+- Activities, Attendance and Comprehensive owner-hook application/harness suites:
+  `117/117`;
+- exact-current ordinary `lexora_lms` custom-format snapshot restore;
+- ordinary/restored migration-history and selected academic-data identity checks;
+- isolated exact `40 + 1` Prisma migration-chain deployment;
+- second migration deployment true no-op;
+- disposable environment cleanup and ordinary-database non-mutation checks.
+
+No single real-PostgreSQL test invoking a production terminal owner service with the
+actual `FinalFormativeService` is claimed. The current terminal-hook closure is based
+on the documented compositional evidence from production hook tests, actual aggregate
+PostgreSQL tests and source-owner PostgreSQL regressions.
+
+### Immediate operational sequence
+
+The Final Formative implementation is not yet a canonical runtime closure.
+
+The immediate sequence is:
+
+1. manual implementation and documentation diff review;
+2. focused commit decision;
+3. commit/push only after explicit approval;
+4. controlled Ubuntu promotion;
+5. ordinary `lexora_lms` migration deployment with private rollback backup;
+6. API typecheck/build and controlled PM2 activation;
+7. targeted canonical authenticated runtime verification;
+8. preservation of runtime evidence and documentation closure.
+
+Until those steps are complete, do not classify Final Formative `/40` as deployed,
+canonical-runtime verified or production ready.
+
+### Next academic feature boundary
+
+After the Final Formative `/40` canonical runtime boundary is closed, the next
+academic backend feature is:
+
+**authoritative locked Formative `/40` + Chairman-approved locked Summative `/60`
+integration**
+
+That later result-processing boundary must:
+
+- consume the exact immutable authoritative Final Formative `/40`;
+- consume the exact Chairman-approved/final-locked Summative `/60`;
+- preserve both source identities/versions;
+- apply the separately confirmed pass requirements:
+  - Formative: `16/40`;
+  - Summative: `24/60`;
+- avoid independently reconstructing either already-authoritative component.
+
+Subsequent separate boundaries remain:
+
+1. complete course-result Examination Committee Chairman finalisation;
+2. required official result-document generation;
+3. Controller of Examinations publication;
+4. immutable/versioned published-result registry;
+5. permitted GPA/CGPA, student-result and transcript consumption.
+
+Frontend completion and cloud/public production hardening remain separate work.
+
+<!-- final-formative-current-bytes-roadmap-supersession-20261007 -->
+
+## Automatic authoritative Final Formative `/40` — current-bytes pre-deployment roadmap supersession — 2026-10-07
+
+The current Final Formative implementation has now completed the reviewed
+pre-deployment disposable verification boundary using the current migration bytes.
+
+Current migration SHA-256:
+
+`a504444c4d7197a0a21f5d882e84eca94ee7bec81fa5d8602d7dc6f395283d63`
+
+Verified pre-deployment evidence now includes:
+
+- current-byte real PostgreSQL 18.6 matrix: `371/371 PASS`;
+- exact ordinary-snapshot `40 -> 41` migration-chain compatibility;
+- true no-op second migration deployment;
+- retained exact authoritative source resolution:
+  `24.00 + 3.50 + 4.00 = 31.50 / 40`;
+- actual hardened operational reconciliation creating exactly one aggregate;
+- exact source binding and exactly one protected `SERVICE` success audit;
+- repeated reconciliation returning the existing aggregate without duplication;
+- before/after ordinary database state and migration-history fingerprint equality;
+- disposable environment cleanup with sanitised evidence retained.
+
+Current classification remains:
+
+**IMPLEMENTED + PRE-DEPLOYMENT CURRENT-BYTES VERIFIED + UNCOMMITTED +
+NOT ORDINARY-DB DEPLOYED + NOT CANONICAL AUTHENTICATED-RUNTIME VERIFIED**
+
+The immediate sequence is now:
+
+1. complete final source/diff/secret review of the uncommitted implementation;
+2. obtain explicit approval before staging/commit/push;
+3. commit and push the focused Final Formative implementation;
+4. take/verify the ordinary pre-deployment backup boundary;
+5. deploy the exact committed migration to ordinary `lexora_lms`;
+6. run API typecheck/build and activate the committed backend safely;
+7. verify direct/Nginx health and loopback-only API exposure;
+8. perform focused canonical authenticated runtime verification for automatic `/40`;
+9. document the canonical runtime closure.
+
+Only after that closure should the next academic result boundary begin:
+
+**authoritative locked Final Formative `/40` + Chairman-approved locked Summative `/60`**
+
+That later result layer must continue to preserve the confirmed separate pass thresholds:
+
+- Formative: `16/40`;
+- Summative: `24/60`.
+
+Complete course-result Chairman finalisation, official documents, Controller
+publication, published-result registry, GPA/CGPA/transcript consumption, frontend and
+broader production hardening remain separate later boundaries.

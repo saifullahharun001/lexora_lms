@@ -93,7 +93,7 @@ INSERT INTO attendance_records(id,department_id,class_session_id,enrollment_id,s
           rolePermissionId: action === "generate" ? `${d}-rp` : `${d}-crp`, permissionId: action === "generate" ? `${d}-permission` : `${d}-correction` } })) };
     const context = { get: () => ({ principal, departmentId: "forged", audit: {} }) };
     const authorizer = new AttendanceMarkGenerationAuthorizerService(client as never, context as never);
-    const service = new AttendanceMarkGenerationService(client as never, context as never, authorizer, new ClassSessionEvidenceService());
+    const service = new AttendanceMarkGenerationService(client as never, context as never, authorizer, new ClassSessionEvidenceService(), { reconcileInTransaction: async () => [] } as never);
     const correction = new AttendanceCorrectionService(client as never, context as never, new ClassSessionEvidenceService());
     return { d, principal, context, authorizer, service, correction, generate: () => service.generate(`${d}-exam`) };
   }
@@ -355,7 +355,7 @@ INSERT INTO attendance_records(id,department_id,class_session_id,enrollment_id,s
             } };
             const value = Reflect.get(target, key); return typeof value === "function" ? value.bind(target) : value;
           } })), options).catch((error: unknown) => { databaseError = error; throw error; }) } as never,
-          f.context as never, f.authorizer, new ClassSessionEvidenceService());
+          f.context as never, f.authorizer, new ClassSessionEvidenceService(), { reconcileInTransaction: async () => [] } as never);
         await assert.rejects(service.generate(`${f.d}-exam`));
         assert.equal(auditAttempted, true, fault);
         rejectsGuard(/exactly one success audit/)(databaseError);
@@ -423,7 +423,7 @@ INSERT INTO attendance_records(id,department_id,class_session_id,enrollment_id,s
         f.context as never, { authorize: (id: string) => f.authorizer.authorize(id),
           assertCurrentAuthority: async (...args: Parameters<AttendanceMarkGenerationAuthorizerService["assertCurrentAuthority"]>) => {
             authorityReached = true; return f.authorizer.assertCurrentAuthority(...args);
-          } } as never, new ClassSessionEvidenceService());
+          } } as never, new ClassSessionEvidenceService(), { reconcileInTransaction: async () => [] } as never);
       const finished = Promise.allSettled([correction, generationService.generate(`${f.d}-exam`)]);
       try {
         await Promise.race([scopeRequested, finished.then(() => { throw Error("Generation never requested its scope mutex"); })]);

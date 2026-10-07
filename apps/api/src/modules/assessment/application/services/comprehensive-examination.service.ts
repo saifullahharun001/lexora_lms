@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { ComprehensiveCourse, ComprehensiveExamination, ComprehensiveMarkingMode, ExaminationCommitteeAssignment, Prisma } from "@prisma/client";
 import { PrismaService } from "@/common/prisma/prisma.service";
+import { FinalFormativeService } from "@/modules/final-formative/final-formative.service";
 import { EvidenceAccessService, EvidenceActor } from "@/common/academic-evidence/evidence-access.service";
 import { evidenceTransaction } from "@/common/academic-evidence/transaction";
 import { EXAMINATION_POLICIES as P } from "@/common/authorization/examination-policies";
@@ -14,7 +15,8 @@ type Authority = EvidenceActor & { assignment: ExaminationCommitteeAssignment; e
 @Injectable()
 export class ComprehensiveExaminationService {
   constructor(private readonly prisma: PrismaService, private readonly access: EvidenceAccessService,
-    private readonly examinations: ExaminationContextService, private readonly registration: ExaminationRegistrationService) {}
+    private readonly examinations: ExaminationContextService, private readonly registration: ExaminationRegistrationService,
+    private readonly finalFormative: FinalFormativeService) {}
 
   private run<T>(examinationId: string, policy: string, chairman: boolean,
     work: (tx: Prisma.TransactionClient, authority: Authority) => Promise<T>) {
@@ -250,7 +252,10 @@ export class ComprehensiveExaminationService {
     return this.run(examinationId, P.FINALISE, true, async (tx, a) => {
       const exam = await this.workflow(tx, a, examinationId);
       const existing = await tx.comprehensiveFinalisation.findFirst({ where: { comprehensiveId: exam.id } });
-      if (existing) return existing;
+      if (existing) {
+        await this.finalFormative.reconcileInTransaction(tx, a.departmentId, examinationId);
+        return existing;
+      }
       if (!exam.rosterLockedAt || !exam.markingStartedAt || exam.status !== "MARKING") throw new ConflictException("A complete locked roster and marking evidence are required");
       const courses = await this.validCourses(tx, a, exam);
       await this.requiredMembers(tx, a, exam.mode, courses);
@@ -289,6 +294,7 @@ export class ComprehensiveExaminationService {
       }
       await tx.comprehensiveExamination.update({ where: { id: exam.id }, data: { status: "FINALISED", finalisedAt: finalisation.createdAt } });
       await this.audit(tx, a, "comprehensive.chairman.finalised", finalisation.id, { count: results.length, mode: exam.mode });
+      await this.finalFormative.reconcileInTransaction(tx, a.departmentId, examinationId);
       return finalisation;
     });
   }

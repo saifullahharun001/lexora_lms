@@ -92,7 +92,7 @@ test("Step 4B disposable PostgreSQL migration, authority, packages, freeze and S
     const context = { get: () => ({ principal, departmentId: "forged", audit: {} }) };
     const teacher = new FormativeAssessmentService(client as never, context as never, new AuthorizationService());
     const authorizer = new FormativeActivitiesFinalisationAuthorizerService(client as never, context as never);
-    const finalService = (db: unknown = client, auth: unknown = authorizer) => new FormativeActivitiesFinalisationService(db as never, context as never, auth as never);
+    const finalService = (db: unknown = client, auth: unknown = authorizer) => new FormativeActivitiesFinalisationService(db as never, context as never, auth as never, { reconcileInTransaction: async () => [] } as never);
     const activities: FormativeActivity[] = [];
     for (let n = 0; n < 2; n++) {
       const a = await teacher.createActivity(`${d}-o`, { title: `Activity ${n}`, method: "QUIZ", rawMaximum: "8", assignedWeight: weight });

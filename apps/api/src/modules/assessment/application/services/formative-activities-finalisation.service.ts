@@ -1,5 +1,6 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
+import { FinalFormativeService } from "@/modules/final-formative/final-formative.service";
 import { PrismaService } from "@/common/prisma/prisma.service";
 import { RequestContextService } from "@/common/request-context/request-context.service";
 import { FormativeActivitiesFinalisationAuthorizerService } from "./formative-activities-finalisation-authorizer.service";
@@ -25,7 +26,8 @@ const controlledGuards = new Set([
 @Injectable()
 export class FormativeActivitiesFinalisationService {
   constructor(private readonly prisma: PrismaService, private readonly context: RequestContextService,
-    private readonly authorizer: FormativeActivitiesFinalisationAuthorizerService) {}
+    private readonly authorizer: FormativeActivitiesFinalisationAuthorizerService,
+    private readonly finalFormative: FinalFormativeService) {}
 
   workspace(examinationCourseId: string) { return this.run(examinationCourseId, false); }
   finalise(examinationCourseId: string) { return this.run(examinationCourseId, true); }
@@ -95,6 +97,7 @@ export class FormativeActivitiesFinalisationService {
             action: FORMATIVE_AUDIT_EVENTS.ACTIVITIES_CHAIRMAN_FINALISED, targetType: "formative_activities_finalisation",
             targetId: parent.id, outcome: "SUCCESS", contextJson: summary, requestId: request?.requestId,
             ipAddress: request?.audit.ipAddress, userAgent: request?.audit.userAgent } });
+          await this.finalFormative.reconcileInTransaction(tx, departmentId, examinationId);
           return summary;
         }, { isolationLevel: write ? Prisma.TransactionIsolationLevel.Serializable : Prisma.TransactionIsolationLevel.RepeatableRead, maxWait: 10000, timeout: 30000 });
       } catch (error) {

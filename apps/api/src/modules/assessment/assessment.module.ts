@@ -7,6 +7,7 @@ import { SummativeExaminationModule } from "../summative-examination/summative-e
 import { ComprehensiveExaminationService } from "./application/services/comprehensive-examination.service";
 import { ComprehensiveExaminationController } from "./presentation/http/comprehensive-examination.controller";
 import { Module } from "@nestjs/common";
+import { FinalFormativeModule } from "../final-formative/final-formative.module";
 
 import { PrismaModule } from "@/common/prisma/prisma.module";
 import { RequestContextModule } from "@/common/request-context/request-context.module";
@@ -22,7 +23,7 @@ import { QuizAttemptsController } from "./presentation/http/quiz-attempts.contro
 import { QuizzesController } from "./presentation/http/quizzes.controller";
 
 @Module({
-  imports: [ExaminationRegistrationModule, SummativeExaminationModule, AuthorizationModule, PrismaModule, RequestContextModule],
+  imports: [FinalFormativeModule, ExaminationRegistrationModule, SummativeExaminationModule, AuthorizationModule, PrismaModule, RequestContextModule],
   controllers: [FormativeActivitiesFinalisationController, ComprehensiveExaminationController,
     FormativeAssessmentController,
     AssignmentsController,

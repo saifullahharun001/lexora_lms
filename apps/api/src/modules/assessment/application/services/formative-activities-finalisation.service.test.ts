@@ -16,7 +16,7 @@ function harness(blocker?: string) {
   const authority = { departmentId: "law", examinationId: "exam", examinationCourseId: "ec", courseOfferingId: "offering",
     committeeId: "committee", committeeAssignmentId: "appointment", actorUserId: "chair", userRoleId: "ur", roleId: "role",
     permissionId: "permission", rolePermissionId: "rp", assignmentAssignedAt: new Date("2026-01-01") };
-  const flags = { changedAuthority: false, auditFailure: false, duplicate: false };
+  const flags = { changedAuthority: false, auditFailure: false, duplicate: false, materialisationFailure: false };
   const tx: any = {
     $queryRaw: async (q: Prisma.Sql) => {
       if (q.sql.includes("SET TRANSACTION READ ONLY")) { calls.push("read-only"); return 0; }
@@ -40,12 +40,16 @@ function harness(blocker?: string) {
     try { return await work(tx); } catch (e) { parents.length = results.length = sources.length = audits.length = 0; throw e; }
   } } as never, { get: () => ({ audit: {}, departmentId: "forged" }) } as never,
   { authorize: async () => authority, assertCurrentAuthority: async (_tx: unknown, _authority: unknown, _at: Date, lock: boolean) => { calls.push(lock ? "authority" : "authority-read");
-    if (flags.changedAuthority) throw new ForbiddenException(); } } as never);
+    if (flags.changedAuthority) throw new ForbiddenException(); } } as never, { reconcileInTransaction: async (transaction: unknown, department: string, examination: string) => {
+      assert.equal(transaction, tx); assert.equal(department, "law"); assert.equal(examination, "exam");
+      assert.equal(audits.length, 1); assert.equal(results.length, scope.rosterCount);
+      calls.push("aggregate"); if (flags.materialisationFailure) throw Error("aggregate failure"); return [];
+    } } as never);
   return { service, flags, scope, calls, parents, results, sources, audits };
 }
 test("full roster finalises together with exact source bindings and a single transaction-coupled audit", async () => {
   const h = harness(); const summary = await h.service.finalise("ec");
-  assert.deepEqual(h.calls, ["scope-locks", "authority", "sources", "parent"]);
+  assert.deepEqual(h.calls, ["scope-locks", "authority", "sources", "parent", "aggregate"]);
   assert.equal(h.parents.length, 1); assert.equal(h.results.length, 2); assert.equal(h.sources.length, 4);
   assert.deepEqual(h.results.map((r) => r.mark), ["24.26", "24.26"]);
   assert.equal(h.parents[0].ruleVersionCode, FORMATIVE_FINAL_RULE);
@@ -67,6 +71,12 @@ test("changed Chairman after admission is denied after scope locks", async () =>
 test("duplicate and audit failure cannot create a partial batch", async () => {
   const h = harness(); h.flags.duplicate = true; await assert.rejects(h.service.finalise("ec"), ConflictException);
   h.flags.duplicate = false; h.flags.auditFailure = true; await assert.rejects(h.service.finalise("ec"), /audit unavailable/);
+  assert.equal(h.parents.length + h.results.length + h.sources.length + h.audits.length, 0);
+});
+
+test("automatic aggregate failure rolls back the Activities terminal source transaction", async () => {
+  const h = harness(); h.flags.materialisationFailure = true;
+  await assert.rejects(h.service.finalise("ec"), /aggregate failure/);
   assert.equal(h.parents.length + h.results.length + h.sources.length + h.audits.length, 0);
 });
 test("workspace exposes bounded previews and freshness, excludes source/audit authentication evidence, and writes no results", async () => {
@@ -92,6 +102,6 @@ for (const [code, databaseCode] of [["P2034", undefined], ["P2010", "40001"], ["
     let attempts = 0;
     const service = new FormativeActivitiesFinalisationService({ $transaction: async () => { attempts++;
       throw new Prisma.PrismaClientKnownRequestError("conflict", { code: code!, clientVersion: "6", meta: { code: databaseCode } });
-    } } as never, {} as never, { authorize: async () => ({}) } as never);
+    } } as never, {} as never, { authorize: async () => ({}) } as never, { reconcileInTransaction: async () => [] } as never);
     await assert.rejects(service.finalise("ec"), ConflictException); assert.equal(attempts, 3);
   });

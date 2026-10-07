@@ -2,6 +2,7 @@ import { AttendanceMarkGenerationService } from "./application/services/attendan
 import { AttendanceMarkGenerationAuthorizerService } from "./application/services/attendance-mark-generation-authorizer.service";
 import { ClassSessionModule } from "@/modules/class-session/class-session.module";
 import { Module } from "@nestjs/common";
+import { FinalFormativeModule } from "../final-formative/final-formative.module";
 
 import { PrismaModule } from "@/common/prisma/prisma.module";
 import { RequestContextModule } from "@/common/request-context/request-context.module";
@@ -15,6 +16,7 @@ import { AttendanceController } from "./presentation/http/attendance.controller"
 
 @Module({
   imports: [
+    FinalFormativeModule,
     ClassSessionModule,
     PlatformModule,
     AuthorizationModule,

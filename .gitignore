@@ -100,3 +100,6 @@ backups/
 !apps/api/prisma/migrations/202610010001_add_formative_activity_submission/migration.sql
 !apps/api/prisma/migrations/202610020001_chairman_activities_finalisation/
 !apps/api/prisma/migrations/202610020001_chairman_activities_finalisation/migration.sql
+
+!apps/api/prisma/migrations/202610060001_automatic_final_formative/
+!apps/api/prisma/migrations/202610060001_automatic_final_formative/migration.sql

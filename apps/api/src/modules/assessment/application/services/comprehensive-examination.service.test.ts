@@ -1,5 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
+test("aggregate failure rolls back the Comprehensive finalisation transaction", async () => {
+  const h = workflowHarness(); await h.ready("CHAIRMAN_ONLY"); await h.markAll();
+  h.flags.materialisationFailure = true;
+  await assert.rejects(h.service.finalise("exam"), /aggregate failure/);
+  assert.equal(h.state.comprehensiveFinalisation!.length, 0);
+  assert.equal(h.state.comprehensiveFinalResult!.length, 0);
+  assert.equal(h.state.comprehensiveFinalSource!.length, 0);
+  assert.equal(h.state.comprehensiveExamination![0].status, "MARKING");
+});
 import { BadRequestException, ConflictException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { workflowHarness } from "@/modules/examination-registration/examination-workflow.test-harness";
@@ -17,6 +27,7 @@ for (const mode of ["ALL_MEMBERS_AVERAGE", "COURSE_DISTRIBUTED", "CHAIRMAN_ONLY"
     const read = await h.service.workspace("exam", false, true);
     assert.equal(read.finalisation?.id, final.id);
     const again = await h.service.finalise("exam"); assert.equal(again.id, final.id);
+    assert.equal(h.reconciliations(), 2);
     assert.equal(h.state.auditLog!.filter((a) => a.action === "comprehensive.chairman.finalised").length, 1);
   });
   test(`${mode}: incomplete source marks cannot finalise`, async () => {

@@ -9,6 +9,8 @@
     "lint": "eslint src prisma --ext .ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:comprehensive": "pnpm run build && node scripts/test-comprehensive.cjs",
+    "test:final-formative": "pnpm run build && node scripts/test-final-formative.cjs",
+    "formative:reconcile": "pnpm run build && node -r ./scripts/register-test-paths.cjs dist/prisma/reconcile-final-formative.cli.js",
     "prisma": "prisma",
     "prisma:generate": "prisma generate",
     "authorization:provision": "pnpm run build && node dist/prisma/authorization/provision-authorization.cli.js",
