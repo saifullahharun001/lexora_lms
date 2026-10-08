@@ -1,5 +1,9 @@
 # Automatic authoritative Final Formative /40 — implementation review
 
+<!-- phase2-reference-note -->
+> **Retained historical reference — not the current module specification.** Detailed implementation review, diagnosis, source-owner campaigns, checksum/recovery evidence and operational reconciliation safeguards remain retained evidence. Current contracts/status: [formative-assessment.md](formative-assessment.md). Runtime proof: [Current Verified Baseline Index](runtime-test-checklist.md#current-verified-baseline-index). Historical statements below retain their original scope and do not override later canonical evidence.
+<!-- /phase2-reference-note -->
+
 Date: 2026-10-06. Working-tree base: `354fd9560a06efd8a3e59440ded0cd9b64cfee06`, branch `main`.
 
 Classification: **IMPLEMENTED + LOCALLY/STATICALLY VERIFIED + REAL DISPOSABLE POSTGRESQL

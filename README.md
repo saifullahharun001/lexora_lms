@@ -1,6 +1,6 @@
 # Lexora LMS
 
-Lexora LMS is a security-first, future-proof modular monolith academic platform. This repository contains foundation code only: a Turborepo + pnpm monorepo, a Next.js web shell, a NestJS API shell, shared packages, local infrastructure, and architecture guardrails for department-scoped multi-tenancy.
+Lexora LMS is a security-first modular monolith academic platform with implemented academic backend workflows and a partially implemented Next.js frontend. The [documentation map](docs/README.md) identifies canonical requirements, architecture, current status and runtime evidence. Verified local/VM boundaries do not establish production readiness.
 
 ## Technology Stack
 
@@ -34,7 +34,8 @@ packages/
   types/      Shared platform contracts and types
   ui/         Shared React UI primitives and layouts
 docs/
-  architecture-rules.md
+  README.md   Canonical documentation map
+  architecture-security.md
 ```
 
 ## Backend Module List
@@ -121,4 +122,4 @@ The codebase is organized as a modular monolith. Each backend module owns its ow
 
 Department context is a first-class backend concern. Authenticated requests derive active department scope from the principal context, while public verification flows are isolated exceptions with explicit read-only handling and no ambient department privileges.
 
-Detailed architecture rules are defined in [docs/architecture-rules.md](docs/architecture-rules.md).
+Detailed architecture rules are defined in [docs/architecture-security.md](docs/architecture-security.md). Current implementation claims are governed by the [runtime evidence index](docs/runtime-test-checklist.md#current-verified-baseline-index).

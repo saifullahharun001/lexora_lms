@@ -1,19 +1,8 @@
 # Assessment Core
 
-## Strategy
+**Classification:** implemented generic assignment/quiz API foundation, with recorded server/runtime workflow and visibility/security retests; grading and question-engine integration remain partial/pending. See the [runtime index](runtime-test-checklist.md#current-verified-baseline-index).
 
-The assessment core foundation adds the minimum durable structure needed to support assignments, quizzes, submissions, attempts, and grading without implementing full workflows. It treats assessments as offering-bound academic resources, keeps student work tied to enrollment, and separates grading records from downstream result processing.
-
-The design follows these rules:
-
-- every assessment entity is department-scoped
-- every assignment and quiz belongs to a `CourseOffering`
-- every submission and attempt belongs to an `Enrollment`
-- grading is auditable and supports later regrade controls
-- file-based submission uses `FileObject` references rather than embedding storage logic
-- evaluation hooks exist as placeholders for plagiarism, auto-grading, or external evaluators
-
-This phase does not implement result processing, transcript generation, or notifications.
+This document owns generic assignments, quizzes, submissions, attempts and grading contracts. The Law-specific authoritative Activities /30 and Final Formative /40 pipeline is separate in [Formative Assessment](formative-assessment.md). Generic scores must not be presented as authoritative /40 evidence.
 
 ## Domain Model
 
@@ -65,55 +54,6 @@ This phase does not implement result processing, transcript generation, or notif
 - Stores grader, grading mode, score, feedback, regrade marker, and regrade reason
 - Exists independently from later result-processing
 
-## Prisma Schema Additions
-
-Added enums:
-
-- `AssignmentStatus`
-- `SubmissionStatus`
-- `QuizStatus`
-- `QuizAttemptStatus`
-- `QuizQuestionType`
-- `GradingRecordTargetType`
-- `GradingMode`
-- `EvaluationHookStatus`
-
-Added models:
-
-- `Assignment`
-- `AssignmentSubmission`
-- `SubmissionFile`
-- `Quiz`
-- `QuizQuestion`
-- `QuizOption`
-- `QuizAttempt`
-- `QuizResponse`
-- `GradingRecord`
-
-Added relations on existing models:
-
-- `Department`
-  - `assignments`
-  - `assignmentSubmissions`
-  - `submissionFiles`
-  - `quizzes`
-  - `quizQuestions`
-  - `quizOptions`
-  - `quizAttempts`
-  - `quizResponses`
-  - `gradingRecords`
-- `CourseOffering`
-  - `assignments`
-  - `quizzes`
-  - `quizAttempts`
-  - `gradingRecords`
-- `Enrollment`
-  - `assignmentSubmissions`
-  - `quizAttempts`
-- `User`
-  - `assignmentGradings`
-  - `quizGradings`
-
 ## Lifecycle Enums
 
 ### Assignments
@@ -145,285 +85,67 @@ Added relations on existing models:
 - `AUTO_SUBMITTED`
 - `GRADED`
 
-## Rules and Constraints
 
-### Assignment Tied to Course Offering
+## Durable constraints and implementation boundary
 
-- every assignment belongs to one `CourseOffering`
-- assignment department must equal offering department
-- teacher management later derives from offering assignment, not assignment alone
+Every entity is department-scoped. Assignments/quizzes belong to an offering; submissions/attempts belong to the matching Enrollment. Submission uniqueness is assignment + enrollment + attempt number; attempt uniqueness is quiz + enrollment + attempt number. Teachers require active assigned-course authority; students require their own approved enrollment.
 
-### Submission Tied to Enrollment
+Assignment state, publication/visibility, availableFrom, closeAt, dueAt, late policy, maxLateMinutes and maxSubmissionCount constrain writes. Quiz attempts enforce startsAt, closeAt and maxAttempts; submission transitions only IN_PROGRESS -> SUBMITTED. Students must not discover unpublished/out-of-scope assessments through lists or direct IDs. All guards, principal department and object checks apply; client department headers cannot override scope.
 
-- every submission belongs to one `Enrollment`
-- submission enrollment must point to the same offering as the assignment
-- uniqueness uses `assignmentId + enrollmentId + attemptNumber`
+File constraints include maxFileCount, maxFileSizeBytes and allowedMimeTypes. SubmissionFile references only authorized approved FileObject records; secure retrieval and malware scanning remain file-storage responsibilities. A schema reference does not prove the end-to-end upload/submission integration is complete.
 
-### Quiz Tied to Course Offering
+**Durable grading design, partial/foundation only:** GradingRecord supports AUTO, MANUAL or MIXED, immutable/superseding regrade history and reasoned corrections. Every grading/change requires audit; regrade requires step-up as a target requirement. Teachers grade only assigned offerings; students read only their own permitted feedback. Quiz timeLimitMinutes snapshots, timed AUTO_SUBMITTED handling, question/response scoring, evaluation hooks, plagiarism and external evaluators are design hooks, not claims of completed automation.
 
-- every quiz belongs to one `CourseOffering`
-- quiz department must equal offering department
+Assignment publish/close/archive/deadline changes, submission/upload/resubmission/file attachment, quiz publish/close/archive, attempt start/submit/auto-submit, and every grade/regrade must be audited. Owning modules expose contracts; no direct business-layer queries of another module's tables.
 
-### Attempt Tied to Student + Offering
+## Current API
 
-- every attempt belongs to one `Enrollment`
-- every attempt also stores `courseOfferingId` for efficient scope filtering
-- uniqueness uses `quizId + enrollmentId + attemptNumber`
+All endpoints below are under /api/v1 and require AuthGuard, PolicyGuard and active department context.
 
-### Time Limits for Quizzes
+## Endpoints
 
-- quiz stores `timeLimitMinutes`
-- attempt snapshots `timeLimitMinutesSnapshot`
-- time-expired attempts may transition to `AUTO_SUBMITTED`
+| Method | Path | Policy | Description |
+| --- | --- | --- | --- |
+| POST | `/assignments` | `assignment.manage` | Create an assignment for a course offering. |
+| GET | `/assignments` | `assignment.read` | List assignments, optionally filtered by `courseOfferingId` and `status`. |
+| GET | `/assignments/:id` | `assignment.read` | Get one assignment. |
+| PATCH | `/assignments/:id` | `assignment.manage` | Update assignment settings. |
+| POST | `/assignment-submissions` | `submission.create` | Submit work for an assignment enrollment. |
+| GET | `/assignment-submissions` | `submission.read` | List submissions, optionally filtered by `assignmentId` and `enrollmentId`. Students only see their own enrollment records. |
+| GET | `/assignment-submissions/:id` | `submission.read` | Get one submission. |
+| POST | `/quizzes` | `quiz.manage` | Create a quiz for a course offering. |
+| GET | `/quizzes` | `quiz.read` | List quizzes, optionally filtered by `courseOfferingId` and `status`. |
+| GET | `/quizzes/:id` | `quiz.read` | Get one quiz. |
+| POST | `/quiz-attempts/start` | `attempt.create` | Start a quiz attempt for an enrollment. |
+| POST | `/quiz-attempts/submit` | `attempt.submit` | Mark an in-progress quiz attempt as submitted. |
+| GET | `/quiz-attempts/:id` | `attempt.read` | Get one quiz attempt. |
 
-### Late Submission Rules
+## Policies
 
-- assignment stores `allowLateSubmission` and `maxLateMinutes`
-- submission tracks `isLate` and `lateByMinutes`
-- late handling remains policy- and config-driven later
+Department admins receive wildcard coverage for `assignment.*`, `submission.*`, `quiz.*`, and `attempt.*`.
 
-### Multiple Attempts Configuration
+Teachers receive:
 
-- assignment stores `maxSubmissionCount`
-- quiz stores `maxAttempts`
-- services later enforce limits by counting existing submissions or attempts
+- `assignment.manage`
+- `assignment.read`
+- `submission.read`
+- `quiz.manage`
+- `quiz.read`
+- `attempt.read`
 
-### File Upload Constraints
+Students receive:
 
-- assignment stores `maxFileCount`, `maxFileSizeBytes`, and `allowedMimeTypes`
-- `SubmissionFile` only references approved `FileObject` records
-- file malware scanning and authorization remain in `file-storage`
+- `assignment.read`
+- `submission.create`
+- `submission.read`
+- `quiz.read`
+- `attempt.create`
+- `attempt.submit`
+- `attempt.read`
 
-### Plagiarism Integration Placeholder
 
-- assignment contains `plagiarismCheckEnabled`
-- submission and attempt contain evaluation hook fields
-- this reserves structure for future plagiarism and external evaluator integrations
+## Current limitations
 
-### Auto-Grading vs Manual Grading
+The API supports scoped CRUD/submission/attempt behaviors above. It does not implement full grading, question-engine, plagiarism, comprehensive auto-grading, transcript, notification, or official result-publication side effects. File and timed-attempt design fields do not prove all lifecycle automation.
 
-- quiz has `autoGradingEnabled`
-- grading record stores `gradingMode` as `AUTO`, `MANUAL`, or `MIXED`
-- grading record abstracts both assignment and quiz scoring without result-processing
-
-## Authorization and Ownership Notes
-
-### Assignment
-
-- Read:
-  - department admin and auditor by department scope
-  - teacher only for assigned offerings
-  - student only through offering visibility and publication rules later
-- Create:
-  - teacher for assigned offerings only
-  - department admin by department scope
-- Update:
-  - teacher for assigned offerings only
-  - department admin
-- Archive:
-  - teacher for assigned offerings if policy allows
-  - department admin
-- Scope checks:
-  - offering department must match request department
-  - teacher must have active `TeacherCourseAssignment`
-- Audit:
-  - publish/unpublish, archive, sensitive deadline changes
-
-### Assignment Submission
-
-- Read:
-  - student only own submission
-  - teacher only within assigned offering
-  - department admin and auditor by department scope
-- Create:
-  - student only for own enrollment in the assignment offering
-- Update:
-  - student only own submission and only while allowed by assignment state
-  - teacher/admin not for content mutation except controlled override paths later
-- Archive:
-  - not a routine student action; handled by admin workflow if needed
-- Scope checks:
-  - enrollment must belong to same offering as assignment
-  - student principal must match enrollment student for self actions
-- Audit:
-  - upload, update, resubmission, grading-related state changes
-
-### Quiz
-
-- Read:
-  - teacher for assigned offerings
-  - department admin and auditor
-  - student according to offering enrollment and publication state
-- Create:
-  - teacher for assigned offerings only
-  - department admin
-- Update:
-  - teacher for assigned offerings while mutable
-  - department admin
-- Archive:
-  - teacher for assigned offerings if allowed
-  - department admin
-- Scope checks:
-  - offering department must match request department
-- Audit:
-  - publish/unpublish, archive, high-impact time-limit changes
-
-### Quiz Attempt
-
-- Read:
-  - student only own attempts
-  - teacher only within assigned offering
-  - department admin and auditor by department scope
-- Create:
-  - student only for own enrollment in quiz offering
-- Update:
-  - system or student while attempt is `IN_PROGRESS`
-- Archive:
-  - not routine; admin cleanup path only if later introduced
-- Scope checks:
-  - enrollment must belong to same offering as quiz
-  - student principal must match enrollment student for self actions
-- Audit:
-  - start, submit, auto-submit, grade changes
-
-### Grading Record
-
-- Read:
-  - teacher in assigned offering
-  - student only for own graded work later by policy
-  - department admin and auditor by department scope
-- Create:
-  - teacher in assigned offering
-  - department admin
-- Update:
-  - teacher/admin through controlled grading correction path
-- Archive:
-  - avoid delete; prefer append-only regrade records or superseding records
-- Scope checks:
-  - target submission or attempt must belong to offering in active department
-  - grader must be authorized for that offering
-- Audit:
-  - mandatory for every grading and grading change
-- Step-up:
-  - required for regrade actions
-
-## Audit Requirements
-
-- `Assignment`
-  - publish
-  - unpublish or close
-  - archive
-- `AssignmentSubmission`
-  - upload/create
-  - resubmission
-  - file attachment changes
-- `Quiz`
-  - publish
-  - unpublish or close
-  - archive
-- `QuizAttempt`
-  - submit
-  - auto-submit
-- `GradingRecord`
-  - initial grading
-  - grading change
-  - regrade action
-
-## NestJS Scaffolding
-
-### assignment
-
-Folder shape:
-
-```text
-assignment/
-  application/
-    ports/
-    services/
-  contracts/
-  domain/
-```
-
-Public contracts:
-
-- `AssignmentRecord`
-- `AssignmentSubmissionRecord`
-- `SubmissionFileRecord`
-- `SubmissionEvaluationHook`
-- `GradingRecordFoundation`
-
-Repository boundary:
-
-- assignment repository port owns assignment, submission, submission-file, and grading persistence for assignment targets
-- file authorization remains external through file-storage contract
-- offering, enrollment, and teacher-assignment validation must come through public contracts, not direct business-layer coupling
-
-Policy names:
-
-- `assignment.record.read`
-- `assignment.record.create`
-- `assignment.record.update`
-- `assignment.record.archive`
-- `assignment.submission.read`
-- `assignment.submission.create`
-- `assignment.submission.update`
-- `assignment.submission.grade`
-- `assignment.submission.regrade`
-
-Audit event names:
-
-- `assignment.record.created`
-- `assignment.record.updated`
-- `assignment.record.published`
-- `assignment.record.closed`
-- `assignment.record.archived`
-- `assignment.submission.created`
-- `assignment.submission.updated`
-- `assignment.submission.resubmitted`
-- `assignment.submission.file-attached`
-- `assignment.submission.graded`
-- `assignment.submission.regraded`
-
-### quiz
-
-Public contracts:
-
-- `QuizRecord`
-- `QuizQuestionRecord`
-- `QuizOptionRecord`
-- `QuizAttemptRecord`
-- `QuizResponseRecord`
-- `QuizEvaluationHook`
-- `GradingRecordFoundation`
-
-Repository boundary:
-
-- quiz repository port owns quiz, question, option, attempt, response, and grading persistence for quiz targets
-- offering and enrollment validation remains via public contracts from academic core
-- auto-grading integration stays behind evaluation hook/config boundary
-
-Policy names:
-
-- `quiz.record.read`
-- `quiz.record.create`
-- `quiz.record.update`
-- `quiz.record.archive`
-- `quiz.attempt.read`
-- `quiz.attempt.start`
-- `quiz.attempt.submit`
-- `quiz.attempt.grade`
-- `quiz.attempt.regrade`
-
-Audit event names:
-
-- `quiz.record.created`
-- `quiz.record.updated`
-- `quiz.record.published`
-- `quiz.record.closed`
-- `quiz.record.archived`
-- `quiz.attempt.started`
-- `quiz.attempt.submitted`
-- `quiz.attempt.auto-submitted`
-- `quiz.attempt.graded`
-- `quiz.attempt.regraded`
-
+The runtime ledger preserves the assessment visibility finding and successful retest, including negative Teacher assignment and Student ownership checks. Full frontend and production readiness remain pending. Historical scaffold policy/event catalogs and schema relations remain in the [preserved source](legacy/phase-1/assessment-core.md); the current API table is the route contract.

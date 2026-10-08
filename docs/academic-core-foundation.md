@@ -1,5 +1,9 @@
 # Academic Core Foundation
 
+<!-- phase2-reference-note -->
+> **Retained historical reference — not the current module specification.** Exact public-contract, policy and audit-event catalogs plus the original schema/scaffold design remain unique reference material. Current contracts/status: [academic-core.md](academic-core.md). Runtime proof: [Current Verified Baseline Index](runtime-test-checklist.md#current-verified-baseline-index). Historical statements below retain their original scope and do not override later canonical evidence.
+<!-- /phase2-reference-note -->
+
 ## Academic Core Strategy
 
 The academic core foundation establishes the minimum durable structure required to support department-scoped academic operations later without implementing the full workflows yet. It defines academic structure, termization, course catalog ownership, offering-level delivery, teacher-course linkage, student enrollment anchors, session scheduling, attendance capture, import compatibility, and configurable eligibility scaffolding.

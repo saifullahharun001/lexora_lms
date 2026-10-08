@@ -1,5 +1,9 @@
 # Result Processing Foundation
 
+<!-- phase2-reference-note -->
+> **Retained historical reference — not the current module specification.** Exact foundation schema/contract/policy/audit catalogs and generic computation design remain reference material; they do not define the newer Chairman/Controller publication authority. Current contracts/status: [result-domain.md](result-domain.md). Runtime proof: [Current Verified Baseline Index](runtime-test-checklist.md#current-verified-baseline-index). Historical statements below retain their original scope and do not override later canonical evidence.
+<!-- /phase2-reference-note -->
+
 ## Strategy Explanation
 
 The result-processing foundation sits downstream from the academic core and assessment core. It does not replace grading, attendance, or eligibility logic. Instead, it consumes finalized academic signals, computes course-level results, derives term GPA and cumulative CGPA, governs publication, and preserves amendment integrity through append-oriented audit trails.

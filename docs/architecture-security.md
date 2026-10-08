@@ -1,23 +1,164 @@
-# Identity & Access Design
+# Architecture and security
 
-<!-- phase2-reference-note -->
-> **Retained historical reference — not the current module specification.** Original flow diagrams, proposed identity schema metadata and target design context remain useful; target 2FA/step-up requirements are not runtime proof. Current contracts/status: [architecture-security.md](architecture-security.md). Runtime proof: [Current Verified Baseline Index](runtime-test-checklist.md#current-verified-baseline-index). Historical statements below retain their original scope and do not override later canonical evidence.
-<!-- /phase2-reference-note -->
+**Classification:** durable rules plus implemented identity/authorization foundation; specific academic controls have runtime evidence. Full identity security is **partial**. Evidence: [runtime checklist](runtime-test-checklist.md#current-verified-baseline-index). Academic workflows extend beyond the original foundation.
 
-## Strategy
+## Implemented request and authorization boundary
 
-Lexora LMS uses department-scoped RBAC plus scoped policy evaluation. Roles grant baseline permission sets, but permissions alone never authorize access to a specific record. Every sensitive decision evaluates all of the following:
+`AuthGuard` validates the access JWT and loads the principal from the database. `PolicyGuard` evaluates the string policy declared with `@RequirePolicy()` against role permissions and department context. Every sensitive route must declare its policy and enforce object authority in policies/application services.
 
-- authenticated principal
-- active department context
-- requested permission
-- target resource type
-- resource ownership or assignment
-- record state restrictions
-- step-up authentication requirement
-- audit requirement
+The authenticated principal's active department is authoritative. Request context must remain available across guard/service execution. A caller's `x-department-id` never overrides it. Object reads/writes must constrain both identifier and department; ownership/assignment checks are additional requirements. Student self-resource scope and current Teacher assigned-course scope are mandatory. Foreign or unauthorized object identifiers fail safely, often with `404`; missing/invalid authentication is `401`, and policy denial normally `403`. A safe-not-found denial is not an authorization failure.
 
-The model is deny-by-default. There is no super-admin role and no cross-department bypass role. Department administrators are powerful within their own department but do not inherit unrestricted access to every sensitive identity action. Public verification is isolated from authenticated department work and uses a separate `public_verification` permission scope.
+Policies normalize DB grants and may include static named fallback prefixes. Department Admin has no universal `*` grant. Sensitive academic workflows additionally require exact permission provenance and live appointments; generic module prefixes cannot confer Examiner, Committee or Chairman authority. Principal, permission, resource state and assignment must be revalidated at the protected transaction boundary where required.
+
+Generic policy resolution matches normalized grants directly or through supported wildcard/prefix rules. New sensitive handlers must declare the applicable policy, establish its explicit grant and enforce ownership/assignment and record-state checks when introduced; those checks must not be deferred merely because a role matches.
+
+**Current limitations:** the generic `PolicyGuard` allows a request when no policy metadata is present. This is a gap against deny-by-default route design, not permission to omit metadata. Generic policy matching/fallbacks remain simple; policy cache is process-local and manual invalidation hooks (`clearPrincipalCache(userId)`, `clearAllPolicyCache()`) are not a distributed revocation mechanism. Older statements that all ownership is placeholder-only are superseded for runtime-tested module paths, but do not establish universal object-check coverage.
+
+The design's `AuthorizationGuard`, `@RequirePermissions`, `@RequirePolicies`, `@RequireStepUp` and `@AuditAction` patterns describe target architecture; do not substitute them for the current `AuthGuard` / `PolicyGuard` / `@RequirePolicy()` contract or claim full step-up enforcement.
+
+## Administrative Model
+
+- Lexora LMS does not have a super-admin role.
+- Administrative authority is department-scoped only.
+- A department administrator may act only within the department attached to the active request context.
+- There is no bypass role that can silently cross department boundaries.
+
+## Modular Monolith Boundaries
+
+- Every business capability lives inside a top-level NestJS module.
+- Each module owns its internal `application`, `domain`, and `infrastructure` layers.
+- A module may export public providers, contracts, DTOs, and interfaces intended for other modules.
+- A module may not import another module's internal files directly.
+- Shared technical concerns belong in `src/common` or `src/platform`, not inside business modules.
+
+## Business Rules Placement
+
+- Controllers orchestrate transport concerns only.
+- Guards and interceptors enforce access and cross-cutting policy checks.
+- Repositories and Prisma adapters persist and retrieve data only.
+- Business rules, invariants, and transactional decisions must live in the service layer or domain layer.
+- Validation at the transport edge is allowed, but domain invariants may not depend on controller validation alone.
+
+## Data Access Rules
+
+- No module may directly query another module's tables through Prisma or raw SQL.
+- Cross-module data access must go through exported interfaces or explicit application services.
+- Shared read models, if needed later, must be defined intentionally and documented before introduction.
+- Raw SQL requires a security and ownership review.
+- No cross-module table access is allowed without an interface contract that is explicitly exported by the owning module.
+
+## Department Scoping Rules
+
+- Department is the default tenant boundary for academic data.
+- Every department-scoped record must carry a department identifier or derive one through a constrained aggregate root.
+- Incoming requests must resolve department scope before any business operation.
+- Authenticated users derive department scope from their authenticated principal context and active department assignment.
+- Backend services must read department scope from request context, not from ad hoc controller parameters alone.
+- Cross-department reads and writes are forbidden by default.
+- When a principal's active department and target resource department do not match, access must be denied and the denial must be auditable.
+- Public transcript verification and similar public verification flows are explicit exceptions. They run in an isolated public-verification context, not in an administrative or instructional department context.
+- Global configuration is allowed only for explicitly platform-level technical settings, never as a hidden bypass around department isolation.
+
+## Authorization Rules
+
+- Authorization is deny-by-default.
+- A successful role match alone is insufficient for access.
+- Every sensitive action must evaluate role, permission, and resource scope.
+- RBAC is only the first gate; scoped policy checks are mandatory.
+- Object-level authorization is mandatory for records that can differ by department, course, class, or ownership.
+- Authorization checks must be centralized in policies, guards, or application services rather than scattered through controllers.
+- Public verification routes must use separate policy rules that grant only the minimal read scope required for verification output.
+
+## Audit Requirements
+
+- Sensitive actions must write an audit record.
+- Sensitive actions include authentication events, permission changes, user lifecycle changes, department configuration changes, storage access, and academic record modifications.
+- Audit events must capture actor, action, target type, target identifier, department scope, request metadata, and outcome.
+- Audit logging must be append-oriented and resistant to silent deletion from application code paths.
+- Audit context for sensitive actions must include the resolved department scope or the explicit public-verification exception context.
+
+## File and Storage Rules
+
+- File uploads must enter through the `file-storage` module only.
+- File metadata and access permissions must be enforced before object retrieval.
+- Malware scanning must be part of the file pipeline whenever enabled by configuration.
+- Public file exposure requires explicit, revocable policy.
+
+## Integration Rules
+
+- The `integration-layer` module owns inbound and outbound external system integration patterns.
+- External integrations may not bypass internal authorization, audit, or department scoping rules.
+- Background jobs and async handlers must preserve tenant scope and actor provenance when relevant.
+
+## Config-Driven Rules
+
+- Academic rules must be configuration-driven, versionable, and scoped deliberately.
+- Department-level academic configuration belongs in department-scoped settings, not hard-coded conditionals.
+
+## Public Verification Isolation
+
+- Public verification is a narrow, isolated read-only surface.
+- Public verification requests must not receive administrative, teacher, student, or department-admin privileges.
+- Verification handlers must not load unrelated department data beyond the minimum verification payload.
+- Public verification results must be safe to return without ambient session state.
+
+## Frontend Rules
+
+- App Router route groups define the top-level application areas.
+- Shared layouts, providers, and navigation live in shared locations and must not embed module-specific business logic.
+- Frontend route protection must complement, not replace, backend authorization.
+
+
+## Identity implementation and limitations
+
+The identity MVP implements registration, login/logout, refresh rotation foundation, persisted sessions, login-attempt tracking and temporary lockout foundation. Email verification/password reset and 2FA remain incomplete security workflows. Authenticated runtime campaigns prove working login/protected-route behavior; they do not prove delivery, recovery or comprehensive session security.
+
+## Endpoints
+
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/logout`
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/request-password-reset`
+- `POST /api/v1/auth/reset-password`
+- `POST /api/v1/auth/verify-email`
+
+## Notes
+
+- new users are created in `INVITED` state and become `ACTIVE` after email verification
+- default student-role assignment is attempted if a `student` role exists in the target department
+- refresh tokens are stored hashed in `Session.refreshTokenHash`
+- cookie delivery is ready for `httpOnly` refresh-token usage, while response-body fallback still exists for development/testing
+- current refresh-cookie behavior uses `SameSite=lax`; production should prefer `SameSite=strict` where UX allows or add a CSRF-token strategy for refresh flows
+- email verification and password-reset endpoints return raw tokens only outside production because mail delivery is still a skeleton
+- suspicious login events are recorded as a placeholder when lockout threshold is exceeded
+- auth endpoints use a stricter throttler profile based on the existing auth rate-limit config
+
+## Known MVP Limitations
+
+- email transport is not implemented; verification and reset rely on skeleton token issuance only
+- 2FA is readiness-only and does not yet implement TOTP enrollment, challenge, backup codes, or recovery UX
+- CSRF protections for cookie-based refresh are documented but not fully implemented
+- device trust, device naming, and broader session-management UX are still minimal
+- refresh-token revocation is session-based but does not yet include richer anomaly response flows
+- suspicious login handling is placeholder-only and does not yet enforce adaptive challenge workflows
+- bcrypt is used for the MVP; an Argon2 migration is still recommended for production hardening
+
+## Production Hardening Checklist
+
+- implement real email delivery for verification, password reset, and security notifications
+- add full 2FA flows, including enrollment, verification, backup recovery, and step-up enforcement
+- harden refresh-cookie CSRF protection with `SameSite=strict` where possible or a dedicated CSRF token strategy
+- confirm reverse-proxy and platform rate limiting align with the Nest auth throttler profile
+- migrate password hashing to Argon2 if operationally feasible
+- expand device and session management, including user-visible session listing and selective revocation
+- add stronger suspicious-login detection and response workflows
+- move development token fallbacks out of API responses in production environments
+
+
+## Security target contracts (pending where not separately verified)
+
+The following role, permission and policy catalog is a preserved design contract. It is not a runtime grant inventory. Role names never bypass module object authorization or the newer Chairman/Controller separation in [Result Domain](result-domain.md). References to mandatory 2FA or step-up below are requirements; real challenge/enrollment enforcement is pending.
 
 ## RBAC Model
 
@@ -694,122 +835,6 @@ Legend:
 - Step-up:
   - required for request, approval, and execution
 
-## Authorization Architecture
-
-### Route Guard Flow
-
-1. `RequestContextInterceptor` creates request context and request id.
-2. Authentication guard resolves principal and attaches `PrincipalContext`.
-3. `AuthorizationGuard` reads metadata from decorators.
-4. `DepartmentContextResolver` resolves active department or public verification context.
-5. Permission gate checks required permission(s).
-6. Policy service evaluates ownership, resource state, department match, and step-up requirements.
-7. Request proceeds to module service only if all checks succeed.
-8. Audit writer records sensitive allow/deny outcomes.
-
-```mermaid
-flowchart TD
-    A[HTTP Request] --> B[RequestContextInterceptor]
-    B --> C[Authentication Guard]
-    C --> D[AuthorizationGuard]
-    D --> E[DepartmentContextResolver]
-    E --> F[Permission Check]
-    F --> G[Policy Service]
-    G --> H{Allowed?}
-    H -- No --> I[Audit Denial]
-    I --> J[403 Response]
-    H -- Yes --> K[Module Service]
-    K --> L[Audit Outcome]
-    L --> M[API Response]
-```
-
-### Permission Decorator Pattern
-
-- `@RequirePermissions(...)` declares baseline permission grants.
-- `@RequirePolicies(...)` declares resource-specific policy names.
-- `@RequireStepUp(...)` declares step-up policy for the action.
-- `@AuditAction(...)` declares audit metadata for controller/service handlers.
-
-### Policy Evaluation Flow
-
-1. Resolve principal context
-2. Resolve department context
-3. Resolve target resource descriptor
-4. Ensure department scope match
-5. Ensure permission present for role scope
-6. Ensure ownership/assignment checks pass
-7. Ensure record-state restrictions pass
-8. Ensure step-up satisfied if required
-9. Return allow or deny with policy reason
-
-```mermaid
-flowchart TD
-    A[Principal Context] --> D[Policy Evaluation]
-    B[Department Context] --> D
-    C[Resource Descriptor] --> D
-    D --> E[Department Match Check]
-    E --> F[Permission Grant Check]
-    F --> G[Ownership or Assignment Check]
-    G --> H[Record State Check]
-    H --> I[Step-Up Requirement Check]
-    I --> J{Decision}
-    J -- Allow --> K[Proceed]
-    J -- Deny --> L[Return Reason]
-```
-
-### Ownership Check Flow
-
-- Ownership is resource-specific, not role-specific
-- Examples:
-  - user self access: `resource.userId === principal.actorId`
-  - teacher assignment: `resource.teacherIds` contains principal
-  - student enrolled access: `resource.studentId === principal.actorId` or enrollment exists
-  - discussion owner edit: `resource.authorUserId === principal.actorId`
-- Ownership checks never replace department checks
-
-### Department Scope Check Flow
-
-- Department context comes from active principal department for authenticated requests
-- Public verification is explicit exception context
-- Policy layer compares:
-  - `requestContext.department.departmentId`
-  - resource department
-  - principal active department
-- Any mismatch denies access unless the route is explicitly public verification
-
-### Audit Before/After Pattern
-
-- Before:
-  - record intent for highest-risk actions such as override approval, role changes, export, revoke, forced logout
-- After:
-  - record outcome, target id, and any state changes
-- Denials:
-  - record denied attempts for sensitive operations
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Guard as Guards and Policies
-    participant Service as Module Service
-    participant Audit as Audit Writer
-
-    Client->>Guard: request
-    Guard->>Audit: intent event for high-risk action
-    Guard->>Service: authorized call
-    Service-->>Guard: outcome
-    Guard->>Audit: final success or denial event
-    Guard-->>Client: response
-```
-
-### Request Context, Policy Service, and Module Service Interaction
-
-- Controllers stay thin and declare metadata
-- Guards and interceptors populate context
-- Module service loads resource descriptor through its own module boundary
-- Policy service evaluates access using descriptor data, not raw controller params alone
-- Module service executes the change
-- Audit writer persists final event
-
 ## Security Rules
 
 ### Brute-force Protection
@@ -868,30 +893,15 @@ sequenceDiagram
 - Allowed within configurable session cap
 - Risk engine may require step-up for transcript access, suspicious login, recovery completion, or new device
 
-## Prisma Additions Needed
 
-Minimal schema additions are justified for identity risk, device/session hygiene, and declarative step-up policy metadata:
+## Audit and public-surface assurance
 
-- `LoginAttempt`
-  - brute-force controls
-  - lockout analytics
-  - suspicious login correlation
-- `SuspiciousLoginEvent`
-  - risk scoring evidence
-  - incident review
-- `StepUpRequirement`
-  - declarative metadata for high-risk actions
-- Session enhancements
-  - device fingerprint hash
-  - trust flag
-  - revocation reason
-  - last IP / last user-agent
+Audit sensitive allow/deny outcomes with actor, action, target, department, request metadata and outcome. Capture high-risk intent when required and transactionally bind required success audits to academic mutations. Protected immutability and rollback proofs are specific to the recorded module matrices, not an assertion that every audit row has identical database protections. Preserve amendment history and authoritative source versions.
 
-## Recommendations and Tradeoffs
+Public transcript verification is isolated from administrative/principal department work and exposes only the minimal current API summary. Tokens are hashed, finite-lived and revocable; it must never disclose full transcripts or ambient role privileges.
 
-- Prefer permission breadth plus policy depth. Fine-grained permissions for every field will become brittle; keep permissions coarse and let policy service handle ownership and state.
-- Keep department-admin strong but not absolute. It reduces operational friction without breaking tenant isolation.
-- Use append-oriented audit plus override workflow instead of destructive mutation for sensitive academic records.
-- Require 2FA for every privileged non-student role from day one. Retro-fitting it later is painful.
-- Keep public verification as a separate scope, not a special case of authenticated permissions.
-- Add risk-based step-up now as metadata even if challenge flows are implemented later. It keeps controller and policy APIs stable.
+Sensitive-data handling is mandatory across logs, audit metadata, exports and documentation: do not expose raw passwords, password hashes, access/refresh tokens, cookies, database credentials or verification tokens. Public and notification payloads must omit full confidential academic records; audit evidence retains necessary provenance with privacy-safe metadata.
+
+The permitted Final Formative shared read projection is an explicit exported service/internal SQL contract, documented in [Formative Assessment](formative-assessment.md), not permission for arbitrary cross-module queries.
+
+Pending 2FA, CSRF, cache invalidation, session/risk controls, email, upload operations and production infrastructure are tracked in the [hardening backlog](security-and-production-hardening-backlog.md).

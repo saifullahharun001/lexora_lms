@@ -1,21 +1,16 @@
-# Transcript & Verification Foundation
+# Transcript and Verification
 
-## Strategy Explanation
+**Classification:** implemented snapshot/verification API foundation with recorded server/runtime checks; full rendering/issuance product remains partial. See [runtime evidence](runtime-test-checklist.md#current-verified-baseline-index).
 
-The transcript and verification foundation sits downstream from academic records, result processing, and published GPA/CGPA aggregates. It creates official, immutable transcript snapshots from published academic outcomes and exposes a separate public-verification surface that reveals only the minimum safe confirmation data.
+## Durable snapshot boundary
 
-This design follows these rules:
+Snapshot student, department, programme, term/course details, source result IDs, credits, grade/quality points, GPA/CGPA, standing, completion and graduation status at issuance-version creation. Never render an issued transcript from mutable live marks. Later corrections create a new version and preserve prior lineage; academic snapshot fields cannot be edited in place.
 
-- every transcript and verification record is department-scoped
-- transcripts are generated only from published or locked result-processing records
-- `TranscriptRecord` is the student-level official transcript aggregate
-- `TranscriptVersion` is the immutable issuance snapshot
-- term summaries and course lines are copied from published result and GPA/CGPA sources rather than rendered live from mutable tables
-- verification tokens are isolated public artifacts and always expire or may be revoked
-- revocation is append-oriented and auditable
-- seal and signature metadata are stored separately from rendering assets and PDF generation
+`printStructureJson` remains a snapshot field for future rendering. No transcript layout is hard-coded by the API; a future renderer must consume the immutable version without changing it.
 
-This phase does not implement PDF rendering, QR image rendering, certificate generation, or user-facing pages.
+The authoritative target source is the published-result registry described in [Result Domain](result-domain.md). Draft, computed-only, verified-only, revoked or amended-but-unpublished results must not feed an official transcript.
+
+**Known foundation mismatch — implemented, source-inspected:** the existing service accepts PUBLISHED, LOCKED and AMENDED ResultRecord statuses and snapshots the latest available GPA/CGPA records. This matches the old API, while the old foundation excluded amended-but-unpublished sources. Do not infer Controller publication or registry integration from AMENDED status. Align issuance eligibility with explicit publication/version evidence when implementing the new result boundary; no code changes are made here.
 
 ## Domain Model
 
@@ -46,7 +41,7 @@ This phase does not implement PDF rendering, QR image rendering, certificate gen
 ### TranscriptVerificationToken
 
 - Public verification artifact tied to one transcript version
-- Stores opaque public code, token lifecycle, expiry, verification count, and safe public summary payload
+- Stores the digest of the opaque public token in the legacy `publicCode` field, plus token lifecycle, expiry, verification count, and safe public summary payload
 - Acts as the QR/public URL lookup anchor
 
 ### TranscriptRevocationRecord
@@ -61,381 +56,83 @@ This phase does not implement PDF rendering, QR image rendering, certificate gen
 - Stores signature algorithm, signer identity, seal reference, payload digest, and other signing metadata
 - Keeps signature and seal concerns separate from rendering implementation
 
-## Prisma Schema Additions
-
-Added enums:
-
-- `TranscriptRecordStatus`
-- `TranscriptVersionStatus`
-- `TranscriptVerificationTokenStatus`
-- `TranscriptRevocationStatus`
-
-Added models:
-
-- `TranscriptRecord`
-- `TranscriptVersion`
-- `TranscriptTermSummary`
-- `TranscriptCourseLine`
-- `TranscriptVerificationToken`
-- `TranscriptRevocationRecord`
-- `TranscriptSealMetadata`
-
-Added relations on existing models:
-
-- `Department`
-  - `transcriptRecords`
-  - `transcriptVersions`
-  - `transcriptTermSummaries`
-  - `transcriptCourseLines`
-  - `transcriptVerificationTokens`
-  - `transcriptRevocationRecords`
-  - `transcriptSealMetadatas`
-- `User`
-  - `transcriptRecordsAsStudent`
-  - `transcriptRecordsGenerated`
-  - `transcriptVersionsGenerated`
-  - `transcriptVersionsIssued`
-  - `transcriptVerificationTokensIssued`
-  - `transcriptRevocationsRequested`
-  - `transcriptRevocationsApplied`
-  - `transcriptRevocationsRejected`
-- `AcademicTerm`
-  - `transcriptTermSummaries`
-- `CourseOffering`
-  - `transcriptCourseLines`
-- `ResultRecord`
-  - `transcriptCourseLines`
-- `GPARecord`
-  - `transcriptTermSummaries`
-- `CGPARecord`
-  - `transcriptVersions`
-
-Representative Prisma additions:
-
-```prisma
-enum TranscriptRecordStatus {
-  DRAFT
-  GENERATED
-  ISSUED
-  REVOKED
-  ARCHIVED
-}
-
-enum TranscriptVersionStatus {
-  GENERATED
-  ISSUED
-  SUPERSEDED
-  REVOKED
-}
-
-enum TranscriptVerificationTokenStatus {
-  ACTIVE
-  EXPIRED
-  REVOKED
-}
-
-enum TranscriptRevocationStatus {
-  REQUESTED
-  APPLIED
-  REJECTED
-}
-
-model TranscriptRecord {
-  id                  String                 @id @default(cuid())
-  departmentId        String                 @map("department_id")
-  studentUserId       String                 @map("student_user_id")
-  transcriptNumber    String                 @map("transcript_number")
-  status              TranscriptRecordStatus @default(DRAFT)
-  latestVersionNumber Int                    @default(0) @map("latest_version_number")
-}
-
-model TranscriptVersion {
-  id                         String                  @id @default(cuid())
-  departmentId               String                  @map("department_id")
-  transcriptRecordId         String                  @map("transcript_record_id")
-  sourceCgpaRecordId         String?                 @map("source_cgpa_record_id")
-  versionNumber              Int                     @map("version_number")
-  status                     TranscriptVersionStatus @default(GENERATED)
-  studentSnapshotJson        Json                    @map("student_snapshot_json")
-  programSnapshotJson        Json?                   @map("program_snapshot_json")
-  departmentSnapshotJson     Json?                   @map("department_snapshot_json")
-  printStructureJson         Json?                   @map("print_structure_json")
-  cumulativeAttemptedCredits Decimal?               @db.Decimal(6, 2) @map("cumulative_attempted_credits")
-  cumulativeEarnedCredits    Decimal?               @db.Decimal(6, 2) @map("cumulative_earned_credits")
-  cgpaSnapshot               Decimal?               @db.Decimal(4, 2) @map("cgpa_snapshot")
-  academicStandingStatus     String?                @map("academic_standing_status")
-  completionStatus           String?                @map("completion_status")
-  graduationStatus           String?                @map("graduation_status")
-}
-
-model TranscriptTermSummary {
-  id                     String   @id @default(cuid())
-  transcriptVersionId    String   @map("transcript_version_id")
-  academicTermId         String?  @map("academic_term_id")
-  sourceGpaRecordId      String?  @map("source_gpa_record_id")
-  sortOrder              Int      @default(0) @map("sort_order")
-  termCodeSnapshot       String   @map("term_code_snapshot")
-  termNameSnapshot       String   @map("term_name_snapshot")
-  attemptedCredits       Decimal? @db.Decimal(6, 2) @map("attempted_credits")
-  earnedCredits          Decimal? @db.Decimal(6, 2) @map("earned_credits")
-  qualityPoints          Decimal? @db.Decimal(8, 2) @map("quality_points")
-  termGpaSnapshot        Decimal? @db.Decimal(4, 2) @map("term_gpa_snapshot")
-  cumulativeCgpaSnapshot Decimal? @db.Decimal(4, 2) @map("cumulative_cgpa_snapshot")
-}
-
-model TranscriptCourseLine {
-  id                      String   @id @default(cuid())
-  transcriptVersionId     String   @map("transcript_version_id")
-  transcriptTermSummaryId String   @map("transcript_term_summary_id")
-  resultRecordId          String?  @map("result_record_id")
-  courseOfferingId        String?  @map("course_offering_id")
-  sortOrder               Int      @default(0) @map("sort_order")
-  courseCodeSnapshot      String   @map("course_code_snapshot")
-  courseTitleSnapshot     String   @map("course_title_snapshot")
-  creditHoursSnapshot     Decimal  @db.Decimal(4, 2) @map("credit_hours_snapshot")
-  letterGrade             String?  @map("letter_grade")
-  gradePoint              Decimal? @db.Decimal(4, 2) @map("grade_point")
-}
-
-model TranscriptVerificationToken {
-  id                 String                            @id @default(cuid())
-  transcriptVersionId String                           @map("transcript_version_id")
-  publicCode         String                            @unique @map("public_code")
-  status             TranscriptVerificationTokenStatus @default(ACTIVE)
-  publicSummaryJson  Json?                             @map("public_summary_json")
-  expiresAt          DateTime?                         @map("expires_at")
-  revokedAt          DateTime?                         @map("revoked_at")
-}
-
-model TranscriptRevocationRecord {
-  id                  String                     @id @default(cuid())
-  transcriptRecordId  String                     @map("transcript_record_id")
-  transcriptVersionId String?                    @map("transcript_version_id")
-  status              TranscriptRevocationStatus @default(REQUESTED)
-  reason              String
-}
-
-model TranscriptSealMetadata {
-  id                  String  @id @default(cuid())
-  transcriptVersionId String  @unique @map("transcript_version_id")
-  sealType            String  @map("seal_type")
-  signatureAlgorithm  String? @map("signature_algorithm")
-  signatureReference  String? @map("signature_reference")
-  sealReference       String? @map("seal_reference")
-  payloadDigest       String? @map("payload_digest")
-}
-```
-
-## Enums
-
-### Transcript Records
-
-- `DRAFT`
-- `GENERATED`
-- `ISSUED`
-- `REVOKED`
-- `ARCHIVED`
-
-### Transcript Versions
-
-- `GENERATED`
-- `ISSUED`
-- `SUPERSEDED`
-- `REVOKED`
-
-### Verification Tokens
-
-- `ACTIVE`
-- `EXPIRED`
-- `REVOKED`
-
-### Revocation Records
-
-- `REQUESTED`
-- `APPLIED`
-- `REJECTED`
-
-## Snapshot / Computation Model
-
-### Upstream Data Eligibility
-
-- transcript generation may read only `ResultRecord` entries that are already `PUBLISHED` or `LOCKED`
-- term aggregates come from published `GPARecord`
-- cumulative aggregate comes from published `CGPARecord`
-- draft, computed-only, verified-only, amended-but-unpublished, or revoked academic data must not feed an official transcript version
-
-### Transcript Version Snapshot
-
-- transcript generation creates a new `TranscriptVersion`
-- the version copies required student, department, program, standing, completion, and printable layout fields into snapshot JSON columns
-- once generated, version snapshot fields are immutable; later corrections create a new version rather than editing the old one
-
-### Term Summaries
-
-- one `TranscriptTermSummary` per included academic term
-- each summary snapshots:
-  - term code and name
-  - attempted credits
-  - earned credits
-  - quality points
-  - term GPA
-  - cumulative CGPA after the term
-  - academic standing or status for that term
-
-### Course Lines
-
-- each published course result becomes one `TranscriptCourseLine`
-- each line snapshots:
-  - course code and title
-  - credit hours
-  - normalized percentage if the department wishes to expose it
-  - letter grade
-  - grade point
-  - quality points
-  - completion/pass status
-  - whether the line counts toward GPA
-
-### Cumulative Credits and CGPA
-
-- transcript version stores cumulative attempted credits, cumulative earned credits, and CGPA snapshot directly on the version for fast issuance and stable verification
-- these values are derived from published `CGPARecord` and validated against included course lines during generation
-
-### Academic Standing and Completion Foundation
-
-- `academicStandingStatus` is a snapshot-ready string foundation for values such as `GOOD_STANDING`, `PROBATION`, or `SUSPENDED`
-- `completionStatus` is a snapshot-ready string foundation for values such as `IN_PROGRESS`, `COMPLETED`, or `REQUIREMENTS_PENDING`
-- `graduationStatus` is a snapshot-ready string foundation for values such as `NOT_ELIGIBLE`, `ELIGIBLE`, or `AWARDED`
-- these remain snapshot fields now so later academic-policy services can populate them without redesigning transcript storage
-
-## Rules and Constraints
-
-- transcripts are generated only from published or locked results
-- transcript version snapshots are immutable after creation
-- new academic corrections require a new version, not in-place mutation of an issued version
-- QR and public verification resolve through `TranscriptVerificationToken.publicCode`
-- public verification must expose only safe summary data
-- verification tokens expire independently of transcript record creation; omitted expiry defaults to 72 hours from issue, and supplied expiry must be in the future
-- transcript revocation requires reason capture and append-only revocation records
-- transcript revocation may invalidate all active verification tokens for the affected transcript or version
-- digital signature and seal metadata are stored separately from rendering output
-- transcript rendering and PDF generation are intentionally deferred
-
-## Authorization and Audit Notes
-
-### Authorization
-
-- generate transcript:
-  - `department_admin`
-  - exam office or equivalent administrative records authority
-  - internal service principal for scheduled generation if later introduced
-- issue transcript:
-  - `department_admin`
-  - exam office or equivalent administrative records authority
-  - step-up required
-- revoke transcript:
-  - `department_admin`
-  - exam office or equivalent administrative records authority
-  - step-up required
-- view own transcript:
-  - `student` for own transcript only
-  - step-up recommended based on current identity-access guidance
-- read department transcript:
-  - `department_admin`
-  - `auditor`
-- public verification:
-  - no authenticated department role
-  - isolated `public_verification` scope only
-
-### Mandatory Audit Events
-
-- transcript generated
-- transcript version generated
-- transcript issued
-- verification token issued
-- public verification accessed
-- verification token expired
-- transcript revoked
-- denied public verification attempt for expired or revoked token
-
-## Public Verification Safety Model
-
-- public verification runs in isolated public-verification context
-- it must not load or return full student profiles, internal IDs, grades history beyond the intended safe summary, audit metadata, or departmental admin details
-- recommended safe payload:
-  - transcript number
-  - student display name snapshot
-  - issuing department name snapshot
-  - issue date
-  - version number
-  - overall status such as valid or revoked
-  - cumulative earned credits snapshot
-  - CGPA snapshot
-  - completion or graduation status snapshot
-- optional course or term detail should be explicitly controlled by department policy, not assumed by default
-- revoked or expired verification tokens should return only a minimal invalid-status response
-- public verification is unauthenticated but rate limited with the existing NestJS throttler guard
-
-## NestJS Scaffolding
-
-Folder shape:
-
-```text
-transcript-verification/
-  application/
-    ports/
-    services/
-  contracts/
-  domain/
-```
-
-Public contracts:
-
-- `TranscriptRecord`
-- `TranscriptVersion`
-- `TranscriptTermSummary`
-- `TranscriptCourseLine`
-- `TranscriptVerificationToken`
-- `TranscriptRevocationRecord`
-- `TranscriptSealMetadata`
-
-Repository boundary:
-
-- repository port owns transcript records, immutable version snapshots, term summaries, course lines, verification tokens, revocation records, and seal metadata
-- result, GPA, and CGPA source reads must come through exported contracts or dedicated query boundaries later rather than by embedding cross-module table logic in the service contract
-
-Service boundary:
-
-- service orchestrates transcript generation, version issuance, verification-token issuance, public verification lookup, revocation, and self-view authorization-aware reads
-- service must preserve immutable snapshot semantics for issued versions
-
-Policy names:
-
-- `transcript-verification.transcript.read`
-- `transcript-verification.transcript.generate`
-- `transcript-verification.transcript.issue`
-- `transcript-verification.transcript.revoke`
-- `transcript-verification.transcript.self-read`
-- `transcript-verification.verification.read-public`
-- `transcript-verification.verification.issue`
-
-Audit events:
-
-- `transcript-verification.transcript.generated`
-- `transcript-verification.transcript-version.generated`
-- `transcript-verification.transcript.issued`
-- `transcript-verification.verification-token.issued`
-- `transcript-verification.verification.public-accessed`
-- `transcript-verification.verification-token.expired`
-- `transcript-verification.transcript.revoked`
-
-Implemented scaffolding files:
-
-- `apps/api/src/modules/transcript-verification/contracts/transcript-verification.contracts.ts`
-- `apps/api/src/modules/transcript-verification/application/ports/transcript-verification.repository.port.ts`
-- `apps/api/src/modules/transcript-verification/application/services/transcript-verification.service.ts`
-- `apps/api/src/modules/transcript-verification/domain/transcript-verification.policy-names.ts`
-- `apps/api/src/modules/transcript-verification/domain/transcript-verification.audit-events.ts`
-
-## Document Content
-
-This document intentionally establishes only the transcript and public verification foundation. PDF rendering, QR image generation, transcript UI, certificate generation, and end-to-end issuance workflows remain out of scope until this snapshot, verification, and revocation model is stable.
+
+## Lifecycle and authority
+
+Record: DRAFT / GENERATED / ISSUED / REVOKED / ARCHIVED. Version: GENERATED / ISSUED / SUPERSEDED / REVOKED. Token: ACTIVE / EXPIRED / REVOKED. Revocation: REQUESTED / APPLIED / REJECTED. Lifecycle state updates do not authorize mutation of academic snapshots.
+
+Generate/issue/revoke and token/seal management require applicable route policy and scoped records authority. Current role restriction is department_admin or exam_office for issue/revoke/token/seal writes. Teachers are explicitly barred from issue/revoke even with an accidentally granted policy. Students read only their own transcript/version; neither a supplied studentUserId nor direct object ID bypasses principal.actorId and department scope.
+
+Revocation records append reason, requester/applier and timestamps, optionally targeting a version and invalidating its tokens. Target step-up requirements for issuance/revocation remain requirements; full challenge enforcement is pending.
+
+## Current API and implemented safety
+
+## Endpoints
+
+All internal endpoints are versioned under `/api/v1` and require `AuthGuard`, `PolicyGuard`, and the listed policy.
+
+| Method | Path | Policy |
+| --- | --- | --- |
+| `POST` | `/transcripts` | `transcript-verification.transcript.create` |
+| `GET` | `/transcripts` | `transcript-verification.transcript.read` |
+| `GET` | `/transcripts/:id` | `transcript-verification.transcript.read` |
+| `POST` | `/transcripts/:id/issue` | `transcript-verification.transcript.issue` |
+| `POST` | `/transcripts/:id/revoke` | `transcript-verification.transcript.revoke` |
+| `GET` | `/transcripts/:id/versions` | `transcript-verification.version.read` |
+| `GET` | `/transcript-versions/:id` | `transcript-verification.version.read` |
+| `POST` | `/transcripts/:id/verification-token` | `transcript-verification.token.create` |
+| `POST` | `/transcript-seals` | `transcript-verification.seal.manage` |
+| `GET` | `/transcript-seals` | `transcript-verification.seal.read` |
+| `PATCH` | `/transcript-seals/:id` | `transcript-verification.seal.manage` |
+
+The public endpoint is intentionally unauthenticated, but rate limited with the existing NestJS
+throttler guard:
+
+| Method | Path | Guard |
+| --- | --- | --- |
+| `GET` | `/public/transcript-verification/:token` | `ThrottlerGuard` only |
+
+## Pagination
+
+The list endpoints below accept `limit` and `offset` query parameters. `limit` defaults to `50`
+and is capped at `100`; `offset` defaults to `0`.
+
+- `GET /transcripts`
+- `GET /transcripts/:id/versions`
+
+## Security Model
+
+- Every internal repository query and state transition includes `departmentId`.
+- Student reads are constrained in the service layer to `principal.actorId`; a student cannot use another `studentUserId` or direct id lookup to read another transcript.
+- Teachers are explicitly blocked from issue and revoke operations even if a policy is accidentally granted.
+- Issue, revoke, token creation, and seal management are limited to `department_admin` or `exam_office` roles, plus the route policy check.
+- Transcript generation accepts only `PUBLISHED`, `LOCKED`, or `AMENDED` result records.
+- State changes use `updateMany` plus scoped `findFirst` transaction patterns.
+- Revocation is append-based through `TranscriptRevocationRecord` and revokes the active issued version and active verification tokens when requested.
+- Transcript versions have no update endpoint. They are generated as snapshots and then only move through issue/supersede/revoke status transitions.
+
+## Public Verification Safety
+
+Verification tokens are opaque random values. The existing `publicCode` column stores the token digest, not the raw token, and verification compares digests with constant-time comparison.
+
+Verification tokens are always finite-lived. If `expiresAt` is omitted when issuing a token, the
+API sets it to 72 hours from creation. If `expiresAt` is supplied, it must be in the future; past
+or current timestamps are rejected.
+
+The public endpoint never returns transcript JSON, term summaries, course lines, student profile data, GPA details, or department-internal ids. It returns only:
+
+- validity and token status
+- safe public summary: transcript number, status, version number, issued timestamp
+- seal metadata needed to validate the public artifact digest
+
+Expired, revoked, superseded, missing, or revoked-transcript tokens return the same minimal invalid
+response shape and do not expose whether a token exists.
+
+
+## Audit and remaining work
+
+Generation, version creation, issuance, token issuance, verification access/denial/expiry, revocation and sensitive state changes require audit. Public verification has only isolated read authority and must not inherit session privileges. The current minimal response above supersedes the old foundation's broader suggested public display-name/CGPA summary.
+
+**Pending:** PDF/print renderer, QR images, certificate generation, official layout, downloadable documents, signature/seal integration and renderer-specific payload-digest validation, complete issuance UI/public-verification frontend polish, and published-result registry consumption. Seal metadata is not proof of a working digital-signature renderer.
+
+Token publicCode is a digest despite its legacy name; a future publicCodeHash rename is optional hardening. Batch workflows must preserve scoping, immutable snapshots and append-only revocation. Notification hooks require separately defined product behavior.

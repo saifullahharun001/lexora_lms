@@ -1,5 +1,40 @@
 ﻿# Lexora LMS Runtime Test Checklist
 
+
+## Current Verified Baseline Index
+
+**Recorded baseline: 2026-10-07.** Latest applicable runtime evidence supersedes older status wording below. This index provides navigation; it does not record a new runtime campaign. Target product requirements and roadmap summaries do not prove implementation.
+
+The immediate next academic backend boundary is **authoritative immutable Final Formative /40 + Chairman-approved/final-locked Summative /60 integration**. Complete /100 composition, separate 16/40 and 24/60 pass enforcement, complete-result Chairman finalisation, official documents, Controller publication, published registry and downstream GPA/CGPA/transcript integration remain pending.
+
+| Boundary | Latest applicable classification / limits | Evidence |
+| --- | --- | --- |
+| Final Formative /40 | 2026-10-07: targeted canonical HTTP/PostgreSQL verification of the existing Comprehensive idempotent terminal-owner path; exact source provenance, 31.50/40, idempotency, forged-header resistance and aggregate/audit immutability | [Evidence](#automatic-authoritative-final-formative-40--canonical-authenticated-runtime-closure--2026-10-07) |
+| Activities /30 | 2026-10-05: targeted authenticated activity-level submission/correction and Chairman offering-wide finalisation/freeze; wider database matrices remain separately bounded | [Evidence](#formative-activities-steps-4a4b--canonical-authenticated-server-runtime-closure--2026-10-05) |
+| Attendance /5 | 2026-09-30: deployed, authenticated atomic generation by the Chairman and irreversible freeze; supersedes the mutable Coordinator lifecycle | [Evidence](#examination-committee-chairman-attendance-5-generation-and-irreversible-freeze--step-3-deployed-runtime-closure--2026-09-30) |
+| Attendance correction | 2026-09-29: explicit pre-freeze authority, reasoned append-only correction and retained, neutralized evidence | [Evidence](#department-chairman--ordinary-attendance-correction--step-2-deployed-runtime-closure--2026-09-29) |
+| Class Session | 2026-09-28: scheduled-end/non-conducted lifecycle, active-window capture and negative-security matrix | [Evidence](#class-session-step-1-deployed-runtime-closure---2026-09-28) |
+| Regular Comprehensive /5 | 2026-09-23: targeted candidate certification, three modes, exact Decimal precision and the tested absence boundary; not exhaustive | [Evidence](#regular-comprehensive-5-targeted-authenticated-server-runtime-closure--2026-09-23) |
+| Summative /60 | 2026-09-18: targeted Member replacement/review and exact Chairman final lock; duplicate denial, timestamp and audit evidence | [Evidence](#summative-committee-member-review--chairman-final-lock-authenticated-server-runtime-verification--2026-09-18) |
+| Summative comparison/Third | 2026-09-02: tested functional, security, concurrency and audit matrix, including nearest-pair rules | [Evidence](#summative-comparison--third--nearest-pair-functional-runtime-closure--2026-09-02) |
+| Summative blind marking | 2026-09-01: tested assignment-bound blind First/Second paths, locks and negative controls | [Evidence](#summative-firstsecond-functional-runtime-closure--2026-09-01) |
+| Course Outline lifecycle | 2026-08-28: technical lifecycle through archive; permanent approval/activation/archival authority still pending | [Evidence](#course-outline-active---archived-runtime-closure--2026-08-28) |
+| Authority/lineage hardening | 2026-08-13: focused provenance and terminal transcript lineage runtime evidence | [Evidence](#authorization-provenance-and-terminal-transcript-lineage-runtime-verification--2026-08-13) |
+| Curriculum-aware enrollment | 2026-08-10: authoritative curriculum identity, dependency chain and runtime first-write concurrency | [Evidence](#curriculum-aware-enrollment-creation-ordinary-runtime-verification--2026-08-10) |
+| Academic Session/StudentBatch | 2026-08-24: scoped operational management; later binding and coordinator checkpoints remain in the ledger | [Evidence](#academicsession--studentbatch-operational-management-ordinary-runtime-verification--2026-08-24) |
+| File-storage worker | 2026-08-05: default-disabled execution layer, real idle polling and graceful isolated shutdown; real actionable jobs, shutdown during active operations and production upload still pending | [Evidence](#operational-malware-scan-worker-idle-runtime-verification--2026-08-05) |
+| Scan worker database foundation | 2026-08-05: durable ledger, bounded retries, claims, fencing and database concurrency; not complete delivery | [Evidence](#retryable-malware-scan-worker-foundation-and-postgresql-concurrency-verification--2026-08-05) |
+| Student/Teacher isolation | Successful retests following preserved own-resource/assigned-course vulnerabilities; do not infer universal authorization coverage | [Evidence](#access-control-fix-runtime-retest-result) |
+| Generic assessment visibility | Recorded successful visibility/security retest; generic grading and question-engine integration still partial | [Evidence](#assessment-visibility-fix-runtime-retest) |
+| Notification | Recorded in-app, self-resource, template/preferences and dedupe matrix; EMAIL/PUSH are placeholders | [Evidence](#notification--alert-foundation-runtime-test) |
+
+Final Formative runtime implementation: `9c407ef4da4eaeb777a72e8cc7ec056f557fcb80`. Ordinary migration and PM2 activation were recorded, with HTTP 200 health responses both directly and through Nginx, and the API bound only to 127.0.0.1:4000. These are recorded checkpoint observations, not a live health check performed during consolidation.
+
+**Bounded evidence:** Final Formative canonical verification exercised the existing Comprehensive idempotent terminal-owner path; it did not separately observe a first-ever Comprehensive finalisation creating /40 or repeat all disposable concurrency, failure and source-arrival matrices on the ordinary server. The 371/371 PostgreSQL campaign remains separate evidence. Full frontend, mandatory Summative 2FA, physical exam-roll/script governance, cloud/public deployment and production hardening remain pending.
+
+Historical test IDs, bugs, negative tests, source versions, commit references, findings, limitations and supersession chronology below are retained without truncation. The early generic result/transcript tests prove their foundation APIs, not the later complete-result publication architecture. Current summaries: [roadmap](project-status-and-roadmap.md), [module map](README.md), [hardening backlog](security-and-production-hardening-backlog.md).
+
+
 ## Test Environment
 
 - Environment: Local Ubuntu VM

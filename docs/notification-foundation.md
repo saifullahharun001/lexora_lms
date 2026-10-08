@@ -1,5 +1,9 @@
 # Notification Foundation
 
+<!-- phase2-reference-note -->
+> **Retained historical reference — not the current module specification.** Exact foundation schema, public-contract, policy and audit-event catalogs remain unique reference material. Current contracts/status: [notification.md](notification.md). Runtime proof: [Current Verified Baseline Index](runtime-test-checklist.md#current-verified-baseline-index). Historical statements below retain their original scope and do not override later canonical evidence.
+<!-- /phase2-reference-note -->
+
 ## Strategy Explanation
 
 The notification foundation provides a modular, department-scoped event-to-notification pipeline that can support in-app, email, and future push delivery without implementing workers, notification-center UI, or transport-specific delivery infrastructure yet.

@@ -1,5 +1,9 @@
 # Lexora LMS — Result Finalisation, Publication, and Published-Result Integration Architecture
 
+<!-- phase2-reference-note -->
+> **Retained historical reference — not the current module specification.** Academic authority decisions, decision dates, source versions and historical supersession evidence remain reference material. Current contracts/status: [result-domain.md](result-domain.md). Runtime proof: [Current Verified Baseline Index](runtime-test-checklist.md#current-verified-baseline-index). Historical statements below retain their original scope and do not override later canonical evidence.
+<!-- /phase2-reference-note -->
+
 **Decision date:** 2026-09-03
 **Status:** Confirmed project direction; implementation is partial and runtime evidence is tracked separately.
 
