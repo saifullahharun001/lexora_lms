@@ -12,7 +12,7 @@ function harness() {
     attendanceMark: "3.5", attendanceFullMark: "5.00", comprehensiveMark: "4.000000", comprehensiveFullMark: "5.00",
     provenanceJson: { attendanceRevision: 2, activitiesSources: [{ submissionId: "v2" }], comprehensiveVersion: 1 },
   };
-  const flags = { ready: true, auditFailure: false, conflict: false, failureAfter: false };
+  const flags = { ready: true, auditFailure: false, conflict: false, failureAfter: false, compositionFailure: false };
   let result: any = null; const audits: any[] = []; const calls: string[] = [];
   const tx: any = {
     $queryRaw: async (q: Prisma.Sql) => {
@@ -32,13 +32,23 @@ function harness() {
     try { const value = await work(tx); if (flags.failureAfter) throw Error("controlled transaction failure"); return value; }
     catch (e) { result = before; audits.length = size; throw e; }
   } };
-  return { sources, flags, audits, calls, tx, result: () => result, service: new FinalFormativeService(db) };
+  return { sources, flags, audits, calls, tx, result: () => result, service: new FinalFormativeService(db, { reconcileInTransaction: async (client, ...scope) => {
+    assert.equal(client, tx); assert.deepEqual(scope, ["d", "x", "ec", "e"]);
+    assert.equal(audits.length, 1); if (flags.compositionFailure) throw Error("composition failed"); return { status: "NOT_READY" as const };
+  } }) };
 }
 
 test("missing authoritative package is a no-op without placeholders", async () => {
   const h = harness(); h.flags.ready = false;
   assert.equal((await h.service.reconcile("d", "x"))[0]?.status, "NOT_READY");
   assert.equal(h.result(), null); assert.equal(h.audits.length, 0);
+});
+
+test("Formative-only operational reconciliation never invokes the /100 hook", async () => {
+  const h = harness(); h.flags.compositionFailure = true;
+  assert.equal((await h.service.reconcileFormativeOnly("d", "x"))[0]?.status, "CREATED");
+  assert.equal((await h.service.reconcileFormativeOnly("d", "x"))[0]?.status, "EXISTING");
+  assert.equal(h.audits.length, 1);
 });
 test("complete source tuple creates exact immutable evidence and one service audit; repeat reuses it", async () => {
   const h = harness(); await h.service.reconcile("d", "x"); await h.service.reconcile("d", "x");
@@ -55,7 +65,7 @@ test("source identity replacement and vanished package both fail closed", async 
   h.flags.ready = false; await assert.rejects(h.service.reconcile("d", "x"));
   assert.equal(h.result().attendanceVersionId, "av"); assert.equal(h.audits.length, 1);
 });
-for (const flag of ["auditFailure", "failureAfter"] as const) test(`${flag} rolls back the entire package`, async () => {
+for (const flag of ["auditFailure", "failureAfter", "compositionFailure"] as const) test(`${flag} rolls back the entire package`, async () => {
   const h = harness(); h.flags[flag] = true; await assert.rejects(h.service.reconcile("d", "x"));
   assert.equal(h.result(), null); assert.equal(h.audits.length, 0);
 });

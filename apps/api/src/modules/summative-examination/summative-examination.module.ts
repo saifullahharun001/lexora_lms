@@ -1,3 +1,4 @@
+import { CourseResultCompositionModule } from "@/modules/course-result-composition/course-result-composition.module";
 import { ExaminationContextService } from "./examination-context.service";
 import { SummativeQuestionConfigurationService } from "./application/services/summative-question-configuration.service";
 import { SummativeQuestionConfigurationsController } from "./presentation/http/summative-question-configurations.controller";
@@ -31,7 +32,7 @@ import { ExaminationCourseExaminerAssignmentsController } from "./presentation/h
 import { ExaminationsController } from "./presentation/http/examinations.controller";
 
 @Module({
-  imports: [RequestContextModule, PrismaModule, AuthorizationModule],
+  imports: [RequestContextModule, PrismaModule, AuthorizationModule, CourseResultCompositionModule],
   controllers: [
     ExaminationsController,
     ExaminationCoursesController,

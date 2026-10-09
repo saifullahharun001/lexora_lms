@@ -118,6 +118,7 @@ function mutationHarness(options: {
   existingApproval?: Record<string, unknown> | null;
   appointments?: ReturnType<typeof formalAppointments>;
   auditFailure?: boolean;
+  compositionFailure?: boolean;
   authorityAssignedAt?: Date;
   timestampRows?: unknown[];
   timestampFailure?: boolean;
@@ -135,6 +136,7 @@ function mutationHarness(options: {
   const appointmentQueries: Array<{ where: Record<string, unknown> }> = [];
   let inTransaction = false;
   const tx = {
+    summativeExaminationCandidate: { findFirst: async () => ({ enrollmentId: "enrollment-a" }) },
     $queryRaw: async (query: Prisma.Sql) => {
       assert.equal(inTransaction, true);
       if (query.sql.includes("statement_timestamp()")) {
@@ -253,6 +255,14 @@ function mutationHarness(options: {
       { get: () => ({ requestId: "request-a", audit: {} }) } as never,
       authorizer as never,
       { validateExisting: async () => calculated } as never,
+      { reconcileInTransaction: async (client, ...scope) => {
+        assert.equal(client, tx); assert.equal(inTransaction, true);
+        assert.equal(createdApprovals.length, 1); assert.equal(audits.length, 1);
+        assert.deepEqual(scope, [resolvedAuthority.departmentId, resolvedAuthority.examinationId,
+          resolvedAuthority.examinationCourseId, "enrollment-a"]);
+        if (options.compositionFailure) throw Error("composition failed");
+        return { status: "NOT_READY" as const };
+      } },
     ),
   };
 }
@@ -635,6 +645,7 @@ function workspaceService(
         authorizeChairmanApproval: async () => resolved,
       } as never,
       {} as never,
+      {} as never,
     ),
   };
 }
@@ -696,4 +707,13 @@ test("Chairman workspace excludes historical reviews for structurally invalid cu
       deletedAt: null,
     },
   });
+});
+
+
+test("composition failure rolls back Chairman approval and its audit", async () => {
+  const h = mutationHarness({ seat: ExaminationCommitteeSeat.CHAIRMAN,
+    reviews: [review(ExaminationCommitteeSeat.MEMBER_1), review(ExaminationCommitteeSeat.MEMBER_2)],
+    compositionFailure: true });
+  await assert.rejects(h.service.approveAndFinalLock("calculated-a"), /composition failed/);
+  assert.equal(h.createdApprovals.length, 0); assert.equal(h.audits.length, 0);
 });

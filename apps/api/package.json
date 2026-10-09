@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:comprehensive": "pnpm run build && node scripts/test-comprehensive.cjs",
     "test:final-formative": "pnpm run build && node scripts/test-final-formative.cjs",
+    "test:course-composition": "pnpm run build && node scripts/test-course-composition.cjs",
     "formative:reconcile": "pnpm run build && node -r ./scripts/register-test-paths.cjs dist/prisma/reconcile-final-formative.cli.js",
     "prisma": "prisma",
     "prisma:generate": "prisma generate",

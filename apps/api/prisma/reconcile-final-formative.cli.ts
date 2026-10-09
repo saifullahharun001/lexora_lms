@@ -1,3 +1,4 @@
+import { CourseResultCompositionService } from "../src/modules/course-result-composition/course-result-composition.service";
 import "reflect-metadata";
 import { PrismaClient } from "@prisma/client";
 import { PrismaService } from "../src/common/prisma/prisma.service";
@@ -30,7 +31,7 @@ export async function main(args = process.argv.slice(2), raw = process.env.LEXOR
     const identity = await prisma.$queryRaw<Array<{ databaseName: string }>>`SELECT current_database() AS "databaseName"`;
     if (identity.length !== 1 || identity[0]?.databaseName !== options.expectedDatabase)
       throw new Error("Connected reconciliation database identity does not match");
-    const outcomes = await new FinalFormativeService(prisma as PrismaService).reconcile(options.departmentId, options.examinationId);
+    const outcomes = await new FinalFormativeService(prisma as PrismaService, new CourseResultCompositionService()).reconcileFormativeOnly(options.departmentId, options.examinationId);
     // No credentials, individual marks, or student identifiers in console output.
     console.log(JSON.stringify({ created: outcomes.filter((o) => o.status === "CREATED").length,
       existing: outcomes.filter((o) => o.status === "EXISTING").length, notReady: outcomes.filter((o) => o.status === "NOT_READY").length }));

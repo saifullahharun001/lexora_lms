@@ -1,4 +1,5 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { CourseResultCompositionService } from "@/modules/course-result-composition/course-result-composition.service";
+import { ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "@/common/prisma/prisma.service";
 import { evidenceTransaction } from "@/common/academic-evidence/transaction";
@@ -20,15 +21,20 @@ export interface FinalFormativeSources {
 
 @Injectable()
 export class FinalFormativeService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, @Inject(CourseResultCompositionService) private readonly composition: Pick<CourseResultCompositionService, "reconcileInTransaction">) {}
 
   /** Operational reconciliation only; no HTTP controller or academic approval lifecycle. */
   reconcile(departmentId: string, examinationId: string) {
     return evidenceTransaction(this.prisma, (tx) => this.reconcileInTransaction(tx, departmentId, examinationId));
   }
 
+  /** Existing operational /40 command retains its original mutation scope. */
+  reconcileFormativeOnly(departmentId: string, examinationId: string) {
+    return evidenceTransaction(this.prisma, (tx) => this.reconcileInTransaction(tx, departmentId, examinationId, false));
+  }
+
   /** Call only within the source owner's Serializable transaction after completing its package/audit. */
-  async reconcileInTransaction(tx: Prisma.TransactionClient, departmentId: string, examinationId: string) {
+  async reconcileInTransaction(tx: Prisma.TransactionClient, departmentId: string, examinationId: string, composeCourse = true) {
     // All three source owners already lock Examination first. Writing a neutral row version
     // forces a waiting Serializable transaction to retry with a fresh source snapshot.
     const locked = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
@@ -40,12 +46,12 @@ export class FinalFormativeService {
       WHERE ec.examination_id=${examinationId} AND ec.department_id=${departmentId}
       ORDER BY ec.id COLLATE "C", e.id COLLATE "C"`);
     const outcomes = [];
-    for (const context of contexts) outcomes.push(await this.materialiseInTransaction(tx, departmentId, context.examinationCourseId, context.enrollmentId));
+    for (const context of contexts) outcomes.push(await this.materialiseInTransaction(tx, departmentId, context.examinationCourseId, context.enrollmentId, composeCourse));
     return outcomes;
   }
 
   /** Internal per-context entry point. The caller holds the Examination mutex and Serializable transaction. */
-  async materialiseInTransaction(tx: Prisma.TransactionClient, departmentId: string, examinationCourseId: string, enrollmentId: string) {
+  async materialiseInTransaction(tx: Prisma.TransactionClient, departmentId: string, examinationCourseId: string, enrollmentId: string, composeCourse = true) {
     const [row] = await tx.$queryRaw<Array<{ sources: FinalFormativeSources | null }>>(Prisma.sql`
       SELECT final_formative_sources(${departmentId},${examinationCourseId},${enrollmentId}) AS sources`);
     const sources = row?.sources;
@@ -67,6 +73,7 @@ export class FinalFormativeService {
         SELECT final_formative_matches(${existing.id}, ${JSON.stringify(sources)}::jsonb) AS matches`);
       if (!match?.matches || !existing.mark.eq(mark) || existing.ruleVersionCode !== FINAL_FORMATIVE_RULE)
         throw new ConflictException("Authoritative Final Formative source package changed");
+      if (composeCourse) await this.composition.reconcileInTransaction(tx, departmentId, sources.examinationId, examinationCourseId, enrollmentId);
       return { status: "EXISTING" as const, result: existing };
     }
     const result = await tx.formativeFinalResult.create({ data });
@@ -74,6 +81,7 @@ export class FinalFormativeService {
       targetType: "formative_final_result", targetId: result.id, outcome: "SUCCESS",
       contextJson: { aggregateId: result.id, ...sources, ruleVersionCode: FINAL_FORMATIVE_RULE, mark: mark.toFixed(6), fullMark: "40.00" },
     } });
+    if (composeCourse) await this.composition.reconcileInTransaction(tx, departmentId, sources.examinationId, examinationCourseId, enrollmentId);
     return { status: "CREATED" as const, result };
   }
 }

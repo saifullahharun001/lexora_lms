@@ -1,6 +1,8 @@
+import { CourseResultCompositionService } from "@/modules/course-result-composition/course-result-composition.service";
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -47,6 +49,7 @@ export class SummativeCommitteeWorkflowService {
     private readonly requestContextService: RequestContextService,
     private readonly authorizer: SummativeCommitteeWorkflowAuthorizerService,
     private readonly calculatedMarkService: SummativeCalculatedMarkService,
+    @Inject(CourseResultCompositionService) private readonly composition: Pick<CourseResultCompositionService, "reconcileInTransaction">,
   ) {}
 
   async getMemberWorkspace(calculatedMarkId: string) {
@@ -263,6 +266,15 @@ export class SummativeCommitteeWorkflowService {
         },
       });
       await this.writeApprovalAudit(tx, authority, calculatedMark, approval);
+      // This source owner resolves its own candidate; the shared projection independently
+      // proves certified REGULAR registration lineage before composing either mark.
+      const candidate = await tx.summativeExaminationCandidate.findFirst({ where: {
+        id: authority.candidateId, departmentId: authority.departmentId,
+        examinationId: authority.examinationId, examinationCourseId: authority.examinationCourseId,
+      }, select: { enrollmentId: true } });
+      if (!candidate) throw new NotFoundException("Summative candidate not found");
+      await this.composition.reconcileInTransaction(tx, authority.departmentId, authority.examinationId,
+        authority.examinationCourseId, candidate.enrollmentId);
       return this.serializeApproval(approval);
     });
   }

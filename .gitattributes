@@ -22,3 +22,6 @@ apps/api/prisma/migrations/202609280001_ordinary_attendance_corrections/migratio
 apps/api/prisma/migrations/202609290001_chairman_attendance_generation/migration.sql -text
 
 apps/api/prisma/migrations/202610060001_automatic_final_formative/migration.sql -text
+
+apps/api/prisma/migrations/202610080001_authoritative_course_composition/migration.sql -text
+apps/api/prisma/migrations/202610090001_correct_summative_timestamp3_chronology/migration.sql -text

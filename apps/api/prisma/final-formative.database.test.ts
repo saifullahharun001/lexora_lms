@@ -5,6 +5,9 @@ import test from "node:test";
 import { Prisma, PrismaClient } from "@prisma/client";
 import { FinalFormativeService } from "../src/modules/final-formative/final-formative.service";
 
+// Isolate the /40 owner; the /100 suite installs both migrations and exercises the real hook.
+const composition = { reconcileInTransaction: async () => ({ status: "NOT_READY" as const }) };
+
 const url = process.env.LEXORA_FINAL_FORMATIVE_TEST_DATABASE_URL;
 const enabled = !!url && process.env.LEXORA_FINAL_FORMATIVE_DISPOSABLE_DB_CONFIRM === "YES_DISPOSABLE";
 export function statements(sql: string) {
@@ -54,7 +57,7 @@ test("Final Formative PostgreSQL 18.6 additive migration and authoritative conve
       await admin.$executeRawUnsafe(`CREATE SCHEMA "${schema}"`);
       created = true;
       await db.$transaction(async (tx) => { await execute(tx, parents); await execute(tx, migration); await execute(tx, ready); }, { timeout: 30000 });
-      await work(db, new FinalFormativeService(db as never));
+      await work(db, new FinalFormativeService(db as never, composition));
     } finally {
       try { await db.$disconnect(); } finally {
         // Remove only a schema this invocation successfully created, even if setup failed.
@@ -205,7 +208,7 @@ test("Final Formative PostgreSQL 18.6 additive migration and authoritative conve
         }
         return work(tx);
       }, options) };
-      const service = new FinalFormativeService(proxy as never);
+      const service = new FinalFormativeService(proxy as never, composition);
       await Promise.all([service.reconcile("d", "x"), service.reconcile("d", "x")]);
       assert.ok(attempts >= 3); assert.equal(await db.formativeFinalResult.count(), 1); assert.equal(await db.auditLog.count(), 1);
     }));
@@ -233,7 +236,7 @@ test("Final Formative PostgreSQL 18.6 additive migration and authoritative conve
           const value = Reflect.get(target, key); return typeof value === "function" ? value.bind(target) : value;
         },
       })), options) };
-      await assert.rejects(new FinalFormativeService(proxy as never).reconcile("d", "x"), /Final Formative audit is immutable/);
+      await assert.rejects(new FinalFormativeService(proxy as never, composition).reconcile("d", "x"), /Final Formative audit is immutable/);
       assert.equal(attemptedConversion, true);
       assert.equal(await db.formativeFinalResult.count(), 0);
       assert.deepEqual(await db.auditLog.findUniqueOrThrow({ where: { id: historical.id } }), historical);
@@ -263,7 +266,7 @@ test("Final Formative PostgreSQL 18.6 additive migration and authoritative conve
         } }));
         if (fault === "after") throw Error("controlled transaction failure"); return value;
       }, options) };
-      await assert.rejects(new FinalFormativeService(proxy as never).reconcile("d", "x"));
+      await assert.rejects(new FinalFormativeService(proxy as never, composition).reconcile("d", "x"));
       assert.equal(await db.formativeFinalResult.count(), 0); assert.equal(await db.auditLog.count(), 0);
     }));
     await t.test("native constraints and all restrictive foreign keys are installed", () => fixture(async (db) => {
@@ -290,7 +293,7 @@ test("Final Formative PostgreSQL 18.6 additive migration and authoritative conve
             const value = Reflect.get(target, key); return typeof value === "function" ? value.bind(target) : value;
           },
         })), options) };
-        await assert.rejects(new FinalFormativeService(proxy as never).reconcile("d", "x"));
+        await assert.rejects(new FinalFormativeService(proxy as never, composition).reconcile("d", "x"));
         assert.equal(await db.formativeFinalResult.count(), 0); assert.equal(await db.auditLog.count(), 0);
       }));
   } finally { await admin.$disconnect(); }

@@ -1,6 +1,6 @@
 # Project status and roadmap
 
-Current-state consolidation of recorded evidence through **2026-10-07**. No runtime campaign or deployment was performed during this documentation review. [Latest runtime proof](runtime-test-checklist.md#current-verified-baseline-index) governs all classifications below.
+Current-state consolidation includes the **2026-10-07 ordinary/canonical checkpoint** and **2026-10-09 isolated/disposable `/100` and tracked Prisma migration verification** from operator-provided terminal logs. The latter used local uncommitted source bytes; no ordinary/canonical `/100` rollout or commit is claimed. [Latest runtime proof](runtime-test-checklist.md#current-verified-baseline-index) governs classifications below.
 
 ## 1. Current Baseline
 
@@ -10,7 +10,7 @@ Implemented academic workflows extend substantially beyond foundation scaffoldin
 
 ## 2. Current Runtime / Deployment State
 
-Latest recorded runtime implementation: `9c407ef4da4eaeb777a72e8cc7ec056f557fcb80`. The 2026-10-07 Final Formative campaign records ordinary PostgreSQL migration `202610060001_automatic_final_formative`, PM2 activation, direct/Nginx health 200 and loopback-only API listener `127.0.0.1:4000` on the Ubuntu VM.
+Latest recorded **ordinary/canonical deployed** runtime implementation: `9c407ef4da4eaeb777a72e8cc7ec056f557fcb80`. The 2026-10-07 Final Formative campaign records ordinary PostgreSQL migration `202610060001_automatic_final_formative`, PM2 activation, direct/Nginx health 200 and loopback-only API listener `127.0.0.1:4000` on the Ubuntu VM. Separate 2026-10-09 `/100` owner-service and additive tracked-migration tests passed on isolated PostgreSQL 18.6 only; they do not establish ordinary server deployment, HTTP reachability or an approved baseline.
 
 PM2/systemd recovery and Nginx/LAN operation have recorded evidence. Validated private pre-mutation backups and retained/neutralized academic test evidence exist for relevant campaigns. These are point-in-time VM observations, not cloud/public readiness, a production disaster-recovery programme or fresh live health confirmation.
 
@@ -28,9 +28,10 @@ PM2/systemd recovery and Nginx/LAN operation have recorded evidence. Validated p
 | Activities /30 | Targeted authenticated runtime verified 2026-10-05 | Broader post-final amendment and UI |
 | Attendance /5 | Chairman generation/irreversible freeze authenticated runtime verified 2026-09-30 | Exceptional post-freeze amendment governance and UI |
 | Regular Comprehensive /5 | Targeted authenticated runtime verified 2026-09-23 | Exceptional/non-Regular cases and full product/UI |
-| Automatic Final Formative /40 | Targeted canonical runtime verified 2026-10-07, tested Comprehensive idempotent owner path | /40 + /60 integration; broader ordinary-server matrices not claimed |
+| Automatic Final Formative /40 | Targeted canonical runtime verified 2026-10-07; full first-time owner chain also exercised in 2026-10-09 disposable /100 campaign | Broader ordinary/canonical source-arrival and security matrices not claimed |
 | Summative /60 | Blind marking/comparison/Third calculation runtime matrices; targeted Committee/Chairman final lock 2026-09-18 | Broader reopen/amendment, 2FA, formal physical-script governance, UI |
-| Generic results/GPA/CGPA | Implemented runtime-tested foundation | Authoritative /100 engine, complete-result finalisation and new publication/registry workflow |
+| Authoritative course /100 | Locally implemented, uncommitted, 2026-10-09 six-case **disposable owner-service runtime verified**, including exact /40+/60 pass rules, focused security/concurrency/replay, two tracked migrations | Wider security/source-order tests; approved baseline, ordinary/canonical deployment and authenticated HTTP verification remain pending |
+| Generic results/GPA/CGPA | Implemented runtime-tested foundation, distinct from authoritative /100 | Complete-result finalisation, grade/grade point, new publication/registry workflow and downstream GPA/CGPA |
 | Transcript | Snapshot/token/revocation API foundation runtime tested | Published registry linkage, PDF/QR/signature/rendering and complete UI |
 | Notification/notice | In-app/API foundations with runtime evidence | Real email/push, queue delivery, full template/UI workflows |
 | File storage/malware scan | Real isolated MinIO/ClamAV paths and database worker foundation verified; deployed default-disabled worker idle runtime tested | Actionable jobs, active-operation shutdown, atomicity/reconciliation and authorized production upload/download |
@@ -49,17 +50,19 @@ PM2/systemd recovery and Nginx/LAN operation have recorded evidence. Validated p
 - Certified Regular Comprehensive modes and immutable exact Decimal final sources.
 - Automatic Final Formative /40 through the tested existing Comprehensive idempotent terminal-owner path; source provenance, idempotency and aggregate/protected-audit immutability.
 - Summative blind First/Second, variance/Third/nearest-pair matrices and targeted internal Member review + Chairman /60 final lock.
+- 2026-10-09 **disposable-only** six-case automatic authoritative /100 composition, source-owner reconciliation/denial, one-winner parallel Chairman approval, atomic rollback, and first/second tracked Prisma migration deployment; local bytes remain uncommitted/undeployed.
+- 2026-10-09 **disposable-only appointment security retest** denied an expired ACTIVE Member and an INACTIVE Chairman after principal loading, restored synthetic appointments and preserved six authoritative /100 results; this does not close the broader replacement/stale-review authority matrix.
 - Generic result/transcript and in-app notification foundations, with their own narrower runtime scope.
 
 ## 5. Partial Boundaries
 
 The overall LMS, assessment and result products remain partial. Generic results are not authoritative Law /100 processing. Generic transcript status selection still includes AMENDED and must be reconciled with explicit published-version evidence. Course Outline technical approval does not establish permanent institutional authority. Scan worker idle verification does not prove actionable production delivery.
 
-Canonical Final Formative testing did not separately observe a first-ever Comprehensive finalisation creating /40. Wider PostgreSQL failure/concurrency/source-order matrices remain separately classified. Preserve negative findings and limitations even where later retests close the corresponding defect.
+The **2026-10-07 canonical Final Formative** test did not separately observe first-ever Comprehensive finalisation creating /40; the later 2026-10-09 **disposable** six-case real-owner chain did. These are different environments. Live role revocation, a parallel approval race, exact replay, wrong-department/cross-offering/forged-reference denials, one rollback, and two appointment-liveness denials (expired ACTIVE Member and INACTIVE Chairman) passed on tested disposable paths. Replacement/stale-review identity binding, reversed source arrival, expanded failures, canonical `/100` HTTP and release matrices remain partial/pending. Preserve historical failures and later corrective retests.
 
 ## 6. Pending Boundaries
 
-Authoritative /100 composition/pass/grade engine; complete-result Chairman finalisation; official documents; Controller publication; immutable/versioned published registry; downstream result consumption; broad controlled amendments/republication; future CU_CENTRAL integration. Full frontend, remaining curriculum/OBE/Course File content, production biometric sync, real email/push and production infrastructure also remain pending.
+Ordinary/canonical deployment and authenticated `/100` HTTP verification; broader source-arrival, stale-authority, audit-conflict and release tests; **grade/grade-point derivation**; complete-result Chairman finalisation; official documents; Controller publication; immutable/versioned published registry; downstream result consumption; broad controlled amendments/republication; future CU_CENTRAL integration. Full frontend, remaining curriculum/OBE/Course File content, production biometric sync, real email/push and production infrastructure also remain pending.
 
 Detailed risks and required improvements belong to the [hardening backlog](security-and-production-hardening-backlog.md), not a duplicated roadmap checklist.
 
@@ -69,19 +72,19 @@ Activities /30 (Chairman finalised) + Attendance /5 (Chairman generated/frozen) 
 
 Offline First/Second marks -> comparison (>=15% of authoritative /60 triggers Third) -> nearest-pair calculation where needed -> current internal Member reviews -> Chairman-approved/final-locked Summative /60.
 
-**Pending connection:** exact /40 + exact /60 -> /100 with separate Formative >=16 and Summative >=24 -> grade/grade point -> complete-result Chairman finalisation -> official result documents -> Controller publication -> immutable/versioned published registry -> student result/GPA/CGPA/transcript consumers.
+**Disposable implementation verified (2026-10-09):** exact approved /40 + final-locked /60 -> immutable /100 with separate Formative >=16 and Summative >=24 pass decisions in six synthetic owner-service scenarios. **Not yet ordinary/canonical deployed.** **Pending downstream pipeline:** grade/grade point -> distinct complete-result Chairman finalisation -> official result documents -> Controller publication -> immutable/versioned published registry -> student result/GPA/CGPA/transcript consumers.
 
 No separate human /40 approval; Summative Chairman lock does not finalise the complete course result. Controller publication never grants mark editing or Committee/Chairman authority.
 
 ## 8. Immediate Next Development Boundary
 
-**Authoritative immutable Final Formative /40 + Chairman-approved/final-locked Summative /60 integration.**
+**Close remaining `/100` security/source-integrity and ordinary deployment acceptance gates before expanding to the distinct complete-result lifecycle.**
 
-Consume exact authoritative versions/provenance; do not reconstruct raw Activities or Examiner arithmetic, accept client totals, or treat an unapproved calculated mark as final. Build /100 and separate 16/40 + 24/60 pass decisions server-side with department/object authorization, idempotency, locks and transactional audit. This is new implementation work, not part of Phase 1 documentation.
+The local uncommitted /100 engine already passed a six-case real-owner disposable campaign; do not rebuild or replace it without a source-backed gap. Next verify appointment replacement/stale-review identity binding beyond the two tested expired/inactive cases, negative cross-course/object access, reverse source-arrival order, source-version conflicts, additional transaction/audit failures and independent baseline attestation. Review diff, typecheck/build and tests before any explicitly approved commit or ordinary migration. Preserve exact source provenance, 16/40 + 24/60 separate passes, transactional audit, scoped authorization and immutable evidence. Canonical `/100` deployment remains pending.
 
 ## 9. Near-Term Roadmap
 
-1. Close the /40 + /60 integration and complete-course total/pass/grade boundary with scoped evidence.
+1. Finish remaining /100 stale-authority/object isolation, reversed source-arrival, audit/conflict and baseline-attestation tests; review tracked migration and preserve disposable/canonical scope separation. Grade and grade-point design remains a distinct pending stage.
 2. Implement complete-result Chairman finalisation without manual component override.
 3. Establish official document data/output contracts: Average Sheet initial design; institutional formats required for Tabulation, Student Marksheet and Examiner Final Mark Submission Sheet.
 4. Implement narrow Controller publication and immutable/versioned published snapshots.

@@ -3,12 +3,14 @@
 
 ## Current Verified Baseline Index
 
-**Recorded baseline: 2026-10-07.** Latest applicable runtime evidence supersedes older status wording below. This index provides navigation; it does not record a new runtime campaign. Target product requirements and roadmap summaries do not prove implementation.
+**Ordinary/canonical recorded baseline: 2026-10-07. Newer isolated disposable evidence: 2026-10-09.** The 2026-10-09 /100 owner-service and tracked migration campaigns used a synthetic, isolated PostgreSQL 18.6 database against local uncommitted implementation bytes; they did not deploy /100 to the ordinary/canonical server. Latest applicable evidence supersedes older status wording only **within its stated environment and tested boundary**. Target requirements and roadmap summaries do not prove implementation.
 
-The immediate next academic backend boundary is **authoritative immutable Final Formative /40 + Chairman-approved/final-locked Summative /60 integration**. Complete /100 composition, separate 16/40 and 24/60 pass enforcement, complete-result Chairman finalisation, official documents, Controller publication, published registry and downstream GPA/CGPA/transcript integration remain pending.
+The authoritative immutable Final Formative `/40` + Chairman-approved/final-locked Summative `/60` composition into `/100`, including separate 16/40 and 24/60 pass enforcement, is **locally implemented and runtime verified within the 2026-10-09 disposable six-case campaign**. This does **not** establish ordinary/canonical deployment, authenticated `/100` HTTP operation, formal baseline approval or exhaustive negative coverage. Complete-result Chairman finalisation, grades/grade points, official documents, Controller publication, published registry and downstream GPA/CGPA/transcript integration remain pending.
 
 | Boundary | Latest applicable classification / limits | Evidence |
 | --- | --- | --- |
+| `/100` appointment-liveness security | **2026-10-09 isolated/disposable:** expired but ACTIVE Member appointment and INACTIVE Chairman appointment denied after principal loading; isolated synthetic appointments restored; six-case /100 campaign remained PASS | [Evidence](#summative-committee-appointment-liveness-negative-controls--disposable-runtime--2026-10-09) |
+| Authoritative course `/100` composition | **2026-10-09 isolated/disposable only:** six source-owner results from `/40 + /60`, component pass thresholds, replay/negative/concurrent checks and two tracked Prisma migrations; local uncommitted bytes, no canonical deployment or baseline approval | [Evidence](#authoritative-course-100-composition--disposable-owner-service-and-tracked-migration-verification--2026-10-09) |
 | Final Formative /40 | 2026-10-07: targeted canonical HTTP/PostgreSQL verification of the existing Comprehensive idempotent terminal-owner path; exact source provenance, 31.50/40, idempotency, forged-header resistance and aggregate/audit immutability | [Evidence](#automatic-authoritative-final-formative-40--canonical-authenticated-runtime-closure--2026-10-07) |
 | Activities /30 | 2026-10-05: targeted authenticated activity-level submission/correction and Chairman offering-wide finalisation/freeze; wider database matrices remain separately bounded | [Evidence](#formative-activities-steps-4a4b--canonical-authenticated-server-runtime-closure--2026-10-05) |
 | Attendance /5 | 2026-09-30: deployed, authenticated atomic generation by the Chairman and irreversible freeze; supersedes the mutable Coordinator lifecycle | [Evidence](#examination-committee-chairman-attendance-5-generation-and-irreversible-freeze--step-3-deployed-runtime-closure--2026-09-30) |
@@ -41450,3 +41452,83 @@ The next academic backend boundary is:
 
 **authoritative immutable Final Formative `/40` + Chairman-approved/final-locked
 Summative `/60` integration**
+
+## Authoritative course /100 composition — disposable owner-service and tracked migration verification — 2026-10-09
+
+**Classification:** Local implementation on an uncommitted worktree, **runtime-verified at the explicitly isolated/disposable PostgreSQL 18.6 boundary**. **NOT** canonical/ordinary deployed; **NOT** an authenticated ordinary-server HTTP /100 test; **NOT** full result/publication workflow completion; `BASELINE_APPROVED=NO`.
+
+### Evidence basis and scope
+
+The operator-provided 2026-10-09 terminal logs report synthetic, real-schema, owner-service campaigns with six academic cases: `boundary`, `formative_fail`, `summative_fail`, `precision`, `zero`, `maximum`. Only the test database and scratch stage were used; canonical database was reported `NOT_CONTACTED`. This entry records the observed console evidence and does not claim an independent live-server inspection or a committed source baseline. It supersedes **only** older statements that /100 composition itself was still unimplemented/pending: older dated checkpoints remain accurate for their own tested scope.
+
+| Test boundary | Observed evidence / verdict |
+| --- | --- |
+| Summative preterminal sources | 24 real Committee appointments, 12 Examiner assignments, 6 candidate registrations, 6 calculated /60 marks — PASS |
+| Certified REGULAR and Activities /30 | Six certified lists and six owner-finalised Activities results — PASS |
+| Attendance /5 | Six immutable generated versions, 18 class source items — PASS |
+| Comprehensive /5, automatic Final Formative /40 | Six finalisations, 24 seat submissions, six immutable /40 aggregates — PASS |
+| Absence of premature /100 | Zero compositions before Summative Chairman approval — PASS |
+| Real approval chain | 12 VERIFIED Member reviews, six Chairman approvals and six composed immutable /100 records — PASS |
+| Pass thresholds | Exact /40 + /60 arithmetic and independently enforced Formative >=16/40 and Summative >=24/60 across six cases — PASS |
+| Audit and rollback | 12 terminal success audits; one injected terminal failure atomically rolled back approval, composition and terminal success audits — PASS |
+| Basic unauthorized/immutability checks | Without reviews, incomplete review, foreign candidate direct ID, Admin-for-Member substitution, duplicate approval and protected-record UPDATE/DELETE denials in the exercised cases — PASS within stated coverage |
+| Extended authority and concurrency | Member/Chairman live Teacher-role revocation, wrong Committee seat, two parallel Chairman requests with exactly one winner — PASS at service boundary |
+| Reconciliation and negative parent/source identity | Six exact replays returned `EXISTING` with stable IDs/audits; wrong department, cross-offering enrollment and forged calculated-mark source denied — PASS |
+| Negative SQL contract | Cross-offering parent gate returned SQLSTATE `P0002` (Prisma raw query `P2010`) — expected rejection; protected counts unchanged |
+| Cleanup/safety | Isolated container/stage cleanup PASS; local Git status unchanged; no commit, PM2/Nginx change or canonical deployment |
+
+The initial source-replay fixture expected `NOT_READY` for mixed enrollment, contrary to the existing parent gate's `P0002` contract. Its **test-only** expectation was corrected and the later full disposable campaign passed; the earlier failed run is retained as test-history evidence, not classified as a production SQL vulnerability.
+
+### Separately verified tracked Prisma migration and ledger behavior
+
+The **corrected portable ZIP** campaign (`TRACKED_MIGRATION_DISPOSABLE_RUNTIME=PASS`) used actual `prisma migrate deploy` against a restored, empty-academic-data **disposable** PostgreSQL 18.6 database:
+
+- **41 historical applied** migrations and **two explicitly rolled-back historical attempts** preserved; 21 applied checksums matched their exact or LF/CRLF-equivalent historical source bytes.
+- First tracked deployment applied exactly two additive migrations: `202610080001_authoritative_course_composition` and `202610090001_correct_summative_timestamp3_chronology`. New SQL source-byte checksums matched exactly; historical ledger remained unchanged.
+- Schema assertions passed for the **tested** 12 foreign keys, four composition triggers and three chronology functions.
+- A **second** `prisma migrate deploy` performed a no-op with an exactly unchanged migration ledger. Installed server Prisma Client bytes remained unchanged; disposable DB/stage cleanup passed.
+- The first portable migration attempt failed `ZIP_PATH=FAIL` before database execution. The corrected ZIP transferred 47 regular forward-slash archive entries (`PORTABLE_MIGRATION_ZIP=PASS`) and the actual tracked test passed.
+
+These findings establish **disposable migration idempotency and history integrity** only. They do not establish the present ordinary/canonical DB migration state, production rollout compatibility, or approval to run migration against real data.
+
+### Still pending / non-claims
+
+- Full stale, expired or replaced Committee appointment matrix; additional foreign direct object IDs, cross-course actors, missing external metadata and invalid source-version states.
+- Reverse source-arrival order (`/60` first, `/40` later), conflicting/stale source identity, competing source-owner events, abnormal audit/deferred-constraint failure cases and broader adversarial database checks.
+- Formal baseline attestation; repository review/approved commit; ordinary-server migration and authenticated `/100` HTTP tests; release/deployment/monitoring evidence.
+- Separate full course-result Chairman finalisation; grade/grade-point derivation; institutionally approved official documents; Controller publication; immutable/versioned published registry; controlled amendments/republication; GPA/CGPA/transcript consumers; security/2FA and public production hardening.
+
+**Historical supersession rule:** The 2026-10-07 Final Formative canonical `/40` checkpoint and its original future-`/100` wording are retained as historical evidence. This later 2026-10-09 entry updates only the local/disposable classification. It is neither an ordinary/canonical `/100` release note nor proof of production acceptance. `BASELINE_APPROVED=NO`.
+
+
+## Summative Committee appointment liveness negative controls — disposable runtime — 2026-10-09
+
+**Classification:** Tested **only** against synthetic, disposable PostgreSQL 18.6 in the 2026-10-09 /100 owner-service campaign; local source uncommitted, no ordinary/canonical deployment; `BASELINE_APPROVED=NO`. This newer evidence supplements the preceding 2026-10-09 /100 campaign ledger without erasing its original pending statements.
+
+The operator-supplied terminal log for `CRC_APPOINTMENT_LIVENESS_DISPOSABLE_RUNTIME=PASS` reports the following new negative checks:
+
+- **Expired but ACTIVE Member appointment:** after loading the authenticated principal, the synthetic Member appointment was set expired; Member review failed closed, then the appointment was restored. Observed markers: `CRC_APPOINTMENT_STAGE=summative_fail:DENY_EXPIRED_ACTIVE_MEMBER` and `EXPIRED_MEMBER_RESTORED`.
+- **INACTIVE Chairman appointment:** after principal loading, the synthetic Chairman appointment was set inactive; final approval and automatic /100 composition were denied and the appointment was restored. Observed markers: `CRC_APPOINTMENT_STAGE=boundary:DENY_INACTIVE_CHAIRMAN` and `CHAIRMAN_APPOINTMENT_RESTORED`.
+- **Regression:** 15 focused fixture tests and four Prisma-generation/loader tests passed; API TypeScript typecheck/build passed. The underlying six-case owner-service chain produced 12 verified Member reviews, six Chairman approvals, six immutable /100 compositions, exact component-pass boundaries and one atomic rollback (`REAL_SUMMATIVE_CHAIRMAN_COMPOSITION_RUNTIME=PASS`). Disposable container/stage cleanup passed; local Git status unchanged.
+
+**Not proven:** complete appointment replacement and identity-rebinding matrix; stale review linked to an old appointment, missing appointment, cross-course actor access, all expired seats and clock skew. The earlier generic 'appointment matrix pending' remains true for this broader set, **but not** for the two specific negative cases above. Reverse source-arrival, source-version/audit-conflict matrices, ordinary/canonical `/100` migration and authenticated HTTP acceptance remain pending.
+
+**Security release gate remains OPEN:** these synthetic service-level denials do not establish production readiness, complete-results finalisation, Controller publication, or authorization to deploy. `BASELINE_APPROVED=NO`.
+
+
+## CRC /100 combined adversarial checkpoint - 2026-10-09
+
+**Scope:** Local implementation and isolated disposable PostgreSQL 18.6 only. No canonical deployment; BASELINE_APPROVED=NO.
+
+- Combined owner-service campaign: 19 focused contract tests PASS, API typecheck/build PASS, disposable PostgreSQL runtime PASS.
+- Six Chairman approvals and six immutable /100 compositions PASS; 13 real Member reviews including successor appointment and 12 terminal success audits.
+- Genuine Committee Member replacement rejected stale VERIFIED review; successor appointment required new version-2 review.
+- Source-version and lineage mismatches rejected by PostgreSQL matching probes.
+- Injected composition-audit failure rolled back the Chairman transaction; earlier concurrency, role-revocation, appointment-liveness and source-replay checks remained PASS.
+- Group 1 appointment replacement: tested boundary PASS.
+- Group 2 broader object isolation: PARTIAL.
+- Group 3 reverse Chairman-approved source arrival: PENDING.
+- Group 4 broader source-version/conflict matrix: PARTIAL.
+- Group 5 injected audit-failure rollback: tested boundary PASS.
+- Tracked Prisma migration deployment and second-run ledger no-op: previously verified in disposable PostgreSQL, including 41 historical applied migrations and two additive migrations.
+- Production-shaped harness acceptance, complete security matrix, authenticated canonical runtime, commit-time release approval and production deployment remain separate pending gates.

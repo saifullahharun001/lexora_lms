@@ -73,7 +73,7 @@ for (const scenario of ["match", "mismatch", "case-mismatch", "missing", "multip
       return [{ databaseName: scenario === "mismatch" ? "other_test" : scenario === "case-mismatch" ? "RECONCILE_TEST" : "reconcile_test" }];
     });
     t.mock.method(PrismaClient.prototype, "$disconnect", async () => { calls.push("disconnect"); });
-    t.mock.method(FinalFormativeService.prototype, "reconcile", async (department: string, examination: string) => {
+    t.mock.method(FinalFormativeService.prototype, "reconcileFormativeOnly", async (department: string, examination: string) => {
       calls.push("reconcile");
       assert.deepEqual([department, examination], ["department", "examination"]);
       return [{ status: "CREATED", studentUserId: "private-student", mark: "31.500000" }, { status: "EXISTING" }, { status: "NOT_READY" }];

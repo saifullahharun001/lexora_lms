@@ -909,6 +909,7 @@ model BatchCoordinatorAssignment {
 }
 
 model Examination {
+  courseResultCompositions CourseResultComposition[]
   formativeFinalResults FormativeFinalResult[]
   FormativeActivitiesFinalisation_examinationId FormativeActivitiesFinalisation[] @relation("FormativeActivitiesFinalisation_examinationId")
   attendanceGenerations FormativeAttendanceGeneration[]
@@ -953,6 +954,7 @@ model Examination {
 }
 
 model ExaminationCourse {
+  courseResultCompositions CourseResultComposition[]
   formativeFinalResults FormativeFinalResult[]
   FormativeActivitiesFinalisation_examinationCourseId FormativeActivitiesFinalisation[] @relation("FormativeActivitiesFinalisation_examinationCourseId")
   attendanceVersions FormativeAttendanceVersion[]
@@ -1196,6 +1198,7 @@ model CurriculumVersion {
 /// Assignment logic must verify department equality, an active department-scoped Student role,
 /// matching CurriculumVersion.academicProgramId, APPROVED/ACTIVE lifecycle, and actor authority.
 model StudentCurriculumAssignment {
+  courseResultCompositions CourseResultComposition[]
   ExaminationCandidateRegistration_curriculumAssignment ExaminationCandidateRegistration[] @relation("ExaminationCandidateRegistration_curriculumAssignment")
   id                  String            @id @default(cuid())
   departmentId        String            @map("department_id")
@@ -1480,6 +1483,7 @@ model CurriculumCoursePrerequisite {
 }
 
 model CourseOffering {
+  courseResultCompositions CourseResultComposition[]
   formativeFinalResults FormativeFinalResult[]
   FormativeActivitiesFinalisation_courseOfferingId FormativeActivitiesFinalisation[] @relation("FormativeActivitiesFinalisation_courseOfferingId")
   ordinaryAttendanceCorrections FormativeAttendanceCorrection[]
@@ -1629,6 +1633,7 @@ model TeacherCourseAssignment {
 }
 
 model Enrollment {
+  courseResultCompositions CourseResultComposition[]
   formativeFinalResults FormativeFinalResult[]
   FormativeActivitiesFinalResult_enrollmentId FormativeActivitiesFinalResult[] @relation("FormativeActivitiesFinalResult_enrollmentId")
   activitySubmissionItems FormativeActivitySubmissionItem[]
@@ -3131,6 +3136,7 @@ model SummativeQuestionConfigurationItem {
 }
 
 model SummativeExaminationCandidate {
+  courseResultCompositions CourseResultComposition[]
   id                  String   @id @default(cuid())
   departmentId        String   @map("department_id")
   examinationId       String   @map("examination_id")
@@ -3433,6 +3439,7 @@ model SummativeThreeTotalCalculation {
 /// Immutable common calculated Summative evidence for both Ordinance calculation paths.
 /// This is not Committee approval, publication, or Result Engine evidence.
 model SummativeCalculatedMark {
+  courseResultCompositions CourseResultComposition[]
   id                                   String                       @id @default(cuid())
   departmentId                         String                       @map("department_id")
   examinationId                        String                       @map("examination_id")
@@ -3519,6 +3526,8 @@ model SummativeCommitteeMemberReview {
 
 /// Immutable Chairman approval and final-lock evidence for one exact calculated mark.
 model SummativeChairmanApproval {
+  @@unique([id,departmentId,examinationId,examinationCourseId,candidateId,calculatedMarkId,calculatedMarkVersionSnapshot], map: "sum_approval_composition_scope_uq")
+  courseResultCompositions CourseResultComposition[]
   id                            String                         @id @default(cuid())
   departmentId                  String                         @map("department_id")
   examinationId                 String                         @map("examination_id")
@@ -3873,6 +3882,7 @@ model ExternalComprehensiveAccess {
 }
 
 model ExaminationCandidateList {
+  courseResultCompositions CourseResultComposition[]
   ComprehensiveExamination_candidateList ComprehensiveExamination[] @relation("ComprehensiveExamination_candidateList")
   ExaminationCandidateRegistration_list ExaminationCandidateRegistration[] @relation("ExaminationCandidateRegistration_list")
   id String @id @default(cuid())
@@ -3903,6 +3913,7 @@ model ExaminationCandidateList {
 }
 
 model ExaminationCandidateRegistration {
+  courseResultCompositions CourseResultComposition[]
   ComprehensiveAbsence_registration ComprehensiveAbsence[] @relation("ComprehensiveAbsence_registration")
   ComprehensiveRosterEntry_registration ComprehensiveRosterEntry[] @relation("ComprehensiveRosterEntry_registration")
   ExaminationCandidateCourse_registration ExaminationCandidateCourse[] @relation("ExaminationCandidateCourse_registration")
@@ -3930,6 +3941,7 @@ model ExaminationCandidateRegistration {
 }
 
 model ExaminationCandidateCourse {
+  courseResultCompositions CourseResultComposition[]
   ComprehensiveRosterEntry_candidateCourse ComprehensiveRosterEntry[] @relation("ComprehensiveRosterEntry_candidateCourse")
   id String @id @default(cuid())
   departmentId String @map("department_id")
@@ -4392,6 +4404,8 @@ model FormativeActivitiesFinalSourceItem {
 
 /// Complete immutable authoritative /40. No approval, amendment or partial lifecycle.
 model FormativeFinalResult {
+  @@unique([id,departmentId,examinationCourseId,enrollmentId], map: "ff_composition_scope_uq")
+  courseResultCompositions CourseResultComposition[]
   id String @id @default(cuid())
   departmentId String @map("department_id")
   examinationId String @map("examination_id")
@@ -4434,4 +4448,65 @@ model FormativeFinalResult {
   @@index([departmentId, examinationId], map: "ff_exam_idx")
   @@index([departmentId, studentUserId], map: "ff_student_idx")
   @@map("formative_final_results")
+}
+
+// Immutable composition only; never a publication, grade, GPA or transcript source.
+model CourseResultComposition {
+  id String @id @default(cuid())
+  departmentId String @map("department_id")
+  examinationId String @map("examination_id")
+  examinationCourseId String @map("examination_course_id")
+  courseOfferingId String @map("course_offering_id")
+  enrollmentId String @map("enrollment_id")
+  studentUserId String @map("student_user_id")
+  academicProgramId String @map("academic_program_id")
+  academicSessionId String @map("academic_session_id")
+  academicTermId String @map("academic_term_id")
+  studentBatchId String @map("student_batch_id")
+  curriculumAssignmentId String @map("curriculum_assignment_id")
+  curriculumVersionId String @map("curriculum_version_id")
+  curriculumCourseId String @map("curriculum_course_id")
+  syllabusVersionId String @map("syllabus_version_id")
+  assessmentTemplateId String @map("assessment_template_id")
+  candidateListId String @map("candidate_list_id")
+  candidateListVersion Int @map("candidate_list_version")
+  registrationId String @map("registration_id")
+  registrationVersion Int @map("registration_version")
+  candidateCourseId String @map("candidate_course_id")
+  candidateCategory String @map("candidate_category")
+  formativeResultId String @map("formative_result_id")
+  summativeCandidateId String @map("summative_candidate_id")
+  chairmanApprovalId String @map("chairman_approval_id")
+  calculatedMarkId String @map("calculated_mark_id")
+  calculatedMarkVersion Int @map("calculated_mark_version")
+  formativeRule String @map("formative_rule")
+  summativeRule String @map("summative_rule")
+  candidateRule String @map("candidate_rule")
+  formativeMark Decimal @map("formative_mark") @db.Decimal(10,6)
+  formativeFullMark Decimal @map("formative_full_mark") @db.Decimal(10,6)
+  summativeMark Decimal @map("summative_mark") @db.Decimal(10,6)
+  summativeFullMark Decimal @map("summative_full_mark") @db.Decimal(10,6)
+  totalMark Decimal @map("total_mark") @db.Decimal(10,6)
+  totalFullMark Decimal @map("total_full_mark") @db.Decimal(10,6)
+  formativePassed Boolean @map("formative_passed")
+  summativePassed Boolean @map("summative_passed")
+  coursePassed Boolean @map("course_passed")
+  ruleVersionCode String @map("rule_version_code")
+  provenanceJson Json @map("provenance_json")
+  createdAt DateTime @default(dbgenerated("statement_timestamp()")) @map("created_at")
+  examination Examination @relation(fields: [examinationId,departmentId,academicProgramId,academicSessionId,academicTermId], references: [id,departmentId,academicProgramId,academicSessionId,academicTermId], onDelete: Restrict, onUpdate: Restrict, map: "crc_examination_fk")
+  examinationCourse ExaminationCourse @relation(fields: [examinationCourseId,departmentId,examinationId,courseOfferingId], references: [id,departmentId,examinationId,courseOfferingId], onDelete: Restrict, onUpdate: Restrict, map: "crc_examination_course_fk")
+  offering CourseOffering @relation(fields: [courseOfferingId,departmentId,studentBatchId,academicTermId], references: [id,departmentId,studentBatchId,academicTermId], onDelete: Restrict, onUpdate: Restrict, map: "crc_offering_fk")
+  enrollment Enrollment @relation(fields: [enrollmentId,departmentId,courseOfferingId,studentUserId], references: [id,departmentId,courseOfferingId,studentUserId], onDelete: Restrict, onUpdate: Restrict, map: "crc_enrollment_fk")
+  formativeResult FormativeFinalResult @relation(fields: [formativeResultId,departmentId,examinationCourseId,enrollmentId], references: [id,departmentId,examinationCourseId,enrollmentId], onDelete: Restrict, onUpdate: Restrict, map: "crc_formative_result_fk")
+  candidate SummativeExaminationCandidate @relation(fields: [summativeCandidateId,departmentId,examinationId,examinationCourseId], references: [id,departmentId,examinationId,examinationCourseId], onDelete: Restrict, onUpdate: Restrict, map: "crc_candidate_fk")
+  approval SummativeChairmanApproval @relation(fields: [chairmanApprovalId,departmentId,examinationId,examinationCourseId,summativeCandidateId,calculatedMarkId,calculatedMarkVersion], references: [id,departmentId,examinationId,examinationCourseId,candidateId,calculatedMarkId,calculatedMarkVersionSnapshot], onDelete: Restrict, onUpdate: Restrict, map: "crc_approval_fk")
+  calculatedMark SummativeCalculatedMark @relation(fields: [calculatedMarkId,departmentId,examinationId,examinationCourseId,summativeCandidateId,calculatedMarkVersion], references: [id,departmentId,examinationId,examinationCourseId,candidateId,calculatedMarkVersion], onDelete: Restrict, onUpdate: Restrict, map: "crc_calculated_mark_fk")
+  candidateList ExaminationCandidateList @relation(fields: [candidateListId,departmentId], references: [id,departmentId], onDelete: Restrict, onUpdate: Restrict, map: "crc_candidate_list_fk")
+  registration ExaminationCandidateRegistration @relation(fields: [registrationId,departmentId], references: [id,departmentId], onDelete: Restrict, onUpdate: Restrict, map: "crc_registration_fk")
+  candidateCourse ExaminationCandidateCourse @relation(fields: [candidateCourseId,departmentId], references: [id,departmentId], onDelete: Restrict, onUpdate: Restrict, map: "crc_candidate_course_fk")
+  curriculumAssignment StudentCurriculumAssignment @relation(fields: [curriculumAssignmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "crc_curriculum_assignment_fk")
+  @@unique([departmentId,examinationCourseId,enrollmentId], map: "crc_context_uq")
+  @@index([departmentId,examinationId], map: "crc_exam_idx")
+  @@map("course_result_compositions")
 }

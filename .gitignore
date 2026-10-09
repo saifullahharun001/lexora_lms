@@ -103,3 +103,8 @@ backups/
 
 !apps/api/prisma/migrations/202610060001_automatic_final_formative/
 !apps/api/prisma/migrations/202610060001_automatic_final_formative/migration.sql
+
+!apps/api/prisma/migrations/202610080001_authoritative_course_composition/
+!apps/api/prisma/migrations/202610080001_authoritative_course_composition/migration.sql
+!apps/api/prisma/migrations/202610090001_correct_summative_timestamp3_chronology/
+!apps/api/prisma/migrations/202610090001_correct_summative_timestamp3_chronology/migration.sql
