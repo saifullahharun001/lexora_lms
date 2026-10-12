@@ -6,6 +6,7 @@
  */
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
+import { ForbiddenException } from '@nestjs/common';
 import { Prisma, PrismaClient, PermissionScope, ExaminationCommitteeAssignmentStatus } from '@prisma/client';
 import { RequestContextService } from '../../src/common/request-context/request-context.service';
 import { PrincipalLoaderService } from '../../src/modules/authorization/services/principal-loader.service';
@@ -30,12 +31,12 @@ function workflow(db: PrismaClient, hook: Pick<CourseResultCompositionService, '
     new SummativeCommitteeWorkflowAuthorizerService(db as never, ctx),
     new SummativeCalculatedMarkService(ctx), hook);
 }
-async function asUser<T>(db: PrismaClient, userId: string, work: () => Promise<T>): Promise<T> {
+async function asUser<T>(db: PrismaClient, userId: string, work: () => Promise<T>, headerDepartment?: string): Promise<T> {
   const principal = await new PrincipalLoaderService(db as never).loadPrincipal(userId);
   assert.ok(principal?.isAuthenticated && principal.actorType === 'user' && principal.activeDepartmentId === dept,
     'Synthetic principal must be authenticated in the exact test department');
   return ctx.run({ requestId: `crc-chairman-${userId}`, method: 'POST', path: '/synthetic-chairman', principal,
-    department: { kind: 'department', departmentId: dept, source: 'principal' },
+    department: { kind: 'department', departmentId: headerDepartment ?? dept, source: headerDepartment === undefined ? 'principal' : 'header' },
     audit: { requestId: `crc-chairman-${userId}`, departmentId: dept } }, work);
 }
 async function counters(db: PrismaClient): Promise<[number, number, number, number, number]> {
@@ -226,9 +227,56 @@ export async function approveSyntheticSummativeThroughOwners(db: PrismaClient) {
       await assert.rejects(asUser(db, 'crc_fixture_operator', () => workflow(db).submitMemberReview(calculated.id,
         { outcome: 'VERIFIED' })));
       assert.deepEqual(await counters(db), base);
+
+      // Full-schema synthetic owner-service boundary:
+      // an untrusted department header must never grant access to
+      // another examination or grant the Chairman duty.
+      const forgedHeader = 'crc_fixture_unrelated_department';
+      const auditBeforeForgedHeader = await db.auditLog.count();
+
+      console.log('CRC_SECURITY_STAGE=boundary:FORGED_HEADER_OWNER_DENIAL');
+
+      await assert.rejects(
+        asUser(db, member1, () =>
+          workflow(db).submitMemberReview(foreign.id, {
+            outcome: 'VERIFIED',
+          }), forgedHeader),
+        ForbiddenException,
+      );
+
+      await assert.rejects(
+        asUser(db, chairman, () =>
+          workflow(db).approveAndFinalLock(foreign.id), forgedHeader),
+        ForbiddenException,
+      );
+
+      await assert.rejects(
+        asUser(db, member1, () =>
+          workflow(db).approveAndFinalLock(calculated.id), forgedHeader),
+        ForbiddenException,
+      );
+
+      assert.deepEqual(
+        await counters(db),
+        base,
+        'Forged department header must not create review, approval, /100 or terminal audits',
+      );
+
+      assert.equal(
+        await db.auditLog.count(),
+        auditBeforeForgedHeader,
+        'Rejected forged-header operations must not create any audit row in this campaign',
+      );
+
+      console.log('CRC_SECURITY_STAGE=boundary:FORGED_HEADER_OWNER_DENIAL_PASS');
     }
     console.log(`CRC_CHAIRMAN_STAGE=${key}:MEMBER_1_VERIFIED`);
-    await asUser(db, member1, () => workflow(db).submitMemberReview(calculated.id, { outcome: 'VERIFIED' }));
+    await asUser(db, member1,
+      () => workflow(db).submitMemberReview(calculated.id, { outcome: 'VERIFIED' }),
+      key === 'boundary' ? 'crc_fixture_unrelated_department' : undefined);
+    if (key === 'boundary') {
+      console.log('CRC_SECURITY_STAGE=boundary:FORGED_HEADER_VALID_PRINCIPAL_SUCCEEDED');
+    }
     console.log(`CRC_CHAIRMAN_STAGE=${key}:DENY_INCOMPLETE_REVIEW`);
     await assert.rejects(asUser(db, chairman, () => workflow(db).approveAndFinalLock(calculated.id)));
     const afterFirst = await counters(db);

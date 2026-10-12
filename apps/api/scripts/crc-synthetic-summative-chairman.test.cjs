@@ -40,3 +40,68 @@ test('explicit disposable-only database identity and no raw secrets or unauthori
   assert.match(runner, /assert\.deepEqual\(process\.argv\.slice\(2\), \['--apply'\]/);
   assert.doesNotMatch(runner, /console\.log\(.*(?:url|password|token|hash|provenance)/i);
 });
+
+test('forged department header preserves real principal ownership', () => {
+  assert.match(
+    source,
+    /loadPrincipal\(userId\)/,
+    'Principal must originate from the database loader',
+  );
+
+  assert.match(
+    source,
+    /principal\.activeDepartmentId === dept/,
+    'Principal department must remain independently checked',
+  );
+
+  assert.match(
+    source,
+    /headerDepartment \?\? dept/,
+    'Synthetic header override must remain explicit',
+  );
+
+  const start = source.indexOf("const forgedHeader = 'crc_fixture_unrelated_department'");
+  const end = source.indexOf(
+    "CRC_SECURITY_STAGE=boundary:FORGED_HEADER_OWNER_DENIAL_PASS",
+    start,
+  );
+
+  assert.ok(start >= 0 && end > start);
+
+  const negative = source.slice(start, end);
+
+  assert.match(negative, /submitMemberReview\(foreign\.id/);
+  assert.match(negative, /approveAndFinalLock\(foreign\.id\)/);
+  assert.match(negative, /approveAndFinalLock\(calculated\.id\)/);
+
+  assert.equal(
+    (negative.match(/ForbiddenException/g) || []).length,
+    3,
+    'Three exact forbidden-duty/object assertions must be present',
+  );
+
+  assert.match(negative, /assert\.deepEqual\(\s*await counters\(db\),\s*base/);
+  assert.match(negative, /await db\.auditLog\.count\(\)/);
+
+  assert.match(
+    source,
+    /key === 'boundary' \? 'crc_fixture_unrelated_department' : undefined/,
+    'Valid principal must be tested with a forged header',
+  );
+
+  assert.match(
+    source,
+    /FORGED_HEADER_VALID_PRINCIPAL_SUCCEEDED/,
+  );
+
+  assert.match(
+    source,
+    /assert\.deepEqual\(await counters\(db\), \[13, 6, 6, 6, 6\]\)/,
+    'Normal owner workflow must retain the six-case terminal invariant',
+  );
+
+  assert.doesNotMatch(
+    source,
+    /(?:db|tx)\.(?:courseResultComposition|summativeChairmanApproval|summativeCommitteeMemberReview|auditLog)\.(?:create|upsert)\(/,
+  );
+});

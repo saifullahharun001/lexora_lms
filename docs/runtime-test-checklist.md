@@ -41761,3 +41761,36 @@ isolation and real workflow pre-write denial tested PASS.
 Overall authenticated/transactional acceptance remains PARTIAL.
 
 **Security release gate:** OPEN. `BASELINE_APPROVED=NO`.
+
+## CRC Group 2 forged-header owner-service static checkpoint - 2026-10-12
+
+**Classification:** Implemented and statically verified only. Full owner-service PostgreSQL runtime PENDING. `BASELINE_APPROVED=NO`.
+
+### Implemented test extension
+
+- Added three forged-department-header negative assertions to the existing six-case synthetic Chairman owner-service fixture.
+- Cases cover another examination's calculated mark for Member review and Chairman approval, plus Member attempting Chairman approval.
+- Assertions require the expected ForbiddenException for these same-department wrong-examination/wrong-duty scenarios.
+- Added checks that five protected-record counters and the overall audit-row count remain unchanged after rejected operations.
+- Added a positive control: valid Member, own calculated mark and forged header must still use principal-derived department authority.
+- No production authorization service, database schema or migration was modified.
+
+### Verification evidence
+
+- API TypeScript typecheck: PASS.
+- API build: PASS.
+- Existing focused static regression campaign: 23/23 PASS.
+- Updated Chairman fixture static regression: 5/5 PASS.
+- Source inspection confirmed principal-derived department scoping, current Teacher role/Committee seat checks and transactional authority revalidation.
+- Source inspection confirmed safe NotFoundException for calculated marks outside the principal's department scope, while wrong Committee assignment or duty is denied using ForbiddenException.
+- The new assertions have NOT been executed in the full six-case PostgreSQL owner-service campaign.
+
+### Pending acceptance
+
+- Rebuild or obtain a verified disposable-only historical foundation with its genuine 41-applied/two-rolled-back migration ledger.
+- Execute the new negative and positive controls through real PostgreSQL-backed owner services.
+- Verify the normal six-case /100 owner chain, protected counters, immutable evidence, audit coupling and cleanup.
+- Complete authenticated HTTP and independently approved production-shaped baseline acceptance separately.
+- No canonical migration, database mutation, application deployment, push or release approval occurred in this checkpoint.
+
+**Group 2 remains PARTIAL. Security release gate OPEN.**
