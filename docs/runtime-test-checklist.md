@@ -41532,3 +41532,232 @@ The operator-supplied terminal log for `CRC_APPOINTMENT_LIVENESS_DISPOSABLE_RUNT
 - Group 5 injected audit-failure rollback: tested boundary PASS.
 - Tracked Prisma migration deployment and second-run ledger no-op: previously verified in disposable PostgreSQL, including 41 historical applied migrations and two additive migrations.
 - Production-shaped harness acceptance, complete security matrix, authenticated canonical runtime, commit-time release approval and production deployment remain separate pending gates.
+
+## CRC /100 disposable PostgreSQL matrix - 2026-10-11
+
+**Classification:** Runtime-verified at an isolated Docker PostgreSQL 18.6
+database boundary using committed local source `f5b6346895779ed1137c831ad953c054bb25b7e0`.
+Not ordinary/canonical deployment, not authenticated HTTP acceptance,
+not production-shaped baseline approval. `BASELINE_APPROVED=NO`.
+
+### Verified evidence
+
+- Local API TypeScript typecheck: PASS.
+- Local API build: PASS.
+- Focused unit/contract regression: 45/45 PASS; 0 failed, 0 skipped.
+- Real PostgreSQL database matrix: 70/70 PASS; 0 failed, 0 skipped.
+- Database suite duration: 1,147,820 ms (approximately 19 minutes).
+- Exact approved-source composition, version binding and Decimal arithmetic: PASS.
+- Formative-first and Summative-first source-arrival fixture cases: PASS.
+- Separate Formative 16/40 and Summative 24/60 pass boundaries: PASS.
+- Foreign approval, calculated source, candidate, offering, enrollment,
+  registration and related source-integrity negative cases: PASS.
+- Serializable concurrency and immutable composition/audit protections: PASS.
+- Audit-failure, missing-audit and interrupted-transaction rollback: PASS.
+- Disposable test-schema lifecycle and cleanup: PASS.
+- Owned SSH tunnel stopped: PASS.
+- Owned disposable PostgreSQL Docker container removed: PASS.
+- Final invocation marker: CRC_DISPOSABLE_RUNTIME_AND_CLEANUP=PASS.
+
+### Execution boundary and limitations
+
+- Tests ran from the local generated Prisma Client through an SSH
+  loopback tunnel to an isolated server Docker PostgreSQL 18.6 container.
+- The suite used scoped SQL parent fixtures and test-only schemas.
+  It did not exercise an ordinary/canonical fully migrated database.
+- An earlier clean-install attempt against a blank disposable database
+  stopped at historical migration 20260521_add_notice_foundation
+  (P3018 / SQLSTATE 42P01, missing departments prerequisite).
+  This does not establish a new /100 implementation defect.
+- A separate server snapshot build attempt failed because the symlinked
+  server-generated Prisma Client lacked the new composition model;
+  the local generated client, typecheck and build passed.
+- No ordinary database migration, authenticated HTTP test,
+  canonical deployment or release approval was performed.
+
+### Remaining acceptance gaps
+
+- Group 2 broader authenticated actor and direct-object isolation:
+  PARTIAL, not fully closed by these database fixtures.
+- Group 3 reverse source arrival: tested at database fixture boundary;
+  broader real source-owner and production-shaped acceptance pending.
+- Group 4 broader source-version and conflicting-owner event matrix:
+  PARTIAL.
+- Independently approved sanitized baseline, complete production-shaped
+  harness, canonical migration, authenticated HTTP acceptance and
+  monitoring/release evidence: PENDING.
+- Complete-result Chairman finalisation, grade/grade-point, official
+  documents, Controller publication and published-result integration:
+  separate pending lifecycle stages.
+
+**Release gate:** OPEN. `BASELINE_APPROVED=NO`.
+## CRC Group 2 PostgreSQL authority matrix - 2026-10-12
+
+**Classification:** Isolated PostgreSQL 18.6 runtime verification.
+Operator-supplied terminal evidence. Group 2 remains PARTIAL.
+`BASELINE_APPROVED=NO`.
+
+### Verified
+
+- Test: `prisma/summative-committee-authority.database.test.ts`.
+- Local API typecheck: PASS.
+- Local API build: PASS.
+- PostgreSQL-backed authority matrix: 10/10 PASS.
+- Failures: 0; cancelled: 0; skipped: 0.
+- Test duration: approximately 27.5 seconds.
+- Valid internal Member and Chairman authority: PASS.
+- Foreign-department calculated object: safe denial PASS.
+- Wrong examination and borrowed Committee appointment: denial PASS.
+- Wrong Committee duty/seat: denial PASS.
+- Forged transaction department/examination/candidate scope: denial PASS.
+- Revoked role and expired appointment: denial PASS.
+- Replacement cannot reuse stale appointment authority: PASS.
+- Authorizer-only campaign audit count remained zero: PASS.
+- Owned SSH loopback tunnel stopped: PASS.
+- Owned disposable PostgreSQL container removed: PASS.
+- Final marker: GROUP2_DISPOSABLE_RUNTIME_AND_CLEANUP=PASS.
+
+### Limits and pending acceptance
+
+- Principal context was assembled inside the test.
+- PostgreSQL object queries and transactional authority revalidation
+  were real; this was not an HTTP end-to-end campaign.
+- PrincipalLoaderService and actual authenticated session loading
+  were not independently exercised by this new matrix.
+- No real Member review, Chairman approval, course composition or
+  protected success-audit write was attempted by this test.
+  The zero-audit assertion must not be interpreted as proof that
+  an unauthorized write transaction always rolls back.
+- The disposable fixture is a reduced authorization schema,
+  not an independently approved ordinary production baseline.
+- Full authenticated actor-to-service negative-write acceptance
+  and independently approved production-shaped baseline remain pending.
+- Canonical application, database and deployment were not changed.
+- The new test file is still untracked; no commit or release approval
+  was performed.
+
+**Group 2:** PostgreSQL transactional authority boundary PASS;
+broader authenticated object-level acceptance PARTIAL.
+
+**Release gate:** OPEN. `BASELINE_APPROVED=NO`.
+
+## CRC Group 2 real-principal PostgreSQL acceptance - 2026-10-12
+
+**Classification:** Isolated disposable PostgreSQL 18.6 runtime.
+This is a later, expanded verification of the preceding 10/10
+Group 2 authority matrix, not a replacement for its historical evidence.
+`BASELINE_APPROVED=NO`.
+
+### Runtime-verified
+
+- Focused test: `prisma/summative-committee-authority.database.test.ts`.
+- API TypeScript typecheck: PASS.
+- API build: PASS.
+- Real PostgreSQL test runner: 13/13 PASS.
+- Failed: 0; cancelled: 0; skipped: 0.
+- Duration: 14,045.596 ms.
+- Database-backed Member and Chairman authority: PASS.
+- Real `PrincipalLoaderService` user, department, role and
+  permission loading: PASS.
+- Principal-derived cross-department and wrong-examination
+  object denial: PASS.
+- Revoked Teacher role excluded by real principal loading: PASS.
+- Disabled department and locked user rejected: PASS.
+- Transactional role revocation, expired appointment and
+  stale replacement authority denials: PASS.
+- Wrong duty/seat and forged transaction scope denials: PASS.
+- Authorizer-only campaign produced zero audit rows: PASS.
+- Owned SSH loopback tunnel stopped: PASS.
+- Owned disposable PostgreSQL container removed: PASS.
+- Final marker: GROUP2_REAL_PRINCIPAL_RUNTIME_AND_CLEANUP=PASS.
+
+### Scope and limitations
+
+- Actual PostgreSQL queries were used for principal loading
+  and transactional Committee authorization.
+- The test used synthetic database records and an isolated schema.
+- Request context was assembled within the test; the HTTP
+  authentication and policy-guard pipeline was not exercised.
+- The matrix did not submit real Member reviews or Chairman approvals.
+- Zero audit rows in this authorizer-only test do not prove
+  transactional no-write behavior of rejected workflow operations.
+- A prior runtime attempt failed because the synthetic role
+  fixture omitted the required `Role.name` value. The fixture
+  was corrected; this 13/13 run passed without changing
+  application authorization logic.
+- No canonical database, server application, migration,
+  deployment or production baseline was modified.
+
+### Remaining Group 2 acceptance
+
+- Real principal -> unauthorized Member/Chairman workflow
+  attempt -> no protected approval, composition or success
+  audit writes: PENDING focused runtime verification.
+- Full authenticated HTTP guard/policy/object acceptance: PENDING.
+- Independently approved production-shaped baseline: PENDING.
+
+**Group 2 status:** Real-principal PostgreSQL authority boundary
+runtime-verified; overall Group 2 remains PARTIAL.
+
+**Security release gate:** OPEN. `BASELINE_APPROVED=NO`.
+
+## CRC Group 2 real-workflow negative runtime - 2026-10-12
+
+**Classification:** Operator-observed isolated PostgreSQL 18.6
+service-level runtime evidence. `BASELINE_APPROVED=NO`.
+
+### Runtime results
+
+- Test: `prisma/summative-committee-authority.database.test.ts`.
+- Local API typecheck: PASS.
+- Local API build: PASS.
+- Node.js test runner: 20 tests, 20 PASS, 0 FAIL, 0 skipped.
+- Runner duration: 20,539.9244 ms.
+- Existing real-principal and transactional authority cases: PASS.
+- Six new real workflow negative scenarios: PASS.
+- Member denied foreign-department calculated mark: PASS.
+- Member denied another examination's calculated mark: PASS.
+- Chairman denied foreign-department calculated mark: PASS.
+- Chairman denied another examination's calculated mark: PASS.
+- Member denied Chairman approval duty: PASS.
+- Forged department header did not override the loaded principal: PASS.
+- Each tested rejected attempt preserved the audit-row count: PASS.
+- Owned SSH loopback tunnel stopped: PASS.
+- Owned disposable PostgreSQL container removed: PASS.
+
+### Reporting-script discrepancy
+
+- Node.js completed with exit code 0 and explicitly reported
+  20 tests passed, 0 failed and 0 skipped.
+- The surrounding PowerShell script subsequently raised
+  `UNEXPECTED_TEST_SUMMARY` while parsing collected output.
+- This is a post-execution reporting validation failure,
+  not a failing Node.js test assertion.
+- The precise output-capture or regex mismatch was not
+  independently isolated. The outer script therefore
+  did not print its final overall success marker.
+- Do not claim the outer reporting script completed
+  successfully; preserve the observed runner and
+  cleanup results separately.
+
+### Limitations
+
+- Real PrincipalLoaderService and real PostgreSQL-backed
+  authorization were used inside a synthetic request context.
+- The six workflow attempts were rejected at the pre-write
+  authorization boundary.
+- The reduced disposable fixture does not provide full
+  Member review, Chairman approval or /100 composition
+  transaction and immutable-write coverage.
+- Unchanged audit count alone is not proof of full
+  transaction rollback or absence of every possible write.
+- Real authenticated HTTP acceptance and independently
+  approved production-shaped baseline remain pending.
+- No canonical database migration, application deployment,
+  service restart or release approval occurred.
+
+**Group 2:** Database-backed principal, appointment, object
+isolation and real workflow pre-write denial tested PASS.
+Overall authenticated/transactional acceptance remains PARTIAL.
+
+**Security release gate:** OPEN. `BASELINE_APPROVED=NO`.
