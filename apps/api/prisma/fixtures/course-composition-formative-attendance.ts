@@ -5,6 +5,7 @@
  * No protected academic aggregate, audit or publication is inserted directly.
  */
 import 'reflect-metadata';
+import { isFreshSynthetic } from './course-composition-fresh-gate';
 import assert from 'node:assert/strict';
 import { AttendanceSourceType, Prisma, PrismaClient } from '@prisma/client';
 import { RequestContextService } from '../../src/common/request-context/request-context.service';
@@ -65,7 +66,9 @@ export async function generateSyntheticAttendanceByRealServices(db: PrismaClient
       to_regclass('public.course_result_compositions')::text AS composition`;
   assert.equal(actual[0]?.name, expected);
   assert.equal(actual[0]?.version, '180006');
-  assert.equal(actual[0]?.composition, null);
+  if (await isFreshSynthetic(db)) {
+    assert.equal(actual[0]?.composition, 'course_result_compositions');
+  } else assert.equal(actual[0]?.composition, null);
   assert.equal(await db.summativeCalculatedMark.count({ where: { departmentId } }), 6);
   assert.equal(await db.formativeActivitiesFinalResult.count({ where: { finalisation: { is: { departmentId } } } }), 6);
   assert.equal(await db.examinationCandidateList.count({ where: { departmentId, status: 'CERTIFIED' } }), 6);

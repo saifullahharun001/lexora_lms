@@ -34,8 +34,10 @@ test("real-service stage logs contain only case keys and fixed stage names", () 
   const matches = [...fixture.matchAll(/console\.log\(`CRC_PRETERMINAL_STAGE=\$\{key\}:([A-Z_]+)`\)/g)];
   assert.deepEqual([...new Set(matches.map(m=>m[1]))].sort(), [
     'COMMITTEE_APPOINTMENTS', 'EXAMINER_ASSIGNMENTS', 'CANDIDATE_REGISTRATION',
-    'QUESTION_CONFIGURATION', 'EXAMINER_MARKING', 'CALCULATED_EVIDENCE'
+    'QUESTION_CONFIGURATION', 'CALCULATED_EVIDENCE'
   ].sort());
+  assert.ok(fixture.includes('CRC_PRETERMINAL_STAGE=${key}:${seat}_EXAMINER_SAVE'));
+  assert.ok(fixture.includes('CRC_PRETERMINAL_STAGE=${key}:${seat}_EXAMINER_FINALIZE'));
   assert.match(fixture, /new PrincipalLoaderService\(db as never\)\.loadPrincipal\(actorId\)/);
   assert.match(fixture, /ctx\.run\(/);
 });

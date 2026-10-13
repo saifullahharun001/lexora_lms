@@ -201,7 +201,16 @@ async function seed(db) {
   return true;
 }
 
-(async () => {
+module.exports = { seedFresh: async db => {
+  await require('./crc-fresh-safety.cjs').assertFreshDatabase(db);
+  const counts = await Promise.all([db.department.count(), db.user.count(), db.auditLog.count(),
+    db.examination.count(), db.formativeFinalResult.count(), db.summativeChairmanApproval.count(),
+    db.courseResultComposition.count()]);
+  assert.ok(counts.every(n => n === 0), 'Fresh foundation requires empty academic tables');
+  return seed(db);
+} };
+
+if (require.main === module) (async () => {
   const name = safeConnection();
   if (!process.argv.includes('--apply') || process.argv.length !== 3)
     throw Error('Use only explicit --apply; this file is a reviewed FOUNDATION stage, not a complete /100 baseline');

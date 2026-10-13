@@ -108,3 +108,6 @@ backups/
 !apps/api/prisma/migrations/202610080001_authoritative_course_composition/migration.sql
 !apps/api/prisma/migrations/202610090001_correct_summative_timestamp3_chronology/
 !apps/api/prisma/migrations/202610090001_correct_summative_timestamp3_chronology/migration.sql
+
+# Disposable CRC logs/DDL only; no credentials are written.
+.crc-runtime/

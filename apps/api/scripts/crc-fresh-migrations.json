@@ -1,0 +1,184 @@
+[
+  {
+    "name": "20260521_add_notice_foundation",
+    "sha256": "a332164758a2e49bf0d1b9dc4ae47194c76fed27a501725fa0f1f030a5ca6b2b"
+  },
+  {
+    "name": "20260805_add_file_malware_scan_job_ledger",
+    "sha256": "628e852605f01340b9a982374321266c47bef383d62beff545903170f9afeeb3"
+  },
+  {
+    "name": "202608060001_add_curriculum_assessment_foundation",
+    "sha256": "2e319c1c5b773b7c3ad255ec5ab2de9dceb1891dbaf081c7254fc9a7c0e0ed33"
+  },
+  {
+    "name": "202608070001_add_course_offering_curriculum_binding",
+    "sha256": "0d549e1b1a125fa7f7beb57c896147541be0a98ec94b6c03787d5a624f0db5bc"
+  },
+  {
+    "name": "202608090001_add_student_curriculum_assignment",
+    "sha256": "59c6e224b94eab0bc466879e8f9d10d206f89a39af5c1cb7c79025c5088bcf89"
+  },
+  {
+    "name": "202608090002_add_enrollment_curriculum_binding_foundation",
+    "sha256": "a991d2679e732f2868ebf61fb4cff8e7fb6cf402bde10b21ed8dceb475c26b32"
+  },
+  {
+    "name": "202608100001_harden_enrollment_course_offering_delete",
+    "sha256": "0009db953e2751ea7a74023ce845d09bef12782971c2de85397a25ba6a52759a"
+  },
+  {
+    "name": "202608100002_redesign_course_offering_uniqueness",
+    "sha256": "c3d1c1a24b0c43e5d64a3b1c4d77541389aec221482c1590743ec0ea078384ce"
+  },
+  {
+    "name": "202608140001_add_syllabus_version_foundation",
+    "sha256": "a026af5d332d8bae50562e73b54cc02f97eda2b0f9f5a013fb18cc2c22a89eb2"
+  },
+  {
+    "name": "202608170001_add_course_offering_syllabus_binding_foundation",
+    "sha256": "0e785bfbc4c4837a5b5ad4b417b5e6dfed5e17b2a366fcb240909cb03fed999f"
+  },
+  {
+    "name": "202608190001_add_obe_learning_outcomes_foundation",
+    "sha256": "b93da6ff50198ef40ae3ba1bf0e798d29cf67a130b3f03938630eada7f8da54e"
+  },
+  {
+    "name": "202608190002_add_course_outline_version_foundation",
+    "sha256": "1b481118bfd7b410fa16c60547f1fe73d54a4db2379e02cd9f7de02e14919d68"
+  },
+  {
+    "name": "202608200001_add_canonical_syllabus_content_foundation",
+    "sha256": "1aee495e8229fea37d31922a3ecaf3462ef167928446b39d9d250debb33845ba"
+  },
+  {
+    "name": "202608200002_add_course_outline_draft_content",
+    "sha256": "b7d5f52405dd867636a59a7be4cd54b7fb635fa68a3f82965710382af4bf0e4b"
+  },
+  {
+    "name": "202608200003_add_academic_session_student_batch_foundation",
+    "sha256": "85805b211365c9495dc707391033ed433c1ed15a615dc4b00bd849f99adf9dce"
+  },
+  {
+    "name": "202608210001_add_course_offering_student_batch_binding_foundation",
+    "sha256": "52d084155fa85cde0593dda0ae769f9f9f460a71908f5c303b7f073cc2ede87c"
+  },
+  {
+    "name": "202608240001_harden_curriculum_course_department_identity",
+    "sha256": "149bb9549870cce0e77cab483dc8158f51b2517d97b276ae3da34ffc1fe66c22"
+  },
+  {
+    "name": "202608240002_add_batch_coordinator_assignment_foundation",
+    "sha256": "9815e64cac99c472f47f22a8034f3f549f5d4d156b3c637f9c5639bda77a22af"
+  },
+  {
+    "name": "202608260001_add_course_outline_correction_request_foundation",
+    "sha256": "b144af77cd74b289927c95ac090adcb5437ddffc4f0033bb01e438a3e76b9b90"
+  },
+  {
+    "name": "202608270001_add_course_outline_active_version_binding",
+    "sha256": "ed5e4fe2b8457f4655768a78e7ca1f35ac0e373e738d69b1f8f6b4e7cd9518ff"
+  },
+  {
+    "name": "202608280001_add_summative_examination_committee_foundation",
+    "sha256": "d406d01c03c7bec36da9d2cac25fbb505a6a39a27a02f18239b78e3dc6ffd019"
+  },
+  {
+    "name": "202608290001_add_external_examination_committee_member",
+    "sha256": "54e1b3e73a8ead0aaa7b492094286c7769806db001799526485172bbf40c62ef"
+  },
+  {
+    "name": "202608290002_add_examination_course_examiner_assignment",
+    "sha256": "3398da4d144f36a5b5b6983e76a31ea3ac801d883f34132688c8f425f1e239cf"
+  },
+  {
+    "name": "202608290003_add_summative_question_configuration",
+    "sha256": "007c75dda065725c3b460f93e06b8c40fa1a84bdff7a206880c2882cf74dde82"
+  },
+  {
+    "name": "202608290004_add_summative_examiner_marks",
+    "sha256": "e05ba687c76b0da283163bc446019a962feb61b3fe458d6785cd330f165db454"
+  },
+  {
+    "name": "202609010001_add_summative_examiner_comparisons",
+    "sha256": "a77f1ddc64dde4d689000cd0ad61cf8827bfd9c3b097cc620263a46408e38207"
+  },
+  {
+    "name": "202609010002_add_summative_third_examination_referrals",
+    "sha256": "c2c7e68f03f016926068eaa23c5e72cff5cc5d675222691630d03fba5770c601"
+  },
+  {
+    "name": "202609010003_add_summative_third_examiner_marks",
+    "sha256": "a2b204c126fd836009609e96af03cc48b41312e9bb3524d6cc4809c894de20a0"
+  },
+  {
+    "name": "202609010004_add_summative_three_total_calculations",
+    "sha256": "78e8571b35b946a9bf8a32a76b3e48de83f6c5a07685826c5695940563335960"
+  },
+  {
+    "name": "202609020001_fix_summative_third_referral_integrity_trigger",
+    "sha256": "fbc8a6fd6033ab9107260968d09d996d52f905ce54989eedb7826aaa0acad06b"
+  },
+  {
+    "name": "202609020002_add_summative_calculated_committee_approval",
+    "sha256": "62ee98c772acfa41b78d7d45edb0563f2a0bce7982101cd978c1cdd49fac8e12"
+  },
+  {
+    "name": "202609050001_add_course_outline_structured_content",
+    "sha256": "8b818b1dc65eea5b46cb6209ee8f6cc1d1ed6a1f4881db8cbd433ee0a3fefd92"
+  },
+  {
+    "name": "202609210001_add_formative_teacher_submission",
+    "sha256": "9ecde85e7a977a15b5e7e446b77bb526d1f21d35ca2749ac2b342d2f93fb7e65"
+  },
+  {
+    "name": "202609210002_add_regular_comprehensive_workflow",
+    "sha256": "c3c17cbfdacd3204e1fed6b1ba678afa61b6262a20309ad94a03b9715039f989"
+  },
+  {
+    "name": "202609230001_add_authoritative_formative_attendance",
+    "sha256": "f11ee90521dba098ecd3b26914f0e6f675f63c6bab37d979e961be1e37df3516"
+  },
+  {
+    "name": "202609270001_class_session_scheduled_end",
+    "sha256": "0418367020b0dc7ee03aa26b30b762710a2fc181d5dab292757c85ebb1c96b17"
+  },
+  {
+    "name": "202609280001_ordinary_attendance_corrections",
+    "sha256": "e710c22b796f29d4cf1825b90ff58ef885df590b738706ce0a8612ea1b30a596"
+  },
+  {
+    "name": "202609290001_chairman_attendance_generation",
+    "sha256": "7cd98c65a3c140b7bbce34d4b4b352e6bcc226180142941bd25a044b05e25458"
+  },
+  {
+    "name": "202610010001_add_formative_activity_submission",
+    "sha256": "0ad3a6d093e1cfbd466072651dd35e9a049e92ddceaff133fb4fb20f098516be"
+  },
+  {
+    "name": "202610020001_chairman_activities_finalisation",
+    "sha256": "4d39f2f7ab18886a74d576fc6b18c9afebef34ff2d3aa528b9b8a378265a0a41"
+  },
+  {
+    "name": "202610060001_automatic_final_formative",
+    "sha256": "a504444c4d7197a0a21f5d882e84eca94ee7bec81fa5d8602d7dc6f395283d63"
+  },
+  {
+    "name": "202610080001_authoritative_course_composition",
+    "sha256": "a4121b9d71c6df6cc296c877f23048a174fd12212d3323e01b6efad7c518378e"
+  },
+  {
+    "name": "202610090001_correct_summative_timestamp3_chronology",
+    "sha256": "4106fc55b41eefaaeb8112fa6675c3da3a838eba68241cfb956e70af31922c25"
+  },
+  {
+    "name": "202608290001_add_external_committee_member",
+    "sha256": "a6b331619d40a3e33789a81729efeb7e4594a701464e26576770f536465bdb3e",
+    "excludedReason": "Duplicate external-seat enum and column draft; current Prisma schema owns these."
+  },
+  {
+    "name": "202609040001_add_formative_activities",
+    "sha256": "f66ee1948d7f9131a70035808061de7ca587fb0936c60ea2c6f4f0603ff15af6",
+    "excludedReason": "Superseded draft Formative tables; no active SQL-only checks, functions or triggers."
+  }
+]

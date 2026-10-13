@@ -15,7 +15,9 @@
     "prisma": "prisma",
     "prisma:generate": "prisma generate",
     "authorization:provision": "pnpm run build && node dist/prisma/authorization/provision-authorization.cli.js",
-    "runtime:reset-law-accounts": "pnpm run build && node dist/prisma/reset-runtime-law-accounts.js"
+    "runtime:reset-law-accounts": "pnpm run build && node dist/prisma/reset-runtime-law-accounts.js",
+    "test:crc-fresh:static": "node --test scripts/crc-fresh-runtime.test.cjs",
+    "test:crc-fresh": "pnpm run prisma:generate && pnpm run test:crc-fresh:static && pnpm run typecheck && pnpm run build && node scripts/crc-fresh-runtime.cjs --apply"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1093.0",

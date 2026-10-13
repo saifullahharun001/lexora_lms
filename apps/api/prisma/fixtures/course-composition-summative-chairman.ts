@@ -1,10 +1,12 @@
 /**
  * Disposable-only genuine Summative Committee Member reviews, Chairman final lock
- * and automatic course /100 composition. Requires the complete six-case /40
- * and /60 owner-service evidence produced by the preceding isolated campaign.
+ * and automatic course /100 composition. The fresh-only reverse option locks
+ * /60 before the Comprehensive owner materialises /40.
  * No protected academic record or success audit is inserted directly.
  */
 import 'reflect-metadata';
+import { protectedSnapshot } from './course-composition-protected-snapshot';
+import { isFreshSynthetic } from './course-composition-fresh-gate';
 import assert from 'node:assert/strict';
 import { ForbiddenException } from '@nestjs/common';
 import { Prisma, PrismaClient, PermissionScope, ExaminationCommitteeAssignmentStatus } from '@prisma/client';
@@ -44,7 +46,8 @@ async function counters(db: PrismaClient): Promise<[number, number, number, numb
     await db.courseResultComposition.count(), await db.auditLog.count({ where: { action: approvalAction } }),
     await db.auditLog.count({ where: { action: compositionAction } })];
 }
-async function gate(db: PrismaClient) {
+async function gate(db: PrismaClient, reverse = false) {
+  if (reverse) assert.equal(await isFreshSynthetic(db), true);
   const url = new URL(process.env.LEXORA_CRC_FOUNDATION_DATABASE_URL ?? '');
   const name = process.env.LEXORA_CRC_FOUNDATION_EXPECTED_DATABASE;
   assert.equal(process.env.LEXORA_CRC_FOUNDATION_CONFIRM, 'YES_DISPOSABLE_SYNTHETIC_FOUNDATION');
@@ -61,7 +64,7 @@ async function gate(db: PrismaClient) {
   assert.equal(await db.examination.count({ where: { departmentId: dept } }), 6);
   assert.equal(await db.examinationCandidateList.count({ where: { departmentId: dept, status: 'CERTIFIED' } }), 6);
   assert.equal(await db.summativeCalculatedMark.count({ where: { departmentId: dept } }), 6);
-  assert.equal(await db.formativeFinalResult.count({ where: { departmentId: dept } }), 6);
+  assert.equal(await db.formativeFinalResult.count({ where: { departmentId: dept } }), reverse ? 0 : 6);
   assert.deepEqual(await counters(db), [0, 0, 0, 0, 0]);
 }
 async function assignExactFixturePermission(db: PrismaClient) {
@@ -175,7 +178,9 @@ async function probeReplacedMemberReview(
   const retired = await db.examinationCommitteeAssignment.findUniqueOrThrow({ where: { id: original.id } });
   assert.equal(retired.status, ExaminationCommitteeAssignmentStatus.INACTIVE);
   assert.ok(retired.unassignedAt);
+  const beforeStaleDenial = await protectedSnapshot(db);
   await assert.rejects(asUser(db, chairmanId, () => workflow(db).approveAndFinalLock(calculatedMarkId)));
+  assert.equal(await protectedSnapshot(db), beforeStaleDenial);
   assert.deepEqual(await counters(db), before,
     'Stale VERIFIED review must not approve after real Member replacement');
   const review = await asUser(db, memberId, () => workflow(db).submitMemberReview(calculatedMarkId,
@@ -201,8 +206,8 @@ async function exactCalculated(db: PrismaClient, key: string) {
   assert.ok(marks[0]);
   return marks[0];
 }
-export async function approveSyntheticSummativeThroughOwners(db: PrismaClient) {
-  await gate(db);
+export async function approveSyntheticSummativeThroughOwners(db: PrismaClient, reverse = false) {
+  await gate(db, reverse);
   await assignExactFixturePermission(db);
   const report: string[] = [];
   for (const scenario of PRODUCTION_CASES) {
@@ -213,9 +218,11 @@ export async function approveSyntheticSummativeThroughOwners(db: PrismaClient) {
     const member1 = actor(key, 'member1');
     const member2 = actor(key, 'member2');
     const base = await counters(db);
+    const baseRecords = await protectedSnapshot(db);
     console.log(`CRC_CHAIRMAN_STAGE=${key}:DENY_WITHOUT_REVIEWS`);
     await assert.rejects(asUser(db, chairman, () => workflow(db).approveAndFinalLock(calculated.id)));
     assert.deepEqual(await counters(db), base, 'A denied Chairman action must leave no terminal records');
+    assert.equal(await protectedSnapshot(db), baseRecords);
     // A department Admin without a Committee Member duty cannot write Member evidence.
     if (key === 'boundary') {
       const foreign = await exactCalculated(db, 'precision');
@@ -268,6 +275,7 @@ export async function approveSyntheticSummativeThroughOwners(db: PrismaClient) {
         'Rejected forged-header operations must not create any audit row in this campaign',
       );
 
+      assert.equal(await protectedSnapshot(db), baseRecords);
       console.log('CRC_SECURITY_STAGE=boundary:FORGED_HEADER_OWNER_DENIAL_PASS');
     }
     console.log(`CRC_CHAIRMAN_STAGE=${key}:MEMBER_1_VERIFIED`);
@@ -280,6 +288,7 @@ export async function approveSyntheticSummativeThroughOwners(db: PrismaClient) {
     console.log(`CRC_CHAIRMAN_STAGE=${key}:DENY_INCOMPLETE_REVIEW`);
     await assert.rejects(asUser(db, chairman, () => workflow(db).approveAndFinalLock(calculated.id)));
     const afterFirst = await counters(db);
+    const afterFirstRecords = await protectedSnapshot(db);
     assert.deepEqual(afterFirst, [base[0] + 1, base[1], base[2], base[3], base[4]]);
     if (key === 'summative_fail') {
       // Simulate live role revocation AFTER loading the authenticated principal.
@@ -307,6 +316,7 @@ export async function approveSyntheticSummativeThroughOwners(db: PrismaClient) {
       await probeExpiredMemberAppointment(db, key, member2, calculated.id, afterFirst);
       console.log('CRC_APPOINTMENT_STAGE=summative_fail:EXPIRED_MEMBER_RESTORED');
     }
+    assert.equal(await protectedSnapshot(db), afterFirstRecords);
     console.log(`CRC_CHAIRMAN_STAGE=${key}:MEMBER_2_VERIFIED`);
     await asUser(db, member2, () => workflow(db).submitMemberReview(calculated.id, { outcome: 'VERIFIED' }));
     if (key === 'formative_fail') {
@@ -315,6 +325,7 @@ export async function approveSyntheticSummativeThroughOwners(db: PrismaClient) {
       console.log('CRC_ADVERSARIAL_STAGE=formative_fail:NEW_APPOINTMENT_REVIEW_VERSION_2');
     }
     const beforeApproval = await counters(db);
+    const beforeAuthorityRecords = await protectedSnapshot(db);
     if (key === 'boundary') {
       console.log('CRC_SECURITY_STAGE=boundary:WRONG_SEAT_AND_CHAIRMAN_LIVE_ROLE_REVOCATION');
       await assert.rejects(asUser(db, member1, () => workflow(db).approveAndFinalLock(calculated.id)));
@@ -344,9 +355,11 @@ export async function approveSyntheticSummativeThroughOwners(db: PrismaClient) {
       await probeInactiveChairmanAppointment(db, key, chairman, calculated.id, beforeApproval);
       console.log('CRC_APPOINTMENT_STAGE=boundary:CHAIRMAN_APPOINTMENT_RESTORED');
     }
-    if (key === 'precision') {
+    assert.equal(await protectedSnapshot(db), beforeAuthorityRecords);
+    if (key === 'precision' && !reverse) {
       // Intentionally fail the SERVICE's course.composed audit write after the
       // owner has inserted the immutable /100 row. No production code changes.
+      const beforeFailureRecords = await protectedSnapshot(db);
       console.log('CRC_ADVERSARIAL_STAGE=precision:COMPOSITION_AUDIT_WRITE_FAILURE');
       const auditFailHook = { reconcileInTransaction: async (
         tx: Prisma.TransactionClient, ...args: [string,string,string,string]
@@ -364,20 +377,23 @@ export async function approveSyntheticSummativeThroughOwners(db: PrismaClient) {
         return composition.reconcileInTransaction(wrapped as Prisma.TransactionClient, ...args);
       }};
       await assert.rejects(asUser(db, chairman,
-        () => workflow(db, auditFailHook).approveAndFinalLock(calculated.id)));
+        () => workflow(db, auditFailHook).approveAndFinalLock(calculated.id)), /Synthetic composition audit insertion failure/);
       assert.deepEqual(await counters(db), beforeApproval,
         'Failed composition audit write must roll back Chairman approval, /100 and both success audits');
+      assert.equal(await protectedSnapshot(db), beforeFailureRecords);
       console.log('CRC_ADVERSARIAL_STAGE=precision:COMPOSITION_AUDIT_FAILURE_ROLLBACK_PASS');
     }
     if (key === 'precision') {
+      const beforeFailureRecords = await protectedSnapshot(db);
       console.log('CRC_CHAIRMAN_STAGE=precision:ATOMIC_ROLLBACK_PROBE');
       const failingHook = { reconcileInTransaction: async (tx: Prisma.TransactionClient, ...args: [string,string,string,string]) => {
         await composition.reconcileInTransaction(tx, ...args);
         throw new Error('Synthetic terminal interruption');
       } };
-      await assert.rejects(asUser(db, chairman, () => workflow(db, failingHook).approveAndFinalLock(calculated.id)));
+      await assert.rejects(asUser(db, chairman, () => workflow(db, failingHook).approveAndFinalLock(calculated.id)), /Synthetic terminal interruption/);
       assert.deepEqual(await counters(db), beforeApproval,
         'Approval, composition and both terminal success audits must roll back atomically');
+      assert.equal(await protectedSnapshot(db), beforeFailureRecords);
     }
     if (key === 'maximum') {
       console.log('CRC_SECURITY_STAGE=maximum:PARALLEL_REAL_CHAIRMAN_APPROVALS');
@@ -392,7 +408,23 @@ export async function approveSyntheticSummativeThroughOwners(db: PrismaClient) {
       console.log('CRC_SECURITY_STAGE=maximum:PARALLEL_APPROVAL_ONE_WINNER');
     } else {
       console.log(`CRC_CHAIRMAN_STAGE=${key}:REAL_FINAL_LOCK_AUTO_100`);
-      await asUser(db, chairman, () => workflow(db).approveAndFinalLock(calculated.id));
+      await asUser(db, chairman, () => workflow(db).approveAndFinalLock(calculated.id),
+        key === 'boundary' ? 'crc_fixture_unrelated_department' : undefined);
+    }
+    if (reverse) {
+      assert.equal(await db.formativeFinalResult.count(), 0);
+      assert.equal(await db.courseResultComposition.count(), 0);
+      assert.deepEqual(await counters(db), [beforeApproval[0], beforeApproval[1] + 1, 0, beforeApproval[3] + 1, 0]);
+      const beforeMissing = await counters(db);
+      const missing = await db.$transaction(tx => composition.reconcileInTransaction(tx,
+        dept, id.examinationId, id.examinationCourseId, id.enrollmentId),
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 30000 });
+      assert.equal(missing.status, 'NOT_READY');
+      assert.deepEqual(await counters(db), beforeMissing);
+      await assert.rejects(asUser(db, chairman, () => workflow(db).approveAndFinalLock(calculated.id)));
+      console.log('CRC_REVERSE_STAGE=' + key + ':REAL_60_LOCKED_40_ABSENT_100_NOT_READY');
+      report.push(key);
+      continue;
     }
     const result = await db.courseResultComposition.findMany({ where: { departmentId: dept,
       examinationId: id.examinationId, examinationCourseId: id.examinationCourseId,
@@ -489,8 +521,9 @@ export async function approveSyntheticSummativeThroughOwners(db: PrismaClient) {
     report.push(key);
   }
   assert.equal(report.length, 6);
-  assert.deepEqual(await counters(db), [13, 6, 6, 6, 6]);
-  assert.equal(await db.formativeFinalResult.count({ where: { departmentId: dept } }), 6);
+  if (reverse) assert.deepEqual(await counters(db), [13, 6, 0, 6, 0]);
+  else assert.deepEqual(await counters(db), [13, 6, 6, 6, 6]);
+  assert.equal(await db.formativeFinalResult.count({ where: { departmentId: dept } }), reverse ? 0 : 6);
   assert.equal(await db.summativeCalculatedMark.count({ where: { departmentId: dept } }), 6);
   return report;
 }

@@ -1,6 +1,6 @@
 /**
  * Synthetic-only PRE-TERMINAL Summative fixture builder for a fresh, disposable CRC test database.
- * Caller MUST establish the isolated test DB, verify migration history, run the foundation seeder,
+ * Caller MUST establish the isolated test DB, verify migration history OR the independent fresh-schema gate, run the foundation seeder,
  * and enforce the explicit opt-in before invoking this function. Never invokes Chairman approval.
  * Authority, appointments, roster, marking, comparison and calculation use real Lexora services.
  * No immutable calculated mark / review / approval / audit is directly inserted here.
@@ -20,6 +20,7 @@ import { SummativeExaminerMarksService } from "../../src/modules/summative-exami
 import { SummativeExaminerComparisonService } from "../../src/modules/summative-examination/application/services/summative-examiner-comparison.service";
 import { SummativeCalculatedMarkService } from "../../src/modules/summative-examination/application/services/summative-calculated-mark.service";
 import { PRODUCTION_CASES, PRODUCTION_FIXTURE_INPUTS, fixtureIds } from "./course-composition-production-baseline";
+import { isFreshSynthetic } from "./course-composition-fresh-gate";
 
 const ctx = new RequestContextService();
 const departmentId = "crc_fixture_law";
@@ -60,7 +61,9 @@ export async function generateRealSummativePreterminal(db: PrismaClient) {
   assert.equal(decodeURIComponent(target.pathname.slice(1)), expectedDb);
   assert.equal(actualDb[0]?.name, expectedDb);
   assert.equal(actualDb[0]?.version, "180006");
-  assert.equal(actualDb[0]?.composition, null, "Pre-composition schema required");
+  if (await isFreshSynthetic(db)) {
+    assert.equal(actualDb[0]?.composition, 'course_result_compositions');
+  } else assert.equal(actualDb[0]?.composition, null, "Pre-composition schema required");
 
   const manage = new SummativeManagementAuthorizerService(db as never, ctx);
   const committee = new ExaminationCommitteeService(db as never, ctx, manage);

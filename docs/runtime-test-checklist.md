@@ -41794,3 +41794,82 @@ Overall authenticated/transactional acceptance remains PARTIAL.
 - No canonical migration, database mutation, application deployment, push or release approval occurred in this checkpoint.
 
 **Group 2 remains PARTIAL. Security release gate OPEN.**
+
+
+## CRC fresh synthetic PostgreSQL owner-service checkpoint - 2026-10-13
+
+**Classification:** Implemented; operator-verified disposable PostgreSQL 18.6 runtime PASS for both source orders. The tested implementation is uncommitted over Git baseline 864ee95. **Group 2 and Group 4 remain PARTIAL overall; Group 3's six-case real-owner reverse-arrival boundary is now runtime verified. Release acceptance remains PENDING. BASELINE_APPROVED=NO.**
+
+### Evidence and execution boundary
+
+The operator confirmed Formative-first PASS, Summative-first PASS, PostgreSQL 18.6 disposable runtime PASS, evidence verification PASS, API TypeScript typecheck/build PASS, and owned container cleanup **2/2 PASS** on 2026-10-13.
+
+Retained operator evidence directory:
+
+    /home/sh002/lexora-crc-fresh-2a5a16e35cfd/repo/.crc-runtime/fa9072f6e97aa140074b85c05ca58440
+
+The runner records evidence.json, each source-order log, current schema SQL, invariant SQL/inventory and a tracked working-tree diff. This documentation/review session did not fetch remote artifacts, connect to a database or rerun the campaign; runtime outcomes and cleanup are attributed to the operator. The detailed coverage below maps that reported PASS to the mandatory assertions in the reviewed campaign, rather than claiming a separate inspection of remote rows or logs.
+
+| Boundary | Current evidence/classification |
+| --- | --- |
+| Implementation | Current Prisma schema plus checksum-pinned SQL invariants; existing six-case fixtures and real owner services reused. No historical restoration or fabricated migration ledger. |
+| Static/unit | Earlier focused static/unit evidence and correction history remain separate. No new static/unit test run or test-count claim in this documentation review. Function-body extraction regression assertions and strict catalogue body-hash checks are present in source. |
+| API verification | Typecheck and build PASS, operator-confirmed for this checkpoint; not rerun here. |
+| Disposable PostgreSQL | Both independent source-order campaigns PASS on PostgreSQL 18.6; synthetic data only. |
+| Cleanup | Both owned containers removed: 2/2 PASS, operator-confirmed. Evidence directory retained. |
+| Partial | Broader actor/appointment, persisted conflicting-owner/version and fault matrices; authenticated HTTP pipeline not exercised. |
+| Pending release acceptance | Independently approved production-shaped baseline, canonical migration/deployment, authenticated HTTP and release/monitoring acceptance. No approval inferred. |
+
+### Six academic scenarios and exact terminal counts
+
+Both orders reuse the same source-feasible recipes. Decimal arithmetic is exact; course pass requires **both Formative >=16/40 and Summative >=24/60**, independently.
+
+| Scenario | Formative /40 | Summative /60 | Formative pass | Summative pass | Course pass |
+| --- | ---: | ---: | --- | --- | --- |
+| boundary | 16 | 24 | Yes | Yes | Yes |
+| formative_fail | 15.999975 | 60 | No | Yes | No |
+| summative_fail | 40 | 23.995 | Yes | No | No |
+| precision | 31.123475 | 46.125 | Yes | Yes | Yes |
+| zero | 0 | 0 | No | No | No |
+| maximum | 40 | 60 | Yes | Yes | Yes |
+
+Mandatory final assertions **per independent order**: 13 Member reviews (including replacement appointment review version 2), six Chairman approvals, six Final Formative results, six immutable /100 compositions, six successful Chairman-final-lock audits and six successful composition audits. The 12 terminal audits are a filtered subset, not the total audit-table count. Every scenario checks component values, total, pass flags and source identity/version bindings.
+
+- **Formative-first:** real Comprehensive finalisation materialises /40 before real Member reviews and Chairman final lock materialise /100.
+- **Summative-first:** all six real Chairman /60 locks occur while /40 and /100 remain absent; reconciliation returns NOT_READY. Subsequent real Comprehensive finalisation materialises /40 and exactly one /100 per scenario.
+- Repeated sequential reconciliation returns EXISTING; concurrent reconciliation preserves protected records/audits and accepts only success or the expected Prisma serialization-conflict forms (P2034, or P2010 with SQLSTATE 40001), with at least one successful contender. Competing Chairman approvals require exactly one winner.
+
+### Security, immutability and rollback coverage
+
+- Real PrincipalLoaderService, principal-derived department scope, permission and object checks, Committee duty/seat and in-transaction appointment revalidation remain in use. Context is assembled in the fixture; this is service-level acceptance, not authenticated HTTP.
+- Forged department headers fail to grant wrong-examination or Chairman authority. Valid Member and Chairman operations succeed despite an unrelated header. A real foreign-department principal with scoped grants receives safe NotFoundException for another department's calculated object.
+- Live role revocation, expired ACTIVE Member and INACTIVE Chairman appointments deny protected operations. Real Member replacement prevents the prior appointment's VERIFIED review from satisfying final lock; the current appointment requires review version 2.
+- Expanded denial, replay and fault checks compare full records across 21 academic/audit tables, including the entire audit table. Older selected probes still use narrower counters; do not generalize every denial into exhaustive all-table coverage.
+- Exact post-final-lock Member replay returns the existing review ID/version without changing protected records or audit evidence. Outcome changes and comment-only changes separately require ConflictException; duplicate Chairman approval remains denied.
+- Wrong source versions/lineage fail the real PostgreSQL source matcher. Deliberately corrupted projections injected after real source reads cause reconciliation conflict with no protected changes. These are projection fault tests, not persisted stale source packages or complete competing-source-owner coverage.
+- Direct protected Formative/calculated/Chairman/composition mutations or deletions are rejected on the exercised paths. Successful source rows, approvals, compositions and success audits are produced by the real owners.
+- Forward composition-audit failure and post-reconciliation interruption roll back the Chairman transaction. Reverse composition-audit failure rolls back Comprehensive finalisation, /40, /100 and audits; snapshot comparisons verify atomic rollback. Normal owner operations subsequently succeed.
+
+### Foundation and remaining limits
+
+Each order uses its own nonce-named database/container, loopback port, temporary credentials and tmpfs data. A separate NOLOGIN schema owner and restricted application role preserve trigger enforcement. The fresh gate checks the actual database name/marker, exact server version, absent migration ledger and non-elevated role. Catalogue validation retains exact function-body hashes, enabled/deferred trigger checks, valid supplemental constraints and the 12 composition foreign keys.
+
+The pinned invariant inventory is 99 functions, 105 triggers, 125 checks, 18 supplemental indexes, 11 supplemental named constraints and one sequence. Restoring SQL-only invariants omitted by Prisma is necessary for this functional environment; the bespoke compiler is a bounded maintenance tradeoff, not a general SQL parser or evidence of migration compatibility. Its checksum and inventory gates must remain strict.
+
+A **new/replacement appointment attempting a genuinely new review after final lock** is not a separate case in this campaign. Source review confirms the retained lexora_validate_summative_member_review trigger rejects new reviews once a Chairman approval exists. No production behavior was changed, and this review did not demonstrate an integrity bypass. Broader appointment/clock-skew, persisted source-conflict, competing terminal-owner and additional deferred-constraint/failure combinations remain partial.
+
+### Historical failures, corrections and supersession
+
+The earlier 2026-10-09/11/12 checkpoints, failures and limitations remain historical evidence. The earlier fresh function-body extraction defect was corrected to recognize ordinary and named dollar-quote delimiters; regression assertions compare actual body text, and catalogue body-hash validation remains enforced.
+
+A subsequent disposable attempt reported CRC_FRESH_OWNER=FAIL AssertionError ERR_ASSERTION at compiled course-composition-fresh-campaign.js:30:9, :149:5 and :169:5: the fixture incorrectly expected an exact post-final-lock Member retry to reject. The focused fixture correction asserts immutable replay identity/version and unchanged evidence, while retaining separate negative tests for outcome/comment changes. This operator-confirmed successful checkpoint supersedes that failed attempt's current status; it does not erase the failure or change the established production idempotency contract.
+
+The 2026-10-12 forged-header checkpoint's full owner-service runtime gap is closed for the tested fresh synthetic boundary. Historical foundation recovery is no longer required for this independent functional campaign; the existing production-shaped harness retains its separate baseline requirements. Earlier database-fixture source-order evidence is supplemented by real-owner reverse arrival here. None of these results approve a production baseline or establish canonical/HTTP acceptance.
+
+### Read-only implementation review and follow-up
+
+- **Medium — incomplete source provenance artifact:** crc-fresh-runtime.cjs saves git diff for apps/api and docs/runtime-test-checklist.md; this excludes untracked campaign/compiler/runner files and staged changes. Git HEAD plus that diff and SQL hashes alone cannot reconstruct the exact tested uncommitted implementation. Preserve the operator checkout; verify whether its evidence verification separately retained all source bytes/hashes before using the archive as reproducible release evidence.
+- **Low — operator README drift:** ops/runtime/crc-fresh/README.md describes repeated Member writes as rejected, although exact immutable retries succeed; its dated 2026-10-12 runtime-unverified note also lacks a pointer to this later operator checkpoint. Recommend a focused documentation follow-up without rewriting historical evidence.
+- No critical/high defect was identified in this bounded source review. Restricted failure frames and sanitized concurrency classifications remain useful diagnostics; no code was removed. The custom compiler requires deliberate review when source migrations change; no redesign is authorized or required by this checkpoint.
+
+Only documentation changed during this review. Production services, authorization, historical migrations, constraints, triggers, the compiler and production-shaped harness were not edited. No runtime rerun, deployment, commit or push occurred. **Security release gate OPEN; BASELINE_APPROVED=NO.**

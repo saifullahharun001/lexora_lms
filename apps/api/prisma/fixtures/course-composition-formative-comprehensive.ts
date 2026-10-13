@@ -5,6 +5,8 @@
  * NEVER seed protected final results, marks, external access, or audit events.
  */
 import 'reflect-metadata';
+import { protectedSnapshot } from './course-composition-protected-snapshot';
+import { isFreshSynthetic } from './course-composition-fresh-gate';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { Prisma, PrismaClient } from '@prisma/client';
@@ -39,7 +41,8 @@ async function asUser<T>(db: PrismaClient, actorId: string, work: () => Promise<
   }, work);
 }
 
-async function gate(db: PrismaClient) {
+async function gate(db: PrismaClient, reverse = false) {
+  if (reverse) assert.equal(await isFreshSynthetic(db), true);
   const target = new URL(process.env.LEXORA_CRC_FOUNDATION_DATABASE_URL ?? '');
   const expected = process.env.LEXORA_CRC_FOUNDATION_EXPECTED_DATABASE;
   assert.equal(process.env.LEXORA_CRC_FOUNDATION_CONFIRM, 'YES_DISPOSABLE_SYNTHETIC_FOUNDATION');
@@ -61,7 +64,7 @@ async function gate(db: PrismaClient) {
   assert.equal(await db.comprehensiveMark.count(), 0);
   assert.equal(await db.comprehensiveFinalisation.count(), 0);
   assert.equal(await db.formativeFinalResult.count(), 0);
-  assert.equal(await db.summativeChairmanApproval.count(), 0);
+  assert.equal(await db.summativeChairmanApproval.count(), reverse ? 6 : 0);
   assert.equal(await db.courseResultComposition.count(), 0);
 }
 
@@ -88,8 +91,8 @@ async function setupSyntheticCoarseGrants(db: PrismaClient) {
   }, { timeout: 30000 });
 }
 
-export async function createSyntheticComprehensiveThroughOwners(db: PrismaClient) {
-  await gate(db);
+export async function createSyntheticComprehensiveThroughOwners(db: PrismaClient, reverse = false) {
+  await gate(db, reverse);
   await setupSyntheticCoarseGrants(db);
   const access = new EvidenceAccessService(ctx);
   const examinations = new ExaminationContextService();
@@ -137,6 +140,33 @@ export async function createSyntheticComprehensiveThroughOwners(db: PrismaClient
       await asUser(db, actor, () => comprehensive.save(id.examinationId, entry.id, { mark }, true));
     }
     console.log(`CRC_COMPREHENSIVE_STAGE=${key}:CHAIRMAN_FINALISE_AND_AUTO_40`);
+    if (reverse && key === 'precision') {
+      const before = await protectedSnapshot(db);
+      const composition = new CourseResultCompositionService();
+      const failingComposition = { reconcileInTransaction: async (
+        tx: Prisma.TransactionClient, ...args: [string, string, string, string]
+      ) => {
+        const wrapped = new Proxy(tx, { get(target, field) {
+          if (field !== 'auditLog') return Reflect.get(target, field);
+          return new Proxy(target.auditLog, { get(delegate, operation) {
+            if (operation !== 'create') return Reflect.get(delegate, operation);
+            return (input: Prisma.AuditLogCreateArgs) => {
+              if (input.data.action === 'course-result.composed') throw new Error('Synthetic reverse composition audit failure');
+              return delegate.create(input);
+            };
+          }});
+        }});
+        return composition.reconcileInTransaction(wrapped as Prisma.TransactionClient, ...args);
+      }};
+      const failingFormative = new FinalFormativeService(db as never, failingComposition);
+      const failingOwner = new ComprehensiveExaminationService(db as never, access, examinations,
+        registration, failingFormative);
+      await assert.rejects(asUser(db, chairman, () => failingOwner.finalise(id.examinationId)),
+        /Synthetic reverse composition audit failure/);
+      assert.equal(await protectedSnapshot(db), before,
+        'Reverse owner failure must roll back Comprehensive, /40, /100 and all audits');
+      console.log('CRC_REVERSE_AUDIT_FAILURE_ATOMIC_ROLLBACK=PASS');
+    }
     await asUser(db, chairman, () => comprehensive.finalise(id.examinationId));
     const [results, totals] = await Promise.all([
       db.comprehensiveFinalResult.findMany({ where: { rosterEntry: { comprehensiveId: exam.id } } }),
@@ -157,7 +187,7 @@ export async function createSyntheticComprehensiveThroughOwners(db: PrismaClient
   assert.equal(await db.comprehensiveFinalResult.count(), 6);
   assert.equal(await db.comprehensiveFinalSource.count(), 24);
   assert.equal(await db.formativeFinalResult.count(), 6);
-  assert.equal(await db.summativeChairmanApproval.count(), 0);
-  assert.equal(await db.courseResultComposition.count(), 0);
+  assert.equal(await db.summativeChairmanApproval.count(), reverse ? 6 : 0);
+  assert.equal(await db.courseResultComposition.count(), reverse ? 6 : 0);
   return report;
 }

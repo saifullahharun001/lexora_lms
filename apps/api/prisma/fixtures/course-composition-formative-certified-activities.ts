@@ -5,6 +5,7 @@
  * Caller MUST run after real Summative pre-terminal stage in a disposable DB.
  */
 import 'reflect-metadata';
+import { isFreshSynthetic } from './course-composition-fresh-gate';
 import assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
 import { RequestContextService } from '../../src/common/request-context/request-context.service';
@@ -82,7 +83,9 @@ export async function certifyAndFinaliseSyntheticActivities(db: PrismaClient) {
   assert.equal(decodeURIComponent(target.pathname.slice(1)), expected);
   assert.equal(actual[0]?.name, expected);
   assert.equal(actual[0]?.version, '180006');
-  assert.equal(actual[0]?.composition, null, 'Only pre-composition disposable schema is permitted');
+  if (await isFreshSynthetic(db)) {
+    assert.equal(actual[0]?.composition, 'course_result_compositions');
+  } else assert.equal(actual[0]?.composition, null, 'Only pre-composition disposable schema is permitted');
   assert.equal(await db.examination.count({ where: { departmentId } }), 6);
   assert.equal(await db.summativeCalculatedMark.count({ where: { departmentId } }), 6);
   assert.equal(await db.examinationCandidateList.count(), 0);
