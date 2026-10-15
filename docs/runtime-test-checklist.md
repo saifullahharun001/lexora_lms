@@ -41873,3 +41873,121 @@ The 2026-10-12 forged-header checkpoint's full owner-service runtime gap is clos
 - No critical/high defect was identified in this bounded source review. Restricted failure frames and sanitized concurrency classifications remain useful diagnostics; no code was removed. The custom compiler requires deliberate review when source migrations change; no redesign is authorized or required by this checkpoint.
 
 Only documentation changed during this review. Production services, authorization, historical migrations, constraints, triggers, the compiler and production-shaped harness were not edited. No runtime rerun, deployment, commit or push occurred. **Security release gate OPEN; BASELINE_APPROVED=NO.**
+
+## Canonical CRC /100 operational checkpoint - 2026-10-15
+
+**Classification:** Canonical schema migration applied; rebuilt API
+activated; bounded HTTP authentication/role denial verified.
+Canonical /100 end-to-end academic acceptance remains PENDING.
+**BASELINE_APPROVED=NO.**
+
+### Migration incident and recovery boundary
+
+A PostgreSQL 18.6 disposable restore/migration rehearsal was
+intended to apply two pending tracked migrations to an isolated
+database. Prisma CLI instead reported the canonical
+localhost:5432/lexora_lms target and applied both migrations there.
+
+Applied migrations:
+
+- `202610080001_authoritative_course_composition`
+- `202610090001_correct_summative_timestamp3_chronology`
+
+**This was unintended canonical database mutation.**
+
+The exact configuration-resolution mechanism remains unverified.
+Future migrations must independently verify both DATABASE_URL and
+DATABASE_DIRECT_URL and prove the effective target before execution.
+
+A pre-migration pg_dump archive was created and validated:
+
+`/home/sh002/lexora-private-backups/lexora_lms-before-crc100-20261015T151319Z-b9a6d02a.dump`
+
+The canonical migration ledger subsequently showed 45 records:
+43 applied, two historical rolled back, zero unresolved.
+Both new migrations finished successfully.
+
+Bounded schema inspection found 12 validated composition foreign
+keys, four enabled composition triggers, and three Summative
+validator functions.
+
+Pre/post backup comparisons preserved counts for examinations (6),
+formative_final_results (1), summative_chairman_approvals (1),
+and audit_logs (1211).
+
+**Limitation:** Equal row counts do not prove row-level equality,
+all constraints, complete data integrity, or restore acceptance.
+No rollback was performed.
+
+### API build and activation
+
+- Canonical Git HEAD: `406fe0ef660595b020225475619f3c415742463b`.
+- Working tree clean before and after activation.
+- Prisma Client includes CourseResultComposition.
+- Prisma CLI generate stalled twice; successful regeneration is
+  NOT claimed.
+- Existing generated client supported API TypeScript typecheck PASS
+  and NestJS API build PASS.
+- Controlled PM2 restart: lexora-api PID 1411 -> 44384.
+- Direct API health: HTTP 200.
+- Nginx-proxied API health: HTTP 200.
+- No additional migration, Nginx restart, or other PM2 restart
+  was performed during API activation.
+
+### Authenticated HTTP evidence
+
+Unauthenticated denial: **5/5 PASS (HTTP 401)**.
+
+Protected targets included Summative Member workspace/review,
+Chairman workspace/approval and Comprehensive finalisation.
+
+Login verification:
+
+- student.law@cu.ac.bd: HTTP 201, student, dept_law_test.
+- admin.law@cu.ac.bd: HTTP 201, department_admin, dept_law_test.
+- teacher.law@cu.ac.bd: HTTP 401; cause NOT established.
+
+Authenticated Student/Admin GET-denial probes:
+**6/6 PASS (HTTP 403)**.
+
+The six requests used a nonexistent calculated-mark/examination
+UUID. Consequently they verify bounded role denial, NOT real
+object-level access, wrong-department object isolation, real
+Committee appointment checks, or successful academic HTTP workflow.
+
+No raw credentials or tokens are recorded here.
+
+### Read-only canonical database inventory
+
+- users: 42
+- examinations: 6
+- examination_committees: 6
+- examination_committee_assignments: 22
+- summative_calculated_marks: 1
+- course_result_compositions: 0
+
+Zero compositions is not by itself evidence of a composition defect:
+presence of calculated marks does not prove both authoritative
+/40 and Chairman-final-locked /60 sources are ready.
+
+### Remaining release and acceptance gates
+
+1. Approved, scoped Committee Member and Chairman test identities.
+2. Real-object authenticated positive and negative HTTP tests.
+3. Wrong-department, wrong-appointment, revoked-role,
+   stale-source and forged-header checks at HTTP boundary.
+4. Isolated, controlled full /40 + /60 -> immutable /100
+   end-to-end verification with source provenance and audit checks.
+5. Independent canonical data/backup integrity review after the
+   unintended migrations.
+6. Approved production-shaped baseline and broader security gates.
+
+The 2026-10-13 disposable PostgreSQL campaigns remain valid
+within their documented tested scope. They do NOT substitute
+for canonical authenticated HTTP acceptance.
+
+**No grade-point pipeline, complete-result Chairman finalisation,
+Controller publication, or production release is approved by
+this checkpoint.**
+
+**SECURITY RELEASE GATE: OPEN. BASELINE_APPROVED=NO.**

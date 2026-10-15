@@ -102,3 +102,27 @@ The uncommitted /100 engine has passed the operator-confirmed fresh six-case cam
 The [documentation map](README.md) assigns every canonical responsibility. [Product specification](product-specification.md) is target scope; [architecture/security](architecture-security.md) defines invariants; [runtime checklist](runtime-test-checklist.md#current-verified-baseline-index) owns proof; [hardening backlog](security-and-production-hardening-backlog.md) owns risks. [Academic Core](academic-core.md), [Assessment Core](assessment-core.md), [Formative](formative-assessment.md), [Summative](summative-examination.md), [Result Domain](result-domain.md), [Transcript](transcript-verification.md) and [Notification](notification.md) own their contracts.
 
 Original chronology is retained in [the Phase-1 snapshot](legacy/phase-1/project-status-and-roadmap.md) and runtime ledger. Future current-state edits should use Git history instead of more status supersession blocks.
+
+## Canonical operational supersession - 2026-10-15
+
+This checkpoint supersedes earlier claims that canonical CRC /100
+migrations or API activation were still pending:
+
+- Both tracked CRC migrations were applied to canonical PostgreSQL,
+  unintentionally during a rehearsal; incident preserved in
+  `runtime-test-checklist.md`.
+- API typecheck/build PASS; PM2 activation and both health paths PASS.
+- Unauthenticated denial 5/5 PASS; authenticated Student/Admin
+  role denial 6/6 PASS using nonexistent resource identifiers.
+- No canonical /100 composition currently exists in the inspected
+  database; authoritative-source readiness has not been established.
+- Real-object authenticated acceptance and independently approved
+  baseline remain PENDING.
+- Grade/grade-point, distinct complete-result finalisation,
+  Controller publication and downstream consumption remain separate
+  planned stages.
+
+This changes operational status, not the authority or academic
+result-processing architecture.
+
+**BASELINE_APPROVED=NO. NOT PRODUCTION READY.**
