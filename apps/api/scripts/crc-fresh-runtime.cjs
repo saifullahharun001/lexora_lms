@@ -27,7 +27,9 @@ function ownedContainer(info, name, runId, id) {
   assert.ok(info.HostConfig.Tmpfs['/var/lib/postgresql']);
 }
 async function main() {
-  assert.deepEqual(process.argv.slice(2), ['--apply'], 'Run with --apply; this creates only owned synthetic containers');
+  assert.ok(['--apply', '--apply-http'].includes(process.argv[2]) && process.argv.length === 3,
+    'Only --apply or --apply-http is accepted');
+  const httpEnabled = process.argv[2] === '--apply-http';
   process.chdir(api);
   const runId = randomBytes(16).toString('hex');
   const stage = path.join(repository, '.crc-runtime', runId);
@@ -73,7 +75,7 @@ async function main() {
     evidence.invariantsSha256 = hash(overlay.sql);
     evidence.gitHead = command('git', ['rev-parse', 'HEAD']).trim();
     fs.writeFileSync(path.join(stage, 'working-tree.diff'), command('git', ['diff', '--', 'apps/api', 'docs/runtime-test-checklist.md']));
-    for (const order of ['formative-first', 'summative-first']) {
+    for (const order of (httpEnabled ? ['http-positive'] : ['formative-first', 'summative-first'])) {
       const nonce = randomBytes(16).toString('hex');
       const name = 'lexora-crc-' + nonce;
       const database = 'crc_' + nonce + '_test';
@@ -147,14 +149,26 @@ async function main() {
         const childEnv = { ...env, DATABASE_URL: url, DATABASE_DIRECT_URL: url,
           LEXORA_CRC_FOUNDATION_DATABASE_URL: url, LEXORA_CRC_FOUNDATION_EXPECTED_DATABASE: database,
           LEXORA_CRC_FOUNDATION_CONFIRM: 'YES_DISPOSABLE_SYNTHETIC_FOUNDATION',
-          LEXORA_CRC_FRESH_RUN_ID: nonce };
-        const output = command(process.execPath, ['-r', './scripts/register-test-paths.cjs',
-          'scripts/crc-fresh-owner.cjs', order], { env: childEnv, timeout: 1800000 });
+          LEXORA_CRC_FRESH_RUN_ID: nonce, ...(order === 'http-positive' ? {
+            LEXORA_CRC_HTTP_CONFIRM: 'YES_DISPOSABLE_HTTP_ACCEPTANCE',
+            LEXORA_CRC_HTTP_STAGE: stage,
+          } : {}) };
+        const entry = order === 'http-positive' ? 'scripts/crc-http-owner.cjs' : 'scripts/crc-fresh-owner.cjs';
+        const args = ['-r', './scripts/register-test-paths.cjs', entry];
+        if (order !== 'http-positive') args.push(order);
+        const output = command(process.execPath, args, { env: childEnv, timeout: 1800000 });
         fs.writeFileSync(path.join(stage, order + '.log'), redact(output));
-        assert.ok(output.includes('CRC_FRESH_ORDER=' + order + ':PASS'));
-        evidence.campaigns.push({ order, status: 'PASS', reviews: 13, approvals: 6,
-          formative: 6, compositions: 6, terminalAudits: 12 });
-        console.log('CRC_FRESH_ORDER=' + order + ':PASS');
+        if (order === 'http-positive') {
+          assert.ok(output.includes('CRC_HTTP_AUTHENTICATED_OWNER_FLOW=PASS'));
+          evidence.campaigns.push({order, status:'PASS', httpAuthentication:true,
+            chairmanLocks:1, compositions:1, sourceOrder:'formative-first'});
+          console.log('CRC_HTTP_AUTHENTICATED_OWNER_FLOW=PASS');
+        } else {
+          assert.ok(output.includes('CRC_FRESH_ORDER=' + order + ':PASS'));
+          evidence.campaigns.push({ order, status: 'PASS', reviews: 13, approvals: 6,
+            formative: 6, compositions: 6, terminalAudits: 12 });
+          console.log('CRC_FRESH_ORDER=' + order + ':PASS');
+        }
       } finally {
         // Never remove by a broad prefix, never touch volumes or other containers.
         const found = spawnSync('docker', ['inspect', name], { env, encoding: 'utf8', timeout: 10000 });

@@ -183,3 +183,21 @@ test('missing active SQL, unknown directories and unreadable excluded sources fa
   assert.throws(() => buildOverlay(fixture, prismaSQL),
     error => error.code === 'EISDIR' || error.code === 'EPERM');
 });
+
+// HTTP gate rejects both canonical DB URLs and divergent connection targets.
+test('HTTP gate binds both Prisma URLs to the owned disposable database', () => {
+  const { safety } = require('./crc-http-acceptance.cjs');
+  const stage = path.join(path.resolve(api, '../..'), '.crc-runtime', nonce);
+  const valid = { ...env, LEXORA_CRC_HTTP_CONFIRM: 'YES_DISPOSABLE_HTTP_ACCEPTANCE',
+    LEXORA_CRC_HTTP_STAGE: stage,
+    DATABASE_URL: env.LEXORA_CRC_FOUNDATION_DATABASE_URL,
+    DATABASE_DIRECT_URL: env.LEXORA_CRC_FOUNDATION_DATABASE_URL };
+  assert.equal(safety(valid), stage);
+  for (const override of [
+    {DATABASE_URL:'postgresql://x:x@127.0.0.1:5432/lexora_lms?schema=public'},
+    {DATABASE_DIRECT_URL:'postgresql://x:x@127.0.0.1:5432/lexora_lms?schema=public'},
+    {LEXORA_CRC_HTTP_CONFIRM:'NO'},
+    {LEXORA_CRC_HTTP_STAGE:api},
+    {DATABASE_URL:valid.DATABASE_URL+'&host=evil'}
+  ]) assert.throws(() => safety({...valid,...override}));
+});

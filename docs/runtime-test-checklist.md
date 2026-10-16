@@ -41991,3 +41991,65 @@ Controller publication, or production release is approved by
 this checkpoint.**
 
 **SECURITY RELEASE GATE: OPEN. BASELINE_APPROVED=NO.**
+
+
+## CRC authenticated HTTP runtime checkpoint - 2026-10-16
+
+**Classification:** Isolated authenticated HTTP owner-flow runtime PASS.
+Canonical end-to-end acceptance and production baseline approval remain pending.
+
+### Source and environment
+
+- Baseline Git commit: `858d85e`.
+- Reviewed CRC HTTP patch applied in an independent server checkout.
+- Windows API typecheck and build: PASS.
+- Focused JavaScript static tests: 11/11 PASS.
+- PostgreSQL 18.6 disposable runtime campaign executed on Ubuntu.
+- Runtime source checkout:
+  `/home/sh002/lexora-private-acceptance/stage-fdqW1Yau/repo`
+- Runtime evidence:
+  `/home/sh002/lexora-private-acceptance/stage-fdqW1Yau/repo/.crc-runtime/65c54afddcd97a4bc012998ae3feb9dd`
+
+### Operator-observed runtime result
+
+- `CRC_HTTP_AUTHENTICATED_OWNER_FLOW=PASS`
+- `CRC_FRESH_RUNTIME_AND_CLEANUP=PASS`
+- `BASELINE_APPROVED=NO`
+- Canonical API post-run health: HTTP 200.
+- Remote runtime command: PASS.
+
+### Verified test boundary
+
+The authenticated HTTP scenario exercises synthetic Member-1,
+Member-2, Chairman, Student, Department Admin and foreign-department
+identity login through the real authentication module.
+
+The exercised scenarios include anonymous and role denial,
+foreign-department isolation, forged-header non-escalation,
+unassigned real-object denial, Member reviews, premature Chairman
+lock denial, authorized Chairman final lock, immutable /100
+composition, exact component pass thresholds, terminal audit
+evidence, duplicate approval, exact review replay, attempted
+review mutation and role-revocation denial.
+
+The tested composition uses Formative 16/40 and Summative 24/60,
+giving total 40/100 with both component pass flags true.
+
+The dedicated HTTP scenario is Formative-first and covers one
+boundary-mark case. It does not independently establish all six
+academic scenarios or Summative-first authenticated HTTP behavior.
+
+The previously verified two source-order owner-service campaigns
+remain separate evidence.
+
+### Explicit limitations
+
+- The HTTP test ran against synthetic, disposable PostgreSQL data.
+- It did not exercise canonical real-object positive authorization.
+- It did not establish canonical production-shaped baseline approval.
+- It does not establish complete persisted source-conflict or
+  appointment matrix coverage.
+- It does not authorize Grade/GPA publication or production release.
+- No canonical DB migration or PM2 restart occurred in this run.
+
+**BASELINE_APPROVED=NO. NOT PRODUCTION READY.**

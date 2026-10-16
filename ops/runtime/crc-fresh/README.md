@@ -153,3 +153,63 @@ Retained evidence contains synthetic data only and is ignored by Git.
 HTTP authentication/guards, ordinary/canonical deployment, real-data migration
 compatibility and independently approved production-shaped baseline acceptance
 remain separate pending boundaries. BASELINE_APPROVED=NO.
+
+## Isolated authenticated HTTP extension (runtime verified 2026-10-16)
+
+The add-on changes no production NestJS, service, migration or policy source.
+It preserves the existing two service-owner campaigns and adds a **third** owned,
+random PostgreSQL 18.6 tmpfs container. The new synthetic fixture uses real
+academic owners for preterminal `/40` and `/60` evidence and then a loopback
+NestJS instance with the real AuthController, AuthGuard, PolicyGuard and Summative
+Committee controller. Temporary login passwords and JWT secrets never appear in
+logs. The synthetic API listens on OS-assigned `127.0.0.1` port, NOT PM2 port
+4000. `.env` is not read from canonical `apps/api` (cwd is the exact ephemeral
+evidence directory); DATABASE_URL and DATABASE_DIRECT_URL must both match the
+restricted, marker-verified disposable PostgreSQL target.
+
+After API typecheck/build (and Prisma Client validation) run **from repository
+root** on a host with the local postgres:18.6 Docker image:
+
+~~~bash
+pnpm --filter @lexora/api exec node scripts/crc-fresh-runtime.cjs --apply-http
+~~~
+
+Note: run this command from `apps/api` instead if the workspace command does not
+change cwd. **Do not use prisma migrate deploy**, and never pass canonical URLs.
+Expected markers (only when independently observed):
+
+~~~text
+CRC_FRESH_ORDER=formative-first:PASS
+CRC_FRESH_ORDER=summative-first:PASS
+CRC_HTTP_AUTHENTICATED_OWNER_FLOW=PASS
+CRC_FRESH_RUNTIME_AND_CLEANUP=PASS
+BASELINE_APPROVED=NO
+~~~
+
+The dedicated HTTP scenario tests authenticated logins; anonymous/student/admin
+denial; foreign-department and unassigned real-object isolation; forged header
+non-escalation; Member-1/Member-2 HTTP reviews; refusal to final-lock without both
+reviews; real Chairman HTTP final-lock; generated `/100`, source identities, pass
+thresholds and audit evidence; replay, immutability and revocation. It covers
+**one boundary-mark scenario in Formative-first order**. Reverse-order HTTP
+activation and broader time/appointment combinations remain unverified and are
+not implied by the two existing service-owner campaigns. Canonical acceptance
+and production readiness remain pending.
+
+The runner's pre-existing exact container cleanup is mandatory. Failure or
+missing markers is NOT PASS. No automatic commit, PM2 restart or host data
+mutation is part of this extension.
+
+### Runtime supersession - 2026-10-16
+
+The operator executed the isolated authenticated HTTP extension on
+Ubuntu PostgreSQL 18.6.
+
+`CRC_HTTP_AUTHENTICATED_OWNER_FLOW=PASS`
+and `CRC_FRESH_RUNTIME_AND_CLEANUP=PASS` were observed.
+
+This run tested one Formative-first boundary scenario.
+The two prior source-order owner-service campaigns are distinct.
+Canonical acceptance and production baseline approval remain pending.
+
+`BASELINE_APPROVED=NO`.

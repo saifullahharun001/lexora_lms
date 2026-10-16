@@ -126,3 +126,28 @@ This changes operational status, not the authority or academic
 result-processing architecture.
 
 **BASELINE_APPROVED=NO. NOT PRODUCTION READY.**
+
+
+## CRC HTTP acceptance supersession - 2026-10-16
+
+The isolated authenticated CRC /100 HTTP extension passed on Ubuntu
+against disposable PostgreSQL 18.6.
+
+Observed markers:
+
+- `CRC_HTTP_AUTHENTICATED_OWNER_FLOW=PASS`
+- `CRC_FRESH_RUNTIME_AND_CLEANUP=PASS`
+
+The runtime exercises real HTTP login, scoped policy/Committee
+authorization, Member reviews, Chairman final lock, one boundary
+/100 composition, negative-access cases and protected audit/evidence
+stability.
+
+This supersedes the earlier pending classification for the
+**isolated authenticated HTTP boundary only**.
+
+Canonical real-object authenticated positive acceptance, independent
+production-shaped baseline approval and broader production security
+gates remain pending.
+
+**BASELINE_APPROVED=NO.**
